@@ -1,10 +1,14 @@
 package com.erzbir.halo.injector.core;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -16,6 +20,8 @@ public class MatchRule {
     private Matcher matcher;
     private String value;
     private List<MatchRule> children = new ArrayList<>();
+    @JsonIgnore
+    private final Set<String> unknownFields = new LinkedHashSet<>();
 
     public static MatchRule defaultRule() {
         MatchRule root = new MatchRule();
@@ -64,6 +70,11 @@ public class MatchRule {
         validateForWrite(rule, "matchRule", true);
     }
 
+    @JsonAnySetter
+    public void recordUnknownField(String key, Object ignoredValue) {
+        unknownFields.add(key);
+    }
+
     /**
      * why: DOM 注入在 WebFilter 阶段只能先看到页面路径；
      * 这里用于判断规则能否先按路径缩小范围，从而避免退化成“所有 HTML 页面都先进入处理链路”。
@@ -75,6 +86,10 @@ public class MatchRule {
     private static void validateForWrite(MatchRule rule, String path, boolean requireGroupRoot) {
         if (rule == null) {
             throw new IllegalArgumentException(path + "：不能为空");
+        }
+        if (!rule.getUnknownFields().isEmpty()) {
+            String field = rule.getUnknownFields().iterator().next();
+            throw new IllegalArgumentException(path + "." + field + "：" + unknownFieldMessage(rule.getType()));
         }
         if (rule.getType() == null) {
             throw new IllegalArgumentException(path + ".type：不能为空");
@@ -101,6 +116,9 @@ public class MatchRule {
         if (children == null || children.isEmpty()) {
             throw new IllegalArgumentException(path + ".children：不能有空组");
         }
+        if (rule.getOperator() == null) {
+            throw new IllegalArgumentException(path + ".operator：缺少必填字段；仅支持 \"AND\" 或 \"OR\"");
+        }
         if (rule.getOperator() != Operator.AND && rule.getOperator() != Operator.OR) {
             throw new IllegalArgumentException(path + ".operator：仅支持 \"AND\" 或 \"OR\"");
         }
@@ -115,6 +133,9 @@ public class MatchRule {
         }
         if (rule.getChildren() != null && !rule.getChildren().isEmpty()) {
             throw new IllegalArgumentException(path + ".children：仅条件组可使用 children");
+        }
+        if (rule.getMatcher() == null) {
+            throw new IllegalArgumentException(path + ".matcher：缺少必填字段；仅支持 \"ANT\"、\"REGEX\"、\"EXACT\"");
         }
         if (!rule.supportsPathMatcher(rule.getMatcher())) {
             throw new IllegalArgumentException(path + ".matcher：路径规则仅支持 \"ANT\"、\"REGEX\"、\"EXACT\"");
@@ -131,6 +152,9 @@ public class MatchRule {
         }
         if (rule.getChildren() != null && !rule.getChildren().isEmpty()) {
             throw new IllegalArgumentException(path + ".children：仅条件组可使用 children");
+        }
+        if (rule.getMatcher() == null) {
+            throw new IllegalArgumentException(path + ".matcher：缺少必填字段；仅支持 \"REGEX\" 或 \"EXACT\"");
         }
         if (!rule.supportsTemplateMatcher(rule.getMatcher())) {
             throw new IllegalArgumentException(path + ".matcher：模板 ID 仅支持 \"REGEX\" 或 \"EXACT\"");
@@ -150,6 +174,19 @@ public class MatchRule {
         } catch (PatternSyntaxException e) {
             throw new IllegalArgumentException(path + "：正则表达式无效，" + e.getDescription(), e);
         }
+    }
+
+    private static String unknownFieldMessage(Type type) {
+        if (type == Type.GROUP) {
+            return "不支持该字段；条件组仅支持 \"type\"、\"negate\"、\"operator\"、\"children\"";
+        }
+        if (type == Type.PATH) {
+            return "不支持该字段；页面路径条件仅支持 \"type\"、\"negate\"、\"matcher\"、\"value\"";
+        }
+        if (type == Type.TEMPLATE_ID) {
+            return "不支持该字段；模板 ID 条件仅支持 \"type\"、\"negate\"、\"matcher\"、\"value\"";
+        }
+        return "不支持该字段";
     }
 
     /**

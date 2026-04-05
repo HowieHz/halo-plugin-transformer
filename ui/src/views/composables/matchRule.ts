@@ -33,6 +33,10 @@ interface MatchRuleValidationOptions {
   allowIncompatibleMatcher: boolean
 }
 
+const GROUP_ALLOWED_KEYS = ['type', 'negate', 'operator', 'children'] as const
+const PATH_ALLOWED_KEYS = ['type', 'negate', 'matcher', 'value'] as const
+const TEMPLATE_ALLOWED_KEYS = ['type', 'negate', 'matcher', 'value'] as const
+
 const MATCH_RULE_EDITOR_STATE_KEY = 'plugin-injector:match-rule-editor-state'
 
 interface StoredMatchRuleEditorState {
@@ -327,6 +331,19 @@ function validateMatchRuleInput(
   }
 
   if (type === 'GROUP') {
+    const unknownKey = findUnknownKey(input, GROUP_ALLOWED_KEYS)
+    if (unknownKey) {
+      return invalid(
+        `${path}.${unknownKey}`,
+        '不支持该字段；条件组仅支持 "type"、"negate"、"operator"、"children"',
+      )
+    }
+    if (!hasOwnKey(input, 'operator')) {
+      return invalid(`${path}.operator`, '缺少必填字段；仅支持 "AND" 或 "OR"')
+    }
+    if (!hasOwnKey(input, 'children')) {
+      return invalid(`${path}.children`, '缺少必填字段')
+    }
     if (input.operator !== undefined && typeof input.operator !== 'string') {
       return invalid(`${path}.operator`, '必须是字符串；仅支持 "AND" 或 "OR"')
     }
@@ -371,6 +388,27 @@ function validateMatchRuleInput(
   }
   if (input.children !== undefined) {
     return invalid(`${path}.children`, '仅条件组可使用 children')
+  }
+  const allowedKeys = type === 'PATH' ? PATH_ALLOWED_KEYS : TEMPLATE_ALLOWED_KEYS
+  const unknownKey = findUnknownKey(input, allowedKeys)
+  if (unknownKey) {
+    return invalid(
+      `${path}.${unknownKey}`,
+      type === 'PATH'
+        ? '不支持该字段；页面路径条件仅支持 "type"、"negate"、"matcher"、"value"'
+        : '不支持该字段；模板 ID 条件仅支持 "type"、"negate"、"matcher"、"value"',
+    )
+  }
+  if (!hasOwnKey(input, 'matcher')) {
+    return invalid(
+      `${path}.matcher`,
+      type === 'PATH'
+        ? '缺少必填字段；仅支持 "ANT"、"REGEX"、"EXACT"'
+        : '缺少必填字段；仅支持 "REGEX" 或 "EXACT"',
+    )
+  }
+  if (!hasOwnKey(input, 'value')) {
+    return invalid(`${path}.value`, '缺少必填字段')
   }
 
   if (input.value === undefined || typeof input.value !== 'string') {
@@ -513,6 +551,22 @@ function invalid(path: string, message: string): MatchRuleParseResult {
     rule: null,
     error: { path, message },
   }
+}
+
+function hasOwnKey(input: Record<string, unknown>, key: string) {
+  return Object.prototype.hasOwnProperty.call(input, key)
+}
+
+function findUnknownKey(
+  input: Record<string, unknown>,
+  allowedKeys: readonly string[],
+): string | null {
+  for (const key of Object.keys(input)) {
+    if (!allowedKeys.includes(key)) {
+      return key
+    }
+  }
+  return null
 }
 
 function validateRegexValue(value: string, path: string): MatchRuleParseResult | null {

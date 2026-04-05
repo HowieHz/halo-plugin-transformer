@@ -1,5 +1,6 @@
 package com.erzbir.halo.injector.util;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import com.erzbir.halo.injector.core.MatchRule;
 import org.junit.jupiter.api.Test;
@@ -10,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class InjectionRuleValidatorTest {
     private final InjectionRuleValidator validator = new InjectionRuleValidator();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     // why: 合法 regex 必须能顺利落库，避免后端校验误伤正常规则。
     @Test
@@ -48,6 +50,55 @@ class InjectionRuleValidatorTest {
         );
 
         assertEquals("matchRule.children[0].matcher：模板 ID 仅支持 \"REGEX\" 或 \"EXACT\"", error.getReason());
+    }
+
+    // why: matcher 是叶子条件的必填键；即使其它字段齐全，缺少它也必须在写入期被拦下。
+    @Test
+    void shouldRejectLeafRuleWithoutMatcherDuringWriteValidation() {
+        InjectionRule rule = makeRule();
+        MatchRule child = MatchRule.pathRule(MatchRule.Matcher.ANT, "/**");
+        child.setMatcher(null);
+        setMatchRuleDirectly(rule, makeGroup(child));
+
+        InjectionRuleValidationException error = assertThrows(
+                InjectionRuleValidationException.class,
+                () -> validator.validateForWrite(rule).block()
+        );
+
+        assertEquals("matchRule.children[0].matcher：缺少必填字段；仅支持 \"ANT\"、\"REGEX\"、\"EXACT\"", error.getReason());
+    }
+
+    // why: JSON 里的错键不能被静默吞掉，否则像 `matcher` 拼错这类问题会在保存时被悄悄写成默认行为。
+    @Test
+    void shouldRejectUnknownMatchRuleFieldDuringWriteValidation() throws Exception {
+        String raw = """
+                {
+                  "matchRule": {
+                    "type": "GROUP",
+                    "negate": false,
+                    "operator": "AND",
+                    "children": [
+                      {
+                        "type": "PATH",
+                        "negate": false,
+                        " m a tc her": "ANT",
+                        "value": "/**"
+                      }
+                    ]
+                  }
+                }
+                """;
+        InjectionRule rule = objectMapper.readValue(raw, InjectionRule.class);
+
+        InjectionRuleValidationException error = assertThrows(
+                InjectionRuleValidationException.class,
+                () -> validator.validateForWrite(rule).block()
+        );
+
+        assertEquals(
+                "matchRule.children[0]. m a tc her：不支持该字段；页面路径条件仅支持 \"type\"、\"negate\"、\"matcher\"、\"value\"",
+                error.getReason()
+        );
     }
 
     // why: 根节点固定为 GROUP，便于简单模式/JSON 模式共享统一的规则树结构。
