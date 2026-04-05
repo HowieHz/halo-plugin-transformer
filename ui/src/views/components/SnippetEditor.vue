@@ -45,6 +45,17 @@ const sortedRules = computed(() =>
 )
 const undo = useFieldUndo()
 const exportFallback = ref<TransferFileDraft | null>(null)
+const codeDraft = ref('')
+const codeScrollTop = ref(0)
+
+const codeLines = computed(() => {
+  const content = codeDraft.value.replace(/\r\n/g, '\n')
+  return content.split('\n').length
+})
+
+const codeLineNumberStyle = computed(() => ({
+  transform: `translateY(-${codeScrollTop.value}px)`,
+}))
 
 watch(
   () => [props.snippet?.id, props.dirty],
@@ -58,6 +69,14 @@ watch(
       ruleIds: visibleSelectedRuleIds.value,
       code: props.snippet.code,
     })
+  },
+  { immediate: true },
+)
+
+watch(
+  () => props.snippet?.code,
+  (value) => {
+    codeDraft.value = value ?? ''
   },
   { immediate: true },
 )
@@ -134,6 +153,18 @@ function resetField(field: 'name' | 'description' | 'ruleIds' | 'code') {
   }
 
   updateField(field, baseline as CodeSnippet[typeof field], { trackHistory: false })
+}
+
+function syncCodeScroll(event: Event) {
+  codeScrollTop.value = (event.target as HTMLTextAreaElement).scrollTop
+}
+
+function handleCodeInput(event: Event) {
+  codeDraft.value = (event.target as HTMLTextAreaElement).value
+}
+
+function commitCodeDraft() {
+  updateField('code', codeDraft.value)
 }
 
 async function exportSnippet() {
@@ -245,15 +276,38 @@ async function exportSnippet() {
           <FieldUndoButton @reset="resetField('code')" @undo="undoField('code')" />
         </template>
         <template #default="{ inputId }">
-          <textarea
-            :id="inputId"
-            :value="snippet.code"
-            class=":uno: w-full rounded-md border border-gray-200 px-3 py-2 text-xs font-mono focus:border-primary focus:outline-none resize-none"
-            placeholder="输入 HTML 代码"
-            rows="10"
-            spellcheck="false"
-            @change="updateField('code', ($event.target as HTMLTextAreaElement).value)"
-          />
+          <div
+            class=":uno: relative overflow-hidden rounded-md border border-gray-200 bg-white focus-within:border-primary"
+          >
+            <div class=":uno: relative z-1 flex">
+              <div
+                aria-hidden="true"
+                class=":uno: relative overflow-hidden select-none border-r border-gray-100 bg-gray-50 px-2 py-2 text-right text-xs text-gray-400"
+              >
+                <div :style="codeLineNumberStyle">
+                  <div
+                    v-for="lineNumber in codeLines"
+                    :key="lineNumber"
+                    class=":uno: leading-6"
+                    style="height: 24px"
+                  >
+                    {{ lineNumber }}
+                  </div>
+                </div>
+              </div>
+              <textarea
+                :id="inputId"
+                :value="codeDraft"
+                class=":uno: min-h-60 w-full flex-1 resize-none border-0 bg-transparent px-3 py-2 text-sm font-mono leading-6 focus:outline-none"
+                placeholder="输入 HTML 代码"
+                rows="10"
+                spellcheck="false"
+                @change="commitCodeDraft"
+                @input="handleCodeInput"
+                @scroll="syncCodeScroll"
+              />
+            </div>
+          </div>
         </template>
       </FormField>
 

@@ -23,6 +23,16 @@ const snippet = ref<CodeSnippet>(makeSnippet())
 const selectedRuleIds = ref<string[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
 const initialSnippet = makeSnippet()
+const codeScrollTop = ref(0)
+
+const codeLines = computed(() => {
+  const content = snippet.value.code.replace(/\r\n/g, '\n')
+  return content.split('\n').length
+})
+
+const codeLineNumberStyle = computed(() => ({
+  transform: `translateY(-${codeScrollTop.value}px)`,
+}))
 
 onMounted(reset)
 
@@ -40,6 +50,10 @@ function toggleRule(id: string) {
 
 function handleSubmit() {
   emit('submit', snippet.value, selectedRuleIds.value)
+}
+
+function syncCodeScroll(event: Event) {
+  codeScrollTop.value = (event.target as HTMLTextAreaElement).scrollTop
 }
 
 function openImportPicker() {
@@ -145,15 +159,37 @@ defineExpose({
       </FormField>
 
       <FormField v-slot="{ inputId }" label="代码内容" required>
-        <textarea
-          :id="inputId"
-          v-model="snippet.code"
-          autofocus
-          class=":uno: w-full rounded-md border border-gray-200 px-3 py-2 text-xs font-mono focus:border-primary focus:outline-none resize-none"
-          placeholder="输入 HTML 代码"
-          rows="12"
-          spellcheck="false"
-        />
+        <div
+          class=":uno: relative overflow-hidden rounded-md border border-gray-200 bg-white focus-within:border-primary"
+        >
+          <div class=":uno: relative z-1 flex">
+            <div
+              aria-hidden="true"
+              class=":uno: relative overflow-hidden select-none border-r border-gray-100 bg-gray-50 px-2 py-2 text-right text-xs text-gray-400"
+            >
+              <div :style="codeLineNumberStyle">
+                <div
+                  v-for="lineNumber in codeLines"
+                  :key="lineNumber"
+                  class=":uno: leading-6"
+                  style="height: 24px"
+                >
+                  {{ lineNumber }}
+                </div>
+              </div>
+            </div>
+            <textarea
+              :id="inputId"
+              v-model="snippet.code"
+              autofocus
+              class=":uno: min-h-72 w-full flex-1 resize-none border-0 bg-transparent px-3 py-2 text-sm font-mono leading-6 focus:outline-none"
+              placeholder="输入 HTML 代码"
+              rows="12"
+              spellcheck="false"
+              @scroll="syncCodeScroll"
+            />
+          </div>
+        </div>
       </FormField>
     </template>
 

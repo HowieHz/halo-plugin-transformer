@@ -473,7 +473,6 @@ function tokenizeJson(text: string) {
           <div
             aria-hidden="true"
             class=":uno: relative overflow-hidden select-none border-r border-gray-100 bg-gray-50 px-2 py-2 text-right text-xs text-gray-400"
-            style="width: 3.5rem"
           >
             <div :style="jsonLineNumberStyle">
               <div
