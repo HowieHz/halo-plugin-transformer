@@ -30,6 +30,7 @@ interface MatchRuleValidationOptions {
   allowEmptyGroup: boolean
   allowEmptyValue: boolean
   allowInvalidRegex: boolean
+  allowIncompatibleMatcher: boolean
 }
 
 const MATCH_RULE_EDITOR_STATE_KEY = 'plugin-injector:match-rule-editor-state'
@@ -107,6 +108,7 @@ export function parseMatchRuleDraft(draft?: string | null): MatchRuleParseResult
       allowEmptyGroup: false,
       allowEmptyValue: false,
       allowInvalidRegex: false,
+      allowIncompatibleMatcher: false,
     })
   } catch (error) {
     return {
@@ -131,6 +133,7 @@ export function validateMatchRuleTree(rule: MatchRule | null | undefined): Match
     allowEmptyGroup: false,
     allowEmptyValue: false,
     allowInvalidRegex: false,
+    allowIncompatibleMatcher: false,
   })
 }
 
@@ -144,6 +147,7 @@ export function validateMatchRuleObject(input: unknown, path = 'matchRule'): Mat
     allowEmptyGroup: true,
     allowEmptyValue: true,
     allowInvalidRegex: true,
+    allowIncompatibleMatcher: true,
   })
 }
 
@@ -380,7 +384,9 @@ function validateMatchRuleInput(
       input.matcher !== 'REGEX' &&
       input.matcher !== 'EXACT'
     ) {
-      return invalid(`${path}.matcher`, '仅支持 ANT、REGEX、EXACT')
+      if (!options.allowIncompatibleMatcher) {
+        return invalid(`${path}.matcher`, '仅支持 ANT、REGEX、EXACT')
+      }
     }
     if (input.matcher === 'REGEX' && !options.allowInvalidRegex) {
       const regexError = validateRegexValue(input.value, `${path}.value`)
@@ -397,7 +403,9 @@ function validateMatchRuleInput(
   }
 
   if (input.matcher !== undefined && input.matcher !== 'REGEX' && input.matcher !== 'EXACT') {
-    return invalid(`${path}.matcher`, '模板 ID 仅支持 REGEX 或 EXACT')
+    if (!options.allowIncompatibleMatcher) {
+      return invalid(`${path}.matcher`, '模板 ID 仅支持 REGEX 或 EXACT')
+    }
   }
   if (input.matcher === 'REGEX' && !options.allowInvalidRegex) {
     const regexError = validateRegexValue(input.value, `${path}.value`)
