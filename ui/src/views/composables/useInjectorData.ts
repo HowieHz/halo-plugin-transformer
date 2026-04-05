@@ -62,6 +62,10 @@ export function useInjectorData() {
   const editRuleSnippetIds = ref<string[]>([])
 
   const editDirty = ref(false)
+  const syncingSnippetReorder = ref(false)
+  const syncingRuleReorder = ref(false)
+  const pendingSnippetOrderIds = ref<string[] | null>(null)
+  const pendingRuleOrderIds = ref<string[] | null>(null)
 
   const rulesUsingSnippet = computed(() => {
     if (!selectedSnippetId.value) return []
@@ -131,12 +135,66 @@ export function useInjectorData() {
     }))
   }
 
-  function _mergeUpdatedItems<T extends { id: string }>(items: T[], updatedItems: T[]) {
+  function _mergeUpdatedItems<T extends { id: string; sortOrder?: number }>(
+    items: T[],
+    updatedItems: T[],
+  ) {
     const updatedById = new Map(updatedItems.map((item) => [item.id, item]))
     return items.map((item) => ({
       ...item,
       ...updatedById.get(item.id),
+      sortOrder: item.sortOrder,
     }))
+  }
+
+  function _collectOrderIds<T extends { id: string }>(items: T[]) {
+    return items.map((item) => item.id)
+  }
+
+  function _restoreOrderByIds<T extends { id: string }>(items: T[], orderIds: string[]) {
+    const byId = new Map(items.map((item) => [item.id, item]))
+    const seen = new Set(orderIds)
+    return [
+      ...orderIds.map((id) => byId.get(id)).filter((item): item is T => !!item),
+      ...items.filter((item) => !seen.has(item.id)),
+    ]
+  }
+
+  function _applyLocalOrderedItems<T extends { id: string; sortOrder?: number }>(
+    currentItems: T[],
+    orderedItems: T[],
+  ) {
+    return _replaceOrderedItems(currentItems, _assignSortOrder(orderedItems))
+  }
+
+  function _syncEditSnippetSystemFields(items: CodeSnippet[]) {
+    if (!editSnippet.value) {
+      return
+    }
+    const found = items.find((item) => item.id === editSnippet.value?.id)
+    if (!found) {
+      return
+    }
+    editSnippet.value = {
+      ...editSnippet.value,
+      metadata: found.metadata,
+      sortOrder: found.sortOrder,
+    }
+  }
+
+  function _syncEditRuleSystemFields(items: InjectionRule[]) {
+    if (!editRule.value) {
+      return
+    }
+    const found = items.find((item) => item.id === editRule.value?.id)
+    if (!found) {
+      return
+    }
+    editRule.value = {
+      ...editRule.value,
+      metadata: found.metadata,
+      sortOrder: found.sortOrder,
+    }
   }
 
   /**
@@ -467,28 +525,36 @@ export function useInjectorData() {
     if (!ordered) {
       return
     }
-
-    const changed = _assignSortOrder(ordered).filter(
-      (snippet) =>
-        snippet.sortOrder !==
-        (snippets.value.find((item) => item.id === snippet.id)?.sortOrder ?? undefined),
-    )
-
-    if (!changed.length) {
+    snippetsResp.value.items = _applyLocalOrderedItems(snippetsResp.value.items, ordered)
+    _syncEditSnippetSystemFields(snippetsResp.value.items)
+    pendingSnippetOrderIds.value = _collectOrderIds(ordered)
+    if (syncingSnippetReorder.value) {
       return
     }
 
+    syncingSnippetReorder.value = true
     saving.value = true
+    let updatedOnce = false
     try {
-      const updated = await Promise.all(
-        changed.map(async (snippet) => (await snippetApi.update(snippet.id, snippet)).data),
-      )
-      const nextItems = _replaceOrderedItems(snippetsResp.value.items, _assignSortOrder(ordered))
-      snippetsResp.value.items = _mergeUpdatedItems(nextItems, updated)
-      Toast.success('代码块顺序已更新')
+      while (pendingSnippetOrderIds.value) {
+        const orderIds = pendingSnippetOrderIds.value
+        pendingSnippetOrderIds.value = null
+        const snapshot = _assignSortOrder(_restoreOrderByIds(snippetsResp.value.items, orderIds))
+        const updated = await Promise.all(
+          snapshot.map(async (snippet) => (await snippetApi.update(snippet.id, snippet)).data),
+        )
+        snippetsResp.value.items = _mergeUpdatedItems(snippetsResp.value.items, updated)
+        _syncEditSnippetSystemFields(snippetsResp.value.items)
+        updatedOnce = true
+      }
+      if (updatedOnce) {
+        Toast.success('代码块顺序已更新')
+      }
     } catch (error) {
       Toast.error(getErrorMessage(error, '更新顺序失败'))
+      await fetchAll()
     } finally {
+      syncingSnippetReorder.value = false
       saving.value = false
     }
   }
@@ -507,34 +573,42 @@ export function useInjectorData() {
     if (!ordered) {
       return
     }
-
-    const changed = _assignSortOrder(ordered).filter(
-      (rule) =>
-        rule.sortOrder !==
-        (rules.value.find((item) => item.id === rule.id)?.sortOrder ?? undefined),
-    )
-
-    if (!changed.length) {
+    rulesResp.value.items = _applyLocalOrderedItems(rulesResp.value.items, ordered)
+    _syncEditRuleSystemFields(rulesResp.value.items)
+    pendingRuleOrderIds.value = _collectOrderIds(ordered)
+    if (syncingRuleReorder.value) {
       return
     }
 
+    syncingRuleReorder.value = true
     saving.value = true
+    let updatedOnce = false
     try {
-      const updated = await Promise.all(
-        changed.map((rule) => {
-          const payload = makeRulePayload(rule, Array.from(rule.snippetIds ?? []))
-          if (!payload) {
-            throw new Error('匹配规则有误')
-          }
-          return ruleApi.update(rule.id, payload).then((response) => response.data)
-        }),
-      )
-      const nextItems = _replaceOrderedItems(rulesResp.value.items, _assignSortOrder(ordered))
-      rulesResp.value.items = _mergeUpdatedItems(nextItems, updated)
-      Toast.success('注入规则顺序已更新')
+      while (pendingRuleOrderIds.value) {
+        const orderIds = pendingRuleOrderIds.value
+        pendingRuleOrderIds.value = null
+        const snapshot = _assignSortOrder(_restoreOrderByIds(rulesResp.value.items, orderIds))
+        const updated = await Promise.all(
+          snapshot.map((rule) => {
+            const payload = makeRulePayload(rule, Array.from(rule.snippetIds ?? []))
+            if (!payload) {
+              throw new Error('匹配规则有误')
+            }
+            return ruleApi.update(rule.id, payload).then((response) => response.data)
+          }),
+        )
+        rulesResp.value.items = _mergeUpdatedItems(rulesResp.value.items, updated)
+        _syncEditRuleSystemFields(rulesResp.value.items)
+        updatedOnce = true
+      }
+      if (updatedOnce) {
+        Toast.success('注入规则顺序已更新')
+      }
     } catch (error) {
       Toast.error(getErrorMessage(error, '更新顺序失败'))
+      await fetchAll()
     } finally {
+      syncingRuleReorder.value = false
       saving.value = false
     }
   }
