@@ -129,7 +129,7 @@ function handleDrop(event: DragEvent, id: string) {
               <button
                 v-if="reorderable && items.length > 1"
                 :aria-label="`拖动排序：${item.name || item.id}`"
-                class=":uno: inline-flex h-7 w-7 shrink-0 cursor-grab active:cursor-grabbing items-center justify-center rounded border border-gray-200 text-sm leading-none tracking-[-0.2em] text-gray-400 transition hover:border-gray-300 hover:text-gray-600"
+                class=":uno: inline-flex h-5 w-5 shrink-0 cursor-grab active:cursor-grabbing items-center justify-center rounded text-sm leading-none tracking-[-0.2em] text-gray-400 transition hover:text-gray-600"
                 draggable="true"
                 title="按住拖动排序"
                 @click.stop

@@ -131,6 +131,14 @@ export function useInjectorData() {
     }))
   }
 
+  function _mergeUpdatedItems<T extends { id: string }>(items: T[], updatedItems: T[]) {
+    const updatedById = new Map(updatedItems.map((item) => [item.id, item]))
+    return items.map((item) => ({
+      ...item,
+      ...updatedById.get(item.id),
+    }))
+  }
+
   /**
    * why: 前端先做一轮用户可读的快速校验，
    * 把大多数结构问题拦在保存前；后端仍会复核，防止绕过 UI 直接写入坏数据。
@@ -472,11 +480,11 @@ export function useInjectorData() {
 
     saving.value = true
     try {
-      await Promise.all(changed.map((snippet) => snippetApi.update(snippet.id, snippet)))
-      snippetsResp.value.items = _replaceOrderedItems(
-        snippetsResp.value.items,
-        _assignSortOrder(ordered),
+      const updated = await Promise.all(
+        changed.map(async (snippet) => (await snippetApi.update(snippet.id, snippet)).data),
       )
+      const nextItems = _replaceOrderedItems(snippetsResp.value.items, _assignSortOrder(ordered))
+      snippetsResp.value.items = _mergeUpdatedItems(nextItems, updated)
       Toast.success('代码块顺序已更新')
     } catch (error) {
       Toast.error(getErrorMessage(error, '更新顺序失败'))
@@ -512,16 +520,17 @@ export function useInjectorData() {
 
     saving.value = true
     try {
-      await Promise.all(
+      const updated = await Promise.all(
         changed.map((rule) => {
           const payload = makeRulePayload(rule, Array.from(rule.snippetIds ?? []))
           if (!payload) {
             throw new Error('匹配规则有误')
           }
-          return ruleApi.update(rule.id, payload)
+          return ruleApi.update(rule.id, payload).then((response) => response.data)
         }),
       )
-      rulesResp.value.items = _replaceOrderedItems(rulesResp.value.items, _assignSortOrder(ordered))
+      const nextItems = _replaceOrderedItems(rulesResp.value.items, _assignSortOrder(ordered))
+      rulesResp.value.items = _mergeUpdatedItems(nextItems, updated)
       Toast.success('注入规则顺序已更新')
     } catch (error) {
       Toast.error(getErrorMessage(error, '更新顺序失败'))
