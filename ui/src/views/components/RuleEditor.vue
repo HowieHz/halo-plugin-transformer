@@ -57,6 +57,12 @@ const needsTarget = computed(
 )
 const needsSnippets = computed(() => currentRule.value?.position !== 'REMOVE')
 const needsWrapMarker = computed(() => currentRule.value?.position !== 'REMOVE')
+const matchFieldError = computed(() => {
+  if (!needsTarget.value || !currentRule.value) {
+    return null
+  }
+  return currentRule.value.match.trim() ? null : '请填写匹配内容'
+})
 const performanceWarning = computed(() =>
   currentRule.value ? getDomRulePerformanceWarning(currentRule.value) : null,
 )
@@ -440,15 +446,31 @@ async function exportRule() {
               <FieldUndoButton @reset="resetField('match')" @undo="undoField('match')" />
             </template>
             <template #default="{ inputId }">
-              <input
-                :id="inputId"
-                :placeholder="
-                  currentRule.mode === 'SELECTOR' ? 'div[class=content]' : 'main-content'
-                "
-                :value="currentRule.match"
-                class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm font-mono focus:border-primary focus:outline-none"
-                @change="updateField('match', ($event.target as HTMLInputElement).value)"
-              />
+              <div class=":uno: space-y-1">
+                <input
+                  :id="inputId"
+                  :aria-invalid="!!matchFieldError"
+                  :placeholder="
+                    currentRule.mode === 'SELECTOR' ? 'div[class=content]' : 'main-content'
+                  "
+                  :value="currentRule.match"
+                  :class="
+                    matchFieldError
+                      ? ':uno: border-red-300 focus:border-red-500'
+                      : ':uno: border-gray-200 focus:border-primary'
+                  "
+                  class=":uno: w-full rounded-md border px-3 py-1.5 text-sm font-mono focus:outline-none"
+                  @change="updateField('match', ($event.target as HTMLInputElement).value)"
+                />
+                <p
+                  v-if="matchFieldError"
+                  aria-live="polite"
+                  class=":uno: text-xs text-red-500"
+                  role="alert"
+                >
+                  {{ matchFieldError }}
+                </p>
+              </div>
             </template>
           </FormField>
 

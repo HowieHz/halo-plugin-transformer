@@ -33,6 +33,7 @@ const codeLines = computed(() => {
 const codeLineNumberStyle = computed(() => ({
   transform: `translateY(-${codeScrollTop.value}px)`,
 }))
+const codeFieldError = computed(() => (!snippet.value.code.trim() ? '代码内容不能为空' : null))
 
 onMounted(reset)
 
@@ -82,7 +83,7 @@ async function handleImport(event: Event) {
 }
 
 const selectableRules = computed(() => props.rules.filter((rule) => rule.position !== 'REMOVE'))
-const validationError = computed(() => (!snippet.value.code.trim() ? '代码内容不能为空' : null))
+const validationError = computed(() => codeFieldError.value)
 const dirty = computed(() => {
   return (
     snippet.value.enabled !== initialSnippet.enabled ||
@@ -159,36 +160,52 @@ defineExpose({
       </FormField>
 
       <FormField v-slot="{ inputId }" label="代码内容" required>
-        <div
-          class=":uno: relative h-72 min-h-72 resize-y overflow-hidden rounded-md border border-gray-200 bg-white focus-within:border-primary"
-        >
-          <div class=":uno: relative z-1 h-full flex">
-            <div
-              aria-hidden="true"
-              class=":uno: relative h-full overflow-hidden select-none border-r border-gray-100 bg-gray-50 px-2 pt-2 pb-0 text-right text-xs text-gray-400"
-            >
-              <div :style="codeLineNumberStyle">
-                <div
-                  v-for="lineNumber in codeLines"
-                  :key="lineNumber"
-                  class=":uno: leading-6"
-                  style="height: 24px"
-                >
-                  {{ lineNumber }}
+        <div class=":uno: space-y-1">
+          <div
+            :class="
+              codeFieldError
+                ? ':uno: border-red-300 focus-within:border-red-500'
+                : ':uno: border-gray-200 focus-within:border-primary'
+            "
+            class=":uno: relative h-72 min-h-72 resize-y overflow-hidden rounded-md border bg-white"
+          >
+            <div class=":uno: relative z-1 h-full flex">
+              <div
+                aria-hidden="true"
+                class=":uno: relative h-full overflow-hidden select-none border-r border-gray-100 bg-gray-50 px-2 pt-2 pb-0 text-right text-xs text-gray-400"
+              >
+                <div :style="codeLineNumberStyle">
+                  <div
+                    v-for="lineNumber in codeLines"
+                    :key="lineNumber"
+                    class=":uno: leading-6"
+                    style="height: 24px"
+                  >
+                    {{ lineNumber }}
+                  </div>
                 </div>
               </div>
+              <textarea
+                :id="inputId"
+                v-model="snippet.code"
+                :aria-invalid="!!codeFieldError"
+                autofocus
+                class=":uno: h-full min-h-0 w-full flex-1 resize-none border-0 bg-transparent px-3 pt-2 pb-0 text-sm font-mono leading-6 focus:outline-none"
+                placeholder="输入 HTML 代码"
+                spellcheck="false"
+                wrap="off"
+                @scroll="syncCodeScroll"
+              />
             </div>
-            <textarea
-              :id="inputId"
-              v-model="snippet.code"
-              autofocus
-              class=":uno: h-full min-h-0 w-full flex-1 resize-none border-0 bg-transparent px-3 pt-2 pb-0 text-sm font-mono leading-6 focus:outline-none"
-              placeholder="输入 HTML 代码"
-              spellcheck="false"
-              wrap="off"
-              @scroll="syncCodeScroll"
-            />
           </div>
+          <p
+            v-if="codeFieldError"
+            aria-live="polite"
+            class=":uno: text-xs text-red-500"
+            role="alert"
+          >
+            {{ codeFieldError }}
+          </p>
         </div>
       </FormField>
     </template>

@@ -46,6 +46,12 @@ function reset() {
 const needsTarget = computed(() => rule.value.mode === 'ID' || rule.value.mode === 'SELECTOR')
 const needsSnippets = computed(() => rule.value.position !== 'REMOVE')
 const needsWrapMarker = computed(() => rule.value.position !== 'REMOVE')
+const matchFieldError = computed(() => {
+  if (!needsTarget.value) {
+    return null
+  }
+  return rule.value.match.trim() ? null : '请填写匹配内容'
+})
 const performanceWarning = computed(() => getDomRulePerformanceWarning(rule.value))
 
 function toggleSnippet(id: string) {
@@ -220,12 +226,28 @@ defineExpose({
           :label="rule.mode === 'SELECTOR' ? 'CSS 选择器' : '元素 ID'"
           required
         >
-          <input
-            :id="inputId"
-            v-model="rule.match"
-            :placeholder="rule.mode === 'SELECTOR' ? 'div[class=content]' : 'main-content'"
-            class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm font-mono focus:border-primary focus:outline-none"
-          />
+          <div class=":uno: space-y-1">
+            <input
+              :id="inputId"
+              v-model="rule.match"
+              :aria-invalid="!!matchFieldError"
+              :placeholder="rule.mode === 'SELECTOR' ? 'div[class=content]' : 'main-content'"
+              :class="
+                matchFieldError
+                  ? ':uno: border-red-300 focus:border-red-500'
+                  : ':uno: border-gray-200 focus:border-primary'
+              "
+              class=":uno: w-full rounded-md border px-3 py-1.5 text-sm font-mono focus:outline-none"
+            />
+            <p
+              v-if="matchFieldError"
+              aria-live="polite"
+              class=":uno: text-xs text-red-500"
+              role="alert"
+            >
+              {{ matchFieldError }}
+            </p>
+          </div>
         </FormField>
 
         <FormField v-slot="{ inputId }" label="插入位置">
