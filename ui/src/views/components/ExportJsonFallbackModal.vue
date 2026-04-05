@@ -57,9 +57,7 @@ async function copyAll() {
   <VModal title="导出 JSON" :width="860" @close="emit('close')">
     <div class=":uno: space-y-3">
       <p class=":uno: text-sm leading-6 text-gray-700">
-        你可以预览下面这份 JSON，并选择“复制全部”或“另存为”。 建议文件名为
-        <span class=":uno: font-mono text-xs text-gray-500">{{ fileName }}</span>
-        。
+        你可以预览下面这份 JSON，并选择“复制全部”或“另存为”。
       </p>
       <textarea
         ref="textareaRef"
