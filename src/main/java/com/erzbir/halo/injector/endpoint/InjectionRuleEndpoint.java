@@ -30,10 +30,12 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
 
     private final ReactiveExtensionClient client;
     private final InjectionRuleValidator validator;
+    private final SortOrderEndpointSupport sortOrderEndpointSupport;
 
     @Override
     public RouterFunction<ServerResponse> endpoint() {
         return route(POST("/injectionRules"), this::createRule)
+                .andRoute(PUT("/injectionRules/reorder"), this::reorderRules)
                 .andRoute(PUT("/injectionRules/{name}"), this::updateRule);
     }
 
@@ -69,6 +71,15 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
                 .flatMap(updated -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(updated));
+    }
+
+    /**
+     * why: 左侧排序只应更新 sortOrder，不应复用整条规则的内容写入校验，
+     * 否则右侧未保存、未通过校验的规则草稿会反过来阻塞列表排序。
+     */
+    private Mono<ServerResponse> reorderRules(ServerRequest request) {
+        return sortOrderEndpointSupport.reorder(request, InjectionRule.class, "注入规则",
+                InjectionRule::setSortOrder);
     }
 
     @Override

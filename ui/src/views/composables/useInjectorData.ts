@@ -570,9 +570,14 @@ export function useInjectorData() {
         const orderIds = pendingSnippetOrderIds.value
         pendingSnippetOrderIds.value = null
         const snapshot = _assignSortOrder(_restoreOrderByIds(snippetsResp.value.items, orderIds))
-        const updated = await Promise.all(
-          snapshot.map(async (snippet) => (await snippetApi.update(snippet.id, snippet)).data),
-        )
+        const updated = (
+          await snippetApi.reorder(
+            snapshot.map((snippet) => ({
+              id: snippet.id,
+              sortOrder: snippet.sortOrder ?? 0,
+            })),
+          )
+        ).data
         snippetsResp.value.items = _mergeUpdatedItems(snippetsResp.value.items, updated)
         _syncEditSnippetSystemFields(snippetsResp.value.items)
         updatedOnce = true
@@ -618,15 +623,14 @@ export function useInjectorData() {
         const orderIds = pendingRuleOrderIds.value
         pendingRuleOrderIds.value = null
         const snapshot = _assignSortOrder(_restoreOrderByIds(rulesResp.value.items, orderIds))
-        const updated = await Promise.all(
-          snapshot.map((rule) => {
-            const payload = makeRulePayload(rule, Array.from(rule.snippetIds ?? []))
-            if (!payload) {
-              throw new Error('匹配规则有误')
-            }
-            return ruleApi.update(rule.id, payload).then((response) => response.data)
-          }),
-        )
+        const updated = (
+          await ruleApi.reorder(
+            snapshot.map((rule) => ({
+              id: rule.id,
+              sortOrder: rule.sortOrder ?? 0,
+            })),
+          )
+        ).data
         rulesResp.value.items = _mergeUpdatedItems(rulesResp.value.items, updated)
         _syncEditRuleSystemFields(rulesResp.value.items)
         updatedOnce = true

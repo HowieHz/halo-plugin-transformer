@@ -4,8 +4,15 @@ import type { CodeSnippet, InjectionRule, ItemList } from '@/types'
 const BASE = '/apis/injector.erzbir.com/v1alpha1'
 const CONSOLE_BASE = '/apis/console.api.injector.erzbir.com/v1alpha1'
 const SNIPPETS = `${BASE}/codeSnippets`
+const SNIPPETS_REORDER = `${CONSOLE_BASE}/codeSnippets/reorder`
 const RULES = `${BASE}/injectionRules`
 const RULES_WRITE = `${CONSOLE_BASE}/injectionRules`
+const RULES_REORDER = `${CONSOLE_BASE}/injectionRules/reorder`
+
+interface SortOrderItem {
+  id: string
+  sortOrder: number
+}
 
 export const snippetApi = {
   list() {
@@ -18,6 +25,10 @@ export const snippetApi = {
 
   update(id: string, snippet: CodeSnippet) {
     return axiosInstance.put<CodeSnippet>(`${SNIPPETS}/${id}`, snippet)
+  },
+
+  reorder(items: SortOrderItem[]) {
+    return axiosInstance.put<CodeSnippet[]>(SNIPPETS_REORDER, { items })
   },
 
   delete(id: string) {
@@ -36,6 +47,10 @@ export const ruleApi = {
 
   update(id: string, rule: InjectionRule) {
     return axiosInstance.put<InjectionRule>(`${RULES_WRITE}/${id}`, rule)
+  },
+
+  reorder(items: SortOrderItem[]) {
+    return axiosInstance.put<InjectionRule[]>(RULES_REORDER, { items })
   },
 
   delete(id: string) {
