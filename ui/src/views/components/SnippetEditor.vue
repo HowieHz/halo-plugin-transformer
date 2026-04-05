@@ -279,7 +279,7 @@ async function exportSnippet() {
               <div class=":uno: relative z-1 h-full flex">
                 <div
                   aria-hidden="true"
-                  class=":uno: relative h-full overflow-hidden select-none border-r border-gray-100 bg-gray-50 px-2 py-2 text-right text-xs text-gray-400"
+                  class=":uno: relative h-full overflow-hidden select-none border-r border-gray-100 bg-gray-50 px-2 pt-2 pb-0 text-right text-xs text-gray-400"
                 >
                   <div :style="codeLineNumberStyle">
                     <div
@@ -295,9 +295,10 @@ async function exportSnippet() {
                 <textarea
                   :id="inputId"
                   :value="codeDraft"
-                  class=":uno: h-full min-h-0 w-full flex-1 resize-none border-0 bg-transparent px-3 py-2 text-sm font-mono leading-6 focus:outline-none"
+                  class=":uno: h-full min-h-0 w-full flex-1 resize-none border-0 bg-transparent px-3 pt-2 pb-0 text-sm font-mono leading-6 focus:outline-none"
                   placeholder="输入 HTML 代码"
                   spellcheck="false"
+                  wrap="off"
                   @change="commitCodeDraft"
                   @input="handleCodeInput"
                   @scroll="syncCodeScroll"
