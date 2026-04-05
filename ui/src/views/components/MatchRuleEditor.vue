@@ -39,6 +39,9 @@ const editorId = useId()
 const simplePanelId = `match-rule-simple-${editorId}`
 const jsonPanelId = `match-rule-json-${editorId}`
 const jsonErrorId = `match-rule-json-error-${editorId}`
+const textareaRef = ref<HTMLTextAreaElement | null>(null)
+const jsonScrollTop = ref(0)
+const jsonLineHeight = 24
 
 watch(
   () => props.draft,
@@ -62,6 +65,7 @@ watch(
 const currentMode = computed(() => props.editorMode ?? 'SIMPLE')
 const parseResult = computed(() => parseMatchRuleDraft(jsonDraft.value))
 const parseError = computed(() => formatMatchRuleError(parseResult.value.error))
+const jsonLines = computed(() => jsonDraft.value.split('\n'))
 const simpleValidateResult = computed(() =>
   validateMatchRuleTree(normalizeMatchRule(props.modelValue)),
 )
@@ -74,6 +78,22 @@ const jsonActionTitle = computed(() =>
     ? '当前 JSON 有误，将按当前简单模式配置重新生成 JSON'
     : '整理当前 JSON 的缩进与格式',
 )
+const jsonErrorLine = computed(() => {
+  const error = parseResult.value.error
+  if (!error) return null
+  if (typeof error.line === 'number') return error.line
+  return locateJsonPathLine(jsonDraft.value, error.path)
+})
+const jsonHighlightStyle = computed(() => {
+  if (!jsonErrorLine.value) return null
+  return {
+    height: `${jsonLineHeight}px`,
+    transform: `translateY(${(jsonErrorLine.value - 1) * jsonLineHeight - jsonScrollTop.value}px)`,
+  }
+})
+const jsonLineNumberStyle = computed(() => ({
+  transform: `translateY(-${jsonScrollTop.value}px)`,
+}))
 
 function isEqualValue(a: unknown, b: unknown) {
   return JSON.stringify(a) === JSON.stringify(b)
@@ -204,6 +224,159 @@ function formatJson() {
     matchRuleEditorMode: 'JSON',
   })
 }
+
+function syncJsonScroll(event: Event) {
+  jsonScrollTop.value = (event.target as HTMLTextAreaElement).scrollTop
+}
+
+function locateJsonPathLine(text: string, path: string) {
+  if (!path || path === '$') return null
+  const pathMap = buildJsonPathLineMap(text)
+  return pathMap.get(path) ?? null
+}
+
+function buildJsonPathLineMap(text: string) {
+  const tokens = tokenizeJson(text)
+  const pathMap = new Map<string, number>()
+  let index = 0
+
+  function current() {
+    return tokens[index]
+  }
+
+  function consume(expected?: string) {
+    const token = tokens[index]
+    if (!token || (expected && token.type !== expected)) {
+      throw new Error('invalid-json')
+    }
+    index += 1
+    return token
+  }
+
+  function parseValue(path: string) {
+    const token = current()
+    if (!token) {
+      throw new Error('invalid-json')
+    }
+    if (token.type === '{') {
+      parseObject(path)
+      return
+    }
+    if (token.type === '[') {
+      parseArray(path)
+      return
+    }
+    consume()
+  }
+
+  function parseObject(path: string) {
+    consume('{')
+    if (current()?.type === '}') {
+      consume('}')
+      return
+    }
+    while (true) {
+      const keyToken = consume('string')
+      consume(':')
+      const childPath = `${path}.${keyToken.value}`
+      pathMap.set(childPath, keyToken.line)
+      parseValue(childPath)
+      if (current()?.type === ',') {
+        consume(',')
+        continue
+      }
+      consume('}')
+      return
+    }
+  }
+
+  function parseArray(path: string) {
+    consume('[')
+    if (current()?.type === ']') {
+      consume(']')
+      return
+    }
+    let itemIndex = 0
+    while (true) {
+      parseValue(`${path}[${itemIndex}]`)
+      itemIndex += 1
+      if (current()?.type === ',') {
+        consume(',')
+        continue
+      }
+      consume(']')
+      return
+    }
+  }
+
+  try {
+    parseValue('$')
+  } catch {
+    return pathMap
+  }
+  return pathMap
+}
+
+function tokenizeJson(text: string) {
+  const tokens: Array<{ type: string; value?: string; line: number }> = []
+  let index = 0
+  let line = 1
+
+  while (index < text.length) {
+    const char = text[index]
+    if (char === '\n') {
+      line += 1
+      index += 1
+      continue
+    }
+    if (/\s/.test(char)) {
+      index += 1
+      continue
+    }
+    if ('{}[]:,'.includes(char)) {
+      tokens.push({ type: char, line })
+      index += 1
+      continue
+    }
+    if (char === '"') {
+      const startLine = line
+      index += 1
+      let value = ''
+      while (index < text.length) {
+        const currentChar = text[index]
+        if (currentChar === '\\') {
+          value += currentChar
+          index += 1
+          if (index < text.length) {
+            value += text[index]
+            index += 1
+          }
+          continue
+        }
+        if (currentChar === '"') {
+          index += 1
+          break
+        }
+        if (currentChar === '\n') {
+          line += 1
+        }
+        value += currentChar
+        index += 1
+      }
+      tokens.push({ type: 'string', value, line: startLine })
+      continue
+    }
+    const startLine = line
+    let literal = ''
+    while (index < text.length && !/[\s{}[\]:,]/.test(text[index])) {
+      literal += text[index]
+      index += 1
+    }
+    tokens.push({ type: 'literal', value: literal, line: startLine })
+  }
+
+  return tokens
+}
 </script>
 
 <template>
@@ -280,20 +453,52 @@ function formatJson() {
       class=":uno: space-y-2"
       role="tabpanel"
     >
-      <textarea
-        :value="jsonDraft"
-        :aria-describedby="parseError ? jsonErrorId : undefined"
-        :aria-invalid="!!parseError"
-        aria-label="匹配规则 JSON 编辑器"
+      <div
         :class="
           parseError
-            ? ':uno: border-red-300 focus:border-red-500'
-            : ':uno: border-gray-200 focus:border-primary'
+            ? ':uno: border-red-300 focus-within:border-red-500'
+            : ':uno: border-gray-200 focus-within:border-primary'
         "
-        class=":uno: min-h-72 w-full rounded-md border px-3 py-2 text-sm font-mono focus:outline-none"
-        spellcheck="false"
-        @input="updateJsonDraft(($event.target as HTMLTextAreaElement).value)"
-      />
+        class=":uno: relative min-h-72 overflow-hidden rounded-md border bg-white"
+      >
+        <div
+          v-if="jsonHighlightStyle"
+          class=":uno: pointer-events-none absolute left-0 right-0 z-0 bg-red-50"
+          :style="jsonHighlightStyle"
+        />
+
+        <div class=":uno: relative z-1 flex">
+          <div
+            aria-hidden="true"
+            class=":uno: relative overflow-hidden select-none border-r border-gray-100 bg-gray-50 px-2 py-2 text-right text-xs text-gray-400"
+            style="width: 3.5rem"
+          >
+            <div :style="jsonLineNumberStyle">
+              <div
+                v-for="lineNumber in jsonLines.length"
+                :key="lineNumber"
+                :class="lineNumber === jsonErrorLine ? ':uno: font-medium text-red-500' : ''"
+                class=":uno: leading-6"
+                style="height: 24px"
+              >
+                {{ lineNumber }}
+              </div>
+            </div>
+          </div>
+
+          <textarea
+            ref="textareaRef"
+            :value="jsonDraft"
+            :aria-describedby="parseError ? jsonErrorId : undefined"
+            :aria-invalid="!!parseError"
+            aria-label="匹配规则 JSON 编辑器"
+            class=":uno: min-h-72 w-full flex-1 resize-none border-0 bg-transparent px-3 py-2 text-sm font-mono leading-6 focus:outline-none"
+            spellcheck="false"
+            @input="updateJsonDraft(($event.target as HTMLTextAreaElement).value)"
+            @scroll="syncJsonScroll"
+          />
+        </div>
+      </div>
       <p
         v-if="parseError"
         :id="jsonErrorId"
