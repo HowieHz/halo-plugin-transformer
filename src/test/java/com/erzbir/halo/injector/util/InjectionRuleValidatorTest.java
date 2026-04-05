@@ -47,7 +47,7 @@ class InjectionRuleValidatorTest {
                 () -> validator.validateForWrite(rule).block()
         );
 
-        assertEquals("matchRule.children[0].matcher：模板 ID 仅支持 REGEX 或 EXACT", error.getReason());
+        assertEquals("matchRule.children[0].matcher：模板 ID 仅支持 \"REGEX\" 或 \"EXACT\"", error.getReason());
     }
 
     // why: 根节点固定为 GROUP，便于简单模式/JSON 模式共享统一的规则树结构。

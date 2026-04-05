@@ -42,6 +42,8 @@ const jsonErrorId = `match-rule-json-error-${editorId}`
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const jsonScrollTop = ref(0)
 const jsonLineHeight = 24
+const jsonVerticalPadding = 8
+const jsonHighlightInset = 3
 
 watch(
   () => props.draft,
@@ -87,8 +89,8 @@ const jsonErrorLine = computed(() => {
 const jsonHighlightStyle = computed(() => {
   if (!jsonErrorLine.value) return null
   return {
-    height: `${jsonLineHeight}px`,
-    transform: `translateY(${(jsonErrorLine.value - 1) * jsonLineHeight - jsonScrollTop.value}px)`,
+    height: `${jsonLineHeight - jsonHighlightInset * 2}px`,
+    transform: `translateY(${jsonVerticalPadding + (jsonErrorLine.value - 1) * jsonLineHeight + jsonHighlightInset - jsonScrollTop.value}px)`,
   }
 })
 const jsonLineNumberStyle = computed(() => ({

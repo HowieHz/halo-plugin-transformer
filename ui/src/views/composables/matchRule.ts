@@ -327,8 +327,11 @@ function validateMatchRuleInput(
   }
 
   if (type === 'GROUP') {
+    if (input.operator !== undefined && typeof input.operator !== 'string') {
+      return invalid(`${path}.operator`, '必须是字符串；仅支持 "AND" 或 "OR"')
+    }
     if (input.operator !== undefined && input.operator !== 'AND' && input.operator !== 'OR') {
-      return invalid(`${path}.operator`, '仅支持 AND 或 OR')
+      return invalid(`${path}.operator`, '仅支持 "AND" 或 "OR"')
     }
     if (!Array.isArray(input.children)) {
       return invalid(`${path}.children`, '必须是数组')
@@ -378,6 +381,9 @@ function validateMatchRuleInput(
   }
 
   if (type === 'PATH') {
+    if (input.matcher !== undefined && typeof input.matcher !== 'string') {
+      return invalid(`${path}.matcher`, '必须是字符串；仅支持 "ANT"、"REGEX"、"EXACT"')
+    }
     if (
       input.matcher !== undefined &&
       input.matcher !== 'ANT' &&
@@ -385,7 +391,7 @@ function validateMatchRuleInput(
       input.matcher !== 'EXACT'
     ) {
       if (!options.allowIncompatibleMatcher) {
-        return invalid(`${path}.matcher`, '仅支持 ANT、REGEX、EXACT')
+        return invalid(`${path}.matcher`, '仅支持 "ANT"、"REGEX"、"EXACT"')
       }
     }
     if (input.matcher === 'REGEX' && !options.allowInvalidRegex) {
@@ -402,9 +408,12 @@ function validateMatchRuleInput(
     }
   }
 
+  if (input.matcher !== undefined && typeof input.matcher !== 'string') {
+    return invalid(`${path}.matcher`, '必须是字符串；仅支持 "REGEX" 或 "EXACT"')
+  }
   if (input.matcher !== undefined && input.matcher !== 'REGEX' && input.matcher !== 'EXACT') {
     if (!options.allowIncompatibleMatcher) {
-      return invalid(`${path}.matcher`, '模板 ID 仅支持 REGEX 或 EXACT')
+      return invalid(`${path}.matcher`, '模板 ID 仅支持 "REGEX" 或 "EXACT"')
     }
   }
   if (input.matcher === 'REGEX' && !options.allowInvalidRegex) {

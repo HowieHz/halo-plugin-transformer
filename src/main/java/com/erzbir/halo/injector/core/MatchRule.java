@@ -102,7 +102,7 @@ public class MatchRule {
             throw new IllegalArgumentException(path + ".children：不能有空组");
         }
         if (rule.getOperator() != Operator.AND && rule.getOperator() != Operator.OR) {
-            throw new IllegalArgumentException(path + ".operator：仅支持 AND 或 OR");
+            throw new IllegalArgumentException(path + ".operator：仅支持 \"AND\" 或 \"OR\"");
         }
         for (int index = 0; index < children.size(); index++) {
             validateForWrite(children.get(index), path + ".children[" + index + "]", false);
@@ -117,7 +117,7 @@ public class MatchRule {
             throw new IllegalArgumentException(path + ".children：仅条件组可使用 children");
         }
         if (!rule.supportsPathMatcher(rule.getMatcher())) {
-            throw new IllegalArgumentException(path + ".matcher：路径规则仅支持 ANT、REGEX、EXACT");
+            throw new IllegalArgumentException(path + ".matcher：路径规则仅支持 \"ANT\"、\"REGEX\"、\"EXACT\"");
         }
         if (!StringUtils.hasText(rule.getValue())) {
             throw new IllegalArgumentException(path + ".value：必须是非空字符串");
@@ -133,7 +133,7 @@ public class MatchRule {
             throw new IllegalArgumentException(path + ".children：仅条件组可使用 children");
         }
         if (!rule.supportsTemplateMatcher(rule.getMatcher())) {
-            throw new IllegalArgumentException(path + ".matcher：模板 ID 仅支持 REGEX 或 EXACT");
+            throw new IllegalArgumentException(path + ".matcher：模板 ID 仅支持 \"REGEX\" 或 \"EXACT\"");
         }
         if (!StringUtils.hasText(rule.getValue())) {
             throw new IllegalArgumentException(path + ".value：必须是非空字符串");
