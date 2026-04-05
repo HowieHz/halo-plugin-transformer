@@ -146,7 +146,7 @@ async function exportSnippet() {
     if (error instanceof Error && error.name === 'AbortError') {
       return
     }
-    Toast.error('导出失败')
+    Toast.error(error instanceof Error ? error.message : '导出失败')
   }
 }
 </script>

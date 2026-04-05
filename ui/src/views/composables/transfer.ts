@@ -107,39 +107,23 @@ export async function downloadTransfer(
   const content = JSON.stringify(payload, null, 2)
   const saveFilePicker = (window as WindowWithSaveFilePicker).showSaveFilePicker
 
-  if (typeof saveFilePicker === 'function') {
-    const handle = await saveFilePicker({
-      suggestedName: fileName,
-      types: [
-        {
-          description: 'JSON 文件',
-          accept: {
-            'application/json': ['.json'],
-          },
-        },
-      ],
-    })
-    const writable = await handle.createWritable()
-    await writable.write(content)
-    await writable.close()
-    return
+  if (typeof saveFilePicker !== 'function') {
+    throw new Error('当前浏览器不支持“另存为”导出，请改用支持 File System Access API 的浏览器')
   }
-
-  const blob = new Blob([JSON.stringify(payload, null, 2)], {
-    type: 'application/json;charset=utf-8',
+  const handle = await saveFilePicker({
+    suggestedName: fileName,
+    types: [
+      {
+        description: 'JSON 文件',
+        accept: {
+          'application/json': ['.json'],
+        },
+      },
+    ],
   })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = fileName
-  link.rel = 'noopener'
-  link.style.display = 'none'
-  document.body.appendChild(link)
-  link.click()
-  window.setTimeout(() => {
-    link.remove()
-    URL.revokeObjectURL(url)
-  }, 1000)
+  const writable = await handle.createWritable()
+  await writable.write(content)
+  await writable.close()
 }
 
 export function parseSnippetTransfer(raw: string): CodeSnippet {
