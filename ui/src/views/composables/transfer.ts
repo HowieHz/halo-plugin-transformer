@@ -5,6 +5,7 @@ import {
   type EditableInjectionRule,
   type MatchRuleEditorMode,
 } from '@/types'
+import { cloneMatchRule, normalizeMatchRule } from './matchRule'
 
 type TransferResourceType = 'snippet' | 'rule'
 
@@ -71,7 +72,7 @@ export function buildRuleTransfer(rule: EditableInjectionRule): RuleTransferEnve
       description: rule.description,
       mode: rule.mode,
       match: rule.match,
-      matchRule: structuredClone(rule.matchRule),
+      matchRule: cloneMatchRule(rule.matchRule),
       position: rule.position,
       wrapMarker: rule.wrapMarker,
       matchRuleDraft: rule.matchRuleDraft,
@@ -191,7 +192,7 @@ export function parseRuleTransfer(raw: string): EditableInjectionRule {
     description: data.description,
     mode: data.mode,
     match: data.match,
-    matchRule: structuredClone(data.matchRule),
+    matchRule: normalizeMatchRule(data.matchRule),
     position: data.position,
     wrapMarker: data.wrapMarker,
     matchRuleDraft: data.matchRuleDraft,
