@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { Toast } from '@halo-dev/components'
 import { computed, ref, watch } from 'vue'
 import type {
   CodeSnippet,
@@ -328,15 +329,23 @@ function resetField(
   updateField(field, baseline as InjectionRule[typeof field], { trackHistory: false })
 }
 
-function exportRule() {
+async function exportRule() {
   if (!currentRule.value) {
     return
   }
-  downloadTransfer(
-    buildRuleTransfer(currentRule.value),
-    currentRule.value.name || currentRule.value.id || 'injection-rule',
-  )
-  emit('export')
+  try {
+    await downloadTransfer(
+      buildRuleTransfer(currentRule.value),
+      currentRule.value.name || currentRule.value.id || 'injection-rule',
+    )
+    Toast.success('导出已开始')
+    emit('export')
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      return
+    }
+    Toast.error('导出失败')
+  }
 }
 </script>
 

@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { Toast } from '@halo-dev/components'
 import type { CodeSnippet, InjectionRule } from '@/types'
 import ItemPicker from './ItemPicker.vue'
 import EditorToolbar from './EditorToolbar.vue'
@@ -130,15 +131,23 @@ function resetField(field: 'name' | 'description' | 'ruleIds' | 'code') {
   updateField(field, baseline as CodeSnippet[typeof field], { trackHistory: false })
 }
 
-function exportSnippet() {
+async function exportSnippet() {
   if (!props.snippet) {
     return
   }
-  downloadTransfer(
-    buildSnippetTransfer(props.snippet),
-    props.snippet.name || props.snippet.id || 'code-snippet',
-  )
-  emit('export')
+  try {
+    await downloadTransfer(
+      buildSnippetTransfer(props.snippet),
+      props.snippet.name || props.snippet.id || 'code-snippet',
+    )
+    Toast.success('导出已开始')
+    emit('export')
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      return
+    }
+    Toast.error('导出失败')
+  }
 }
 </script>
 

@@ -80,19 +80,66 @@ export function buildRuleTransfer(rule: EditableInjectionRule): RuleTransferEnve
   }
 }
 
-export function downloadTransfer(
+interface SaveFilePickerOptionsLike {
+  suggestedName?: string
+  types?: Array<{
+    description?: string
+    accept: Record<string, string[]>
+  }>
+}
+
+interface SaveFilePickerHandleLike {
+  createWritable(): Promise<{
+    write(data: string): Promise<void>
+    close(): Promise<void>
+  }>
+}
+
+type WindowWithSaveFilePicker = Window & {
+  showSaveFilePicker?: (options?: SaveFilePickerOptionsLike) => Promise<SaveFilePickerHandleLike>
+}
+
+export async function downloadTransfer(
   payload: SnippetTransferEnvelope | RuleTransferEnvelope,
   name: string,
 ) {
+  const fileName = `${sanitizeFileName(name)}.json`
+  const content = JSON.stringify(payload, null, 2)
+  const saveFilePicker = (window as WindowWithSaveFilePicker).showSaveFilePicker
+
+  if (typeof saveFilePicker === 'function') {
+    const handle = await saveFilePicker({
+      suggestedName: fileName,
+      types: [
+        {
+          description: 'JSON 文件',
+          accept: {
+            'application/json': ['.json'],
+          },
+        },
+      ],
+    })
+    const writable = await handle.createWritable()
+    await writable.write(content)
+    await writable.close()
+    return
+  }
+
   const blob = new Blob([JSON.stringify(payload, null, 2)], {
     type: 'application/json;charset=utf-8',
   })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `${sanitizeFileName(name)}.json`
+  link.download = fileName
+  link.rel = 'noopener'
+  link.style.display = 'none'
+  document.body.appendChild(link)
   link.click()
-  URL.revokeObjectURL(url)
+  window.setTimeout(() => {
+    link.remove()
+    URL.revokeObjectURL(url)
+  }, 1000)
 }
 
 export function parseSnippetTransfer(raw: string): CodeSnippet {
