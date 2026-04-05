@@ -270,8 +270,8 @@ export function useInjectorData() {
       rulesResp.value = rr.data
       _syncEditSnippet()
       _syncEditRule()
-    } catch {
-      Toast.error('加载数据失败')
+    } catch (error) {
+      Toast.error(getErrorMessage(error, '加载数据失败'))
     } finally {
       loading.value = false
     }
@@ -434,33 +434,36 @@ export function useInjectorData() {
       editSnippet.value.enabled = !editSnippet.value.enabled
       await snippetApi.update(editSnippet.value.id, editSnippet.value)
       await fetchAll()
-    } catch {
-      Toast.error('操作失败')
+    } catch (error) {
+      Toast.error(getErrorMessage(error, '操作失败'))
     }
   }
 
   async function toggleRuleEnabled() {
     if (!editRule.value) return
-    const validationError = _validateRule(editRule.value)
-    if (validationError) {
-      Toast.error(validationError)
-      return
+    const nextEnabled = !editRule.value.enabled
+    if (nextEnabled) {
+      const validationError = _validateRule(editRule.value)
+      if (validationError) {
+        Toast.error(`当前规则有错误，暂时无法启用：${validationError}`)
+        return
+      }
     }
     try {
-      editRule.value.enabled = !editRule.value.enabled
+      editRule.value.enabled = nextEnabled
       const payload = makeRulePayload(
         editRule.value,
         _normalizeRuleSnippetIds(editRule.value, editRuleSnippetIds.value),
       )
       if (!payload) {
-        Toast.error('匹配规则有误，请先修正后再操作')
-        editRule.value.enabled = !editRule.value.enabled
+        Toast.error('当前规则有错误，暂时无法启用：匹配规则有误，请先修正后再操作')
+        editRule.value.enabled = !nextEnabled
         return
       }
       await ruleApi.update(editRule.value.id, payload)
       await fetchAll()
     } catch (error) {
-      editRule.value.enabled = !editRule.value.enabled
+      editRule.value.enabled = !nextEnabled
       Toast.error(getErrorMessage(error, '操作失败'))
     }
   }
@@ -498,8 +501,8 @@ export function useInjectorData() {
           editSnippetRuleIds.value = []
           editDirty.value = false
           Toast.success('代码块已删除')
-        } catch {
-          Toast.error('删除失败')
+        } catch (error) {
+          Toast.error(getErrorMessage(error, '删除失败'))
         }
       },
     })
@@ -522,8 +525,8 @@ export function useInjectorData() {
           editRuleSnippetIds.value = []
           editDirty.value = false
           Toast.success('规则已删除')
-        } catch {
-          Toast.error('删除失败')
+        } catch (error) {
+          Toast.error(getErrorMessage(error, '删除失败'))
         }
       },
     })
