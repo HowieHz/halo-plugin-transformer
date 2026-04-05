@@ -160,12 +160,12 @@ defineExpose({
 
       <FormField v-slot="{ inputId }" label="代码内容" required>
         <div
-          class=":uno: relative overflow-hidden rounded-md border border-gray-200 bg-white focus-within:border-primary"
+          class=":uno: relative h-72 min-h-72 resize-y overflow-hidden rounded-md border border-gray-200 bg-white focus-within:border-primary"
         >
-          <div class=":uno: relative z-1 flex">
+          <div class=":uno: relative z-1 h-full flex">
             <div
               aria-hidden="true"
-              class=":uno: relative overflow-hidden select-none border-r border-gray-100 bg-gray-50 px-2 py-2 text-right text-xs text-gray-400"
+              class=":uno: relative h-full overflow-hidden select-none border-r border-gray-100 bg-gray-50 px-2 py-2 text-right text-xs text-gray-400"
             >
               <div :style="codeLineNumberStyle">
                 <div
@@ -182,9 +182,8 @@ defineExpose({
               :id="inputId"
               v-model="snippet.code"
               autofocus
-              class=":uno: min-h-72 w-full flex-1 resize-none border-0 bg-transparent px-3 py-2 text-sm font-mono leading-6 focus:outline-none"
+              class=":uno: h-full min-h-0 w-full flex-1 resize-none border-0 bg-transparent px-3 py-2 text-sm font-mono leading-6 focus:outline-none"
               placeholder="输入 HTML 代码"
-              rows="12"
               spellcheck="false"
               @scroll="syncCodeScroll"
             />
