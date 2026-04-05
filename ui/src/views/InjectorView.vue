@@ -25,7 +25,8 @@ const syncingQuery = ref(false)
 
 const {
   loading,
-  saving,
+  creating,
+  savingEditor,
   snippets,
   rules,
   selectedSnippetId,
@@ -219,13 +220,13 @@ function jumpToSnippet(id: string) {
     <SnippetFormModal
       v-if="showSnippetModal"
       :rules="rules"
-      :saving="saving"
+      :saving="creating"
       @close="closeSnippetModal"
       @submit="handleAddSnippet"
     />
     <RuleFormModal
       v-if="showRuleModal"
-      :saving="saving"
+      :saving="creating"
       :snippets="snippets"
       @close="closeRuleModal"
       @submit="handleAddRule"
@@ -308,7 +309,7 @@ function jumpToSnippet(id: string) {
               v-if="activeTab === 'snippets'"
               :dirty="editDirty"
               :rules="rules"
-              :saving="saving"
+              :saving="savingEditor"
               :selected-rule-ids="editSnippetRuleIds"
               :snippet="editSnippet"
               @delete="confirmDeleteSnippet"
@@ -323,7 +324,7 @@ function jumpToSnippet(id: string) {
               v-else
               :dirty="editDirty"
               :rule="editRule"
-              :saving="saving"
+              :saving="savingEditor"
               :selected-snippet-ids="editRuleSnippetIds"
               :snippets="snippets"
               @delete="confirmDeleteRule"

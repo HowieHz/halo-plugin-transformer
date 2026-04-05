@@ -44,7 +44,9 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 export function useInjectorData() {
   const loading = ref(false)
-  const saving = ref(false)
+  const creating = ref(false)
+  const savingEditor = ref(false)
+  const savingReorder = ref(false)
 
   const snippetsResp = ref<ItemList<CodeSnippet>>(emptyList())
   const rulesResp = ref<ItemList<InjectionRule>>(emptyList())
@@ -306,7 +308,7 @@ export function useInjectorData() {
       ...snippet,
       sortOrder: snippet.sortOrder ?? _nextSortOrder(snippets.value),
     }
-    saving.value = true
+    creating.value = true
     try {
       const res = await snippetApi.add({ ...nextSnippet, ruleIds: nextRuleIds })
       const id = res.data.id
@@ -319,7 +321,7 @@ export function useInjectorData() {
       Toast.error(getErrorMessage(error, '创建失败'))
       return null
     } finally {
-      saving.value = false
+      creating.value = false
     }
   }
 
@@ -337,7 +339,7 @@ export function useInjectorData() {
       ...rule,
       sortOrder: rule.sortOrder ?? _nextSortOrder(rules.value),
     }
-    saving.value = true
+    creating.value = true
     try {
       const payload = makeRulePayload(nextRule, nextSnippetIds)
       if (!payload) {
@@ -355,7 +357,7 @@ export function useInjectorData() {
       Toast.error(getErrorMessage(error, '创建失败'))
       return null
     } finally {
-      saving.value = false
+      creating.value = false
     }
   }
 
@@ -365,7 +367,7 @@ export function useInjectorData() {
       return
     }
     const nextRuleIds = _normalizeSnippetRuleIds(editSnippetRuleIds.value)
-    saving.value = true
+    savingEditor.value = true
     try {
       await snippetApi.update(editSnippet.value.id, { ...editSnippet.value, ruleIds: nextRuleIds })
       await _applySnippetRuleSelection(editSnippet.value.id, nextRuleIds)
@@ -375,7 +377,7 @@ export function useInjectorData() {
     } catch (error) {
       Toast.error(getErrorMessage(error, '保存失败'))
     } finally {
-      saving.value = false
+      savingEditor.value = false
     }
   }
 
@@ -387,7 +389,7 @@ export function useInjectorData() {
       return
     }
     const nextSnippetIds = _normalizeRuleSnippetIds(editRule.value, editRuleSnippetIds.value)
-    saving.value = true
+    savingEditor.value = true
     try {
       const payload = makeRulePayload(editRule.value, nextSnippetIds)
       if (!payload) {
@@ -402,7 +404,7 @@ export function useInjectorData() {
     } catch (error) {
       Toast.error(getErrorMessage(error, '保存失败'))
     } finally {
-      saving.value = false
+      savingEditor.value = false
     }
   }
 
@@ -533,7 +535,7 @@ export function useInjectorData() {
     }
 
     syncingSnippetReorder.value = true
-    saving.value = true
+    savingReorder.value = true
     let updatedOnce = false
     try {
       while (pendingSnippetOrderIds.value) {
@@ -555,7 +557,7 @@ export function useInjectorData() {
       await fetchAll()
     } finally {
       syncingSnippetReorder.value = false
-      saving.value = false
+      savingReorder.value = false
     }
   }
 
@@ -581,7 +583,7 @@ export function useInjectorData() {
     }
 
     syncingRuleReorder.value = true
-    saving.value = true
+    savingReorder.value = true
     let updatedOnce = false
     try {
       while (pendingRuleOrderIds.value) {
@@ -609,13 +611,15 @@ export function useInjectorData() {
       await fetchAll()
     } finally {
       syncingRuleReorder.value = false
-      saving.value = false
+      savingReorder.value = false
     }
   }
 
   return {
     loading,
-    saving,
+    creating,
+    savingEditor,
+    savingReorder,
     snippets,
     rules,
     selectedSnippetId,
