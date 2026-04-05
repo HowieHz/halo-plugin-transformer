@@ -42,6 +42,21 @@ const currentPath = computed(() => props.path ?? '$')
 const matcherOptions = computed(() =>
   rule.value.type === 'TEMPLATE_ID' ? TEMPLATE_MATCHER_OPTIONS : PATH_MATCHER_OPTIONS,
 )
+const valuePlaceholder = computed(() => {
+  if (rule.value.type === 'PATH') {
+    if (rule.value.matcher === 'EXACT') {
+      return '/'
+    }
+    if (rule.value.matcher === 'REGEX') {
+      return '.*'
+    }
+    return '/**'
+  }
+  if (rule.value.matcher === 'REGEX') {
+    return '^(post|page)$'
+  }
+  return 'index'
+})
 const ownErrorPath = computed(() => {
   const errorPath = props.validationError?.path
   if (!errorPath) {
@@ -346,7 +361,7 @@ function hasFieldError(field: 'children' | 'operator' | 'negate' | 'type' | 'mat
             : ':uno: border-gray-200 focus:border-primary'
         "
         class=":uno: w-full rounded-md border px-3 py-1.5 text-sm font-mono focus:outline-none"
-        :placeholder="rule.type === 'PATH' ? '/** 或 ^/posts/.*$' : 'post 或 ^(post|page)$'"
+        :placeholder="valuePlaceholder"
         @input="updateGroupField('value', ($event.target as HTMLInputElement).value)"
       />
     </template>
