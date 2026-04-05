@@ -127,7 +127,7 @@ function getModeSwitchWarning(mode: MatchRuleEditorMode) {
   if (currentMode.value === 'JSON' && mode === 'SIMPLE' && parseResult.value.error) {
     return {
       title: '切换到简单模式',
-      description: `已检测到当前高级模式（JSON）有错误。
+      description: `已检测到当前高级模式有错误。
 如果继续切换，会回到可视化简单模式。
 你当前这份未保存的 JSON 内容会被覆盖。
 确认继续吗？`,
@@ -138,7 +138,7 @@ function getModeSwitchWarning(mode: MatchRuleEditorMode) {
 
   if (currentMode.value === 'SIMPLE' && mode === 'JSON' && simpleValidateResult.value.error) {
     return {
-      title: '切换到高级模式（JSON）',
+      title: '切换到高级模式',
       description: `已检测到当前简单模式有错误。
 如果继续切换，高级模式会用当前简单模式内容重新生成 JSON。
 你会直接看到这份带错误的 JSON。
@@ -244,7 +244,7 @@ function formatJson() {
           type="button"
           @click="switchMode('JSON')"
         >
-          高级模式（JSON）
+          高级模式
         </button>
       </div>
 

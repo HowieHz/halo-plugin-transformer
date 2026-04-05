@@ -66,9 +66,15 @@ const selectableRules = computed(() => props.rules.filter((rule) => rule.positio
 </script>
 
 <template>
-  <BaseFormModal :saving="saving" title="新建代码块" @close="emit('close')" @submit="handleSubmit">
+  <BaseFormModal
+    hide-default-title
+    :saving="saving"
+    title="新建代码块"
+    @close="emit('close')"
+    @submit="handleSubmit"
+  >
     <template #actions>
-      <div class=":uno: flex justify-end">
+      <div class=":uno: flex items-center justify-end">
         <input
           ref="fileInput"
           accept="application/json,.json"

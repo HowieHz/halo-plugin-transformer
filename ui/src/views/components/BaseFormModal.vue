@@ -6,6 +6,7 @@ defineProps<{
   saving: boolean
   submitLabel?: string
   showPicker?: boolean
+  hideDefaultTitle?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -15,7 +16,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <VModal :title="title" :width="1000" @close="emit('close')">
+  <VModal :title="hideDefaultTitle ? '' : title" :width="1000" @close="emit('close')">
     <div
       class=":uno: flex injector-editor-container"
       :class="showPicker === false ? '' : 'divide-x divide-gray-100'"
@@ -26,7 +27,16 @@ const emit = defineEmits<{
         :class="showPicker === false ? 'flex-1' : 'flex-1'"
         :style="showPicker === false ? 'width: 100%' : 'width: 60%'"
       >
-        <slot name="actions" />
+        <div
+          v-if="hideDefaultTitle || $slots.actions"
+          class=":uno: flex items-center justify-between gap-3"
+        >
+          <h2 v-if="hideDefaultTitle" class=":uno: text-base font-semibold text-gray-900">
+            {{ title }}
+          </h2>
+          <div v-else />
+          <slot name="actions" />
+        </div>
         <slot name="form" />
       </div>
 

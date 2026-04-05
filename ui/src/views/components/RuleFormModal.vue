@@ -76,6 +76,7 @@ async function handleImport(event: Event) {
 
 <template>
   <BaseFormModal
+    hide-default-title
     :saving="saving"
     :show-picker="needsSnippets"
     title="新建注入规则"
@@ -83,7 +84,7 @@ async function handleImport(event: Event) {
     @submit="handleSubmit"
   >
     <template #actions>
-      <div class=":uno: flex justify-end">
+      <div class=":uno: flex items-center justify-end">
         <input
           ref="fileInput"
           accept="application/json,.json"
