@@ -2,11 +2,13 @@ package com.erzbir.halo.injector.scheme;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import run.halo.app.extension.Metadata;
 
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class InjectionRuleTest {
@@ -42,5 +44,19 @@ class InjectionRuleTest {
         );
 
         assertTrue(rule.isValid());
+    }
+
+    // why: `isValid()` 是后端运行期辅助状态，不应出现在 JSON 里污染前端回写 payload。
+    @Test
+    void shouldNotSerializeRuntimeValidFlag() throws Exception {
+        InjectionRule rule = new InjectionRule();
+        Metadata metadata = new Metadata();
+        metadata.setName("rule-a");
+        rule.setMetadata(metadata);
+        rule.setMode(InjectionRule.Mode.FOOTER);
+
+        String json = objectMapper.writeValueAsString(rule);
+
+        assertFalse(json.contains("\"valid\""));
     }
 }

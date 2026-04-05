@@ -46,6 +46,7 @@ public class CodeSnippet extends AbstractExtension implements ICodeSnippet {
         return name;
     }
 
+    @JsonIgnore
     public boolean isValid() {
         return code != null && !code.isBlank();
     }

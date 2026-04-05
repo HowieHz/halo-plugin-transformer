@@ -2,6 +2,7 @@ package com.erzbir.halo.injector.scheme;
 
 import com.erzbir.halo.injector.core.IInjectionRule;
 import com.erzbir.halo.injector.core.MatchRule;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import run.halo.app.extension.AbstractExtension;
@@ -48,7 +49,8 @@ public class InjectionRule extends AbstractExtension implements IInjectionRule {
     public boolean getWrapMarker() {
         return wrapMarker;
     }
-    
+
+    @JsonIgnore
     public boolean isValid() {
         boolean targetValid = !Mode.ID.equals(getMode()) && !Mode.SELECTOR.equals(getMode())
                 || !getMatch().isBlank();

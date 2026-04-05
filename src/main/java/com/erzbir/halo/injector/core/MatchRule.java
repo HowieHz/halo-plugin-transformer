@@ -46,6 +46,7 @@ public class MatchRule {
         return rule;
     }
 
+    @JsonIgnore
     public boolean isValid() {
         if (type == null) {
             return false;
