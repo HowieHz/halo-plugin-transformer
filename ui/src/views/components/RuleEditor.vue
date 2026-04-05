@@ -372,170 +372,174 @@ async function exportRule() {
     <form v-else class=":uno: min-h-0 flex flex-1 flex-col" @submit.prevent="emit('save')">
       <div class=":uno: min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-4">
         <FormField v-slot="{ inputId }" label="ID">
-        <input
-          :id="inputId"
-          :value="currentRule.id"
-          class=":uno: w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-mono text-gray-400 cursor-default"
-          readonly
-        />
+          <input
+            :id="inputId"
+            :value="currentRule.id"
+            class=":uno: w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-mono text-gray-400 cursor-default"
+            readonly
+          />
         </FormField>
 
         <FormField label="名称">
-        <template v-if="canUndo('name')" #actions>
-          <FieldUndoButton @reset="resetField('name')" @undo="undoField('name')" />
-        </template>
-        <template #default="{ inputId }">
-          <input
-            :id="inputId"
-            :value="currentRule.name"
-            class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
-            placeholder="不填默认为 ID"
-            @change="updateField('name', ($event.target as HTMLInputElement).value)"
-          />
-        </template>
-        </FormField>
-
-        <FormField label="描述">
-        <template v-if="canUndo('description')" #actions>
-          <FieldUndoButton @reset="resetField('description')" @undo="undoField('description')" />
-        </template>
-        <template #default="{ inputId }">
-          <input
-            :id="inputId"
-            :value="currentRule.description"
-            class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
-            placeholder="说明此规则的用途"
-            @change="updateField('description', ($event.target as HTMLInputElement).value)"
-          />
-        </template>
-        </FormField>
-
-        <FormField label="注入模式" required>
-        <template v-if="canUndo('mode')" #actions>
-          <FieldUndoButton @reset="resetField('mode')" @undo="undoField('mode')" />
-        </template>
-        <template #default="{ inputId }">
-          <select
-            :id="inputId"
-            :value="currentRule.mode"
-            class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none bg-white"
-            @wheel="updateSelectByWheel"
-            @change="
-              updateField(
-                'mode',
-                ($event.target as HTMLSelectElement).value as InjectionRule['mode'],
-              )
-            "
-          >
-            <option v-for="o in MODE_OPTIONS" :key="o.value" :value="o.value">{{ o.label }}</option>
-          </select>
-        </template>
-        </FormField>
-
-        <template v-if="needsTarget">
-          <FormField :label="currentRule.mode === 'SELECTOR' ? 'CSS 选择器' : '元素 ID'" required>
-          <template v-if="canUndo('match')" #actions>
-            <FieldUndoButton @reset="resetField('match')" @undo="undoField('match')" />
+          <template v-if="canUndo('name')" #actions>
+            <FieldUndoButton @reset="resetField('name')" @undo="undoField('name')" />
           </template>
           <template #default="{ inputId }">
             <input
               :id="inputId"
-              :placeholder="currentRule.mode === 'SELECTOR' ? 'div[class=content]' : 'main-content'"
-              :value="currentRule.match"
-              class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm font-mono focus:border-primary focus:outline-none"
-              @change="updateField('match', ($event.target as HTMLInputElement).value)"
+              :value="currentRule.name"
+              class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+              placeholder="不填默认为 ID"
+              @change="updateField('name', ($event.target as HTMLInputElement).value)"
             />
           </template>
-          </FormField>
+        </FormField>
 
-          <FormField label="插入位置">
-          <template v-if="canUndo('position')" #actions>
-            <FieldUndoButton @reset="resetField('position')" @undo="undoField('position')" />
+        <FormField label="描述">
+          <template v-if="canUndo('description')" #actions>
+            <FieldUndoButton @reset="resetField('description')" @undo="undoField('description')" />
+          </template>
+          <template #default="{ inputId }">
+            <input
+              :id="inputId"
+              :value="currentRule.description"
+              class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+              placeholder="说明此规则的用途"
+              @change="updateField('description', ($event.target as HTMLInputElement).value)"
+            />
+          </template>
+        </FormField>
+
+        <FormField label="注入模式" required>
+          <template v-if="canUndo('mode')" #actions>
+            <FieldUndoButton @reset="resetField('mode')" @undo="undoField('mode')" />
           </template>
           <template #default="{ inputId }">
             <select
               :id="inputId"
-              :value="currentRule.position"
+              :value="currentRule.mode"
               class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none bg-white"
               @wheel="updateSelectByWheel"
               @change="
                 updateField(
-                  'position',
-                  ($event.target as HTMLSelectElement).value as InjectionRule['position'],
+                  'mode',
+                  ($event.target as HTMLSelectElement).value as InjectionRule['mode'],
                 )
               "
             >
-              <option v-for="o in POSITION_OPTIONS" :key="o.value" :value="o.value">
+              <option v-for="o in MODE_OPTIONS" :key="o.value" :value="o.value">
                 {{ o.label }}
               </option>
             </select>
           </template>
+        </FormField>
+
+        <template v-if="needsTarget">
+          <FormField :label="currentRule.mode === 'SELECTOR' ? 'CSS 选择器' : '元素 ID'" required>
+            <template v-if="canUndo('match')" #actions>
+              <FieldUndoButton @reset="resetField('match')" @undo="undoField('match')" />
+            </template>
+            <template #default="{ inputId }">
+              <input
+                :id="inputId"
+                :placeholder="
+                  currentRule.mode === 'SELECTOR' ? 'div[class=content]' : 'main-content'
+                "
+                :value="currentRule.match"
+                class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm font-mono focus:border-primary focus:outline-none"
+                @change="updateField('match', ($event.target as HTMLInputElement).value)"
+              />
+            </template>
+          </FormField>
+
+          <FormField label="插入位置">
+            <template v-if="canUndo('position')" #actions>
+              <FieldUndoButton @reset="resetField('position')" @undo="undoField('position')" />
+            </template>
+            <template #default="{ inputId }">
+              <select
+                :id="inputId"
+                :value="currentRule.position"
+                class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none bg-white"
+                @wheel="updateSelectByWheel"
+                @change="
+                  updateField(
+                    'position',
+                    ($event.target as HTMLSelectElement).value as InjectionRule['position'],
+                  )
+                "
+              >
+                <option v-for="o in POSITION_OPTIONS" :key="o.value" :value="o.value">
+                  {{ o.label }}
+                </option>
+              </select>
+            </template>
           </FormField>
         </template>
 
         <FormField v-if="needsWrapMarker">
-        <template v-if="canUndo('wrapMarker')" #actions>
-          <FieldUndoButton @reset="resetField('wrapMarker')" @undo="undoField('wrapMarker')" />
-        </template>
-        <template #default="{ inputId }">
-          <label class=":uno: inline-flex items-center gap-2 text-sm text-gray-700">
-            <input
-              :id="inputId"
-              :checked="currentRule.wrapMarker"
-              type="checkbox"
-              @change="updateField('wrapMarker', ($event.target as HTMLInputElement).checked)"
-            />
-            输出注释标记
-          </label>
-        </template>
+          <template v-if="canUndo('wrapMarker')" #actions>
+            <FieldUndoButton @reset="resetField('wrapMarker')" @undo="undoField('wrapMarker')" />
+          </template>
+          <template #default="{ inputId }">
+            <label class=":uno: inline-flex items-center gap-2 text-sm text-gray-700">
+              <input
+                :id="inputId"
+                :checked="currentRule.wrapMarker"
+                type="checkbox"
+                @change="updateField('wrapMarker', ($event.target as HTMLInputElement).checked)"
+              />
+              输出注释标记
+            </label>
+          </template>
         </FormField>
 
         <FormField label="匹配规则" required>
-        <template v-if="canUndo('matchRule')" #actions>
-          <FieldUndoButton @reset="resetField('matchRule')" @undo="undoField('matchRule')" />
-        </template>
-        <template #default="{ inputId, labelId }">
-          <div :id="inputId" :aria-labelledby="labelId">
-            <MatchRuleEditor
-              :draft="currentRule.matchRuleDraft"
-              :editor-mode="currentRule.matchRuleEditorMode"
-              :model-value="currentRule.matchRule"
-              @change="emit('field-change')"
-              @update:state="updateMatchRuleField($event)"
-            />
-          </div>
-          <div
-            v-if="performanceWarning"
-            aria-live="polite"
-            class=":uno: mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800"
-          >
-            {{ performanceWarning }}
-          </div>
-        </template>
+          <template v-if="canUndo('matchRule')" #actions>
+            <FieldUndoButton @reset="resetField('matchRule')" @undo="undoField('matchRule')" />
+          </template>
+          <template #default="{ inputId, labelId }">
+            <div :id="inputId" :aria-labelledby="labelId">
+              <MatchRuleEditor
+                :draft="currentRule.matchRuleDraft"
+                :editor-mode="currentRule.matchRuleEditorMode"
+                :model-value="currentRule.matchRule"
+                @change="emit('field-change')"
+                @update:state="updateMatchRuleField($event)"
+              />
+            </div>
+            <div
+              v-if="performanceWarning"
+              aria-live="polite"
+              class=":uno: mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800"
+            >
+              {{ performanceWarning }}
+            </div>
+          </template>
         </FormField>
 
         <FormField v-if="needsSnippets" label="关联代码块">
-        <template #actions>
-          <div class=":uno: flex items-center gap-2">
-            <span aria-live="polite" class=":uno: text-xs text-gray-400">
-              {{ selectedSnippetIds.length }} 个已选
-            </span>
-            <FieldUndoButton
-              v-if="canUndo('snippetIds')"
-              @reset="resetField('snippetIds')"
-              @undo="undoField('snippetIds')"
+          <template #actions>
+            <div class=":uno: flex items-center gap-2">
+              <span aria-live="polite" class=":uno: text-xs text-gray-400">
+                {{ selectedSnippetIds.length }} 个已选
+              </span>
+              <FieldUndoButton
+                v-if="canUndo('snippetIds')"
+                @reset="resetField('snippetIds')"
+                @undo="undoField('snippetIds')"
+              />
+            </div>
+          </template>
+          <template #default>
+            <ItemPicker
+              :items="sortedSnippets"
+              label="关联代码块选择列表"
+              :selected-ids="selectedSnippetIds"
+              empty-text="暂无代码块, 请先创建"
+              @toggle="handleToggleSnippet"
             />
-          </div>
-        </template>
-        <template #default>
-          <ItemPicker
-            :items="sortedSnippets"
-            label="关联代码块选择列表"
-            :selected-ids="selectedSnippetIds"
-            empty-text="暂无代码块, 请先创建"
-            @toggle="handleToggleSnippet"
-          />
-        </template>
+          </template>
         </FormField>
       </div>
 

@@ -205,107 +205,107 @@ async function exportSnippet() {
     <form v-else class=":uno: min-h-0 flex flex-1 flex-col" @submit.prevent="emit('save')">
       <div class=":uno: min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-4">
         <FormField v-slot="{ inputId }" label="ID">
-        <input
-          :id="inputId"
-          :value="snippet.id"
-          class=":uno: w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-mono text-gray-400 cursor-default"
-          readonly
-        />
+          <input
+            :id="inputId"
+            :value="snippet.id"
+            class=":uno: w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-mono text-gray-400 cursor-default"
+            readonly
+          />
         </FormField>
 
         <FormField label="名称">
-        <template v-if="canUndo('name')" #actions>
-          <FieldUndoButton @reset="resetField('name')" @undo="undoField('name')" />
-        </template>
-        <template #default="{ inputId }">
-          <input
-            :id="inputId"
-            :value="snippet.name"
-            class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
-            placeholder="不填默认为 ID"
-            @change="updateField('name', ($event.target as HTMLInputElement).value)"
-          />
-        </template>
+          <template v-if="canUndo('name')" #actions>
+            <FieldUndoButton @reset="resetField('name')" @undo="undoField('name')" />
+          </template>
+          <template #default="{ inputId }">
+            <input
+              :id="inputId"
+              :value="snippet.name"
+              class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+              placeholder="不填默认为 ID"
+              @change="updateField('name', ($event.target as HTMLInputElement).value)"
+            />
+          </template>
         </FormField>
 
         <FormField label="描述">
-        <template v-if="canUndo('description')" #actions>
-          <FieldUndoButton @reset="resetField('description')" @undo="undoField('description')" />
-        </template>
-        <template #default="{ inputId }">
-          <input
-            :id="inputId"
-            :value="snippet.description"
-            class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
-            placeholder="说明此代码块的用途"
-            @change="updateField('description', ($event.target as HTMLInputElement).value)"
-          />
-        </template>
+          <template v-if="canUndo('description')" #actions>
+            <FieldUndoButton @reset="resetField('description')" @undo="undoField('description')" />
+          </template>
+          <template #default="{ inputId }">
+            <input
+              :id="inputId"
+              :value="snippet.description"
+              class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+              placeholder="说明此代码块的用途"
+              @change="updateField('description', ($event.target as HTMLInputElement).value)"
+            />
+          </template>
         </FormField>
 
         <FormField label="关联规则">
-        <template #actions>
-          <div class=":uno: flex items-center gap-2">
-            <span aria-live="polite" class=":uno: text-xs text-gray-400">
-              {{ visibleSelectedRuleIds.length }} 个已选
-            </span>
-            <FieldUndoButton
-              v-if="canUndo('ruleIds')"
-              @reset="resetField('ruleIds')"
-              @undo="undoField('ruleIds')"
+          <template #actions>
+            <div class=":uno: flex items-center gap-2">
+              <span aria-live="polite" class=":uno: text-xs text-gray-400">
+                {{ visibleSelectedRuleIds.length }} 个已选
+              </span>
+              <FieldUndoButton
+                v-if="canUndo('ruleIds')"
+                @reset="resetField('ruleIds')"
+                @undo="undoField('ruleIds')"
+              />
+            </div>
+          </template>
+          <template #default>
+            <ItemPicker
+              :items="sortedRules"
+              label="关联规则选择列表"
+              :preview-fn="rulePreview"
+              :selected-ids="visibleSelectedRuleIds"
+              empty-text="暂无规则, 请先创建"
+              @toggle="handleToggleRule"
             />
-          </div>
-        </template>
-        <template #default>
-          <ItemPicker
-            :items="sortedRules"
-            label="关联规则选择列表"
-            :preview-fn="rulePreview"
-            :selected-ids="visibleSelectedRuleIds"
-            empty-text="暂无规则, 请先创建"
-            @toggle="handleToggleRule"
-          />
-        </template>
+          </template>
         </FormField>
 
         <FormField label="代码内容" required>
-        <template v-if="canUndo('code')" #actions>
-          <FieldUndoButton @reset="resetField('code')" @undo="undoField('code')" />
-        </template>
-        <template #default="{ inputId }">
-          <div
-            class=":uno: relative overflow-hidden rounded-md border border-gray-200 bg-white focus-within:border-primary"
-          >
-            <div class=":uno: relative z-1 flex">
-              <div
-                aria-hidden="true"
-                class=":uno: relative overflow-hidden select-none border-r border-gray-100 bg-gray-50 px-2 py-2 text-right text-xs text-gray-400"
-              >
-                <div :style="codeLineNumberStyle">
-                  <div
-                    v-for="lineNumber in codeLines"
-                    :key="lineNumber"
-                    class=":uno: leading-6"
-                    style="height: 24px"
-                  >
-                    {{ lineNumber }}
+          <template v-if="canUndo('code')" #actions>
+            <FieldUndoButton @reset="resetField('code')" @undo="undoField('code')" />
+          </template>
+          <template #default="{ inputId }">
+            <div
+              class=":uno: relative overflow-hidden rounded-md border border-gray-200 bg-white focus-within:border-primary"
+            >
+              <div class=":uno: relative z-1 flex">
+                <div
+                  aria-hidden="true"
+                  class=":uno: relative overflow-hidden select-none border-r border-gray-100 bg-gray-50 px-2 py-2 text-right text-xs text-gray-400"
+                >
+                  <div :style="codeLineNumberStyle">
+                    <div
+                      v-for="lineNumber in codeLines"
+                      :key="lineNumber"
+                      class=":uno: leading-6"
+                      style="height: 24px"
+                    >
+                      {{ lineNumber }}
+                    </div>
                   </div>
                 </div>
+                <textarea
+                  :id="inputId"
+                  :value="codeDraft"
+                  class=":uno: min-h-60 w-full flex-1 resize-none border-0 bg-transparent px-3 py-2 text-sm font-mono leading-6 focus:outline-none"
+                  placeholder="输入 HTML 代码"
+                  rows="10"
+                  spellcheck="false"
+                  @change="commitCodeDraft"
+                  @input="handleCodeInput"
+                  @scroll="syncCodeScroll"
+                />
               </div>
-              <textarea
-                :id="inputId"
-                :value="codeDraft"
-                class=":uno: min-h-60 w-full flex-1 resize-none border-0 bg-transparent px-3 py-2 text-sm font-mono leading-6 focus:outline-none"
-                placeholder="输入 HTML 代码"
-                rows="10"
-                spellcheck="false"
-                @change="commitCodeDraft"
-                @input="handleCodeInput"
-                @scroll="syncCodeScroll"
-              />
             </div>
-          </div>
-        </template>
+          </template>
         </FormField>
       </div>
 
