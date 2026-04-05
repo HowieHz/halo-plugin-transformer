@@ -202,21 +202,18 @@ async function exportSnippet() {
       <span class=":uno: text-sm text-gray-500">从左侧选择代码块进行编辑</span>
     </div>
 
-    <form
-      v-else
-      class=":uno: flex-1 overflow-y-auto px-4 pt-4 pb-24 space-y-4"
-      @submit.prevent="emit('save')"
-    >
-      <FormField v-slot="{ inputId }" label="ID">
+    <form v-else class=":uno: min-h-0 flex flex-1 flex-col" @submit.prevent="emit('save')">
+      <div class=":uno: min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        <FormField v-slot="{ inputId }" label="ID">
         <input
           :id="inputId"
           :value="snippet.id"
           class=":uno: w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-mono text-gray-400 cursor-default"
           readonly
         />
-      </FormField>
+        </FormField>
 
-      <FormField label="名称">
+        <FormField label="名称">
         <template v-if="canUndo('name')" #actions>
           <FieldUndoButton @reset="resetField('name')" @undo="undoField('name')" />
         </template>
@@ -229,9 +226,9 @@ async function exportSnippet() {
             @change="updateField('name', ($event.target as HTMLInputElement).value)"
           />
         </template>
-      </FormField>
+        </FormField>
 
-      <FormField label="描述">
+        <FormField label="描述">
         <template v-if="canUndo('description')" #actions>
           <FieldUndoButton @reset="resetField('description')" @undo="undoField('description')" />
         </template>
@@ -244,9 +241,9 @@ async function exportSnippet() {
             @change="updateField('description', ($event.target as HTMLInputElement).value)"
           />
         </template>
-      </FormField>
+        </FormField>
 
-      <FormField label="关联规则">
+        <FormField label="关联规则">
         <template #actions>
           <div class=":uno: flex items-center gap-2">
             <span aria-live="polite" class=":uno: text-xs text-gray-400">
@@ -269,9 +266,9 @@ async function exportSnippet() {
             @toggle="handleToggleRule"
           />
         </template>
-      </FormField>
+        </FormField>
 
-      <FormField label="代码内容" required>
+        <FormField label="代码内容" required>
         <template v-if="canUndo('code')" #actions>
           <FieldUndoButton @reset="resetField('code')" @undo="undoField('code')" />
         </template>
@@ -309,7 +306,8 @@ async function exportSnippet() {
             </div>
           </div>
         </template>
-      </FormField>
+        </FormField>
+      </div>
 
       <EditorFooter :dirty="dirty" :saving="saving" @save="emit('save')" />
     </form>

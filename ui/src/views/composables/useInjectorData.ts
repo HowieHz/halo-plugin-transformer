@@ -2,7 +2,13 @@ import { computed, ref, watch } from 'vue'
 import type { AxiosError } from 'axios'
 import { Dialog, Toast } from '@halo-dev/components'
 import { ruleApi, snippetApi } from '@/apis'
-import type { CodeSnippet, EditableInjectionRule, InjectionRule, ItemList } from '@/types'
+import type {
+  CodeSnippetViewModel,
+  CodeSnippetWritePayload,
+  EditableInjectionRule,
+  InjectionRule,
+  ItemList,
+} from '@/types'
 import { sortBySortOrder, uniqueStrings } from './util'
 import {
   clearPersistedMatchRuleDraft,
@@ -49,7 +55,7 @@ export function useInjectorData() {
   const savingEditor = ref(false)
   const savingReorder = ref(false)
 
-  const snippetsResp = ref<ItemList<CodeSnippet>>(emptyList())
+  const snippetsResp = ref<ItemList<CodeSnippetViewModel>>(emptyList())
   const rulesResp = ref<ItemList<InjectionRule>>(emptyList())
 
   const snippets = computed(() => sortBySortOrder(snippetsResp.value.items))
@@ -58,7 +64,7 @@ export function useInjectorData() {
   const selectedSnippetId = ref<string | null>(null)
   const selectedRuleId = ref<string | null>(null)
 
-  const editSnippet = ref<CodeSnippet | null>(null)
+  const editSnippet = ref<CodeSnippetViewModel | null>(null)
   const editSnippetRuleIds = ref<string[]>([])
 
   const editRule = ref<EditableInjectionRule | null>(null)
@@ -81,7 +87,7 @@ export function useInjectorData() {
     if (!rule?.snippetIds?.length) return []
     return rule.snippetIds
       .map((id) => snippets.value.find((s) => s.id === id))
-      .filter((s): s is CodeSnippet => !!s)
+      .filter((s): s is CodeSnippetViewModel => !!s)
   })
 
   const snippetEditorError = computed(() => {
@@ -111,7 +117,10 @@ export function useInjectorData() {
    * why: `id` 只是前端编辑态里便于选中和显示的派生字段，不属于代码块扩展对象本身；
    * 写回后端时必须剔除，避免被严格字段校验当成脏数据拦下。
    */
-  function _makeSnippetPayload(snippet: CodeSnippet, ruleIds?: string[]) {
+  function _makeSnippetPayload(
+    snippet: CodeSnippetViewModel,
+    ruleIds?: string[],
+  ): CodeSnippetWritePayload {
     const { id: _id, ...payload } = snippet
     return {
       ...payload,
@@ -194,7 +203,7 @@ export function useInjectorData() {
     return _replaceOrderedItems(currentItems, _assignSortOrder(orderedItems))
   }
 
-  function _syncEditSnippetSystemFields(items: CodeSnippet[]) {
+  function _syncEditSnippetSystemFields(items: CodeSnippetViewModel[]) {
     if (!editSnippet.value) {
       return
     }
@@ -323,7 +332,10 @@ export function useInjectorData() {
   watch(selectedSnippetId, _syncEditSnippet)
   watch(selectedRuleId, _syncEditRule)
 
-  async function addSnippet(snippet: CodeSnippet, ruleIds: string[]): Promise<string | null> {
+  async function addSnippet(
+    snippet: CodeSnippetViewModel,
+    ruleIds: string[],
+  ): Promise<string | null> {
     if (!snippet.code.trim()) {
       Toast.error('代码内容不能为空')
       return null

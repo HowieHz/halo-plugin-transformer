@@ -12,9 +12,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div
-    class=":uno: sticky bottom-0 z-20 flex items-center justify-between border-t border-gray-100 bg-white pt-3 pb-2"
-  >
+  <div class=":uno: flex items-center justify-between border-t border-gray-100 bg-white px-4 pt-3 pb-2">
     <span aria-live="polite" class=":uno: text-xs" role="status">
       <span v-if="dirty" class=":uno: text-yellow-600">有未保存的修改</span>
     </span>

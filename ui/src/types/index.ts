@@ -1,16 +1,23 @@
 import type { Metadata } from '@halo-dev/api-client'
 
-export interface CodeSnippet {
+/**
+ * why: 写接口只应承载后端真正接受的持久化字段；
+ * 像 `id` 这类前端展示态派生字段，不应混进写入模型。
+ */
+export interface CodeSnippetWritePayload {
   apiVersion: 'injector.erzbir.com/v1alpha1'
   kind: 'CodeSnippet'
   metadata: Metadata
-  id: string
   name: string
   code: string
   description: string
   enabled: boolean
   sortOrder?: number
   ruleIds: string[]
+}
+
+export interface CodeSnippetViewModel extends CodeSnippetWritePayload {
+  id: string
 }
 
 export type InjectionMode = 'HEAD' | 'FOOTER' | 'ID' | 'SELECTOR'
@@ -29,11 +36,10 @@ export interface MatchRule {
   children?: MatchRule[]
 }
 
-export interface InjectionRule {
+export interface InjectionRuleWritePayload {
   apiVersion: 'injector.erzbir.com/v1alpha1'
   kind: 'InjectionRule'
   metadata: Metadata
-  id: string
   name: string
   description: string
   enabled: boolean
@@ -46,12 +52,18 @@ export interface InjectionRule {
   snippetIds: string[]
 }
 
+export interface InjectionRuleViewModel extends InjectionRuleWritePayload {
+  id: string
+}
+
 export interface InjectionRuleEditorState {
   matchRuleDraft?: string
   matchRuleEditorMode?: MatchRuleEditorMode
 }
 
-export type EditableInjectionRule = InjectionRule & InjectionRuleEditorState
+export type CodeSnippet = CodeSnippetViewModel
+export type InjectionRule = InjectionRuleViewModel
+export type EditableInjectionRule = InjectionRuleViewModel & InjectionRuleEditorState
 
 export interface ItemList<T> {
   page: number
@@ -129,7 +141,7 @@ export function makeMatchRuleGroup(override: Partial<MatchRule> = {}): MatchRule
   }
 }
 
-export function makeSnippet(override: Partial<CodeSnippet> = {}): CodeSnippet {
+export function makeSnippet(override: Partial<CodeSnippetViewModel> = {}): CodeSnippetViewModel {
   return {
     apiVersion: 'injector.erzbir.com/v1alpha1',
     kind: 'CodeSnippet',

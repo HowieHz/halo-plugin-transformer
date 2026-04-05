@@ -369,21 +369,18 @@ async function exportRule() {
       <span class=":uno: text-sm text-gray-500">从左侧选择规则进行编辑</span>
     </div>
 
-    <form
-      v-else
-      class=":uno: flex-1 overflow-y-auto px-4 pt-4 pb-24 space-y-4"
-      @submit.prevent="emit('save')"
-    >
-      <FormField v-slot="{ inputId }" label="ID">
+    <form v-else class=":uno: min-h-0 flex flex-1 flex-col" @submit.prevent="emit('save')">
+      <div class=":uno: min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        <FormField v-slot="{ inputId }" label="ID">
         <input
           :id="inputId"
           :value="currentRule.id"
           class=":uno: w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-mono text-gray-400 cursor-default"
           readonly
         />
-      </FormField>
+        </FormField>
 
-      <FormField label="名称">
+        <FormField label="名称">
         <template v-if="canUndo('name')" #actions>
           <FieldUndoButton @reset="resetField('name')" @undo="undoField('name')" />
         </template>
@@ -396,9 +393,9 @@ async function exportRule() {
             @change="updateField('name', ($event.target as HTMLInputElement).value)"
           />
         </template>
-      </FormField>
+        </FormField>
 
-      <FormField label="描述">
+        <FormField label="描述">
         <template v-if="canUndo('description')" #actions>
           <FieldUndoButton @reset="resetField('description')" @undo="undoField('description')" />
         </template>
@@ -411,9 +408,9 @@ async function exportRule() {
             @change="updateField('description', ($event.target as HTMLInputElement).value)"
           />
         </template>
-      </FormField>
+        </FormField>
 
-      <FormField label="注入模式" required>
+        <FormField label="注入模式" required>
         <template v-if="canUndo('mode')" #actions>
           <FieldUndoButton @reset="resetField('mode')" @undo="undoField('mode')" />
         </template>
@@ -433,10 +430,10 @@ async function exportRule() {
             <option v-for="o in MODE_OPTIONS" :key="o.value" :value="o.value">{{ o.label }}</option>
           </select>
         </template>
-      </FormField>
+        </FormField>
 
-      <template v-if="needsTarget">
-        <FormField :label="currentRule.mode === 'SELECTOR' ? 'CSS 选择器' : '元素 ID'" required>
+        <template v-if="needsTarget">
+          <FormField :label="currentRule.mode === 'SELECTOR' ? 'CSS 选择器' : '元素 ID'" required>
           <template v-if="canUndo('match')" #actions>
             <FieldUndoButton @reset="resetField('match')" @undo="undoField('match')" />
           </template>
@@ -449,9 +446,9 @@ async function exportRule() {
               @change="updateField('match', ($event.target as HTMLInputElement).value)"
             />
           </template>
-        </FormField>
+          </FormField>
 
-        <FormField label="插入位置">
+          <FormField label="插入位置">
           <template v-if="canUndo('position')" #actions>
             <FieldUndoButton @reset="resetField('position')" @undo="undoField('position')" />
           </template>
@@ -473,10 +470,10 @@ async function exportRule() {
               </option>
             </select>
           </template>
-        </FormField>
-      </template>
+          </FormField>
+        </template>
 
-      <FormField v-if="needsWrapMarker">
+        <FormField v-if="needsWrapMarker">
         <template v-if="canUndo('wrapMarker')" #actions>
           <FieldUndoButton @reset="resetField('wrapMarker')" @undo="undoField('wrapMarker')" />
         </template>
@@ -491,9 +488,9 @@ async function exportRule() {
             输出注释标记
           </label>
         </template>
-      </FormField>
+        </FormField>
 
-      <FormField label="匹配规则" required>
+        <FormField label="匹配规则" required>
         <template v-if="canUndo('matchRule')" #actions>
           <FieldUndoButton @reset="resetField('matchRule')" @undo="undoField('matchRule')" />
         </template>
@@ -515,9 +512,9 @@ async function exportRule() {
             {{ performanceWarning }}
           </div>
         </template>
-      </FormField>
+        </FormField>
 
-      <FormField v-if="needsSnippets" label="关联代码块">
+        <FormField v-if="needsSnippets" label="关联代码块">
         <template #actions>
           <div class=":uno: flex items-center gap-2">
             <span aria-live="polite" class=":uno: text-xs text-gray-400">
@@ -539,7 +536,8 @@ async function exportRule() {
             @toggle="handleToggleSnippet"
           />
         </template>
-      </FormField>
+        </FormField>
+      </div>
 
       <EditorFooter :dirty="dirty" :saving="saving" @save="emit('save')" />
     </form>

@@ -1,5 +1,11 @@
 import { axiosInstance } from '@halo-dev/api-client'
-import type { CodeSnippet, InjectionRule, ItemList } from '@/types'
+import type {
+  CodeSnippetViewModel,
+  CodeSnippetWritePayload,
+  InjectionRuleViewModel,
+  InjectionRuleWritePayload,
+  ItemList,
+} from '@/types'
 
 const BASE = '/apis/injector.erzbir.com/v1alpha1'
 const CONSOLE_BASE = '/apis/console.api.injector.erzbir.com/v1alpha1'
@@ -15,23 +21,21 @@ interface SortOrderItem {
   sortOrder: number
 }
 
-type CodeSnippetWritePayload = Omit<CodeSnippet, 'id'>
-
 export const snippetApi = {
   list() {
-    return axiosInstance.get<ItemList<CodeSnippet>>(SNIPPETS)
+    return axiosInstance.get<ItemList<CodeSnippetViewModel>>(SNIPPETS)
   },
 
   add(snippet: CodeSnippetWritePayload) {
-    return axiosInstance.post<CodeSnippet>(SNIPPETS_WRITE, snippet)
+    return axiosInstance.post<CodeSnippetViewModel>(SNIPPETS_WRITE, snippet)
   },
 
   update(id: string, snippet: CodeSnippetWritePayload) {
-    return axiosInstance.put<CodeSnippet>(`${SNIPPETS_WRITE}/${id}`, snippet)
+    return axiosInstance.put<CodeSnippetViewModel>(`${SNIPPETS_WRITE}/${id}`, snippet)
   },
 
   reorder(items: SortOrderItem[]) {
-    return axiosInstance.put<CodeSnippet[]>(SNIPPETS_REORDER, { items })
+    return axiosInstance.put<CodeSnippetViewModel[]>(SNIPPETS_REORDER, { items })
   },
 
   delete(id: string) {
@@ -41,19 +45,19 @@ export const snippetApi = {
 
 export const ruleApi = {
   list() {
-    return axiosInstance.get<ItemList<InjectionRule>>(RULES)
+    return axiosInstance.get<ItemList<InjectionRuleViewModel>>(RULES)
   },
 
-  add(rule: InjectionRule) {
-    return axiosInstance.post<InjectionRule>(RULES_WRITE, rule)
+  add(rule: InjectionRuleWritePayload) {
+    return axiosInstance.post<InjectionRuleViewModel>(RULES_WRITE, rule)
   },
 
-  update(id: string, rule: InjectionRule) {
-    return axiosInstance.put<InjectionRule>(`${RULES_WRITE}/${id}`, rule)
+  update(id: string, rule: InjectionRuleWritePayload) {
+    return axiosInstance.put<InjectionRuleViewModel>(`${RULES_WRITE}/${id}`, rule)
   },
 
   reorder(items: SortOrderItem[]) {
-    return axiosInstance.put<InjectionRule[]>(RULES_REORDER, { items })
+    return axiosInstance.put<InjectionRuleViewModel[]>(RULES_REORDER, { items })
   },
 
   delete(id: string) {

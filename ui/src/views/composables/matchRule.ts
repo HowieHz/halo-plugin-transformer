@@ -1,7 +1,8 @@
 import {
   type EditableInjectionRule,
-  type InjectionRule,
+  type InjectionRuleViewModel,
   type InjectionRuleEditorState,
+  type InjectionRuleWritePayload,
   type MatchRuleEditorMode,
   type MatchRule,
   makeMatchRuleGroup,
@@ -164,7 +165,7 @@ export function validateMatchRuleObject(input: unknown, path = 'matchRule'): Mat
   })
 }
 
-export function hydrateRuleForEditor(rule: InjectionRule): EditableInjectionRule {
+export function hydrateRuleForEditor(rule: InjectionRuleViewModel): EditableInjectionRule {
   const matchRule = normalizeMatchRule(rule.matchRule)
   const storedState = readStoredMatchRuleEditorState(rule.id)
   const draft =
@@ -184,7 +185,7 @@ export function hydrateRuleForEditor(rule: InjectionRule): EditableInjectionRule
  * 不应写入后端模型；这里按规则 ID 落在本地，保证刷新后仍能恢复用户刚才的编辑视图。
  */
 export function persistMatchRuleEditorState(
-  rule: Pick<InjectionRule, 'id'> & InjectionRuleEditorState,
+  rule: Pick<InjectionRuleViewModel, 'id'> & InjectionRuleEditorState,
 ) {
   if (!rule.id || typeof window === 'undefined') {
     return
@@ -219,7 +220,7 @@ export function clearPersistedMatchRuleDraft(
 }
 
 export function resolveRuleMatchRule(
-  rule: InjectionRule & Partial<InjectionRuleEditorState>,
+  rule: InjectionRuleViewModel & Partial<InjectionRuleEditorState>,
 ): MatchRuleParseResult {
   if (rule.matchRuleDraft?.trim()) {
     return parseMatchRuleDraft(rule.matchRuleDraft)
@@ -241,7 +242,7 @@ export function supportsDomPathPrecheck(rule: MatchRule | null): boolean {
 }
 
 export function getDomRulePerformanceWarning(
-  rule: Pick<InjectionRule, 'mode' | 'matchRule'>,
+  rule: Pick<InjectionRuleViewModel, 'mode' | 'matchRule'>,
 ): string | null {
   if ((rule.mode !== 'SELECTOR' && rule.mode !== 'ID') || supportsDomPathPrecheck(rule.matchRule)) {
     return null
@@ -253,9 +254,9 @@ export function getDomRulePerformanceWarning(
  * why: 发送到后端前统一收敛编辑态字段，避免 JSON 草稿、REMOVE 的空代码块关联等 UI 细节污染持久化模型。
  */
 export function makeRulePayload(
-  rule: InjectionRule & Partial<InjectionRuleEditorState>,
+  rule: InjectionRuleViewModel & Partial<InjectionRuleEditorState>,
   snippetIds: string[],
-) {
+): InjectionRuleWritePayload | null {
   const result = resolveRuleMatchRule(rule)
   if (!result.rule) {
     return null
@@ -266,7 +267,6 @@ export function makeRulePayload(
     apiVersion: rule.apiVersion,
     kind: rule.kind,
     metadata: rule.metadata,
-    id: rule.id,
     name: rule.name,
     description: rule.description,
     enabled: rule.enabled,
