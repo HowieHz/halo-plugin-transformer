@@ -212,16 +212,19 @@ async function exportSnippet() {
       </FormField>
 
       <FormField label="关联规则">
-        <template v-if="canUndo('ruleIds')" #actions>
-          <FieldUndoButton @reset="resetField('ruleIds')" @undo="undoField('ruleIds')" />
+        <template #actions>
+          <div class=":uno: flex items-center gap-2">
+            <span aria-live="polite" class=":uno: text-xs text-gray-400">
+              {{ visibleSelectedRuleIds.length }} 个已选
+            </span>
+            <FieldUndoButton
+              v-if="canUndo('ruleIds')"
+              @reset="resetField('ruleIds')"
+              @undo="undoField('ruleIds')"
+            />
+          </div>
         </template>
         <template #default>
-          <div class=":uno: flex items-center justify-between mb-1">
-            <span />
-            <span aria-live="polite" class=":uno: text-xs text-gray-400"
-              >{{ visibleSelectedRuleIds.length }} 个已选</span
-            >
-          </div>
           <ItemPicker
             :items="sortedRules"
             label="关联规则选择列表"
