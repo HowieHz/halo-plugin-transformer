@@ -246,7 +246,7 @@ public class InjectHelper {
             case PATH -> evaluatePath(rule, currentPath) == MatchState.MATCH;
             case TEMPLATE_ID -> true;
         };
-        return Boolean.TRUE.equals(rule.getNegate()) ? !matched : matched;
+        return Boolean.TRUE.equals(rule.getNegate()) ^ matched;
     }
 
     private boolean pathPrecheckGroupMatches(MatchRule rule, String currentPath) {
