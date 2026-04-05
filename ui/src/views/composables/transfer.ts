@@ -125,7 +125,7 @@ export async function downloadTransferFile(draft: TransferFileDraft) {
   const saveFilePicker = (window as WindowWithSaveFilePicker).showSaveFilePicker
 
   if (typeof saveFilePicker !== 'function') {
-    throw new Error('当前环境暂时无法直接弹出“另存为”')
+    throw new Error('当前环境暂时无法直接保存为文件')
   }
   const handle = await saveFilePicker({
     suggestedName: draft.fileName,

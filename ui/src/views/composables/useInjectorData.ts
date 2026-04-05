@@ -430,12 +430,14 @@ export function useInjectorData() {
 
   async function toggleSnippetEnabled() {
     if (!editSnippet.value) return
+    const nextEnabled = !editSnippet.value.enabled
     try {
-      editSnippet.value.enabled = !editSnippet.value.enabled
+      editSnippet.value.enabled = nextEnabled
       await snippetApi.update(editSnippet.value.id, editSnippet.value)
       await fetchAll()
     } catch (error) {
-      Toast.error(getErrorMessage(error, '操作失败'))
+      editSnippet.value.enabled = !nextEnabled
+      Toast.error(getErrorMessage(error, nextEnabled ? '启用失败' : '停用失败'))
     }
   }
 
@@ -464,7 +466,7 @@ export function useInjectorData() {
       await fetchAll()
     } catch (error) {
       editRule.value.enabled = !nextEnabled
-      Toast.error(getErrorMessage(error, '操作失败'))
+      Toast.error(getErrorMessage(error, nextEnabled ? '启用失败' : '停用失败'))
     }
   }
 
@@ -586,7 +588,7 @@ export function useInjectorData() {
         updatedOnce = true
       }
       if (updatedOnce) {
-        Toast.success('代码块顺序已更新')
+        Toast.success('代码块顺序保存成功')
       }
     } catch (error) {
       Toast.error(getErrorMessage(error, '更新顺序失败'))
@@ -639,7 +641,7 @@ export function useInjectorData() {
         updatedOnce = true
       }
       if (updatedOnce) {
-        Toast.success('注入规则顺序已更新')
+        Toast.success('注入规则顺序保存成功')
       }
     } catch (error) {
       Toast.error(getErrorMessage(error, '更新顺序失败'))
