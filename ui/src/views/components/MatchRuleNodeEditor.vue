@@ -116,13 +116,13 @@ function moveChild(index: number, direction: -1 | 1) {
 
 function addPathRule() {
   const next = cloneMatchRule(rule.value)
-  next.children = [...(next.children ?? []), makePathMatchRule()]
+  next.children = [...(next.children ?? []), makePathMatchRule({ value: '' })]
   updateRule(next)
 }
 
 function addGroupRule() {
   const next = cloneMatchRule(rule.value)
-  next.children = [...(next.children ?? []), makeMatchRuleGroup()]
+  next.children = [...(next.children ?? []), makeMatchRuleGroup({ children: [] })]
   updateRule(next)
 }
 

@@ -169,7 +169,9 @@ export function makeRule(override: Partial<EditableInjectionRule> = {}): Editabl
     sortOrder: undefined,
     mode: 'FOOTER',
     match: '',
-    matchRule: makeMatchRuleGroup(),
+    matchRule: makeMatchRuleGroup({
+      children: [makePathMatchRule({ value: '' })],
+    }),
     position: 'APPEND',
     wrapMarker: true,
     snippetIds: [],

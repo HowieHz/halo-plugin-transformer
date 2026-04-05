@@ -209,6 +209,9 @@ export function supportsDomPathPrecheck(rule: MatchRule | null): boolean {
 export function getDomRulePerformanceWarning(
   rule: Pick<InjectionRuleViewModel, 'mode' | 'matchRule'>,
 ): string | null {
+  if (validateMatchRuleTree(normalizeMatchRule(rule.matchRule)).error) {
+    return null
+  }
   if ((rule.mode !== 'SELECTOR' && rule.mode !== 'ID') || supportsDomPathPrecheck(rule.matchRule)) {
     return null
   }
