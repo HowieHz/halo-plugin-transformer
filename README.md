@@ -221,7 +221,8 @@ Halo 自带的代码注入更偏向全局场景；这个插件更适合：
 - 匹配规则根节点必须是条件组
 - JSON 高级模式下，`GROUP` / `PATH` / `TEMPLATE_ID` 只允许使用各自支持的字段名；写错字段名会直接提示
 - 条件组不能是空组
-- `operator`、`matcher`、`value` 这类必填字段缺失时会直接提示
+- `type`、`operator`、`matcher`、`value` 这类必填字段缺失时会直接提示
+- 布尔字段也会校验；例如 `negate` 必须为 `true` / `false`
 - 匹配方式必须和规则类型对应
 - 匹配内容不能为空
 - 正则表达式必须合法
@@ -232,8 +233,8 @@ Halo 自带的代码注入更偏向全局场景；这个插件更适合：
 
 导入代码块 / 注入规则 JSON 时，也会先做一轮前端校验：
 
-- 布尔字段会校验是否为 `true` / `false`
-- 枚举字段会校验是否缺失、是否为字符串、以及是否落在允许值里
+- 布尔字段会校验是否为 `true` / `false`；例如 `enabled`、`wrapMarker`，以及 `matchRule` 里的 `negate`
+- 枚举字段会分别校验是否缺失、是否为字符串、以及是否落在允许值里；例如 `mode`、`position`、`matchRuleEditorMode`，以及 `matchRule` 里的 `type` / `operator` / `matcher`
 - 导入注入规则 JSON 时，`matchRule` 会先校验是否还能稳定进入编辑器
 - 根节点类型不对、节点结构不对，这类会破坏编辑器结构的问题会直接拒绝导入
 - 如果只是字段名写错，导入时会直接忽略这些错误字段
@@ -249,7 +250,7 @@ Halo 自带的代码注入更偏向全局场景；这个插件更适合：
 - 根节点是否为 `GROUP`
 - 是否出现不支持的字段名
 - 条件组是否为空组
-- `operator`、`matcher`、`value` 等必填字段是否缺失
+- `type`、`operator`、`matcher`、`value` 等结构字段是否缺失或不合法
 - 匹配方式（`matcher`）是否与节点类型匹配
 - 匹配内容（`value`）是否为空
 - `REGEX` 是否可正常编译
