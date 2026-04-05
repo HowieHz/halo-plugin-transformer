@@ -83,6 +83,18 @@ export function useInjectorData() {
       .filter((s): s is CodeSnippet => !!s)
   })
 
+  const snippetEditorError = computed(() => {
+    if (!editSnippet.value?.code.trim()) {
+      return '代码内容不能为空'
+    }
+    return null
+  })
+
+  const ruleEditorError = computed(() => {
+    if (!editRule.value) return null
+    return _validateRule(editRule.value)
+  })
+
   function _normalizeRuleSnippetIds(rule: InjectionRule, snippetIds: string[]) {
     return rule.position === 'REMOVE' ? [] : uniqueStrings(snippetIds)
   }
@@ -362,31 +374,37 @@ export function useInjectorData() {
   }
 
   async function saveSnippet() {
-    if (!editSnippet.value?.code.trim()) {
-      Toast.error('代码内容不能为空')
-      return
+    if (snippetEditorError.value) {
+      Toast.error(snippetEditorError.value)
+      return false
     }
+    if (!editSnippet.value) {
+      return false
+    }
+    const currentSnippet = editSnippet.value
     const nextRuleIds = _normalizeSnippetRuleIds(editSnippetRuleIds.value)
     savingEditor.value = true
     try {
-      await snippetApi.update(editSnippet.value.id, { ...editSnippet.value, ruleIds: nextRuleIds })
-      await _applySnippetRuleSelection(editSnippet.value.id, nextRuleIds)
+      await snippetApi.update(currentSnippet.id, { ...currentSnippet, ruleIds: nextRuleIds })
+      await _applySnippetRuleSelection(currentSnippet.id, nextRuleIds)
       await fetchAll()
       editDirty.value = false
       Toast.success('保存成功')
+      return true
     } catch (error) {
       Toast.error(getErrorMessage(error, '保存失败'))
+      return false
     } finally {
       savingEditor.value = false
     }
   }
 
   async function saveRule() {
-    if (!editRule.value) return
-    const err = _validateRule(editRule.value)
+    if (!editRule.value) return false
+    const err = ruleEditorError.value
     if (err) {
       Toast.error(err)
-      return
+      return false
     }
     const nextSnippetIds = _normalizeRuleSnippetIds(editRule.value, editRuleSnippetIds.value)
     savingEditor.value = true
@@ -394,15 +412,17 @@ export function useInjectorData() {
       const payload = makeRulePayload(editRule.value, nextSnippetIds)
       if (!payload) {
         Toast.error('匹配规则有误，请先修正后再保存')
-        return
+        return false
       }
       await ruleApi.update(editRule.value.id, payload)
       await _applyRuleSnippetSelection(editRule.value.id, nextSnippetIds)
       await fetchAll()
       editDirty.value = false
       Toast.success('保存成功')
+      return true
     } catch (error) {
       Toast.error(getErrorMessage(error, '保存失败'))
+      return false
     } finally {
       savingEditor.value = false
     }
@@ -507,6 +527,14 @@ export function useInjectorData() {
         }
       },
     })
+  }
+
+  function discardSnippetEdit() {
+    _syncEditSnippet()
+  }
+
+  function discardRuleEdit() {
+    _syncEditRule()
   }
 
   /**
@@ -629,6 +657,8 @@ export function useInjectorData() {
     editRule,
     editRuleSnippetIds,
     editDirty,
+    snippetEditorError,
+    ruleEditorError,
     rulesUsingSnippet,
     snippetsInRule,
     fetchAll,
@@ -636,12 +666,14 @@ export function useInjectorData() {
     saveSnippet,
     toggleSnippetEnabled,
     confirmDeleteSnippet,
+    discardSnippetEdit,
     toggleRuleInSnippetEditor,
     reorderSnippet,
     addRule,
     saveRule,
     toggleRuleEnabled,
     confirmDeleteRule,
+    discardRuleEdit,
     toggleSnippetInRuleEditor,
     reorderRule,
   }

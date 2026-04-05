@@ -1,7 +1,15 @@
 <script lang="ts" setup>
 import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router'
-import { IconPlug, VButton, VCard, VLoading, VPageHeader } from '@halo-dev/components'
+import {
+  IconPlug,
+  VButton,
+  VCard,
+  VLoading,
+  VModal,
+  VPageHeader,
+  VSpace,
+} from '@halo-dev/components'
 
 import type { ActiveTab } from '@/types'
 import { useInjectorData } from './composables/useInjectorData.ts'
@@ -36,6 +44,8 @@ const {
   editRule,
   editRuleSnippetIds,
   editDirty,
+  snippetEditorError,
+  ruleEditorError,
   rulesUsingSnippet,
   snippetsInRule,
   fetchAll,
@@ -43,17 +53,23 @@ const {
   saveSnippet,
   toggleSnippetEnabled,
   confirmDeleteSnippet,
+  discardSnippetEdit,
   toggleRuleInSnippetEditor,
   reorderSnippet,
   addRule,
   saveRule,
   toggleRuleEnabled,
   confirmDeleteRule,
+  discardRuleEdit,
   toggleSnippetInRuleEditor,
   reorderRule,
 } = useInjectorData()
 
 onMounted(fetchAll)
+
+const leaveConfirmVisible = ref(false)
+const leaveConfirmCanSave = ref(false)
+const pendingLeaveAction = ref<null | (() => void | Promise<void>)>(null)
 
 function normalizeTab(tab: unknown): ActiveTab {
   return tab === 'rules' ? 'rules' : 'snippets'
@@ -172,6 +188,92 @@ function closeRuleModal() {
   showRuleModal.value = false
 }
 
+function hasUnsavedEditorChanges() {
+  return editDirty.value && !!(activeTab.value === 'snippets' ? editSnippet.value : editRule.value)
+}
+
+function currentEditorValidationError() {
+  return activeTab.value === 'snippets' ? snippetEditorError.value : ruleEditorError.value
+}
+
+function discardCurrentEditorChanges() {
+  if (activeTab.value === 'snippets') {
+    discardSnippetEdit()
+    return
+  }
+  discardRuleEdit()
+}
+
+function closeLeaveConfirm() {
+  leaveConfirmVisible.value = false
+  leaveConfirmCanSave.value = false
+  pendingLeaveAction.value = null
+}
+
+async function runPendingLeaveAction() {
+  const action = pendingLeaveAction.value
+  closeLeaveConfirm()
+  if (!action) return
+  await action()
+}
+
+function requestEditorLeave(action: () => void | Promise<void>) {
+  if (!hasUnsavedEditorChanges()) {
+    void action()
+    return
+  }
+
+  pendingLeaveAction.value = action
+  leaveConfirmCanSave.value = !currentEditorValidationError()
+  leaveConfirmVisible.value = true
+}
+
+async function confirmDiscardAndLeave() {
+  discardCurrentEditorChanges()
+  await runPendingLeaveAction()
+}
+
+async function confirmSaveAndLeave() {
+  const saved = activeTab.value === 'snippets' ? await saveSnippet() : await saveRule()
+  if (!saved) {
+    return
+  }
+  await runPendingLeaveAction()
+}
+
+function handleTabSwitch(tab: ActiveTab) {
+  if (activeTab.value === tab) {
+    return
+  }
+  requestEditorLeave(() => {
+    activeTab.value = tab
+  })
+}
+
+function handleSnippetSelect(id: string) {
+  if (activeTab.value === 'snippets' && selectedSnippetId.value === id) {
+    return
+  }
+  requestEditorLeave(() => {
+    selectedSnippetId.value = id
+  })
+}
+
+function handleRuleSelect(id: string) {
+  if (activeTab.value === 'rules' && selectedRuleId.value === id) {
+    return
+  }
+  requestEditorLeave(() => {
+    selectedRuleId.value = id
+  })
+}
+
+function handleOpenCreateModal(tab: ActiveTab) {
+  requestEditorLeave(() => {
+    openCreateModal(tab)
+  })
+}
+
 watch(
   () => [route.query.tab, route.query.id, route.query.action],
   () => {
@@ -201,22 +303,53 @@ async function handleAddRule(...args: Parameters<typeof addRule>) {
 }
 
 function jumpToRule(id: string) {
-  activeTab.value = 'rules'
-  showSnippetModal.value = false
-  showRuleModal.value = false
-  selectedRuleId.value = id
+  requestEditorLeave(() => {
+    activeTab.value = 'rules'
+    showSnippetModal.value = false
+    showRuleModal.value = false
+    selectedRuleId.value = id
+  })
 }
 
 function jumpToSnippet(id: string) {
-  activeTab.value = 'snippets'
-  showSnippetModal.value = false
-  showRuleModal.value = false
-  selectedSnippetId.value = id
+  requestEditorLeave(() => {
+    activeTab.value = 'snippets'
+    showSnippetModal.value = false
+    showRuleModal.value = false
+    selectedSnippetId.value = id
+  })
 }
 </script>
 
 <template>
   <div id="injector-view">
+    <VModal v-if="leaveConfirmVisible" title="离开当前编辑" :width="520" @close="closeLeaveConfirm">
+      <div class=":uno: space-y-3 px-1 py-1 text-sm leading-6 text-gray-700">
+        <p>当前有未保存的修改，继续切换后不会自动保存。</p>
+        <p v-if="leaveConfirmCanSave">你可以先保存，再继续切换。</p>
+        <p v-else class=":uno: text-red-600">
+          当前修改有错误，无法直接保存；如需继续，请放弃这些修改。
+        </p>
+      </div>
+
+      <template #footer>
+        <VSpace>
+          <VButton :disabled="savingEditor" @click="closeLeaveConfirm">取消</VButton>
+          <VButton :disabled="savingEditor" type="danger" @click="confirmDiscardAndLeave">
+            放弃
+          </VButton>
+          <VButton
+            v-if="leaveConfirmCanSave"
+            :disabled="savingEditor"
+            type="secondary"
+            @click="confirmSaveAndLeave"
+          >
+            {{ savingEditor ? '保存中...' : '保存' }}
+          </VButton>
+        </VSpace>
+      </template>
+    </VModal>
+
     <SnippetFormModal
       v-if="showSnippetModal"
       :rules="rules"
@@ -255,7 +388,7 @@ function jumpToSnippet(id: string) {
                     : ':uno: text-gray-500 hover:text-gray-800'
                 "
                 class=":uno: text-sm font-medium transition-colors whitespace-nowrap"
-                @click="activeTab = tab.key as ActiveTab"
+                @click="handleTabSwitch(tab.key as ActiveTab)"
               >
                 {{ tab.label }}
                 <span class=":uno: ml-0.5 text-xs">({{ tab.count }})</span>
@@ -271,8 +404,8 @@ function jumpToSnippet(id: string) {
               :selected-id="selectedSnippetId"
               empty-text="暂无代码块"
               @reorder="reorderSnippet"
-              @create="openCreateModal('snippets')"
-              @select="selectedSnippetId = $event"
+              @create="handleOpenCreateModal('snippets')"
+              @select="handleSnippetSelect"
             />
 
             <ItemListV
@@ -283,8 +416,8 @@ function jumpToSnippet(id: string) {
               :stretch="true"
               empty-text="暂无注入规则"
               @reorder="reorderRule"
-              @create="openCreateModal('rules')"
-              @select="selectedRuleId = $event"
+              @create="handleOpenCreateModal('rules')"
+              @select="handleRuleSelect"
             >
               <template #meta="{ item: r }">
                 <span class=":uno: text-xs text-gray-500">{{ rulePreview(r) }}</span>
@@ -298,7 +431,7 @@ function jumpToSnippet(id: string) {
             </ItemListV>
 
             <div class=":uno: h-12 flex items-center justify-center border-t bg-white shrink-0">
-              <VButton size="sm" type="secondary" @click="openCreateModal(activeTab)">
+              <VButton size="sm" type="secondary" @click="handleOpenCreateModal(activeTab)">
                 {{ activeTab === 'snippets' ? '新建代码块' : '新建注入规则' }}
               </VButton>
             </div>
