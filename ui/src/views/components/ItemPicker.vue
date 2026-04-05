@@ -21,7 +21,7 @@ const emit = defineEmits<{
 <template>
   <div
     :aria-label="label ?? '可多选列表'"
-    class=":uno: h-48 min-h-48 resize-y overflow-hidden rounded-md border border-gray-200 bg-white"
+    class=":uno: h-30 min-h-30 resize-y overflow-hidden rounded-md border border-gray-200 bg-white"
     role="group"
   >
     <div class=":uno: h-full overflow-y-auto divide-y divide-gray-100">
