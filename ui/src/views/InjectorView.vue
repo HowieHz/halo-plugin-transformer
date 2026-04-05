@@ -43,13 +43,13 @@ const {
   toggleSnippetEnabled,
   confirmDeleteSnippet,
   toggleRuleInSnippetEditor,
-  moveSnippet,
+  reorderSnippet,
   addRule,
   saveRule,
   toggleRuleEnabled,
   confirmDeleteRule,
   toggleSnippetInRuleEditor,
-  moveRule,
+  reorderRule,
 } = useInjectorData()
 
 onMounted(fetchAll)
@@ -266,62 +266,25 @@ function jumpToSnippet(id: string) {
             <ItemListV
               v-else-if="activeTab === 'snippets'"
               :items="snippets"
+              :reorderable="true"
               :selected-id="selectedSnippetId"
               empty-text="暂无代码块"
+              @reorder="reorderSnippet"
               @create="openCreateModal('snippets')"
               @select="selectedSnippetId = $event"
-            >
-              <template #actions="{ item, index }">
-                <VButton
-                  v-if="index > 0"
-                  class=":uno: min-w-0 px-2"
-                  size="sm"
-                  title="上移"
-                  @click.stop="moveSnippet(item.id, -1)"
-                >
-                  ↑
-                </VButton>
-                <VButton
-                  v-if="index < snippets.length - 1"
-                  class=":uno: min-w-0 px-2"
-                  size="sm"
-                  title="下移"
-                  @click.stop="moveSnippet(item.id, 1)"
-                >
-                  ↓
-                </VButton>
-              </template>
-            </ItemListV>
+            />
 
             <ItemListV
               v-else
               :items="rules"
+              :reorderable="true"
               :selected-id="selectedRuleId"
               :stretch="true"
               empty-text="暂无注入规则"
+              @reorder="reorderRule"
               @create="openCreateModal('rules')"
               @select="selectedRuleId = $event"
             >
-              <template #actions="{ item, index }">
-                <VButton
-                  v-if="index > 0"
-                  class=":uno: min-w-0 px-2"
-                  size="sm"
-                  title="上移"
-                  @click.stop="moveRule(item.id, -1)"
-                >
-                  ↑
-                </VButton>
-                <VButton
-                  v-if="index < rules.length - 1"
-                  class=":uno: min-w-0 px-2"
-                  size="sm"
-                  title="下移"
-                  @click.stop="moveRule(item.id, 1)"
-                >
-                  ↓
-                </VButton>
-              </template>
               <template #meta="{ item: r }">
                 <span class=":uno: text-xs text-gray-500">{{ rulePreview(r) }}</span>
                 <span

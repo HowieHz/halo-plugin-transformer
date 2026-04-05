@@ -12,6 +12,8 @@ import {
   resolveRuleMatchRule,
 } from './matchRule'
 
+type ReorderPlacement = 'before' | 'after'
+
 function emptyList<T>(): ItemList<T> {
   return {
     first: false,
@@ -88,6 +90,45 @@ export function useInjectorData() {
 
   function _nextSortOrder(items: Array<{ sortOrder?: number }>) {
     return items.reduce((max, item) => Math.max(max, item.sortOrder ?? 0), 0) + 1
+  }
+
+  function _reorderItems<T extends { id: string }>(
+    items: T[],
+    sourceId: string,
+    targetId: string,
+    placement: ReorderPlacement,
+  ) {
+    if (sourceId === targetId) {
+      return null
+    }
+
+    const ordered = [...items]
+    const sourceIndex = ordered.findIndex((item) => item.id === sourceId)
+    const targetIndex = ordered.findIndex((item) => item.id === targetId)
+    if (sourceIndex < 0 || targetIndex < 0) {
+      return null
+    }
+
+    const [moving] = ordered.splice(sourceIndex, 1)
+    const nextTargetIndex = ordered.findIndex((item) => item.id === targetId)
+    const insertIndex = placement === 'before' ? nextTargetIndex : nextTargetIndex + 1
+    ordered.splice(insertIndex, 0, moving)
+    return ordered
+  }
+
+  function _assignSortOrder<T extends { sortOrder?: number }>(items: T[]) {
+    return items.map((item, index) => ({
+      ...item,
+      sortOrder: index + 1,
+    }))
+  }
+
+  function _replaceOrderedItems<T extends { id: string }>(currentItems: T[], orderedItems: T[]) {
+    const currentById = new Map(currentItems.map((item) => [item.id, item]))
+    return orderedItems.map((item) => ({
+      ...(currentById.get(item.id) ?? item),
+      ...item,
+    }))
   }
 
   /**
@@ -401,28 +442,29 @@ export function useInjectorData() {
   }
 
   /**
-   * why: 左侧资源列表的上下移动属于持久化排序，而不是临时前端排序；
-   * 这里按当前显示顺序重排并一次性回写顺序值，保证刷新后仍保持一致。
+   * why: 左侧资源列表的拖拽排序属于持久化排序，而不是临时前端排序；
+   * 这里按当前显示顺序重排并一次性回写顺序值，同时保留编辑中的本地状态。
    */
-  async function moveSnippet(snippetId: string, direction: -1 | 1) {
-    const ordered = [...snippets.value]
-    const index = ordered.findIndex((item) => item.id === snippetId)
-    const targetIndex = index + direction
-    if (index < 0 || targetIndex < 0 || targetIndex >= ordered.length) {
+  async function reorderSnippet(payload: {
+    sourceId: string
+    targetId: string
+    placement: ReorderPlacement
+  }) {
+    const ordered = _reorderItems(
+      snippets.value,
+      payload.sourceId,
+      payload.targetId,
+      payload.placement,
+    )
+    if (!ordered) {
       return
     }
-    ;[ordered[index], ordered[targetIndex]] = [ordered[targetIndex], ordered[index]]
 
-    const changed = ordered
-      .map((snippet, nextIndex) => ({
-        ...snippet,
-        sortOrder: nextIndex + 1,
-      }))
-      .filter(
-        (snippet) =>
-          snippet.sortOrder !==
-          (snippets.value.find((item) => item.id === snippet.id)?.sortOrder ?? undefined),
-      )
+    const changed = _assignSortOrder(ordered).filter(
+      (snippet) =>
+        snippet.sortOrder !==
+        (snippets.value.find((item) => item.id === snippet.id)?.sortOrder ?? undefined),
+    )
 
     if (!changed.length) {
       return
@@ -431,7 +473,10 @@ export function useInjectorData() {
     saving.value = true
     try {
       await Promise.all(changed.map((snippet) => snippetApi.update(snippet.id, snippet)))
-      await fetchAll()
+      snippetsResp.value.items = _replaceOrderedItems(
+        snippetsResp.value.items,
+        _assignSortOrder(ordered),
+      )
       Toast.success('代码块顺序已更新')
     } catch (error) {
       Toast.error(getErrorMessage(error, '更新顺序失败'))
@@ -440,25 +485,26 @@ export function useInjectorData() {
     }
   }
 
-  async function moveRule(ruleId: string, direction: -1 | 1) {
-    const ordered = [...rules.value]
-    const index = ordered.findIndex((item) => item.id === ruleId)
-    const targetIndex = index + direction
-    if (index < 0 || targetIndex < 0 || targetIndex >= ordered.length) {
+  async function reorderRule(payload: {
+    sourceId: string
+    targetId: string
+    placement: ReorderPlacement
+  }) {
+    const ordered = _reorderItems(
+      rules.value,
+      payload.sourceId,
+      payload.targetId,
+      payload.placement,
+    )
+    if (!ordered) {
       return
     }
-    ;[ordered[index], ordered[targetIndex]] = [ordered[targetIndex], ordered[index]]
 
-    const changed = ordered
-      .map((rule, nextIndex) => ({
-        ...rule,
-        sortOrder: nextIndex + 1,
-      }))
-      .filter(
-        (rule) =>
-          rule.sortOrder !==
-          (rules.value.find((item) => item.id === rule.id)?.sortOrder ?? undefined),
-      )
+    const changed = _assignSortOrder(ordered).filter(
+      (rule) =>
+        rule.sortOrder !==
+        (rules.value.find((item) => item.id === rule.id)?.sortOrder ?? undefined),
+    )
 
     if (!changed.length) {
       return
@@ -475,7 +521,7 @@ export function useInjectorData() {
           return ruleApi.update(rule.id, payload)
         }),
       )
-      await fetchAll()
+      rulesResp.value.items = _replaceOrderedItems(rulesResp.value.items, _assignSortOrder(ordered))
       Toast.success('注入规则顺序已更新')
     } catch (error) {
       Toast.error(getErrorMessage(error, '更新顺序失败'))
@@ -504,12 +550,12 @@ export function useInjectorData() {
     toggleSnippetEnabled,
     confirmDeleteSnippet,
     toggleRuleInSnippetEditor,
-    moveSnippet,
+    reorderSnippet,
     addRule,
     saveRule,
     toggleRuleEnabled,
     confirmDeleteRule,
     toggleSnippetInRuleEditor,
-    moveRule,
+    reorderRule,
   }
 }
