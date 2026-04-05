@@ -347,12 +347,18 @@ function validateMatchRuleInput(
   }
 
   const type = input.type
+  if (!hasOwnKey(input, 'type') && !options.allowMissingRequiredKeys) {
+    return invalid(`${path}.type`, '缺少必填字段；仅支持 "GROUP"、"PATH"、"TEMPLATE_ID"')
+  }
+  if (input.type !== undefined && typeof input.type !== 'string') {
+    return invalid(`${path}.type`, '必须是字符串；仅支持 "GROUP"、"PATH"、"TEMPLATE_ID"')
+  }
   if (type !== 'GROUP' && type !== 'PATH' && type !== 'TEMPLATE_ID') {
-    return invalid(`${path}.type`, '仅支持 GROUP、PATH、TEMPLATE_ID')
+    return invalid(`${path}.type`, '仅支持 "GROUP"、"PATH"、"TEMPLATE_ID"')
   }
 
   if (input.negate !== undefined && typeof input.negate !== 'boolean') {
-    return invalid(`${path}.negate`, '必须是布尔值')
+    return invalid(`${path}.negate`, '必须是布尔值；仅支持 true 或 false')
   }
 
   if (options.requireGroupRoot && type !== 'GROUP') {

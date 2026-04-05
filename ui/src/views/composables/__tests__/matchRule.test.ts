@@ -5,6 +5,7 @@ import { makeRule } from '@/types'
 import {
   clearPersistedMatchRuleDraft,
   hydrateRuleForEditor,
+  parseMatchRuleDraft,
   persistMatchRuleEditorState,
 } from '../matchRule'
 
@@ -55,5 +56,35 @@ describe('matchRule editor state', () => {
     expect(hydrated.matchRuleEditorMode).toBe('JSON')
     expect(hydrated.matchRuleDraft).toContain('"type": "GROUP"')
     expect(hydrated.matchRuleDraft).not.toBe('{ invalid json')
+  })
+
+  // why: `type` 写成布尔值时，应先明确提示“必须是字符串”，避免用户误以为只是枚举值写错。
+  it('reports type field type errors before enum errors', () => {
+    const result = parseMatchRuleDraft(
+      '{ "type": false, "negate": false, "operator": "AND", "children": [] }',
+    )
+
+    expect(result.error?.path).toBe('$.type')
+    expect(result.error?.message).toBe('必须是字符串；仅支持 "GROUP"、"PATH"、"TEMPLATE_ID"')
+  })
+
+  // why: `type` 是字符串但值不合法时，提示里也应带上带引号的允许值，保持和其它枚举字段一致。
+  it('reports quoted allowed type values for invalid enum values', () => {
+    const result = parseMatchRuleDraft(
+      '{ "type": "foo", "negate": false, "operator": "AND", "children": [] }',
+    )
+
+    expect(result.error?.path).toBe('$.type')
+    expect(result.error?.message).toBe('仅支持 "GROUP"、"PATH"、"TEMPLATE_ID"')
+  })
+
+  // why: 布尔字段若给成其它类型，也应补充 true / false 提示，和枚举字段的“允许值”风格保持一致。
+  it('reports allowed boolean values for negate type errors', () => {
+    const result = parseMatchRuleDraft(
+      '{ "type": "GROUP", "negate": "yes", "operator": "AND", "children": [] }',
+    )
+
+    expect(result.error?.path).toBe('$.negate')
+    expect(result.error?.message).toBe('必须是布尔值；仅支持 true 或 false')
   })
 })

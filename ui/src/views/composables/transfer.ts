@@ -147,7 +147,7 @@ export function parseSnippetTransfer(raw: string): CodeSnippet {
   const envelope = parseEnvelope<SnippetTransferEnvelope>(raw, 'snippet')
   const data = envelope.data
   if (typeof data.enabled !== 'boolean') {
-    throw new Error('导入失败：`enabled` 必须是布尔值')
+    throw new Error('导入失败：`enabled` 必须是布尔值；仅支持 true 或 false')
   }
   if (typeof data.name !== 'string') {
     throw new Error('导入失败：`name` 必须是字符串')
@@ -170,7 +170,7 @@ export function parseRuleTransfer(raw: string): EditableInjectionRule {
   const envelope = parseEnvelope<RuleTransferEnvelope>(raw, 'rule')
   const data = envelope.data
   if (typeof data.enabled !== 'boolean') {
-    throw new Error('导入失败：`enabled` 必须是布尔值')
+    throw new Error('导入失败：`enabled` 必须是布尔值；仅支持 true 或 false')
   }
   if (typeof data.name !== 'string') {
     throw new Error('导入失败：`name` 必须是字符串')
@@ -178,30 +178,30 @@ export function parseRuleTransfer(raw: string): EditableInjectionRule {
   if (typeof data.description !== 'string') {
     throw new Error('导入失败：`description` 必须是字符串')
   }
-  if (!['HEAD', 'FOOTER', 'ID', 'SELECTOR'].includes(data.mode)) {
-    throw new Error('导入失败：`mode` 不合法')
-  }
+  validateEnumField('mode', data.mode, ['HEAD', 'FOOTER', 'ID', 'SELECTOR'])
   if (typeof data.match !== 'string') {
     throw new Error('导入失败：`match` 必须是字符串')
   }
   if (!isPlainObject(data.matchRule)) {
     throw new Error('导入失败：`matchRule` 必须是对象')
   }
-  if (!['APPEND', 'PREPEND', 'BEFORE', 'AFTER', 'REPLACE', 'REMOVE'].includes(data.position)) {
-    throw new Error('导入失败：`position` 不合法')
-  }
+  validateEnumField('position', data.position, [
+    'APPEND',
+    'PREPEND',
+    'BEFORE',
+    'AFTER',
+    'REPLACE',
+    'REMOVE',
+  ])
   if (typeof data.wrapMarker !== 'boolean') {
-    throw new Error('导入失败：`wrapMarker` 必须是布尔值')
+    throw new Error('导入失败：`wrapMarker` 必须是布尔值；仅支持 true 或 false')
   }
   if (data.matchRuleDraft !== undefined && typeof data.matchRuleDraft !== 'string') {
     throw new Error('导入失败：`matchRuleDraft` 必须是字符串')
   }
-  if (
-    data.matchRuleEditorMode !== undefined &&
-    !['SIMPLE', 'JSON'].includes(data.matchRuleEditorMode)
-  ) {
-    throw new Error('导入失败：`matchRuleEditorMode` 不合法')
-  }
+  validateEnumField('matchRuleEditorMode', data.matchRuleEditorMode, ['SIMPLE', 'JSON'], {
+    required: false,
+  })
   const matchRuleResult = validateMatchRuleObject(data.matchRule, 'data.matchRule')
   if (matchRuleResult.error) {
     throw new Error(`导入失败：${formatMatchRuleError(matchRuleResult.error)}`)
@@ -261,4 +261,29 @@ function sanitizeFileName(name: string) {
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
+function validateEnumField(
+  fieldName: string,
+  value: unknown,
+  allowedValues: readonly string[],
+  options: { required?: boolean } = {},
+) {
+  const quotedAllowedValues = allowedValues.map((item) => `"${item}"`).join('、')
+  const required = options.required ?? true
+
+  if (value === undefined) {
+    if (required) {
+      throw new Error(`导入失败：\`${fieldName}\` 缺少必填字段；仅支持 ${quotedAllowedValues}`)
+    }
+    return
+  }
+
+  if (typeof value !== 'string') {
+    throw new Error(`导入失败：\`${fieldName}\` 必须是字符串；仅支持 ${quotedAllowedValues}`)
+  }
+
+  if (!allowedValues.includes(value)) {
+    throw new Error(`导入失败：\`${fieldName}\` 仅支持 ${quotedAllowedValues}`)
+  }
 }
