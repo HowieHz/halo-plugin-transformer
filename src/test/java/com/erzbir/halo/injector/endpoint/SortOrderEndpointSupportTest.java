@@ -2,8 +2,13 @@ package com.erzbir.halo.injector.endpoint;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ServerWebInputException;
+import run.halo.app.extension.Metadata;
+import com.erzbir.halo.injector.scheme.InjectionRule;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class SortOrderEndpointSupportTest {
@@ -44,10 +49,60 @@ class SortOrderEndpointSupportTest {
         assertThrows(ServerWebInputException.class, () -> support.validate(request, "注入规则").block());
     }
 
+    // why: 排序语义是“重排当前整组资源”，请求若漏掉某条资源，会留下旧顺序残影，必须在写入前直接拒绝。
+    @Test
+    void shouldRejectWhenSortOrderRequestDoesNotCoverAllResources() {
+        SortOrderUpdateRequest request = new SortOrderUpdateRequest();
+        request.setItems(java.util.List.of(item("rule-a", 1)));
+
+        ServerWebInputException error = assertThrows(ServerWebInputException.class,
+                () -> support.validateSnapshotAndArrange(List.of(resource("rule-a"), resource("rule-b")),
+                        request, "注入规则"));
+
+        assertEquals("注入规则排序项必须覆盖当前全部资源", error.getReason());
+    }
+
+    // why: 请求里若带了当前快照中不存在的资源 ID，说明排序基线已经过时，继续写入会把结果拖成半新半旧。
+    @Test
+    void shouldRejectWhenSortOrderRequestContainsUnknownResource() {
+        SortOrderUpdateRequest request = new SortOrderUpdateRequest();
+        request.setItems(java.util.List.of(item("rule-a", 1), item("rule-c", 2)));
+
+        ServerWebInputException error = assertThrows(ServerWebInputException.class,
+                () -> support.validateSnapshotAndArrange(List.of(resource("rule-a"), resource("rule-b")),
+                        request, "注入规则"));
+
+        assertEquals("注入规则不存在：rule-c", error.getReason());
+    }
+
+    // why: 当前快照与请求全集一致时，后端应按请求顺序收敛出完整写入批次，后续才能在统一快照上顺序更新。
+    @Test
+    void shouldArrangeResourcesByRequestedOrder() {
+        SortOrderUpdateRequest request = new SortOrderUpdateRequest();
+        request.setItems(java.util.List.of(item("rule-b", 1), item("rule-a", 2)));
+
+        List<InjectionRule> ordered = support.validateSnapshotAndArrange(
+                List.of(resource("rule-a"), resource("rule-b")),
+                request,
+                "注入规则"
+        );
+
+        assertEquals(List.of("rule-b", "rule-a"),
+                ordered.stream().map(rule -> rule.getMetadata().getName()).toList());
+    }
+
     private SortOrderUpdateRequest.Item item(String id, int sortOrder) {
         SortOrderUpdateRequest.Item item = new SortOrderUpdateRequest.Item();
         item.setId(id);
         item.setSortOrder(sortOrder);
         return item;
+    }
+
+    private InjectionRule resource(String name) {
+        InjectionRule rule = new InjectionRule();
+        Metadata metadata = new Metadata();
+        metadata.setName(name);
+        rule.setMetadata(metadata);
+        return rule;
     }
 }
