@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { Toast, VButton, VModal, VSpace } from '@halo-dev/components'
 import { nextTick, ref, watch } from 'vue'
+import { downloadTransferFile } from '@/views/composables/transfer'
 
 const props = defineProps<{
   fileName: string
@@ -23,6 +24,22 @@ watch(
   { immediate: true },
 )
 
+async function saveAs() {
+  try {
+    await downloadTransferFile({
+      fileName: props.fileName,
+      content: props.content,
+    })
+    Toast.success('导出完成')
+    emit('close')
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      return
+    }
+    Toast.warning('当前环境暂时无法直接保存为文件，请先复制下面的 JSON')
+  }
+}
+
 async function copyAll() {
   try {
     await navigator.clipboard.writeText(props.content)
@@ -37,10 +54,10 @@ async function copyAll() {
 </script>
 
 <template>
-  <VModal title="手动复制 JSON" :width="860" @close="emit('close')">
+  <VModal title="导出 JSON" :width="860" @close="emit('close')">
     <div class=":uno: space-y-3">
       <p class=":uno: text-sm leading-6 text-gray-700">
-        当前环境暂时无法直接保存为文件。你可以先复制下面这份 JSON，再自行保存为
+        你可以预览下面这份 JSON，并选择“复制全部”或“另存为”。 建议文件名为
         <span class=":uno: font-mono text-xs text-gray-500">{{ fileName }}</span>
         。
       </p>
@@ -58,6 +75,7 @@ async function copyAll() {
       <VSpace>
         <VButton @click="emit('close')">关闭</VButton>
         <VButton type="secondary" @click="copyAll">复制全部</VButton>
+        <VButton type="secondary" @click="saveAs">另存为</VButton>
       </VSpace>
     </template>
   </VModal>

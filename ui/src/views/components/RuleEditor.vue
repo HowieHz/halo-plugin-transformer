@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { Toast } from '@halo-dev/components'
 import { computed, ref, watch } from 'vue'
 import type {
   CodeSnippet,
@@ -26,7 +25,6 @@ import { useFieldUndo } from '@/views/composables/useFieldUndo.ts'
 import {
   buildRuleTransfer,
   createTransferFileDraft,
-  downloadTransferFile,
   type TransferFileDraft,
 } from '@/views/composables/transfer.ts'
 
@@ -340,21 +338,11 @@ async function exportRule() {
   if (!currentRule.value) {
     return
   }
-  const draft = createTransferFileDraft(
+  exportFallback.value = createTransferFileDraft(
     buildRuleTransfer(currentRule.value),
     currentRule.value.name || currentRule.value.id || 'injection-rule',
   )
-  try {
-    await downloadTransferFile(draft)
-    Toast.success('导出完成')
-    emit('export')
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      return
-    }
-    exportFallback.value = draft
-    Toast.warning('当前环境暂时无法直接保存，已打开可复制的导出内容')
-  }
+  emit('export')
 }
 </script>
 

@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { Toast } from '@halo-dev/components'
 import type { CodeSnippet, InjectionRule } from '@/types'
 import ItemPicker from './ItemPicker.vue'
 import EditorToolbar from './EditorToolbar.vue'
@@ -13,7 +12,6 @@ import { computed, ref, watch } from 'vue'
 import {
   buildSnippetTransfer,
   createTransferFileDraft,
-  downloadTransferFile,
   type TransferFileDraft,
 } from '@/views/composables/transfer'
 
@@ -142,21 +140,11 @@ async function exportSnippet() {
   if (!props.snippet) {
     return
   }
-  const draft = createTransferFileDraft(
+  exportFallback.value = createTransferFileDraft(
     buildSnippetTransfer(props.snippet),
     props.snippet.name || props.snippet.id || 'code-snippet',
   )
-  try {
-    await downloadTransferFile(draft)
-    Toast.success('导出完成')
-    emit('export')
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      return
-    }
-    exportFallback.value = draft
-    Toast.warning('当前环境暂时无法直接保存，已打开可复制的导出内容')
-  }
+  emit('export')
 }
 </script>
 
