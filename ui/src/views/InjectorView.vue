@@ -403,6 +403,7 @@ function jumpToSnippet(id: string) {
               list-label="代码块列表"
               :reorderable="true"
               :selected-id="selectedSnippetId"
+              :stretch="true"
               empty-text="暂无代码块"
               @reorder="reorderSnippet"
               @create="handleOpenCreateModal('snippets')"
