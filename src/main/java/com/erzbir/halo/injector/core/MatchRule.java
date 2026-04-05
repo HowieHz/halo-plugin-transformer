@@ -46,6 +46,10 @@ public class MatchRule {
         return rule;
     }
 
+    /**
+     * why: 这是运行期的结构有效性快速判断，不应被 Jackson 暴露成 `valid` 字段；
+     * 否则会污染注入规则的 JSON 返回值，并在前端回写时触发未知字段校验。
+     */
     @JsonIgnore
     public boolean isValid() {
         if (type == null) {

@@ -50,6 +50,10 @@ public class InjectionRule extends AbstractExtension implements IInjectionRule {
         return wrapMarker;
     }
 
+    /**
+     * why: 这里只是运行期辅助状态，不应出现在 JSON 模型里；
+     * 否则前端读取后再保存，会把 `valid` 当成真实字段回传，触发严格校验报错。
+     */
     @JsonIgnore
     public boolean isValid() {
         boolean targetValid = !Mode.ID.equals(getMode()) && !Mode.SELECTOR.equals(getMode())

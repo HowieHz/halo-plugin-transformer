@@ -46,6 +46,10 @@ public class CodeSnippet extends AbstractExtension implements ICodeSnippet {
         return name;
     }
 
+    /**
+     * why: 这里只是运行期快速判断，不属于持久化模型字段；
+     * 若被序列化成 `valid` 回给前端，再被原样写回，就会污染写接口 payload。
+     */
     @JsonIgnore
     public boolean isValid() {
         return code != null && !code.isBlank();
