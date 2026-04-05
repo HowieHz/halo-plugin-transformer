@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref, useId, watch } from 'vue'
 import { Dialog, VButton } from '@halo-dev/components'
 import type { MatchRule, MatchRuleEditorMode } from '@/types'
 import { makeMatchRuleGroup } from '@/types'
@@ -35,6 +35,10 @@ const emit = defineEmits<{
 }>()
 
 const jsonDraft = ref(props.draft || formatMatchRule(props.modelValue))
+const editorId = useId()
+const simplePanelId = `match-rule-simple-${editorId}`
+const jsonPanelId = `match-rule-json-${editorId}`
+const jsonErrorId = `match-rule-json-error-${editorId}`
 
 watch(
   () => props.draft,
@@ -205,26 +209,38 @@ function formatJson() {
 <template>
   <div class=":uno: space-y-3">
     <div class=":uno: flex flex-wrap items-center justify-between gap-2">
-      <div class=":uno: inline-flex rounded-md border border-gray-200 bg-gray-50 p-0.5">
+      <div
+        aria-label="匹配规则编辑模式"
+        class=":uno: inline-flex rounded-md border border-gray-200 bg-gray-50 p-0.5"
+        role="tablist"
+      >
         <button
+          :aria-controls="simplePanelId"
           :aria-pressed="currentMode === 'SIMPLE'"
+          :id="`${simplePanelId}-tab`"
+          :tabindex="currentMode === 'SIMPLE' ? 0 : -1"
           :class="
             currentMode === 'SIMPLE'
               ? ':uno: bg-white text-primary shadow-sm'
               : ':uno: text-gray-500'
           "
           class=":uno: rounded px-3 py-1 text-sm transition-colors"
+          role="tab"
           type="button"
           @click="switchMode('SIMPLE')"
         >
           简单模式
         </button>
         <button
+          :aria-controls="jsonPanelId"
           :aria-pressed="currentMode === 'JSON'"
+          :id="`${jsonPanelId}-tab`"
+          :tabindex="currentMode === 'JSON' ? 0 : -1"
           :class="
             currentMode === 'JSON' ? ':uno: bg-white text-primary shadow-sm' : ':uno: text-gray-500'
           "
           class=":uno: rounded px-3 py-1 text-sm transition-colors"
+          role="tab"
           type="button"
           @click="switchMode('JSON')"
         >
@@ -234,6 +250,7 @@ function formatJson() {
 
       <VButton
         v-if="currentMode === 'JSON'"
+        :aria-label="jsonActionLabel"
         :title="jsonActionTitle"
         size="sm"
         type="secondary"
@@ -245,17 +262,29 @@ function formatJson() {
 
     <template v-if="currentMode === 'SIMPLE'">
       <MatchRuleNodeEditor
+        :id="simplePanelId"
+        :aria-labelledby="`${simplePanelId}-tab`"
         :model-value="normalizeMatchRule(modelValue)"
         :validation-error="simpleValidationError"
         root
+        role="tabpanel"
         @change="emit('change')"
         @update:model-value="updateSimple"
       />
     </template>
 
-    <div v-else class=":uno: space-y-2">
+    <div
+      v-else
+      :id="jsonPanelId"
+      :aria-labelledby="`${jsonPanelId}-tab`"
+      class=":uno: space-y-2"
+      role="tabpanel"
+    >
       <textarea
         :value="jsonDraft"
+        :aria-describedby="parseError ? jsonErrorId : undefined"
+        :aria-invalid="!!parseError"
+        aria-label="匹配规则 JSON 编辑器"
         :class="
           parseError
             ? ':uno: border-red-300 focus:border-red-500'
@@ -265,7 +294,15 @@ function formatJson() {
         spellcheck="false"
         @input="updateJsonDraft(($event.target as HTMLTextAreaElement).value)"
       />
-      <p v-if="parseError" class=":uno: text-xs text-red-500">{{ parseError }}</p>
+      <p
+        v-if="parseError"
+        :id="jsonErrorId"
+        aria-live="polite"
+        class=":uno: text-xs text-red-500"
+        role="alert"
+      >
+        {{ parseError }}
+      </p>
     </div>
   </div>
 </template>

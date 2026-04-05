@@ -143,7 +143,9 @@ function hasFieldError(field: 'children' | 'operator' | 'negate' | 'type' | 'mat
 <template>
   <div
     :class="hasNodeError ? ':uno: border-red-300 bg-red-50/40' : ':uno: border-gray-200 bg-white'"
+    :aria-invalid="hasNodeError"
     class=":uno: rounded-md border p-3 space-y-3"
+    role="group"
   >
     <template v-if="isGroup">
       <div class=":uno: flex flex-wrap items-center gap-2">
@@ -152,6 +154,8 @@ function hasFieldError(field: 'children' | 'operator' | 'negate' | 'type' | 'mat
         </span>
         <select
           :value="rule.operator"
+          :aria-invalid="hasFieldError('operator')"
+          aria-label="条件组逻辑"
           :class="
             hasFieldError('operator')
               ? ':uno: border-red-300 focus:border-red-500'
@@ -188,6 +192,7 @@ function hasFieldError(field: 'children' | 'operator' | 'negate' | 'type' | 'mat
         <div v-if="!root" class=":uno: inline-flex items-center gap-1">
           <VButton
             v-if="canMoveUp"
+            aria-label="上移当前条件组"
             class=":uno: min-w-0 px-2"
             size="sm"
             title="上移"
@@ -197,6 +202,7 @@ function hasFieldError(field: 'children' | 'operator' | 'negate' | 'type' | 'mat
           </VButton>
           <VButton
             v-if="canMoveDown"
+            aria-label="下移当前条件组"
             class=":uno: min-w-0 px-2"
             size="sm"
             title="下移"
@@ -207,6 +213,7 @@ function hasFieldError(field: 'children' | 'operator' | 'negate' | 'type' | 'mat
         </div>
         <VButton
           v-if="!root && canRemove !== false"
+          aria-label="移除当前条件组"
           size="sm"
           type="danger"
           @click="emit('remove')"
@@ -243,6 +250,8 @@ function hasFieldError(field: 'children' | 'operator' | 'negate' | 'type' | 'mat
       <div class=":uno: flex flex-wrap items-center gap-2">
         <select
           :value="rule.type"
+          :aria-invalid="hasFieldError('type')"
+          aria-label="匹配规则类型"
           :class="
             hasFieldError('type')
               ? ':uno: border-red-300 focus:border-red-500'
@@ -260,6 +269,8 @@ function hasFieldError(field: 'children' | 'operator' | 'negate' | 'type' | 'mat
 
         <select
           :value="rule.matcher"
+          :aria-invalid="hasFieldError('matcher')"
+          aria-label="匹配方式"
           :class="
             hasFieldError('matcher')
               ? ':uno: border-red-300 focus:border-red-500'
@@ -294,6 +305,7 @@ function hasFieldError(field: 'children' | 'operator' | 'negate' | 'type' | 'mat
         <div v-if="!root" class=":uno: inline-flex items-center gap-1">
           <VButton
             v-if="canMoveUp"
+            aria-label="上移当前匹配条件"
             class=":uno: min-w-0 px-2"
             size="sm"
             title="上移"
@@ -303,6 +315,7 @@ function hasFieldError(field: 'children' | 'operator' | 'negate' | 'type' | 'mat
           </VButton>
           <VButton
             v-if="canMoveDown"
+            aria-label="下移当前匹配条件"
             class=":uno: min-w-0 px-2"
             size="sm"
             title="下移"
@@ -312,13 +325,21 @@ function hasFieldError(field: 'children' | 'operator' | 'negate' | 'type' | 'mat
           </VButton>
         </div>
 
-        <VButton v-if="canRemove !== false" size="sm" type="danger" @click="emit('remove')">
+        <VButton
+          v-if="canRemove !== false"
+          aria-label="移除当前匹配条件"
+          size="sm"
+          type="danger"
+          @click="emit('remove')"
+        >
           移除此条件
         </VButton>
       </div>
 
       <input
         :value="rule.value"
+        :aria-invalid="hasFieldError('value')"
+        aria-label="匹配值"
         :class="
           hasFieldError('value')
             ? ':uno: border-red-300 focus:border-red-500'
@@ -330,7 +351,7 @@ function hasFieldError(field: 'children' | 'operator' | 'negate' | 'type' | 'mat
       />
     </template>
 
-    <p v-if="ownErrorMessage" class=":uno: text-xs text-red-500">
+    <p v-if="ownErrorMessage" aria-live="polite" class=":uno: text-xs text-red-500" role="alert">
       {{ ownErrorMessage }}
     </p>
   </div>

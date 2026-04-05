@@ -10,6 +10,7 @@ defineProps<{
   selectedIds: string[]
   emptyText?: string
   previewFn?: (item: T) => string
+  label?: string
 }>()
 
 const emit = defineEmits<{
@@ -19,7 +20,9 @@ const emit = defineEmits<{
 
 <template>
   <div
+    :aria-label="label ?? '可多选列表'"
     class=":uno: border border-gray-200 rounded-md overflow-y-auto max-h-48 bg-white divide-y divide-gray-100"
+    role="group"
   >
     <div
       v-if="!items.length"
@@ -34,6 +37,7 @@ const emit = defineEmits<{
       class=":uno: flex items-start gap-2 px-3 py-2 cursor-pointer transition-colors"
     >
       <input
+        :aria-label="`选择 ${item.name || item.id}`"
         :checked="selectedIds.includes(item.id)"
         class=":uno: mt-1 shrink-0"
         type="checkbox"

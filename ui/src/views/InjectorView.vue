@@ -400,6 +400,7 @@ function jumpToSnippet(id: string) {
             <ItemListV
               v-else-if="activeTab === 'snippets'"
               :items="snippets"
+              list-label="代码块列表"
               :reorderable="true"
               :selected-id="selectedSnippetId"
               empty-text="暂无代码块"
@@ -411,6 +412,7 @@ function jumpToSnippet(id: string) {
             <ItemListV
               v-else
               :items="rules"
+              list-label="注入规则列表"
               :reorderable="true"
               :selected-id="selectedRuleId"
               :stretch="true"

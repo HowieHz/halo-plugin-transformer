@@ -119,6 +119,11 @@ const buttonStyle = computed(() => {
 
 <template>
   <button
+    :aria-label="
+      pressing && progress > 0
+        ? '继续长按可撤销全部修改'
+        : '撤销本字段的上一步修改，长按可撤销全部修改'
+    "
     :class="buttonStateClass"
     :style="buttonStyle"
     class=":uno: relative overflow-hidden rounded border px-2 py-0.5 text-xs transition-colors hover:border-gray-300 hover:text-gray-700"

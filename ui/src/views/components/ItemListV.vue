@@ -8,12 +8,13 @@ import StatusDot from './StatusDot.vue'
 
 type ReorderPlacement = 'before' | 'after'
 
-defineProps<{
+const props = defineProps<{
   items: T[]
   selectedId?: string | null
   emptyText?: string
   stretch?: boolean
   reorderable?: boolean
+  listLabel?: string
 }>()
 
 const emit = defineEmits<{
@@ -83,13 +84,45 @@ function handleDrop(event: DragEvent, id: string) {
   }
   emit('reorder', { sourceId, targetId: id, placement })
 }
+
+function handleSelect(id: string) {
+  emit('select', id)
+}
+
+function handleItemKeydown(event: KeyboardEvent, id: string) {
+  if (event.key !== 'Enter' && event.key !== ' ') {
+    return
+  }
+  event.preventDefault()
+  handleSelect(id)
+}
+
+function handleReorderButtonKeydown(event: KeyboardEvent, index: number) {
+  if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') {
+    return
+  }
+  event.preventDefault()
+  const target = props.items[index + (event.key === 'ArrowUp' ? -1 : 1)]
+  if (!target) {
+    return
+  }
+  emit('reorder', {
+    sourceId: props.items[index].id,
+    targetId: target.id,
+    placement: event.key === 'ArrowUp' ? 'before' : 'after',
+  })
+}
 </script>
 
 <template>
   <div :class="stretch ? ':uno: flex-1 overflow-y-auto' : ''">
     <slot name="placeholder" />
 
-    <ul class=":uno: divide-y divide-gray-100">
+    <ul
+      :aria-label="props.listLabel ?? '资源列表'"
+      class=":uno: divide-y divide-gray-100"
+      role="listbox"
+    >
       <li
         v-if="!items.length"
         class=":uno: flex flex-col items-center justify-center gap-3 py-10 px-4"
@@ -101,11 +134,15 @@ function handleDrop(event: DragEvent, id: string) {
       <li
         v-for="(item, index) in items"
         :key="item.id"
+        :aria-selected="selectedId !== undefined && selectedId === item.id"
         :class="draggingId === item.id ? ':uno: opacity-60' : ''"
-        class=":uno: relative cursor-pointer group"
+        class=":uno: relative cursor-pointer group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+        role="option"
+        tabindex="0"
         @dragover="handleDragOver($event, item.id)"
         @drop="handleDrop($event, item.id)"
-        @click="emit('select', item.id)"
+        @click="handleSelect(item.id)"
+        @keydown="handleItemKeydown($event, item.id)"
       >
         <div
           v-if="selectedId !== undefined && selectedId === item.id"
@@ -129,12 +166,14 @@ function handleDrop(event: DragEvent, id: string) {
               <button
                 v-if="reorderable && items.length > 1"
                 :aria-label="`拖动排序：${item.name || item.id}`"
+                aria-keyshortcuts="ArrowUp ArrowDown"
                 class=":uno: inline-flex h-5 w-5 shrink-0 cursor-grab active:cursor-grabbing items-center justify-center rounded text-sm leading-none tracking-[-0.2em] text-gray-400 transition hover:text-gray-600"
                 draggable="true"
-                title="按住拖动排序"
+                title="按住拖动排序；聚焦后可用上下方向键调整顺序"
                 @click.stop
                 @dragend="clearDragState"
                 @dragstart.stop="handleDragStart($event, item.id)"
+                @keydown.stop="handleReorderButtonKeydown($event, index)"
                 @mousedown.stop
               >
                 ⋮⋮

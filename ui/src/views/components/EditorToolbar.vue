@@ -19,10 +19,24 @@ const emit = defineEmits<{
   >
     <h2 class=":uno: text-gray-900 font-semibold text-sm">{{ title }}</h2>
     <VSpace v-if="showActions">
-      <VButton size="sm" @click="emit('toggle-enabled')">
+      <VButton
+        :aria-label="enabled ? '禁用当前内容' : '启用当前内容'"
+        :aria-pressed="enabled"
+        :title="enabled ? '当前已启用，点击后禁用' : '当前已停用，点击后启用'"
+        size="sm"
+        @click="emit('toggle-enabled')"
+      >
         {{ enabled ? '禁用' : '启用' }}
       </VButton>
-      <VButton size="sm" type="danger" @click="emit('delete')">删除</VButton>
+      <VButton
+        aria-label="删除当前内容"
+        size="sm"
+        title="删除当前内容"
+        type="danger"
+        @click="emit('delete')"
+      >
+        删除
+      </VButton>
     </VSpace>
   </div>
 </template>

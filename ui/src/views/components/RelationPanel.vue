@@ -40,6 +40,7 @@ const emit = defineEmits<{
         <ItemListV
           v-if="selectedSnippetId"
           :items="rulesUsingSnippet"
+          list-label="引用当前代码块的规则列表"
           empty-text="该代码块暂未被任何规则引用, 请在编辑面板中添加"
           @select="emit('jump-to-rule', $event)"
         >
@@ -67,6 +68,7 @@ const emit = defineEmits<{
         <ItemListV
           v-if="selectedRuleId"
           :items="snippetsInRule"
+          list-label="当前规则关联的代码块列表"
           empty-text="该规则暂未关联代码块, 请在编辑面板中添加"
           @select="emit('jump-to-snippet', $event)"
         >

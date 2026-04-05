@@ -44,24 +44,27 @@ const selectableRules = computed(() => props.rules.filter((rule) => rule.positio
 <template>
   <BaseFormModal :saving="saving" title="新建代码块" @close="emit('close')" @submit="handleSubmit">
     <template #form>
-      <FormField label="名称">
+      <FormField v-slot="{ inputId }" label="名称">
         <input
+          :id="inputId"
           v-model="snippet.name"
           class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
           placeholder="不填默认为 ID"
         />
       </FormField>
 
-      <FormField label="描述">
+      <FormField v-slot="{ inputId }" label="描述">
         <input
+          :id="inputId"
           v-model="snippet.description"
           class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
           placeholder="说明此代码块的用途"
         />
       </FormField>
 
-      <FormField label="代码内容" required>
+      <FormField v-slot="{ inputId }" label="代码内容" required>
         <textarea
+          :id="inputId"
           v-model="snippet.code"
           autofocus
           class=":uno: w-full rounded-md border border-gray-200 px-3 py-2 text-xs font-mono focus:border-primary focus:outline-none resize-none"
@@ -79,6 +82,7 @@ const selectableRules = computed(() => props.rules.filter((rule) => rule.positio
       </div>
       <ItemPicker
         :items="selectableRules"
+        label="关联规则选择列表"
         :preview-fn="rulePreview"
         :selected-ids="selectedRuleIds"
         empty-text="暂无规则, 请先创建"

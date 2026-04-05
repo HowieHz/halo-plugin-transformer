@@ -148,8 +148,9 @@ function resetField(field: 'name' | 'description' | 'ruleIds' | 'code') {
       class=":uno: flex-1 overflow-y-auto px-4 py-4 space-y-4"
       @submit.prevent="emit('save')"
     >
-      <FormField label="ID">
+      <FormField v-slot="{ inputId }" label="ID">
         <input
+          :id="inputId"
           :value="snippet.id"
           class=":uno: w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-mono text-gray-400 cursor-default"
           readonly
@@ -160,24 +161,30 @@ function resetField(field: 'name' | 'description' | 'ruleIds' | 'code') {
         <template v-if="canUndo('name')" #actions>
           <FieldUndoButton @reset="resetField('name')" @undo="undoField('name')" />
         </template>
-        <input
-          :value="snippet.name"
-          class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
-          placeholder="不填默认为 ID"
-          @change="updateField('name', ($event.target as HTMLInputElement).value)"
-        />
+        <template #default="{ inputId }">
+          <input
+            :id="inputId"
+            :value="snippet.name"
+            class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+            placeholder="不填默认为 ID"
+            @change="updateField('name', ($event.target as HTMLInputElement).value)"
+          />
+        </template>
       </FormField>
 
       <FormField label="描述">
         <template v-if="canUndo('description')" #actions>
           <FieldUndoButton @reset="resetField('description')" @undo="undoField('description')" />
         </template>
-        <input
-          :value="snippet.description"
-          class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
-          placeholder="说明此代码块的用途"
-          @change="updateField('description', ($event.target as HTMLInputElement).value)"
-        />
+        <template #default="{ inputId }">
+          <input
+            :id="inputId"
+            :value="snippet.description"
+            class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+            placeholder="说明此代码块的用途"
+            @change="updateField('description', ($event.target as HTMLInputElement).value)"
+          />
+        </template>
       </FormField>
 
       <FormField label="关联规则">
@@ -187,12 +194,13 @@ function resetField(field: 'name' | 'description' | 'ruleIds' | 'code') {
         <template #default>
           <div class=":uno: flex items-center justify-between mb-1">
             <span />
-            <span class=":uno: text-xs text-gray-400"
+            <span aria-live="polite" class=":uno: text-xs text-gray-400"
               >{{ visibleSelectedRuleIds.length }} 个已选</span
             >
           </div>
           <ItemPicker
             :items="sortedRules"
+            label="关联规则选择列表"
             :preview-fn="rulePreview"
             :selected-ids="visibleSelectedRuleIds"
             empty-text="暂无规则, 请先创建"
@@ -205,14 +213,17 @@ function resetField(field: 'name' | 'description' | 'ruleIds' | 'code') {
         <template v-if="canUndo('code')" #actions>
           <FieldUndoButton @reset="resetField('code')" @undo="undoField('code')" />
         </template>
-        <textarea
-          :value="snippet.code"
-          class=":uno: w-full rounded-md border border-gray-200 px-3 py-2 text-xs font-mono focus:border-primary focus:outline-none resize-none"
-          placeholder="输入 HTML 代码"
-          rows="10"
-          spellcheck="false"
-          @change="updateField('code', ($event.target as HTMLTextAreaElement).value)"
-        />
+        <template #default="{ inputId }">
+          <textarea
+            :id="inputId"
+            :value="snippet.code"
+            class=":uno: w-full rounded-md border border-gray-200 px-3 py-2 text-xs font-mono focus:border-primary focus:outline-none resize-none"
+            placeholder="输入 HTML 代码"
+            rows="10"
+            spellcheck="false"
+            @change="updateField('code', ($event.target as HTMLTextAreaElement).value)"
+          />
+        </template>
       </FormField>
 
       <EditorFooter :dirty="dirty" :saving="saving" @save="emit('save')" />

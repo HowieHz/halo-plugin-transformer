@@ -59,24 +59,27 @@ function handleSubmit() {
     @submit="handleSubmit"
   >
     <template #form>
-      <FormField label="名称">
+      <FormField v-slot="{ inputId }" label="名称">
         <input
+          :id="inputId"
           v-model="rule.name"
           class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
           placeholder="不填默认为 ID"
         />
       </FormField>
 
-      <FormField label="描述">
+      <FormField v-slot="{ inputId }" label="描述">
         <input
+          :id="inputId"
           v-model="rule.description"
           class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
           placeholder="说明此规则的用途"
         />
       </FormField>
 
-      <FormField label="注入模式" required>
+      <FormField v-slot="{ inputId }" label="注入模式" required>
         <select
+          :id="inputId"
           v-model="rule.mode"
           class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none bg-white"
           @wheel="updateSelectByWheel"
@@ -86,16 +89,22 @@ function handleSubmit() {
       </FormField>
 
       <template v-if="needsTarget">
-        <FormField :label="rule.mode === 'SELECTOR' ? 'CSS 选择器' : '元素 ID'" required>
+        <FormField
+          v-slot="{ inputId }"
+          :label="rule.mode === 'SELECTOR' ? 'CSS 选择器' : '元素 ID'"
+          required
+        >
           <input
+            :id="inputId"
             v-model="rule.match"
             :placeholder="rule.mode === 'SELECTOR' ? 'div[class=content]' : 'main-content'"
             class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm font-mono focus:border-primary focus:outline-none"
           />
         </FormField>
 
-        <FormField label="插入位置">
+        <FormField v-slot="{ inputId }" label="插入位置">
           <select
+            :id="inputId"
             v-model="rule.position"
             class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none bg-white"
             @wheel="updateSelectByWheel"
@@ -107,23 +116,26 @@ function handleSubmit() {
         </FormField>
       </template>
 
-      <FormField v-if="needsWrapMarker">
+      <FormField v-if="needsWrapMarker" v-slot="{ inputId }">
         <label class=":uno: inline-flex items-center gap-2 text-sm text-gray-700">
-          <input v-model="rule.wrapMarker" type="checkbox" />
+          <input :id="inputId" v-model="rule.wrapMarker" type="checkbox" />
           输出注释标记
         </label>
       </FormField>
 
-      <FormField label="匹配规则" required>
-        <MatchRuleEditor
-          :draft="rule.matchRuleDraft"
-          :editor-mode="rule.matchRuleEditorMode"
-          :model-value="rule.matchRule"
-          @change="void 0"
-          @update:state="Object.assign(rule, $event)"
-        />
+      <FormField v-slot="{ inputId, labelId }" label="匹配规则" required>
+        <div :id="inputId" :aria-labelledby="labelId">
+          <MatchRuleEditor
+            :draft="rule.matchRuleDraft"
+            :editor-mode="rule.matchRuleEditorMode"
+            :model-value="rule.matchRule"
+            @change="void 0"
+            @update:state="Object.assign(rule, $event)"
+          />
+        </div>
         <div
           v-if="performanceWarning"
+          aria-live="polite"
           class=":uno: mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800"
         >
           {{ performanceWarning }}
@@ -138,6 +150,7 @@ function handleSubmit() {
       </div>
       <ItemPicker
         :items="snippets"
+        label="关联代码块选择列表"
         :selected-ids="selectedSnippetIds"
         empty-text="暂无代码块, 请先创建"
         @toggle="toggleSnippet"
