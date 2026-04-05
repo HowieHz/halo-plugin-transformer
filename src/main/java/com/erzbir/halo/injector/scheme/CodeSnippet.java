@@ -1,6 +1,8 @@
 package com.erzbir.halo.injector.scheme;
 
 import com.erzbir.halo.injector.core.ICodeSnippet;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -23,6 +25,8 @@ public class CodeSnippet extends AbstractExtension implements ICodeSnippet {
     private Boolean enabled = true;
     private Integer sortOrder;
     private Set<String> ruleIds = new LinkedHashSet<>();
+    @JsonIgnore
+    private final Set<String> unknownFields = new LinkedHashSet<>();
 
     @Override
     public boolean isEnabled() {
@@ -44,5 +48,10 @@ public class CodeSnippet extends AbstractExtension implements ICodeSnippet {
 
     public boolean isValid() {
         return code != null && !code.isBlank();
+    }
+
+    @JsonAnySetter
+    public void recordUnknownField(String key, Object ignoredValue) {
+        unknownFields.add(key);
     }
 }

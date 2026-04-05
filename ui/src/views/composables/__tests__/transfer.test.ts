@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseRuleTransfer } from '../transfer'
+import { parseRuleTransfer, parseSnippetTransfer } from '../transfer'
 
 describe('parseRuleTransfer', () => {
   // why: 导入时若只是把字段名写错，应丢弃错键并回退到该类型的默认匹配方式，避免整份 JSON 直接失效。
@@ -197,6 +197,61 @@ describe('parseRuleTransfer', () => {
     })
 
     expect(() => parseRuleTransfer(raw)).toThrow(
+      '导入失败：`enabled` 必须是布尔值；仅支持 true 或 false',
+    )
+  })
+})
+
+describe('parseSnippetTransfer', () => {
+  // why: 代码块导入若缺少可补默认值的字段，应直接补默认值，让用户先导入再继续编辑。
+  it('fills missing snippet fields with defaults during import', () => {
+    const raw = JSON.stringify({
+      format: 'halo-plugin-injector',
+      version: 1,
+      resourceType: 'snippet',
+      data: {},
+    })
+
+    const snippet = parseSnippetTransfer(raw)
+
+    expect(snippet).toMatchObject({
+      enabled: true,
+      name: '',
+      description: '',
+      code: '',
+    })
+  })
+
+  // why: 代码块导入也不应静默吞掉未知字段，否则用户会以为自己导入成功了完整模板。
+  it('rejects unknown snippet fields during import', () => {
+    const raw = JSON.stringify({
+      format: 'halo-plugin-injector',
+      version: 1,
+      resourceType: 'snippet',
+      data: {
+        enabled: true,
+        code: '<div></div>',
+        extraField: 'ignored?',
+      },
+    })
+
+    expect(() => parseSnippetTransfer(raw)).toThrow(
+      '导入失败：`extraField` 不支持；代码块仅支持 "enabled"、"name"、"description"、"code"',
+    )
+  })
+
+  // why: 代码块布尔字段也要和注入规则导入一样，给出 true / false 提示。
+  it('reports allowed boolean values for snippet import booleans', () => {
+    const raw = JSON.stringify({
+      format: 'halo-plugin-injector',
+      version: 1,
+      resourceType: 'snippet',
+      data: {
+        enabled: 'yes',
+      },
+    })
+
+    expect(() => parseSnippetTransfer(raw)).toThrow(
       '导入失败：`enabled` 必须是布尔值；仅支持 true 或 false',
     )
   })

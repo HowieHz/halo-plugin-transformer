@@ -55,7 +55,11 @@ async function handleImport(event: Event) {
   try {
     snippet.value = parseSnippetTransfer(await file.text())
     selectedRuleIds.value = []
-    Toast.success('已导入代码块 JSON')
+    if (!snippet.value.code.trim()) {
+      Toast.warning('已导入代码块 JSON，但当前内容仍有错误：代码内容不能为空')
+    } else {
+      Toast.success('已导入代码块 JSON')
+    }
   } catch (error) {
     Toast.error(error instanceof Error ? error.message : '导入失败')
   } finally {

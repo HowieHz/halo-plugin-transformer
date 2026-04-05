@@ -152,29 +152,46 @@ export async function downloadTransferFile(draft: TransferFileDraft) {
 export function parseSnippetTransfer(raw: string): CodeSnippet {
   const envelope = parseEnvelope<SnippetTransferEnvelope>(raw, 'snippet')
   const data = envelope.data
-  if (typeof data.enabled !== 'boolean') {
+  ensureAllowedFields(data, ['enabled', 'name', 'description', 'code'], '代码块')
+  if (data.enabled !== undefined && typeof data.enabled !== 'boolean') {
     throw new Error('导入失败：`enabled` 必须是布尔值；仅支持 true 或 false')
   }
-  if (typeof data.name !== 'string') {
+  if (data.name !== undefined && typeof data.name !== 'string') {
     throw new Error('导入失败：`name` 必须是字符串')
   }
-  if (typeof data.description !== 'string') {
+  if (data.description !== undefined && typeof data.description !== 'string') {
     throw new Error('导入失败：`description` 必须是字符串')
   }
-  if (typeof data.code !== 'string') {
+  if (data.code !== undefined && typeof data.code !== 'string') {
     throw new Error('导入失败：`code` 必须是字符串')
   }
   return makeSnippet({
-    enabled: data.enabled,
-    name: data.name,
-    description: data.description,
-    code: data.code,
+    enabled: typeof data.enabled === 'boolean' ? data.enabled : true,
+    name: typeof data.name === 'string' ? data.name : '',
+    description: typeof data.description === 'string' ? data.description : '',
+    code: typeof data.code === 'string' ? data.code : '',
   })
 }
 
 export function parseRuleTransfer(raw: string): EditableInjectionRule {
   const envelope = parseEnvelope<RuleTransferEnvelope>(raw, 'rule')
   const data = envelope.data
+  ensureAllowedFields(
+    data,
+    [
+      'enabled',
+      'name',
+      'description',
+      'mode',
+      'match',
+      'matchRule',
+      'position',
+      'wrapMarker',
+      'matchRuleDraft',
+      'matchRuleEditorMode',
+    ],
+    '注入规则',
+  )
   if (typeof data.enabled !== 'boolean') {
     throw new Error('导入失败：`enabled` 必须是布尔值；仅支持 true 或 false')
   }
@@ -310,4 +327,19 @@ function validateEnumField(
 
 function shouldFallbackToJsonMode(error: MatchRuleValidationError) {
   return error.path === 'data.matchRule.type' || error.path.endsWith('.type')
+}
+
+function ensureAllowedFields(
+  data: object,
+  allowedFields: readonly string[],
+  resourceLabel: string,
+) {
+  const invalidField = Object.keys(data).find((key) => !allowedFields.includes(key))
+  if (!invalidField) {
+    return
+  }
+  const quotedAllowedFields = allowedFields.map((field) => `"${field}"`).join('、')
+  throw new Error(
+    `导入失败：\`${invalidField}\` 不支持；${resourceLabel}仅支持 ${quotedAllowedFields}`,
+  )
 }
