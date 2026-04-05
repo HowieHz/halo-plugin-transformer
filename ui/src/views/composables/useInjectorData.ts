@@ -107,6 +107,18 @@ export function useInjectorData() {
     return uniqueStrings(ruleIds).filter((ruleId) => allowedRuleIds.has(ruleId))
   }
 
+  /**
+   * why: `id` 只是前端编辑态里便于选中和显示的派生字段，不属于代码块扩展对象本身；
+   * 写回后端时必须剔除，避免被严格字段校验当成脏数据拦下。
+   */
+  function _makeSnippetPayload(snippet: CodeSnippet, ruleIds?: string[]) {
+    const { id: _id, ...payload } = snippet
+    return {
+      ...payload,
+      ruleIds: ruleIds ?? payload.ruleIds,
+    }
+  }
+
   function _nextSortOrder(items: Array<{ sortOrder?: number }>) {
     return items.reduce((max, item) => Math.max(max, item.sortOrder ?? 0), 0) + 1
   }
@@ -258,7 +270,7 @@ export function useInjectorData() {
         const updatedIds = shouldHave
           ? uniqueStrings([...(snippet.ruleIds ?? []), ruleId])
           : (snippet.ruleIds ?? []).filter((id) => id !== ruleId)
-        await snippetApi.update(snippet.id, { ...snippet, ruleIds: updatedIds })
+        await snippetApi.update(snippet.id, _makeSnippetPayload(snippet, updatedIds))
       }),
     )
   }
@@ -323,7 +335,7 @@ export function useInjectorData() {
     }
     creating.value = true
     try {
-      const res = await snippetApi.add({ ...nextSnippet, ruleIds: nextRuleIds })
+      const res = await snippetApi.add(_makeSnippetPayload(nextSnippet, nextRuleIds))
       const id = res.data.id
       if (nextRuleIds.length) await _applySnippetRuleSelection(id, nextRuleIds)
       await fetchAll()
@@ -386,7 +398,7 @@ export function useInjectorData() {
     const nextRuleIds = _normalizeSnippetRuleIds(editSnippetRuleIds.value)
     savingEditor.value = true
     try {
-      await snippetApi.update(currentSnippet.id, { ...currentSnippet, ruleIds: nextRuleIds })
+      await snippetApi.update(currentSnippet.id, _makeSnippetPayload(currentSnippet, nextRuleIds))
       await _applySnippetRuleSelection(currentSnippet.id, nextRuleIds)
       await fetchAll()
       editDirty.value = false
@@ -434,7 +446,7 @@ export function useInjectorData() {
     const nextEnabled = !editSnippet.value.enabled
     try {
       editSnippet.value.enabled = nextEnabled
-      await snippetApi.update(editSnippet.value.id, editSnippet.value)
+      await snippetApi.update(editSnippet.value.id, _makeSnippetPayload(editSnippet.value))
       await fetchAll()
     } catch (error) {
       editSnippet.value.enabled = !nextEnabled

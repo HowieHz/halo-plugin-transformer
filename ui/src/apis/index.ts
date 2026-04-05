@@ -15,16 +15,18 @@ interface SortOrderItem {
   sortOrder: number
 }
 
+type CodeSnippetWritePayload = Omit<CodeSnippet, 'id'>
+
 export const snippetApi = {
   list() {
     return axiosInstance.get<ItemList<CodeSnippet>>(SNIPPETS)
   },
 
-  add(snippet: CodeSnippet) {
+  add(snippet: CodeSnippetWritePayload) {
     return axiosInstance.post<CodeSnippet>(SNIPPETS_WRITE, snippet)
   },
 
-  update(id: string, snippet: CodeSnippet) {
+  update(id: string, snippet: CodeSnippetWritePayload) {
     return axiosInstance.put<CodeSnippet>(`${SNIPPETS_WRITE}/${id}`, snippet)
   },
 
