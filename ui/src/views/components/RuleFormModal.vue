@@ -71,7 +71,12 @@ async function handleImport(event: Event) {
   try {
     rule.value = parseRuleTransfer(await file.text())
     selectedSnippetIds.value = []
-    Toast.success('已导入注入规则 JSON')
+    const importedValidationError = resolveImportedRuleValidationError(rule.value)
+    if (importedValidationError) {
+      Toast.warning(`已导入注入规则 JSON，但当前内容仍有错误：${importedValidationError}`)
+    } else {
+      Toast.success('已导入注入规则 JSON')
+    }
   } catch (error) {
     Toast.error(error instanceof Error ? error.message : '导入失败')
   } finally {
@@ -79,11 +84,14 @@ async function handleImport(event: Event) {
   }
 }
 
-const validationError = computed(() => {
-  if ((rule.value.mode === 'SELECTOR' || rule.value.mode === 'ID') && !rule.value.match.trim()) {
+function resolveImportedRuleValidationError(importedRule: EditableInjectionRule) {
+  if (
+    (importedRule.mode === 'SELECTOR' || importedRule.mode === 'ID') &&
+    !importedRule.match.trim()
+  ) {
     return '请填写匹配内容'
   }
-  const result = resolveRuleMatchRule(rule.value)
+  const result = resolveRuleMatchRule(importedRule)
   if (result.error) {
     return `匹配规则有误：${formatMatchRuleError(result.error)}`
   }
@@ -91,6 +99,10 @@ const validationError = computed(() => {
     return '请完善匹配规则'
   }
   return null
+}
+
+const validationError = computed(() => {
+  return resolveImportedRuleValidationError(rule.value)
 })
 
 const dirty = computed(() => {

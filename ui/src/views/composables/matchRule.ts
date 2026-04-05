@@ -25,6 +25,13 @@ export interface MatchRuleParseResult {
   error: MatchRuleValidationError | null
 }
 
+interface MatchRuleValidationOptions {
+  requireGroupRoot: boolean
+  allowEmptyGroup: boolean
+  allowEmptyValue: boolean
+  allowInvalidRegex: boolean
+}
+
 const MATCH_RULE_EDITOR_STATE_KEY = 'plugin-injector:match-rule-editor-state'
 
 interface StoredMatchRuleEditorState {
@@ -95,7 +102,12 @@ export function parseMatchRuleDraft(draft?: string | null): MatchRuleParseResult
     }
   }
   try {
-    return validateMatchRuleInput(JSON.parse(draft), '$', true)
+    return validateMatchRuleInput(JSON.parse(draft), '$', {
+      requireGroupRoot: true,
+      allowEmptyGroup: false,
+      allowEmptyValue: false,
+      allowInvalidRegex: false,
+    })
   } catch (error) {
     return {
       rule: null,
@@ -114,15 +126,25 @@ export function validateMatchRuleTree(rule: MatchRule | null | undefined): Match
       },
     }
   }
-  return validateMatchRuleInput(JSON.parse(JSON.stringify(rule)) as unknown, '$', true)
+  return validateMatchRuleInput(JSON.parse(JSON.stringify(rule)) as unknown, '$', {
+    requireGroupRoot: true,
+    allowEmptyGroup: false,
+    allowEmptyValue: false,
+    allowInvalidRegex: false,
+  })
 }
 
 /**
- * why: 导入场景拿到的是原始对象而不是编辑器里的强类型树；
- * 这里复用与高级模式相同的严格校验，避免把错误结构静默归一化后再悄悄导入。
+ * why: 导入场景需要拦住会破坏编辑器结构的坏数据，
+ * 但像空组、空值、非法 regex 这类“导入后仍可在界面里继续修改”的问题，应允许带入并继续修正。
  */
 export function validateMatchRuleObject(input: unknown, path = 'matchRule'): MatchRuleParseResult {
-  return validateMatchRuleInput(input, path, true)
+  return validateMatchRuleInput(input, path, {
+    requireGroupRoot: true,
+    allowEmptyGroup: true,
+    allowEmptyValue: true,
+    allowInvalidRegex: true,
+  })
 }
 
 export function hydrateRuleForEditor(rule: InjectionRule): EditableInjectionRule {
@@ -281,7 +303,7 @@ export function formatMatchRuleError(error: MatchRuleValidationError | null): st
 function validateMatchRuleInput(
   input: unknown,
   path: string,
-  requireGroupRoot: boolean,
+  options: MatchRuleValidationOptions,
 ): MatchRuleParseResult {
   if (!isObject(input)) {
     return invalid(path, '必须是对象')
@@ -296,7 +318,7 @@ function validateMatchRuleInput(
     return invalid(`${path}.negate`, '必须是布尔值')
   }
 
-  if (requireGroupRoot && type !== 'GROUP') {
+  if (options.requireGroupRoot && type !== 'GROUP') {
     return invalid(`${path}.type`, '根节点必须是 GROUP')
   }
 
@@ -307,7 +329,7 @@ function validateMatchRuleInput(
     if (!Array.isArray(input.children)) {
       return invalid(`${path}.children`, '必须是数组')
     }
-    if (!input.children.length) {
+    if (!input.children.length && !options.allowEmptyGroup) {
       return invalid(`${path}.children`, '不能有空组')
     }
 
@@ -316,7 +338,10 @@ function validateMatchRuleInput(
       const childResult = validateMatchRuleInput(
         input.children[index],
         `${path}.children[${index}]`,
-        false,
+        {
+          ...options,
+          requireGroupRoot: false,
+        },
       )
       if (childResult.error) {
         return childResult
@@ -341,7 +366,10 @@ function validateMatchRuleInput(
     return invalid(`${path}.children`, '仅条件组可使用 children')
   }
 
-  if (input.value === undefined || typeof input.value !== 'string' || !input.value.trim()) {
+  if (input.value === undefined || typeof input.value !== 'string') {
+    return invalid(`${path}.value`, '必须是字符串')
+  }
+  if (!input.value.trim() && !options.allowEmptyValue) {
     return invalid(`${path}.value`, '必须是非空字符串')
   }
 
@@ -354,7 +382,7 @@ function validateMatchRuleInput(
     ) {
       return invalid(`${path}.matcher`, '仅支持 ANT、REGEX、EXACT')
     }
-    if (input.matcher === 'REGEX') {
+    if (input.matcher === 'REGEX' && !options.allowInvalidRegex) {
       const regexError = validateRegexValue(input.value, `${path}.value`)
       if (regexError) return regexError
     }
@@ -371,7 +399,7 @@ function validateMatchRuleInput(
   if (input.matcher !== undefined && input.matcher !== 'REGEX' && input.matcher !== 'EXACT') {
     return invalid(`${path}.matcher`, '模板 ID 仅支持 REGEX 或 EXACT')
   }
-  if (input.matcher === 'REGEX') {
+  if (input.matcher === 'REGEX' && !options.allowInvalidRegex) {
     const regexError = validateRegexValue(input.value, `${path}.value`)
     if (regexError) return regexError
   }
