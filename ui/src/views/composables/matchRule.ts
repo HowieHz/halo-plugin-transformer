@@ -40,13 +40,6 @@ const GROUP_ALLOWED_KEYS = ['type', 'negate', 'operator', 'children'] as const
 const PATH_ALLOWED_KEYS = ['type', 'negate', 'matcher', 'value'] as const
 const TEMPLATE_ALLOWED_KEYS = ['type', 'negate', 'matcher', 'value'] as const
 
-const MATCH_RULE_EDITOR_STATE_KEY = 'plugin-injector:match-rule-editor-state'
-
-interface StoredMatchRuleEditorState {
-  draft?: string
-  editorMode?: MatchRuleEditorMode
-}
-
 /**
  * why: 编辑器需要“可随意修改的草稿副本”，避免直接改动响应式源对象时把未保存状态提前污染到列表数据。
  */
@@ -167,57 +160,29 @@ export function validateMatchRuleObject(input: unknown, path = 'matchRule'): Mat
 
 export function hydrateRuleForEditor(rule: InjectionRuleViewModel): EditableInjectionRule {
   const matchRule = normalizeMatchRule(rule.matchRule)
-  const storedState = readStoredMatchRuleEditorState(rule.id)
-  const draft =
-    typeof storedState?.draft === 'string' && storedState.draft.trim()
-      ? storedState.draft
-      : formatMatchRule(matchRule)
   return {
     ...rule,
     matchRule,
-    matchRuleDraft: draft,
-    matchRuleEditorMode: storedState?.editorMode ?? 'SIMPLE',
+    matchRuleDraft: formatMatchRule(matchRule),
+    matchRuleEditorMode: 'SIMPLE',
   }
 }
 
 /**
- * why: 匹配规则的简单/高级模式和 JSON 草稿是纯前端编辑态，
- * 不应写入后端模型；这里按规则 ID 落在本地，保证刷新后仍能恢复用户刚才的编辑视图。
+ * why: 刷新页面应回到已保存内容，而不是恢复未保存草稿；
+ * 因此前端不再持久化匹配规则编辑器状态，这里保留空实现仅用于调用方复用。
  */
 export function persistMatchRuleEditorState(
-  rule: Pick<InjectionRuleViewModel, 'id'> & InjectionRuleEditorState,
-) {
-  if (!rule.id || typeof window === 'undefined') {
-    return
-  }
-
-  const stateMap = readStoredMatchRuleEditorStateMap()
-  stateMap[rule.id] = {
-    draft: rule.matchRuleDraft,
-    editorMode: rule.matchRuleEditorMode ?? 'SIMPLE',
-  }
-  window.localStorage.setItem(MATCH_RULE_EDITOR_STATE_KEY, JSON.stringify(stateMap))
-}
+  _rule: Pick<InjectionRuleViewModel, 'id'> & InjectionRuleEditorState,
+) {}
 
 /**
- * why: “放弃未保存修改”后应回到已保存内容；这里只清空本地 JSON 草稿，
- * 同时保留当前编辑模式，避免用户回来看时仍被旧的错误草稿覆盖。
+ * why: 既然不再持久化编辑器状态，放弃修改时也无需再清理本地草稿。
  */
 export function clearPersistedMatchRuleDraft(
-  ruleId: string,
-  editorMode: MatchRuleEditorMode = 'SIMPLE',
-) {
-  if (!ruleId || typeof window === 'undefined') {
-    return
-  }
-
-  const stateMap = readStoredMatchRuleEditorStateMap()
-  stateMap[ruleId] = {
-    draft: '',
-    editorMode,
-  }
-  window.localStorage.setItem(MATCH_RULE_EDITOR_STATE_KEY, JSON.stringify(stateMap))
-}
+  _ruleId: string,
+  _editorMode: MatchRuleEditorMode = 'SIMPLE',
+) {}
 
 export function resolveRuleMatchRule(
   rule: InjectionRuleViewModel & Partial<InjectionRuleEditorState>,
@@ -631,30 +596,5 @@ function buildJsonSyntaxError(draft: string, error: unknown): MatchRuleValidatio
     message,
     line: lines.length,
     column: lines[lines.length - 1].length + 1,
-  }
-}
-
-function readStoredMatchRuleEditorState(ruleId: string): StoredMatchRuleEditorState | null {
-  if (!ruleId) {
-    return null
-  }
-  const stateMap = readStoredMatchRuleEditorStateMap()
-  return stateMap[ruleId] ?? null
-}
-
-function readStoredMatchRuleEditorStateMap(): Record<string, StoredMatchRuleEditorState> {
-  if (typeof window === 'undefined') {
-    return {}
-  }
-
-  try {
-    const raw = window.localStorage.getItem(MATCH_RULE_EDITOR_STATE_KEY)
-    if (!raw) {
-      return {}
-    }
-    const parsed = JSON.parse(raw)
-    return isObject(parsed) ? (parsed as Record<string, StoredMatchRuleEditorState>) : {}
-  } catch {
-    return {}
   }
 }
