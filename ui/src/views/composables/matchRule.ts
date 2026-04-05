@@ -31,6 +31,8 @@ interface MatchRuleValidationOptions {
   allowEmptyValue: boolean
   allowInvalidRegex: boolean
   allowIncompatibleMatcher: boolean
+  allowUnknownKeys: boolean
+  allowMissingRequiredKeys: boolean
 }
 
 const GROUP_ALLOWED_KEYS = ['type', 'negate', 'operator', 'children'] as const
@@ -113,6 +115,8 @@ export function parseMatchRuleDraft(draft?: string | null): MatchRuleParseResult
       allowEmptyValue: false,
       allowInvalidRegex: false,
       allowIncompatibleMatcher: false,
+      allowUnknownKeys: false,
+      allowMissingRequiredKeys: false,
     })
   } catch (error) {
     return {
@@ -138,12 +142,15 @@ export function validateMatchRuleTree(rule: MatchRule | null | undefined): Match
     allowEmptyValue: false,
     allowInvalidRegex: false,
     allowIncompatibleMatcher: false,
+    allowUnknownKeys: false,
+    allowMissingRequiredKeys: false,
   })
 }
 
 /**
  * why: 导入场景需要拦住会破坏编辑器结构的坏数据，
- * 但像空组、空值、非法 regex 这类“导入后仍可在界面里继续修改”的问题，应允许带入并继续修正。
+ * 同时对“写错字段名”与“漏填可补默认值的字段”做宽松归一化：
+ * 错键直接丢弃，缺键补默认值；但像非法根节点类型这类会破坏结构的问题，仍然直接拒绝导入。
  */
 export function validateMatchRuleObject(input: unknown, path = 'matchRule'): MatchRuleParseResult {
   return validateMatchRuleInput(input, path, {
@@ -152,6 +159,8 @@ export function validateMatchRuleObject(input: unknown, path = 'matchRule'): Mat
     allowEmptyValue: true,
     allowInvalidRegex: true,
     allowIncompatibleMatcher: true,
+    allowUnknownKeys: true,
+    allowMissingRequiredKeys: true,
   })
 }
 
@@ -185,6 +194,26 @@ export function persistMatchRuleEditorState(
   stateMap[rule.id] = {
     draft: rule.matchRuleDraft,
     editorMode: rule.matchRuleEditorMode ?? 'SIMPLE',
+  }
+  window.localStorage.setItem(MATCH_RULE_EDITOR_STATE_KEY, JSON.stringify(stateMap))
+}
+
+/**
+ * why: “放弃未保存修改”后应回到已保存内容；这里只清空本地 JSON 草稿，
+ * 同时保留当前编辑模式，避免用户回来看时仍被旧的错误草稿覆盖。
+ */
+export function clearPersistedMatchRuleDraft(
+  ruleId: string,
+  editorMode: MatchRuleEditorMode = 'SIMPLE',
+) {
+  if (!ruleId || typeof window === 'undefined') {
+    return
+  }
+
+  const stateMap = readStoredMatchRuleEditorStateMap()
+  stateMap[ruleId] = {
+    draft: '',
+    editorMode,
   }
   window.localStorage.setItem(MATCH_RULE_EDITOR_STATE_KEY, JSON.stringify(stateMap))
 }
@@ -332,16 +361,16 @@ function validateMatchRuleInput(
 
   if (type === 'GROUP') {
     const unknownKey = findUnknownKey(input, GROUP_ALLOWED_KEYS)
-    if (unknownKey) {
+    if (unknownKey && !options.allowUnknownKeys) {
       return invalid(
         `${path}.${unknownKey}`,
         '不支持该字段；条件组仅支持 "type"、"negate"、"operator"、"children"',
       )
     }
-    if (!hasOwnKey(input, 'operator')) {
+    if (!hasOwnKey(input, 'operator') && !options.allowMissingRequiredKeys) {
       return invalid(`${path}.operator`, '缺少必填字段；仅支持 "AND" 或 "OR"')
     }
-    if (!hasOwnKey(input, 'children')) {
+    if (!hasOwnKey(input, 'children') && !options.allowMissingRequiredKeys) {
       return invalid(`${path}.children`, '缺少必填字段')
     }
     if (input.operator !== undefined && typeof input.operator !== 'string') {
@@ -350,23 +379,20 @@ function validateMatchRuleInput(
     if (input.operator !== undefined && input.operator !== 'AND' && input.operator !== 'OR') {
       return invalid(`${path}.operator`, '仅支持 "AND" 或 "OR"')
     }
-    if (!Array.isArray(input.children)) {
+    if (hasOwnKey(input, 'children') && !Array.isArray(input.children)) {
       return invalid(`${path}.children`, '必须是数组')
     }
-    if (!input.children.length && !options.allowEmptyGroup) {
+    const rawChildren = Array.isArray(input.children) ? input.children : [makePathMatchRule()]
+    if (!rawChildren.length && !options.allowEmptyGroup) {
       return invalid(`${path}.children`, '不能有空组')
     }
 
     const children: MatchRule[] = []
-    for (let index = 0; index < input.children.length; index += 1) {
-      const childResult = validateMatchRuleInput(
-        input.children[index],
-        `${path}.children[${index}]`,
-        {
-          ...options,
-          requireGroupRoot: false,
-        },
-      )
+    for (let index = 0; index < rawChildren.length; index += 1) {
+      const childResult = validateMatchRuleInput(rawChildren[index], `${path}.children[${index}]`, {
+        ...options,
+        requireGroupRoot: false,
+      })
       if (childResult.error) {
         return childResult
       }
@@ -391,7 +417,7 @@ function validateMatchRuleInput(
   }
   const allowedKeys = type === 'PATH' ? PATH_ALLOWED_KEYS : TEMPLATE_ALLOWED_KEYS
   const unknownKey = findUnknownKey(input, allowedKeys)
-  if (unknownKey) {
+  if (unknownKey && !options.allowUnknownKeys) {
     return invalid(
       `${path}.${unknownKey}`,
       type === 'PATH'
@@ -399,7 +425,7 @@ function validateMatchRuleInput(
         : '不支持该字段；模板 ID 条件仅支持 "type"、"negate"、"matcher"、"value"',
     )
   }
-  if (!hasOwnKey(input, 'matcher')) {
+  if (!hasOwnKey(input, 'matcher') && !options.allowMissingRequiredKeys) {
     return invalid(
       `${path}.matcher`,
       type === 'PATH'
@@ -407,18 +433,20 @@ function validateMatchRuleInput(
         : '缺少必填字段；仅支持 "REGEX" 或 "EXACT"',
     )
   }
-  if (!hasOwnKey(input, 'value')) {
+  if (!hasOwnKey(input, 'value') && !options.allowMissingRequiredKeys) {
     return invalid(`${path}.value`, '缺少必填字段')
   }
 
-  if (input.value === undefined || typeof input.value !== 'string') {
+  if (hasOwnKey(input, 'value') && typeof input.value !== 'string') {
     return invalid(`${path}.value`, '必须是字符串')
   }
-  if (!input.value.trim() && !options.allowEmptyValue) {
+  if (typeof input.value === 'string' && !input.value.trim() && !options.allowEmptyValue) {
     return invalid(`${path}.value`, '必须是非空字符串')
   }
 
   if (type === 'PATH') {
+    const normalizedValue = typeof input.value === 'string' ? input.value.trim() : '/**'
+
     if (input.matcher !== undefined && typeof input.matcher !== 'string') {
       return invalid(`${path}.matcher`, '必须是字符串；仅支持 "ANT"、"REGEX"、"EXACT"')
     }
@@ -433,18 +461,20 @@ function validateMatchRuleInput(
       }
     }
     if (input.matcher === 'REGEX' && !options.allowInvalidRegex) {
-      const regexError = validateRegexValue(input.value, `${path}.value`)
+      const regexError = validateRegexValue(normalizedValue, `${path}.value`)
       if (regexError) return regexError
     }
     return {
       rule: makePathMatchRule({
         negate: input.negate === true,
         matcher: input.matcher === 'REGEX' || input.matcher === 'EXACT' ? input.matcher : 'ANT',
-        value: input.value.trim(),
+        value: normalizedValue,
       }),
       error: null,
     }
   }
+
+  const normalizedValue = typeof input.value === 'string' ? input.value.trim() : 'post'
 
   if (input.matcher !== undefined && typeof input.matcher !== 'string') {
     return invalid(`${path}.matcher`, '必须是字符串；仅支持 "REGEX" 或 "EXACT"')
@@ -455,7 +485,7 @@ function validateMatchRuleInput(
     }
   }
   if (input.matcher === 'REGEX' && !options.allowInvalidRegex) {
-    const regexError = validateRegexValue(input.value, `${path}.value`)
+    const regexError = validateRegexValue(normalizedValue, `${path}.value`)
     if (regexError) return regexError
   }
 
@@ -463,7 +493,7 @@ function validateMatchRuleInput(
     rule: makeTemplateMatchRule({
       negate: input.negate === true,
       matcher: input.matcher === 'REGEX' ? 'REGEX' : 'EXACT',
-      value: input.value.trim(),
+      value: normalizedValue,
     }),
     error: null,
   }

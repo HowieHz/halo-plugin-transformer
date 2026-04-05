@@ -5,6 +5,7 @@ import { ruleApi, snippetApi } from '@/apis'
 import type { CodeSnippet, EditableInjectionRule, InjectionRule, ItemList } from '@/types'
 import { sortBySortOrder, uniqueStrings } from './util'
 import {
+  clearPersistedMatchRuleDraft,
   formatMatchRuleError,
   hydrateRuleForEditor,
   isValidMatchRule,
@@ -539,6 +540,12 @@ export function useInjectorData() {
   }
 
   function discardRuleEdit() {
+    if (editRule.value?.id) {
+      clearPersistedMatchRuleDraft(
+        editRule.value.id,
+        editRule.value.matchRuleEditorMode ?? 'SIMPLE',
+      )
+    }
     _syncEditRule()
   }
 
