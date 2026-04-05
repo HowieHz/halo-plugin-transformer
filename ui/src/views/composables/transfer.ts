@@ -5,7 +5,7 @@ import {
   type EditableInjectionRule,
   type MatchRuleEditorMode,
 } from '@/types'
-import { cloneMatchRule, normalizeMatchRule } from './matchRule'
+import { cloneMatchRule, formatMatchRuleError, validateMatchRuleObject } from './matchRule'
 
 type TransferResourceType = 'snippet' | 'rule'
 
@@ -202,13 +202,17 @@ export function parseRuleTransfer(raw: string): EditableInjectionRule {
   ) {
     throw new Error('导入失败：`matchRuleEditorMode` 不合法')
   }
+  const matchRuleResult = validateMatchRuleObject(data.matchRule, 'data.matchRule')
+  if (matchRuleResult.error) {
+    throw new Error(`导入失败：${formatMatchRuleError(matchRuleResult.error)}`)
+  }
   return makeRule({
     enabled: data.enabled,
     name: data.name,
     description: data.description,
     mode: data.mode,
     match: data.match,
-    matchRule: normalizeMatchRule(data.matchRule),
+    matchRule: matchRuleResult.rule!,
     position: data.position,
     wrapMarker: data.wrapMarker,
     matchRuleDraft: data.matchRuleDraft,

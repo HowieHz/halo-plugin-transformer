@@ -22,6 +22,7 @@ const emit = defineEmits<{
 const snippet = ref<CodeSnippet>(makeSnippet())
 const selectedRuleIds = ref<string[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
+const initialSnippet = makeSnippet()
 
 onMounted(reset)
 
@@ -31,7 +32,7 @@ function reset() {
 }
 
 function toggleRule(id: string) {
-  const ids = snippet.value.ruleIds ?? []
+  const ids = selectedRuleIds.value
   const idx = ids.indexOf(id)
   if (idx === -1) selectedRuleIds.value.push(id)
   else selectedRuleIds.value.splice(idx, 1)
@@ -63,6 +64,40 @@ async function handleImport(event: Event) {
 }
 
 const selectableRules = computed(() => props.rules.filter((rule) => rule.position !== 'REMOVE'))
+const validationError = computed(() => (!snippet.value.code.trim() ? '代码内容不能为空' : null))
+const dirty = computed(() => {
+  return (
+    snippet.value.enabled !== initialSnippet.enabled ||
+    snippet.value.name !== initialSnippet.name ||
+    snippet.value.description !== initialSnippet.description ||
+    snippet.value.code !== initialSnippet.code ||
+    selectedRuleIds.value.length > 0
+  )
+})
+
+function hasUnsavedChanges() {
+  return dirty.value
+}
+
+function getValidationError() {
+  return validationError.value
+}
+
+function getSubmitPayload() {
+  return {
+    snippet: {
+      ...snippet.value,
+    },
+    ruleIds: [...selectedRuleIds.value],
+  }
+}
+
+defineExpose({
+  reset,
+  hasUnsavedChanges,
+  getValidationError,
+  getSubmitPayload,
+})
 </script>
 
 <template>

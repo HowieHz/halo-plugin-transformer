@@ -117,6 +117,14 @@ export function validateMatchRuleTree(rule: MatchRule | null | undefined): Match
   return validateMatchRuleInput(JSON.parse(JSON.stringify(rule)) as unknown, '$', true)
 }
 
+/**
+ * why: 导入场景拿到的是原始对象而不是编辑器里的强类型树；
+ * 这里复用与高级模式相同的严格校验，避免把错误结构静默归一化后再悄悄导入。
+ */
+export function validateMatchRuleObject(input: unknown, path = 'matchRule'): MatchRuleParseResult {
+  return validateMatchRuleInput(input, path, true)
+}
+
 export function hydrateRuleForEditor(rule: InjectionRule): EditableInjectionRule {
   const matchRule = normalizeMatchRule(rule.matchRule)
   const storedState = readStoredMatchRuleEditorState(rule.id)

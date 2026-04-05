@@ -22,6 +22,7 @@ import RuleEditor from './components/RuleEditor.vue'
 import RelationPanel from './components/RelationPanel.vue'
 import SnippetFormModal from './components/SnippetFormModal.vue'
 import RuleFormModal from './components/RuleFormModal.vue'
+import type { CodeSnippet, EditableInjectionRule } from '@/types'
 
 const activeTab = ref<ActiveTab>('snippets')
 const route = useRoute()
@@ -30,6 +31,18 @@ const router = useRouter()
 const showSnippetModal = ref(false)
 const showRuleModal = ref(false)
 const syncingQuery = ref(false)
+const snippetFormRef = ref<{
+  reset: () => void
+  hasUnsavedChanges: () => boolean
+  getValidationError: () => string | null
+  getSubmitPayload: () => { snippet: CodeSnippet; ruleIds: string[] }
+} | null>(null)
+const ruleFormRef = ref<{
+  reset: () => void
+  hasUnsavedChanges: () => boolean
+  getValidationError: () => string | null
+  getSubmitPayload: () => { rule: EditableInjectionRule; snippetIds: string[] }
+} | null>(null)
 
 const {
   loading,
@@ -188,15 +201,43 @@ function closeRuleModal() {
   showRuleModal.value = false
 }
 
+function currentCreateController() {
+  if (showSnippetModal.value) return snippetFormRef.value
+  if (showRuleModal.value) return ruleFormRef.value
+  return null
+}
+
+function hasUnsavedCreateChanges() {
+  return currentCreateController()?.hasUnsavedChanges() ?? false
+}
+
 function hasUnsavedEditorChanges() {
   return editDirty.value && !!(activeTab.value === 'snippets' ? editSnippet.value : editRule.value)
 }
 
-function currentEditorValidationError() {
+function hasUnsavedChanges() {
+  return hasUnsavedCreateChanges() || hasUnsavedEditorChanges()
+}
+
+function currentValidationError() {
+  if (showSnippetModal.value) {
+    return snippetFormRef.value?.getValidationError() ?? null
+  }
+  if (showRuleModal.value) {
+    return ruleFormRef.value?.getValidationError() ?? null
+  }
   return activeTab.value === 'snippets' ? snippetEditorError.value : ruleEditorError.value
 }
 
-function discardCurrentEditorChanges() {
+function discardCurrentChanges() {
+  if (showSnippetModal.value) {
+    snippetFormRef.value?.reset()
+    return
+  }
+  if (showRuleModal.value) {
+    ruleFormRef.value?.reset()
+    return
+  }
   if (activeTab.value === 'snippets') {
     discardSnippetEdit()
     return
@@ -218,23 +259,38 @@ async function runPendingLeaveAction() {
 }
 
 function requestEditorLeave(action: () => void | Promise<void>) {
-  if (!hasUnsavedEditorChanges()) {
+  if (!hasUnsavedChanges()) {
     void action()
     return
   }
 
   pendingLeaveAction.value = action
-  leaveConfirmCanSave.value = !currentEditorValidationError()
+  leaveConfirmCanSave.value = !currentValidationError()
   leaveConfirmVisible.value = true
 }
 
 async function confirmDiscardAndLeave() {
-  discardCurrentEditorChanges()
+  discardCurrentChanges()
   await runPendingLeaveAction()
 }
 
 async function confirmSaveAndLeave() {
-  const saved = activeTab.value === 'snippets' ? await saveSnippet() : await saveRule()
+  let saved = false
+  if (showSnippetModal.value) {
+    const payload = snippetFormRef.value?.getSubmitPayload()
+    saved = payload ? !!(await addSnippet(payload.snippet, payload.ruleIds)) : false
+    if (saved) {
+      showSnippetModal.value = false
+    }
+  } else if (showRuleModal.value) {
+    const payload = ruleFormRef.value?.getSubmitPayload()
+    saved = payload ? !!(await addRule(payload.rule, payload.snippetIds)) : false
+    if (saved) {
+      showRuleModal.value = false
+    }
+  } else {
+    saved = activeTab.value === 'snippets' ? await saveSnippet() : await saveRule()
+  }
   if (!saved) {
     return
   }
@@ -352,16 +408,18 @@ function jumpToSnippet(id: string) {
 
     <SnippetFormModal
       v-if="showSnippetModal"
+      ref="snippetFormRef"
       :rules="rules"
       :saving="creating"
-      @close="closeSnippetModal"
+      @close="requestEditorLeave(closeSnippetModal)"
       @submit="handleAddSnippet"
     />
     <RuleFormModal
       v-if="showRuleModal"
+      ref="ruleFormRef"
       :saving="creating"
       :snippets="snippets"
-      @close="closeRuleModal"
+      @close="requestEditorLeave(closeRuleModal)"
       @submit="handleAddRule"
     />
 

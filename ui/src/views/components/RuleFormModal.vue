@@ -8,7 +8,12 @@ import {
   MODE_OPTIONS,
   POSITION_OPTIONS,
 } from '@/types'
-import { getDomRulePerformanceWarning } from '@/views/composables/matchRule'
+import {
+  formatMatchRuleError,
+  getDomRulePerformanceWarning,
+  isValidMatchRule,
+  resolveRuleMatchRule,
+} from '@/views/composables/matchRule'
 import BaseFormModal from './BaseFormModal.vue'
 import ItemPicker from './ItemPicker.vue'
 import FormField from './FormField.vue'
@@ -29,6 +34,7 @@ const emit = defineEmits<{
 const rule = ref<EditableInjectionRule>(makeRule())
 const selectedSnippetIds = ref<string[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
+const initialRule = makeRule()
 
 onMounted(reset)
 
@@ -72,6 +78,76 @@ async function handleImport(event: Event) {
     input.value = ''
   }
 }
+
+const validationError = computed(() => {
+  if ((rule.value.mode === 'SELECTOR' || rule.value.mode === 'ID') && !rule.value.match.trim()) {
+    return '请填写匹配内容'
+  }
+  const result = resolveRuleMatchRule(rule.value)
+  if (result.error) {
+    return `匹配规则有误：${formatMatchRuleError(result.error)}`
+  }
+  if (!isValidMatchRule(result.rule)) {
+    return '请完善匹配规则'
+  }
+  return null
+})
+
+const dirty = computed(() => {
+  return (
+    JSON.stringify({
+      enabled: rule.value.enabled,
+      name: rule.value.name,
+      description: rule.value.description,
+      mode: rule.value.mode,
+      match: rule.value.match,
+      matchRule: rule.value.matchRule,
+      position: rule.value.position,
+      wrapMarker: rule.value.wrapMarker,
+      matchRuleDraft: rule.value.matchRuleDraft,
+      matchRuleEditorMode: rule.value.matchRuleEditorMode,
+      snippetIds: selectedSnippetIds.value,
+    }) !==
+    JSON.stringify({
+      enabled: initialRule.enabled,
+      name: initialRule.name,
+      description: initialRule.description,
+      mode: initialRule.mode,
+      match: initialRule.match,
+      matchRule: initialRule.matchRule,
+      position: initialRule.position,
+      wrapMarker: initialRule.wrapMarker,
+      matchRuleDraft: initialRule.matchRuleDraft,
+      matchRuleEditorMode: initialRule.matchRuleEditorMode,
+      snippetIds: [],
+    })
+  )
+})
+
+function hasUnsavedChanges() {
+  return dirty.value
+}
+
+function getValidationError() {
+  return validationError.value
+}
+
+function getSubmitPayload() {
+  return {
+    rule: {
+      ...rule.value,
+      matchRule: JSON.parse(JSON.stringify(rule.value.matchRule)),
+    },
+    snippetIds: [...selectedSnippetIds.value],
+  }
+}
+
+defineExpose({
+  reset,
+  hasUnsavedChanges,
+  getValidationError,
+  getSubmitPayload,
+})
 </script>
 
 <template>
