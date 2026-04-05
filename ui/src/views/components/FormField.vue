@@ -4,6 +4,7 @@ import { computed, useId } from 'vue'
 const props = defineProps<{
   label?: string
   required?: boolean
+  invalid?: boolean
 }>()
 
 const fieldId = useId()
@@ -21,7 +22,8 @@ const labelId = computed(() => `field-label-${fieldId}`)
         v-if="label"
         :for="inputId"
         :id="labelId"
-        class=":uno: text-xs font-medium text-gray-600"
+        :class="props.invalid ? ':uno: text-red-600' : ':uno: text-gray-600'"
+        class=":uno: text-xs font-medium"
       >
         {{ props.label }}
         <span v-if="required" class=":uno: text-red-500">*</span>

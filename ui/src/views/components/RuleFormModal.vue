@@ -223,6 +223,7 @@ defineExpose({
       <template v-if="needsTarget">
         <FormField
           v-slot="{ inputId }"
+          :invalid="!!matchFieldError"
           :label="rule.mode === 'SELECTOR' ? 'CSS 选择器' : '元素 ID'"
           required
         >
@@ -234,7 +235,7 @@ defineExpose({
               :placeholder="rule.mode === 'SELECTOR' ? 'div[class=content]' : 'main-content'"
               :class="
                 matchFieldError
-                  ? ':uno: border-red-300 focus:border-red-500'
+                  ? ':uno: border-red-300 bg-red-50/40 focus:border-red-500'
                   : ':uno: border-gray-200 focus:border-primary'
               "
               class=":uno: w-full rounded-md border px-3 py-1.5 text-sm font-mono focus:outline-none"

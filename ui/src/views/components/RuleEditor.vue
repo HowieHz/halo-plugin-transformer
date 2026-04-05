@@ -57,11 +57,13 @@ const needsTarget = computed(
 )
 const needsSnippets = computed(() => currentRule.value?.position !== 'REMOVE')
 const needsWrapMarker = computed(() => currentRule.value?.position !== 'REMOVE')
+const matchDraft = ref('')
+const matchInitialValue = ref('')
 const matchFieldError = computed(() => {
   if (!needsTarget.value || !currentRule.value) {
     return null
   }
-  return currentRule.value.match.trim() ? null : '请填写匹配内容'
+  return matchDraft.value.trim() ? null : '请填写匹配内容'
 })
 const performanceWarning = computed(() =>
   currentRule.value ? getDomRulePerformanceWarning(currentRule.value) : null,
@@ -73,6 +75,14 @@ watch(
   () => {
     pendingRule.value = null
   },
+)
+
+watch(
+  () => currentRule.value?.match,
+  (value) => {
+    matchDraft.value = value ?? ''
+  },
+  { immediate: true },
 )
 
 watch(
@@ -185,6 +195,23 @@ function handleToggleSnippet(snippetId: string) {
     : [...previous, snippetId]
   undo.trackChange('snippetIds', previous, next)
   emit('toggle-snippet', snippetId)
+}
+
+function beginMatchEdit() {
+  matchInitialValue.value = currentRule.value?.match ?? matchDraft.value
+}
+
+function handleMatchInput(event: Event) {
+  const value = (event.target as HTMLInputElement).value
+  matchDraft.value = value
+  updateField('match', value as InjectionRule['match'], { trackHistory: false })
+}
+
+function commitMatchDraft() {
+  if (matchInitialValue.value === matchDraft.value) {
+    return
+  }
+  undo.trackChange('match', matchInitialValue.value, matchDraft.value)
 }
 
 function canUndo(
@@ -433,7 +460,11 @@ async function exportRule() {
         </FormField>
 
         <template v-if="needsTarget">
-          <FormField :label="currentRule.mode === 'SELECTOR' ? 'CSS 选择器' : '元素 ID'" required>
+          <FormField
+            :invalid="!!matchFieldError"
+            :label="currentRule.mode === 'SELECTOR' ? 'CSS 选择器' : '元素 ID'"
+            required
+          >
             <template v-if="canUndo('match')" #actions>
               <FieldUndoButton @reset="resetField('match')" @undo="undoField('match')" />
             </template>
@@ -445,14 +476,16 @@ async function exportRule() {
                   :placeholder="
                     currentRule.mode === 'SELECTOR' ? 'div[class=content]' : 'main-content'
                   "
-                  :value="currentRule.match"
+                  :value="matchDraft"
                   :class="
                     matchFieldError
-                      ? ':uno: border-red-300 focus:border-red-500'
+                      ? ':uno: border-red-300 bg-red-50/40 focus:border-red-500'
                       : ':uno: border-gray-200 focus:border-primary'
                   "
                   class=":uno: w-full rounded-md border px-3 py-1.5 text-sm font-mono focus:outline-none"
-                  @change="updateField('match', ($event.target as HTMLInputElement).value)"
+                  @focus="beginMatchEdit"
+                  @input="handleMatchInput"
+                  @change="commitMatchDraft"
                 />
                 <p
                   v-if="matchFieldError"
