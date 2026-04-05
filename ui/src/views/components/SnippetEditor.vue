@@ -191,6 +191,7 @@ async function exportSnippet() {
 
     <EditorToolbar
       :enabled="snippet?.enabled"
+      :id-text="snippet?.id"
       :show-export="!!snippet"
       :show-actions="!!snippet"
       :title="snippet ? '编辑代码块' : '代码块'"
@@ -205,15 +206,6 @@ async function exportSnippet() {
 
     <form v-else class=":uno: min-h-0 flex flex-1 flex-col" @submit.prevent="emit('save')">
       <div class=":uno: min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-4">
-        <FormField v-slot="{ inputId }" label="ID">
-          <input
-            :id="inputId"
-            :value="snippet.id"
-            class=":uno: w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-mono text-gray-400 cursor-default"
-            readonly
-          />
-        </FormField>
-
         <FormField label="名称">
           <template v-if="canUndo('name')" #actions>
             <FieldUndoButton @reset="resetField('name')" @undo="undoField('name')" />

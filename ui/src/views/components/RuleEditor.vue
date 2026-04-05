@@ -363,6 +363,7 @@ async function exportRule() {
 
     <EditorToolbar
       :enabled="currentRule?.enabled"
+      :id-text="currentRule?.id"
       :show-export="!!currentRule"
       :show-actions="!!currentRule"
       :title="currentRule ? '编辑规则' : '注入规则'"
@@ -377,15 +378,6 @@ async function exportRule() {
 
     <form v-else class=":uno: min-h-0 flex flex-1 flex-col" @submit.prevent="emit('save')">
       <div class=":uno: min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-4">
-        <FormField v-slot="{ inputId }" label="ID">
-          <input
-            :id="inputId"
-            :value="currentRule.id"
-            class=":uno: w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-mono text-gray-400 cursor-default"
-            readonly
-          />
-        </FormField>
-
         <FormField label="名称">
           <template v-if="canUndo('name')" #actions>
             <FieldUndoButton @reset="resetField('name')" @undo="undoField('name')" />
