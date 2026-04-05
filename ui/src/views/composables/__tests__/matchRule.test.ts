@@ -7,6 +7,7 @@ import {
   hydrateRuleForEditor,
   parseMatchRuleDraft,
   resolveRuleMatchRule,
+  validateSimpleMatchRuleTree,
 } from '../matchRule'
 
 describe('matchRule editor state', () => {
@@ -113,5 +114,30 @@ describe('matchRule editor state', () => {
     })
 
     expect(getDomRulePerformanceWarning(rule)).toBeNull()
+  })
+
+  // why: 简单模式应一次收集所有可定位错误，避免用户修完一个后才看到同层或子层的下一个错误。
+  it('collects multiple simple mode errors at the same time', () => {
+    const result = validateSimpleMatchRuleTree({
+      type: 'GROUP',
+      negate: false,
+      operator: 'AND',
+      children: [
+        { type: 'PATH', negate: false, matcher: 'ANT', value: '' },
+        {
+          type: 'GROUP',
+          negate: false,
+          operator: 'AND',
+          children: [],
+        },
+      ],
+    })
+
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        { path: '$.children[0].value', message: '必须是非空字符串' },
+        { path: '$.children[1].children', message: '不能有空组' },
+      ]),
+    )
   })
 })

@@ -9,7 +9,7 @@ import {
   type MatchRuleValidationError,
   normalizeMatchRule,
   parseMatchRuleDraft,
-  validateMatchRuleTree,
+  validateSimpleMatchRuleTree,
 } from '@/views/composables/matchRule'
 import MatchRuleNodeEditor from './MatchRuleNodeEditor.vue'
 
@@ -68,11 +68,8 @@ const currentMode = computed(() => props.editorMode ?? 'SIMPLE')
 const parseResult = computed(() => parseMatchRuleDraft(jsonDraft.value))
 const parseError = computed(() => formatMatchRuleError(parseResult.value.error))
 const jsonLines = computed(() => jsonDraft.value.split('\n'))
-const simpleValidateResult = computed(() =>
-  validateMatchRuleTree(normalizeMatchRule(props.modelValue)),
-)
-const simpleValidationError = computed<MatchRuleValidationError | null>(
-  () => simpleValidateResult.value.error,
+const simpleValidationErrors = computed<MatchRuleValidationError[]>(
+  () => validateSimpleMatchRuleTree(normalizeMatchRule(props.modelValue)).errors,
 )
 const jsonActionLabel = computed(() => (parseResult.value.error ? '重建 JSON' : '格式化 JSON'))
 const jsonActionTitle = computed(() =>
@@ -158,7 +155,7 @@ function getModeSwitchWarning(mode: MatchRuleEditorMode) {
     }
   }
 
-  if (currentMode.value === 'SIMPLE' && mode === 'JSON' && simpleValidateResult.value.error) {
+  if (currentMode.value === 'SIMPLE' && mode === 'JSON' && simpleValidationErrors.value.length) {
     return {
       title: '切换到高级模式',
       description: `已检测到当前简单模式有错误。
@@ -440,7 +437,7 @@ function tokenizeJson(text: string) {
         :id="simplePanelId"
         :aria-labelledby="`${simplePanelId}-tab`"
         :model-value="normalizeMatchRule(modelValue)"
-        :validation-error="simpleValidationError"
+        :validation-errors="simpleValidationErrors"
         root
         role="tabpanel"
         @change="emit('change')"

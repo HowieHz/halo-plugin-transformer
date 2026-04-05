@@ -25,7 +25,7 @@ const props = defineProps<{
   canMoveUp?: boolean
   canMoveDown?: boolean
   path?: string
-  validationError?: MatchRuleValidationError | null
+  validationErrors?: MatchRuleValidationError[] | null
 }>()
 
 const emit = defineEmits<{
@@ -57,24 +57,24 @@ const valuePlaceholder = computed(() => {
   }
   return 'index'
 })
-const ownErrorPath = computed(() => {
-  const errorPath = props.validationError?.path
-  if (!errorPath) {
-    return null
-  }
+const ownErrors = computed(() => {
+  const errors = props.validationErrors ?? []
   const prefix = `${currentPath.value}.`
-  if (!errorPath.startsWith(prefix)) {
-    return errorPath === currentPath.value ? errorPath : null
-  }
-  const suffix = errorPath.slice(prefix.length)
-  return ['children', 'operator', 'negate', 'type', 'matcher', 'value'].includes(suffix)
-    ? errorPath
-    : null
+  return errors.filter((error) => {
+    const errorPath = error.path
+    if (!errorPath) {
+      return false
+    }
+    if (!errorPath.startsWith(prefix)) {
+      return errorPath === currentPath.value
+    }
+    const suffix = errorPath.slice(prefix.length)
+    return ['children', 'operator', 'negate', 'type', 'matcher', 'value'].includes(suffix)
+  })
 })
-const ownErrorMessage = computed(() =>
-  ownErrorPath.value ? (props.validationError?.message ?? '') : '',
-)
-const hasNodeError = computed(() => !!ownErrorPath.value)
+const ownErrorPaths = computed(() => new Set(ownErrors.value.map((error) => error.path)))
+const ownErrorMessages = computed(() => ownErrors.value.map((error) => error.message))
+const hasNodeError = computed(() => ownErrors.value.length > 0)
 
 function updateRule(next: MatchRule) {
   emit('update:modelValue', next)
@@ -151,7 +151,7 @@ function switchLeafType(type: 'PATH' | 'TEMPLATE_ID') {
 }
 
 function hasFieldError(field: 'children' | 'operator' | 'negate' | 'type' | 'matcher' | 'value') {
-  return ownErrorPath.value === `${currentPath.value}.${field}`
+  return ownErrorPaths.value.has(`${currentPath.value}.${field}`)
 }
 </script>
 
@@ -246,7 +246,7 @@ function hasFieldError(field: 'children' | 'operator' | 'negate' | 'type' | 'mat
           :can-remove="true"
           :model-value="child"
           :path="`${currentPath}.children[${index}]`"
-          :validation-error="validationError"
+          :validation-errors="validationErrors"
           @change="emit('change')"
           @move-down="moveChild(index, 1)"
           @move-up="moveChild(index, -1)"
@@ -366,8 +366,14 @@ function hasFieldError(field: 'children' | 'operator' | 'negate' | 'type' | 'mat
       />
     </template>
 
-    <p v-if="ownErrorMessage" aria-live="polite" class=":uno: text-xs text-red-500" role="alert">
-      {{ ownErrorMessage }}
-    </p>
+    <div v-if="ownErrorMessages.length" aria-live="polite" class=":uno: space-y-1" role="alert">
+      <p
+        v-for="(message, index) in ownErrorMessages"
+        :key="`${currentPath}-${index}-${message}`"
+        class=":uno: text-xs text-red-500"
+      >
+        {{ message }}
+      </p>
+    </div>
   </div>
 </template>

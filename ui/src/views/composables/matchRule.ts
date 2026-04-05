@@ -26,6 +26,11 @@ export interface MatchRuleParseResult {
   error: MatchRuleValidationError | null
 }
 
+export interface MatchRuleValidationSummary {
+  errors: MatchRuleValidationError[]
+  rule: MatchRule | null
+}
+
 interface MatchRuleValidationOptions {
   requireGroupRoot: boolean
   allowEmptyGroup: boolean
@@ -139,6 +144,28 @@ export function validateMatchRuleTree(rule: MatchRule | null | undefined): Match
     allowUnknownKeys: false,
     allowMissingRequiredKeys: false,
   })
+}
+
+/**
+ * why: 简单模式需要把所有可定位到字段的错误同时标出来，
+ * 用户才能一次看全空组、空值、非法正则等问题，而不是修完一个才看到下一个。
+ */
+export function validateSimpleMatchRuleTree(
+  rule: MatchRule | null | undefined,
+): MatchRuleValidationSummary {
+  if (!rule) {
+    return {
+      rule: null,
+      errors: [{ path: '$', message: '请完善匹配规则' }],
+    }
+  }
+  const normalized = normalizeMatchRule(rule)
+  const errors: MatchRuleValidationError[] = []
+  collectSimpleMatchRuleErrors(normalized, '$', errors)
+  return {
+    rule: normalized,
+    errors,
+  }
 }
 
 /**
@@ -581,6 +608,37 @@ function validateRegexValue(value: string, path: string): MatchRuleParseResult |
   } catch (error) {
     const message = error instanceof Error ? error.message : '正则表达式无效'
     return invalid(path, `正则表达式无效：${message}`)
+  }
+}
+
+function collectSimpleMatchRuleErrors(
+  rule: MatchRule,
+  path: string,
+  errors: MatchRuleValidationError[],
+) {
+  if (rule.type === 'GROUP') {
+    const children = rule.children ?? []
+    if (!children.length) {
+      errors.push({ path: `${path}.children`, message: '不能有空组' })
+      return
+    }
+    children.forEach((child, index) => {
+      collectSimpleMatchRuleErrors(child, `${path}.children[${index}]`, errors)
+    })
+    return
+  }
+
+  const value = rule.value?.trim() ?? ''
+  if (!value) {
+    errors.push({ path: `${path}.value`, message: '必须是非空字符串' })
+    return
+  }
+
+  if (rule.matcher === 'REGEX') {
+    const regexError = validateRegexValue(value, `${path}.value`)
+    if (regexError?.error) {
+      errors.push(regexError.error)
+    }
   }
 }
 
