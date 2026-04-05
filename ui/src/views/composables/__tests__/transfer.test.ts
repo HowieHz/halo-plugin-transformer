@@ -82,6 +82,41 @@ describe('parseRuleTransfer', () => {
     })
   })
 
+  // why: `type` 无法安全补默认值；导入时应保留原始 JSON 草稿并切到高级模式，让用户继续修正。
+  it('falls back to json mode when imported matchRule is missing type', () => {
+    const raw = JSON.stringify({
+      format: 'halo-plugin-injector',
+      version: 1,
+      resourceType: 'rule',
+      data: {
+        enabled: true,
+        name: 'demo',
+        description: '',
+        mode: 'FOOTER',
+        match: '',
+        position: 'APPEND',
+        wrapMarker: true,
+        matchRule: {
+          negate: false,
+          operator: 'AND',
+          children: [
+            {
+              matcher: 'ANT',
+              value: '/**',
+            },
+          ],
+        },
+      },
+    })
+
+    const rule = parseRuleTransfer(raw)
+
+    expect(rule.matchRuleEditorMode).toBe('JSON')
+    expect(rule.matchRuleDraft).toContain('"matcher": "ANT"')
+    expect(rule.matchRule.type).toBe('GROUP')
+    expect(rule.matchRule.children?.length).toBeGreaterThan(0)
+  })
+
   // why: 导入枚举字段若传了非字符串值，应先提示“必须是字符串”，而不是笼统的“不合法”。
   it('reports enum type errors before invalid enum values during import', () => {
     const raw = JSON.stringify({

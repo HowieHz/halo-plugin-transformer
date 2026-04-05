@@ -5,7 +5,13 @@ import {
   type EditableInjectionRule,
   type MatchRuleEditorMode,
 } from '@/types'
-import { cloneMatchRule, formatMatchRuleError, validateMatchRuleObject } from './matchRule'
+import {
+  cloneMatchRule,
+  formatMatchRuleError,
+  normalizeMatchRule,
+  validateMatchRuleObject,
+  type MatchRuleValidationError,
+} from './matchRule'
 
 type TransferResourceType = 'snippet' | 'rule'
 
@@ -204,6 +210,20 @@ export function parseRuleTransfer(raw: string): EditableInjectionRule {
   })
   const matchRuleResult = validateMatchRuleObject(data.matchRule, 'data.matchRule')
   if (matchRuleResult.error) {
+    if (shouldFallbackToJsonMode(matchRuleResult.error)) {
+      return makeRule({
+        enabled: data.enabled,
+        name: data.name,
+        description: data.description,
+        mode: data.mode,
+        match: data.match,
+        matchRule: normalizeMatchRule(data.matchRule),
+        position: data.position,
+        wrapMarker: data.wrapMarker,
+        matchRuleDraft: JSON.stringify(data.matchRule, null, 2),
+        matchRuleEditorMode: 'JSON',
+      })
+    }
     throw new Error(`导入失败：${formatMatchRuleError(matchRuleResult.error)}`)
   }
   return makeRule({
@@ -286,4 +306,8 @@ function validateEnumField(
   if (!allowedValues.includes(value)) {
     throw new Error(`导入失败：\`${fieldName}\` 仅支持 ${quotedAllowedValues}`)
   }
+}
+
+function shouldFallbackToJsonMode(error: MatchRuleValidationError) {
+  return error.path === 'data.matchRule.type' || error.path.endsWith('.type')
 }
