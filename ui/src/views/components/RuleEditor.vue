@@ -21,6 +21,7 @@ import { sortSelectedFirst } from '@/views/composables/util.ts'
 import { updateSelectByWheel } from '@/views/composables/selectWheel.ts'
 import FieldUndoButton from './FieldUndoButton.vue'
 import { useFieldUndo } from '@/views/composables/useFieldUndo.ts'
+import { buildRuleTransfer, downloadTransfer } from '@/views/composables/transfer.ts'
 
 const props = defineProps<{
   rule: EditableInjectionRule | null
@@ -33,6 +34,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'save'): void
   (e: 'delete'): void
+  (e: 'export'): void
   (e: 'toggle-enabled'): void
   (e: 'replace-snippet-ids', snippetIds: string[]): void
   (e: 'toggle-snippet', snippetId: string): void
@@ -325,15 +327,28 @@ function resetField(
 
   updateField(field, baseline as InjectionRule[typeof field], { trackHistory: false })
 }
+
+function exportRule() {
+  if (!currentRule.value) {
+    return
+  }
+  downloadTransfer(
+    buildRuleTransfer(currentRule.value),
+    currentRule.value.name || currentRule.value.id || 'injection-rule',
+  )
+  emit('export')
+}
 </script>
 
 <template>
   <div class=":uno: h-full flex flex-col injector-editor-container">
     <EditorToolbar
       :enabled="currentRule?.enabled"
+      :show-export="!!currentRule"
       :show-actions="!!currentRule"
       :title="currentRule ? '编辑规则' : '注入规则'"
       @delete="emit('delete')"
+      @export="exportRule"
       @toggle-enabled="emit('toggle-enabled')"
     />
 

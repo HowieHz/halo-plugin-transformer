@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { Toast, VButton } from '@halo-dev/components'
 import { computed, onMounted, ref } from 'vue'
 import {
   type CodeSnippet,
@@ -13,6 +14,7 @@ import ItemPicker from './ItemPicker.vue'
 import FormField from './FormField.vue'
 import MatchRuleEditor from './MatchRuleEditor.vue'
 import { updateSelectByWheel } from '@/views/composables/selectWheel.ts'
+import { parseRuleTransfer } from '@/views/composables/transfer.ts'
 
 defineProps<{
   snippets: CodeSnippet[]
@@ -26,6 +28,7 @@ const emit = defineEmits<{
 
 const rule = ref<EditableInjectionRule>(makeRule())
 const selectedSnippetIds = ref<string[]>([])
+const fileInput = ref<HTMLInputElement | null>(null)
 
 onMounted(reset)
 
@@ -48,6 +51,27 @@ function toggleSnippet(id: string) {
 function handleSubmit() {
   emit('submit', rule.value, selectedSnippetIds.value)
 }
+
+function openImportPicker() {
+  fileInput.value?.click()
+}
+
+async function handleImport(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) {
+    return
+  }
+  try {
+    rule.value = parseRuleTransfer(await file.text())
+    selectedSnippetIds.value = []
+    Toast.success('已导入注入规则 JSON')
+  } catch (error) {
+    Toast.error(error instanceof Error ? error.message : '导入失败')
+  } finally {
+    input.value = ''
+  }
+}
 </script>
 
 <template>
@@ -58,6 +82,19 @@ function handleSubmit() {
     @close="emit('close')"
     @submit="handleSubmit"
   >
+    <template #actions>
+      <div class=":uno: flex justify-end">
+        <input
+          ref="fileInput"
+          accept="application/json,.json"
+          class=":uno: hidden"
+          type="file"
+          @change="handleImport"
+        />
+        <VButton size="sm" type="secondary" @click="openImportPicker">导入 JSON</VButton>
+      </div>
+    </template>
+
     <template #form>
       <FormField v-slot="{ inputId }" label="名称">
         <input

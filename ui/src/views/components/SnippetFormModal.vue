@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { Toast, VButton } from '@halo-dev/components'
 import { computed, onMounted, ref } from 'vue'
 import type { CodeSnippet, InjectionRule } from '@/types'
 import { makeSnippet } from '@/types'
@@ -6,6 +7,7 @@ import BaseFormModal from './BaseFormModal.vue'
 import ItemPicker from './ItemPicker.vue'
 import FormField from './FormField.vue'
 import { rulePreview } from '@/views/composables/util'
+import { parseSnippetTransfer } from '@/views/composables/transfer'
 
 const props = defineProps<{
   rules: InjectionRule[]
@@ -19,6 +21,7 @@ const emit = defineEmits<{
 
 const snippet = ref<CodeSnippet>(makeSnippet())
 const selectedRuleIds = ref<string[]>([])
+const fileInput = ref<HTMLInputElement | null>(null)
 
 onMounted(reset)
 
@@ -38,11 +41,45 @@ function handleSubmit() {
   emit('submit', snippet.value, selectedRuleIds.value)
 }
 
+function openImportPicker() {
+  fileInput.value?.click()
+}
+
+async function handleImport(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) {
+    return
+  }
+  try {
+    snippet.value = parseSnippetTransfer(await file.text())
+    selectedRuleIds.value = []
+    Toast.success('已导入代码块 JSON')
+  } catch (error) {
+    Toast.error(error instanceof Error ? error.message : '导入失败')
+  } finally {
+    input.value = ''
+  }
+}
+
 const selectableRules = computed(() => props.rules.filter((rule) => rule.position !== 'REMOVE'))
 </script>
 
 <template>
   <BaseFormModal :saving="saving" title="新建代码块" @close="emit('close')" @submit="handleSubmit">
+    <template #actions>
+      <div class=":uno: flex justify-end">
+        <input
+          ref="fileInput"
+          accept="application/json,.json"
+          class=":uno: hidden"
+          type="file"
+          @change="handleImport"
+        />
+        <VButton size="sm" type="secondary" @click="openImportPicker">导入 JSON</VButton>
+      </div>
+    </template>
+
     <template #form>
       <FormField v-slot="{ inputId }" label="名称">
         <input

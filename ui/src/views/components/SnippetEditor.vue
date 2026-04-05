@@ -8,6 +8,7 @@ import { rulePreview, sortSelectedFirst } from '@/views/composables/util'
 import FieldUndoButton from './FieldUndoButton.vue'
 import { useFieldUndo } from '@/views/composables/useFieldUndo'
 import { computed, watch } from 'vue'
+import { buildSnippetTransfer, downloadTransfer } from '@/views/composables/transfer'
 
 const props = defineProps<{
   snippet: CodeSnippet | null
@@ -20,6 +21,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'save'): void
   (e: 'delete'): void
+  (e: 'export'): void
   (e: 'toggle-enabled'): void
   (e: 'replace-rule-ids', ruleIds: string[]): void
   (e: 'toggle-rule', ruleId: string): void
@@ -127,15 +129,28 @@ function resetField(field: 'name' | 'description' | 'ruleIds' | 'code') {
 
   updateField(field, baseline as CodeSnippet[typeof field], { trackHistory: false })
 }
+
+function exportSnippet() {
+  if (!props.snippet) {
+    return
+  }
+  downloadTransfer(
+    buildSnippetTransfer(props.snippet),
+    props.snippet.name || props.snippet.id || 'code-snippet',
+  )
+  emit('export')
+}
 </script>
 
 <template>
   <div class=":uno: h-full flex flex-col injector-editor-container">
     <EditorToolbar
       :enabled="snippet?.enabled"
+      :show-export="!!snippet"
       :show-actions="!!snippet"
       :title="snippet ? '编辑代码块' : '代码块'"
       @delete="emit('delete')"
+      @export="exportSnippet"
       @toggle-enabled="emit('toggle-enabled')"
     />
 

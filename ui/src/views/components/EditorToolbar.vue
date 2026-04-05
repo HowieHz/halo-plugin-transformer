@@ -5,9 +5,11 @@ defineProps<{
   title: string
   enabled?: boolean
   showActions?: boolean
+  showExport?: boolean
 }>()
 
 const emit = defineEmits<{
+  (e: 'export'): void
   (e: 'toggle-enabled'): void
   (e: 'delete'): void
 }>()
@@ -19,6 +21,15 @@ const emit = defineEmits<{
   >
     <h2 class=":uno: text-gray-900 font-semibold text-sm">{{ title }}</h2>
     <VSpace v-if="showActions">
+      <VButton
+        v-if="showExport"
+        aria-label="导出当前内容为 JSON"
+        size="sm"
+        title="导出当前内容为 JSON"
+        @click="emit('export')"
+      >
+        导出 JSON
+      </VButton>
       <VButton
         :aria-label="enabled ? '禁用当前内容' : '启用当前内容'"
         :aria-pressed="enabled"

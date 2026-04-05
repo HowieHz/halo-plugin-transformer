@@ -26,6 +26,7 @@ const emit = defineEmits<{
         :class="showPicker === false ? 'flex-1' : 'flex-1'"
         :style="showPicker === false ? 'width: 100%' : 'width: 60%'"
       >
+        <slot name="actions" />
         <slot name="form" />
       </div>
 
