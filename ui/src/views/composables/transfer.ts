@@ -100,19 +100,35 @@ type WindowWithSaveFilePicker = Window & {
   showSaveFilePicker?: (options?: SaveFilePickerOptionsLike) => Promise<SaveFilePickerHandleLike>
 }
 
-export async function downloadTransfer(
+export interface TransferFileDraft {
+  fileName: string
+  content: string
+}
+
+export function createTransferFileDraft(
   payload: SnippetTransferEnvelope | RuleTransferEnvelope,
   name: string,
-) {
+): TransferFileDraft {
   const fileName = `${sanitizeFileName(name)}.json`
   const content = JSON.stringify(payload, null, 2)
+  return {
+    fileName,
+    content,
+  }
+}
+
+/**
+ * why: 导出优先走系统“另存为”，失败时由上层决定如何兜底，
+ * 这样既能覆盖浏览器不支持、非安全上下文等场景，也能给用户保留手动复制窗口。
+ */
+export async function downloadTransferFile(draft: TransferFileDraft) {
   const saveFilePicker = (window as WindowWithSaveFilePicker).showSaveFilePicker
 
   if (typeof saveFilePicker !== 'function') {
-    throw new Error('当前浏览器不支持“另存为”导出，请改用支持 File System Access API 的浏览器')
+    throw new Error('当前环境暂时无法直接弹出“另存为”')
   }
   const handle = await saveFilePicker({
-    suggestedName: fileName,
+    suggestedName: draft.fileName,
     types: [
       {
         description: 'JSON 文件',
@@ -123,7 +139,7 @@ export async function downloadTransfer(
     ],
   })
   const writable = await handle.createWritable()
-  await writable.write(content)
+  await writable.write(draft.content)
   await writable.close()
 }
 

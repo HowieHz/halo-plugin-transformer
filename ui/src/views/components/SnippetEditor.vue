@@ -4,12 +4,18 @@ import type { CodeSnippet, InjectionRule } from '@/types'
 import ItemPicker from './ItemPicker.vue'
 import EditorToolbar from './EditorToolbar.vue'
 import EditorFooter from './EditorFooter.vue'
+import ExportJsonFallbackModal from './ExportJsonFallbackModal.vue'
 import FormField from './FormField.vue'
 import { rulePreview, sortSelectedFirst } from '@/views/composables/util'
 import FieldUndoButton from './FieldUndoButton.vue'
 import { useFieldUndo } from '@/views/composables/useFieldUndo'
-import { computed, watch } from 'vue'
-import { buildSnippetTransfer, downloadTransfer } from '@/views/composables/transfer'
+import { computed, ref, watch } from 'vue'
+import {
+  buildSnippetTransfer,
+  createTransferFileDraft,
+  downloadTransferFile,
+  type TransferFileDraft,
+} from '@/views/composables/transfer'
 
 const props = defineProps<{
   snippet: CodeSnippet | null
@@ -40,6 +46,7 @@ const sortedRules = computed(() =>
   sortSelectedFirst(selectableRules.value, visibleSelectedRuleIds.value),
 )
 const undo = useFieldUndo()
+const exportFallback = ref<TransferFileDraft | null>(null)
 
 watch(
   () => [props.snippet?.id, props.dirty],
@@ -135,24 +142,33 @@ async function exportSnippet() {
   if (!props.snippet) {
     return
   }
+  const draft = createTransferFileDraft(
+    buildSnippetTransfer(props.snippet),
+    props.snippet.name || props.snippet.id || 'code-snippet',
+  )
   try {
-    await downloadTransfer(
-      buildSnippetTransfer(props.snippet),
-      props.snippet.name || props.snippet.id || 'code-snippet',
-    )
-    Toast.success('导出已开始')
+    await downloadTransferFile(draft)
+    Toast.success('导出完成')
     emit('export')
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
       return
     }
-    Toast.error(error instanceof Error ? error.message : '导出失败')
+    exportFallback.value = draft
+    Toast.warning('当前环境暂时无法直接保存，已打开可复制的导出内容')
   }
 }
 </script>
 
 <template>
   <div class=":uno: h-full flex flex-col injector-editor-container">
+    <ExportJsonFallbackModal
+      v-if="exportFallback"
+      :content="exportFallback.content"
+      :file-name="exportFallback.fileName"
+      @close="exportFallback = null"
+    />
+
     <EditorToolbar
       :enabled="snippet?.enabled"
       :show-export="!!snippet"

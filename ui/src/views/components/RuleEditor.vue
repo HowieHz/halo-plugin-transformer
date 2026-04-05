@@ -16,13 +16,19 @@ import {
 import ItemPicker from './ItemPicker.vue'
 import EditorToolbar from './EditorToolbar.vue'
 import EditorFooter from './EditorFooter.vue'
+import ExportJsonFallbackModal from './ExportJsonFallbackModal.vue'
 import FormField from './FormField.vue'
 import MatchRuleEditor from './MatchRuleEditor.vue'
 import { sortSelectedFirst } from '@/views/composables/util.ts'
 import { updateSelectByWheel } from '@/views/composables/selectWheel.ts'
 import FieldUndoButton from './FieldUndoButton.vue'
 import { useFieldUndo } from '@/views/composables/useFieldUndo.ts'
-import { buildRuleTransfer, downloadTransfer } from '@/views/composables/transfer.ts'
+import {
+  buildRuleTransfer,
+  createTransferFileDraft,
+  downloadTransferFile,
+  type TransferFileDraft,
+} from '@/views/composables/transfer.ts'
 
 const props = defineProps<{
   rule: EditableInjectionRule | null
@@ -46,6 +52,7 @@ const emit = defineEmits<{
 const sortedSnippets = computed(() => sortSelectedFirst(props.snippets, props.selectedSnippetIds))
 const pendingRule = ref<EditableInjectionRule | null>(null)
 const currentRule = computed(() => pendingRule.value ?? props.rule)
+const exportFallback = ref<TransferFileDraft | null>(null)
 
 const needsTarget = computed(
   () => currentRule.value?.mode === 'ID' || currentRule.value?.mode === 'SELECTOR',
@@ -333,24 +340,33 @@ async function exportRule() {
   if (!currentRule.value) {
     return
   }
+  const draft = createTransferFileDraft(
+    buildRuleTransfer(currentRule.value),
+    currentRule.value.name || currentRule.value.id || 'injection-rule',
+  )
   try {
-    await downloadTransfer(
-      buildRuleTransfer(currentRule.value),
-      currentRule.value.name || currentRule.value.id || 'injection-rule',
-    )
-    Toast.success('导出已开始')
+    await downloadTransferFile(draft)
+    Toast.success('导出完成')
     emit('export')
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
       return
     }
-    Toast.error(error instanceof Error ? error.message : '导出失败')
+    exportFallback.value = draft
+    Toast.warning('当前环境暂时无法直接保存，已打开可复制的导出内容')
   }
 }
 </script>
 
 <template>
   <div class=":uno: h-full flex flex-col injector-editor-container">
+    <ExportJsonFallbackModal
+      v-if="exportFallback"
+      :content="exportFallback.content"
+      :file-name="exportFallback.fileName"
+      @close="exportFallback = null"
+    />
+
     <EditorToolbar
       :enabled="currentRule?.enabled"
       :show-export="!!currentRule"
