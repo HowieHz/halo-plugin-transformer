@@ -379,6 +379,23 @@ function jumpToSnippet(id: string) {
 
 <template>
   <div id="injector-view">
+    <SnippetFormModal
+      v-if="showSnippetModal"
+      ref="snippetFormRef"
+      :rules="rules"
+      :saving="creating"
+      @close="requestEditorLeave(closeSnippetModal)"
+      @submit="handleAddSnippet"
+    />
+    <RuleFormModal
+      v-if="showRuleModal"
+      ref="ruleFormRef"
+      :saving="creating"
+      :snippets="snippets"
+      @close="requestEditorLeave(closeRuleModal)"
+      @submit="handleAddRule"
+    />
+
     <VModal v-if="leaveConfirmVisible" title="离开当前编辑" :width="520" @close="closeLeaveConfirm">
       <div class=":uno: space-y-3 px-1 py-1 text-sm leading-6 text-gray-700">
         <p>当前有未保存的修改，继续切换后不会自动保存。</p>
@@ -405,23 +422,6 @@ function jumpToSnippet(id: string) {
         </VSpace>
       </template>
     </VModal>
-
-    <SnippetFormModal
-      v-if="showSnippetModal"
-      ref="snippetFormRef"
-      :rules="rules"
-      :saving="creating"
-      @close="requestEditorLeave(closeSnippetModal)"
-      @submit="handleAddSnippet"
-    />
-    <RuleFormModal
-      v-if="showRuleModal"
-      ref="ruleFormRef"
-      :saving="creating"
-      :snippets="snippets"
-      @close="requestEditorLeave(closeRuleModal)"
-      @submit="handleAddRule"
-    />
 
     <VPageHeader title="Injector">
       <template #icon><IconPlug /></template>
