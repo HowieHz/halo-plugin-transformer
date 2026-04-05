@@ -7,6 +7,7 @@ import {
   hydrateRuleForEditor,
   parseMatchRuleDraft,
   persistMatchRuleEditorState,
+  resolveRuleMatchRule,
 } from '../matchRule'
 
 describe('matchRule editor state', () => {
@@ -86,5 +87,34 @@ describe('matchRule editor state', () => {
 
     expect(result.error?.path).toBe('$.negate')
     expect(result.error?.message).toBe('必须是布尔值；仅支持 true 或 false')
+  })
+
+  // why: 简单模式保存时必须只信当前可视化规则树，不能再被旧的 JSON 草稿反向污染。
+  it('ignores stale json draft when current editor mode is simple', () => {
+    const rule = makeRule({
+      matchRuleEditorMode: 'SIMPLE',
+      matchRuleDraft: `{
+  "type": "GROUP",
+  "negate": false,
+  "operator": "AND",
+  "children": [
+    {
+      "type": "PATH",
+      "negate": false,
+      "matcher": "REGEX",
+      "value": "/**"
+    }
+  ]
+}`,
+    })
+
+    const result = resolveRuleMatchRule(rule)
+
+    expect(result.error).toBeNull()
+    expect(result.rule?.children?.[0]).toMatchObject({
+      type: 'PATH',
+      matcher: 'ANT',
+      value: '/**',
+    })
   })
 })

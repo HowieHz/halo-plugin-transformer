@@ -222,7 +222,7 @@ export function clearPersistedMatchRuleDraft(
 export function resolveRuleMatchRule(
   rule: InjectionRuleViewModel & Partial<InjectionRuleEditorState>,
 ): MatchRuleParseResult {
-  if (rule.matchRuleDraft?.trim()) {
+  if (rule.matchRuleEditorMode === 'JSON' && rule.matchRuleDraft?.trim()) {
     return parseMatchRuleDraft(rule.matchRuleDraft)
   }
   const normalized = normalizeMatchRule(rule.matchRule)
