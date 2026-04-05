@@ -494,30 +494,6 @@ async function exportRule() {
           </template>
         </FormField>
 
-        <FormField label="匹配规则" required>
-          <template v-if="canUndo('matchRule')" #actions>
-            <FieldUndoButton @reset="resetField('matchRule')" @undo="undoField('matchRule')" />
-          </template>
-          <template #default="{ inputId, labelId }">
-            <div :id="inputId" :aria-labelledby="labelId">
-              <MatchRuleEditor
-                :draft="currentRule.matchRuleDraft"
-                :editor-mode="currentRule.matchRuleEditorMode"
-                :model-value="currentRule.matchRule"
-                @change="emit('field-change')"
-                @update:state="updateMatchRuleField($event)"
-              />
-            </div>
-            <div
-              v-if="performanceWarning"
-              aria-live="polite"
-              class=":uno: mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800"
-            >
-              {{ performanceWarning }}
-            </div>
-          </template>
-        </FormField>
-
         <FormField v-if="needsSnippets" label="关联代码块">
           <template #actions>
             <div class=":uno: flex items-center gap-2">
@@ -539,6 +515,30 @@ async function exportRule() {
               empty-text="暂无代码块, 请先创建"
               @toggle="handleToggleSnippet"
             />
+          </template>
+        </FormField>
+
+        <FormField label="匹配规则" required>
+          <template v-if="canUndo('matchRule')" #actions>
+            <FieldUndoButton @reset="resetField('matchRule')" @undo="undoField('matchRule')" />
+          </template>
+          <template #default="{ inputId, labelId }">
+            <div :id="inputId" :aria-labelledby="labelId">
+              <MatchRuleEditor
+                :draft="currentRule.matchRuleDraft"
+                :editor-mode="currentRule.matchRuleEditorMode"
+                :model-value="currentRule.matchRule"
+                @change="emit('field-change')"
+                @update:state="updateMatchRuleField($event)"
+              />
+            </div>
+            <div
+              v-if="performanceWarning"
+              aria-live="polite"
+              class=":uno: mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800"
+            >
+              {{ performanceWarning }}
+            </div>
           </template>
         </FormField>
       </div>
