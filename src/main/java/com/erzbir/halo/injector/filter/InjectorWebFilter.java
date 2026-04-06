@@ -31,7 +31,9 @@ import reactor.core.publisher.Mono;
 import run.halo.app.security.AdditionalWebFilter;
 
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers.pathMatchers;
@@ -116,21 +118,45 @@ public class InjectorWebFilter implements AdditionalWebFilter {
      * why: 先按既有顺序收集 SELECTOR 与 ID 两类 DOM 规则，
      * 再在同一份 Document 上顺序执行，避免每命中一条规则就重复 Jsoup.parse / doc.html。
      */
-    private Flux<DomInjectionPlan> collectPlans(String path, String templateId, InjectionRule.Mode mode,
-                                                HTMLInjector injector) {
+    private Mono<List<InjectionRule>> collectRules(String path, String templateId, InjectionRule.Mode mode) {
         return injectHelper.getMatchedRules(path, templateId, mode)
-                .collectList()
-                .flatMapMany(rules -> injectHelper.resolveRuleCodes(rules)
-                        .flatMapMany(Flux::fromIterable)
-                        .map(resolved -> new DomInjectionPlan(injector, resolved.rule(), resolved.code())));
+                .collectList();
     }
 
     private Mono<List<DomInjectionPlan>> collectDomInjectionPlans(String path, String templateId) {
-        return Flux.concat(
-                        collectPlans(path, templateId, InjectionRule.Mode.SELECTOR, selectorInjector),
-                        collectPlans(path, templateId, InjectionRule.Mode.ID, elementIDInjector)
+        return Mono.zip(
+                        collectRules(path, templateId, InjectionRule.Mode.SELECTOR),
+                        collectRules(path, templateId, InjectionRule.Mode.ID)
                 )
-                .collectList();
+                .flatMap(tuple -> {
+                    List<InjectionRule> selectorRules = tuple.getT1();
+                    List<InjectionRule> idRules = tuple.getT2();
+                    List<InjectionRule> allRules = new java.util.ArrayList<>(selectorRules.size() + idRules.size());
+                    allRules.addAll(selectorRules);
+                    allRules.addAll(idRules);
+                    if (allRules.isEmpty()) {
+                        return Mono.just(List.of());
+                    }
+                    return injectHelper.resolveRuleCodes(allRules)
+                            .map(resolvedCodes -> toDomInjectionPlans(selectorRules, idRules, resolvedCodes));
+                });
+    }
+
+    private List<DomInjectionPlan> toDomInjectionPlans(List<InjectionRule> selectorRules,
+                                                       List<InjectionRule> idRules,
+                                                       List<InjectHelper.ResolvedRuleCode> resolvedCodes) {
+        Map<String, String> codeByRuleId = new LinkedHashMap<>();
+        for (InjectHelper.ResolvedRuleCode resolvedCode : resolvedCodes) {
+            codeByRuleId.put(resolvedCode.rule().getId(), resolvedCode.code());
+        }
+        List<DomInjectionPlan> plans = new java.util.ArrayList<>(selectorRules.size() + idRules.size());
+        for (InjectionRule rule : selectorRules) {
+            plans.add(new DomInjectionPlan(selectorInjector, rule, codeByRuleId.getOrDefault(rule.getId(), "")));
+        }
+        for (InjectionRule rule : idRules) {
+            plans.add(new DomInjectionPlan(elementIDInjector, rule, codeByRuleId.getOrDefault(rule.getId(), "")));
+        }
+        return plans;
     }
 
     String applyDomInjections(String html, String path, List<DomInjectionPlan> plans) {
