@@ -35,7 +35,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'save'): void
   (e: 'delete'): void
-  (e: 'export'): void
   (e: 'toggle-enabled'): void
   (e: 'replace-snippet-ids', snippetIds: string[]): void
   (e: 'toggle-snippet', snippetId: string): void
@@ -353,7 +352,6 @@ async function exportRule() {
     buildRuleTransfer(currentRule.value),
     currentRule.value.name || currentRule.value.id || 'injection-rule',
   )
-  emit('export')
 }
 </script>
 

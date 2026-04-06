@@ -26,7 +26,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'save'): void
   (e: 'delete'): void
-  (e: 'export'): void
   (e: 'toggle-enabled'): void
   (e: 'replace-rule-ids', ruleIds: string[]): void
   (e: 'toggle-rule', ruleId: string): void
@@ -176,7 +175,6 @@ async function exportSnippet() {
     buildSnippetTransfer(props.snippet),
     props.snippet.name || props.snippet.id || 'code-snippet',
   )
-  emit('export')
 }
 </script>
 

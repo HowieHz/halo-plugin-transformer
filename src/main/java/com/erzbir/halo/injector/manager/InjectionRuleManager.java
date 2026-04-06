@@ -29,10 +29,6 @@ public class InjectionRuleManager {
         this.client = client;
     }
 
-    public Flux<InjectionRule> list() {
-        return currentSnapshot().flatMapMany(snapshot -> Flux.fromIterable(snapshot.allRules()));
-    }
-
     /**
      * why: 运行时只关心“当前可参与注入”的规则；
      * 这里把按 mode、enabled、valid 过滤后的结果做成短 TTL 快照，避免每个请求都回源并重复筛选整批规则。

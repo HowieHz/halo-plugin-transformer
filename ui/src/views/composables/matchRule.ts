@@ -290,34 +290,8 @@ export function makeRulePayload(
   }
 }
 
-export function matchRuleChips(rule: MatchRule, limit = 4): string[] {
-  const chips: string[] = []
-  collectMatchRuleChips(normalizeMatchRule(rule), chips, limit)
-  return chips
-}
-
 export function matchRuleExpression(rule: MatchRule): string {
   return formatMatchRuleExpression(normalizeMatchRule(rule), true)
-}
-
-function collectMatchRuleChips(rule: MatchRule, chips: string[], limit: number) {
-  if (chips.length >= limit) return
-  if (rule.type === 'GROUP') {
-    rule.children?.forEach((child) => collectMatchRuleChips(child, chips, limit))
-    return
-  }
-  chips.push(describeMatchRule(rule))
-}
-
-function describeMatchRule(rule: MatchRule): string {
-  const prefix = rule.negate ? '不满足本项（NOT） · ' : ''
-  if (rule.type === 'PATH') {
-    const matcherLabel =
-      rule.matcher === 'REGEX' ? '正则表达式' : rule.matcher === 'EXACT' ? '精确匹配' : 'Ant 风格'
-    return `${prefix}页面路径 · ${matcherLabel}: ${rule.value ?? ''}`
-  }
-  const matcherLabel = rule.matcher === 'REGEX' ? '正则表达式' : '精确匹配'
-  return `${prefix}模板 ID · ${matcherLabel}: ${rule.value ?? ''}`
 }
 
 function formatMatchRuleExpression(rule: MatchRule, root = false): string {

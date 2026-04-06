@@ -52,7 +52,6 @@ export function useInjectorData() {
   const loading = ref(false)
   const creating = ref(false)
   const savingEditor = ref(false)
-  const savingReorder = ref(false)
 
   const snippetsResp = ref<ItemList<CodeSnippetViewModel>>(emptyList())
   const rulesResp = ref<ItemList<InjectionRule>>(emptyList())
@@ -556,7 +555,6 @@ export function useInjectorData() {
     }
 
     syncingSnippetReorder.value = true
-    savingReorder.value = true
     let updatedOnce = false
     try {
       while (pendingSnippetOrders.value) {
@@ -573,7 +571,6 @@ export function useInjectorData() {
       await fetchAll()
     } finally {
       syncingSnippetReorder.value = false
-      savingReorder.value = false
     }
   }
 
@@ -598,7 +595,6 @@ export function useInjectorData() {
     }
 
     syncingRuleReorder.value = true
-    savingReorder.value = true
     let updatedOnce = false
     try {
       while (pendingRuleOrders.value) {
@@ -615,7 +611,6 @@ export function useInjectorData() {
       await fetchAll()
     } finally {
       syncingRuleReorder.value = false
-      savingReorder.value = false
     }
   }
 
@@ -623,7 +618,6 @@ export function useInjectorData() {
     loading,
     creating,
     savingEditor,
-    savingReorder,
     snippets,
     rules,
     selectedSnippetId,

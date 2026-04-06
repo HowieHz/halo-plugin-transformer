@@ -101,19 +101,6 @@ public class InjectHelper {
     }
 
     /**
-     * why: 代码块在规则维度按关联顺序拼接，保持用户配置的组合结果稳定；
-     * REMOVE 规则会在更上游被清空 snippetIds，这里无需再分叉特殊逻辑。
-     */
-    public Mono<String> getConcatCode(InjectionRule rule) {
-        return Flux.fromIterable(rule.getSnippetIds())
-                .flatMap(snippetManager::get)
-                .filter(CodeSnippet::isValid)
-                .filter(CodeSnippet::isEnabled)
-                .map(CodeSnippet::getCode)
-                .reduce("", String::concat);
-    }
-
-    /**
      * why: 同一次注入流程里，多条规则可能复用同一个代码块；
      * 这里先按唯一 snippetId 批量拉取，再按各规则自己的顺序回拼，避免重复 `get` 同一条代码块。
      */
