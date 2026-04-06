@@ -34,6 +34,14 @@ describe('matchRule editor state', () => {
     expect(result.error?.message).toBe('必须是字符串；仅支持 "GROUP"、"PATH"、"TEMPLATE_ID"')
   })
 
+  // why: 连 `type` 都没写时，应该先明确提示补 `type`，而不是过早按某个字段去猜。
+  it('reports missing type before other required fields', () => {
+    const result = parseMatchRuleDraft('{ "negate": false }')
+
+    expect(result.error?.path).toBe('$.type')
+    expect(result.error?.message).toBe('缺少必填字段 "type"；仅支持 "GROUP"、"PATH"、"TEMPLATE_ID"')
+  })
+
   // why: `type` 是字符串但值不合法时，提示里也应带上带引号的允许值，保持和其它枚举字段一致。
   it('reports quoted allowed type values for invalid enum values', () => {
     const result = parseMatchRuleDraft(
@@ -52,6 +60,14 @@ describe('matchRule editor state', () => {
 
     expect(result.error?.path).toBe('$.negate')
     expect(result.error?.message).toBe('必须是布尔值；仅支持 true 或 false')
+  })
+
+  // why: 已经给出 `type: GROUP` 后，缺少的必填字段应按 GROUP 结构明确提示，而不是只说笼统的“缺少必填字段”。
+  it('reports missing group children with group-specific guidance', () => {
+    const result = parseMatchRuleDraft('{ "type": "GROUP", "negate": false, "operator": "AND" }')
+
+    expect(result.error?.path).toBe('$.children')
+    expect(result.error?.message).toBe('条件组缺少必填字段 "children"')
   })
 
   // why: 简单模式保存时必须只信当前可视化规则树，不能再被旧的 JSON 草稿反向污染。
