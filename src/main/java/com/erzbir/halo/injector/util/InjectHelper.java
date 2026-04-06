@@ -54,7 +54,7 @@ public class InjectHelper {
     public Flux<InjectionRule> getMatchedRules(String targetPath,
                                                String templateId,
                                                InjectionRule.Mode mode) {
-        MatchContext context = new MatchContext(targetPath, templateId);
+        MatchContext context = new MatchContext(targetPath, templateId, parseCurrentPathRoute(targetPath));
         return getRulesByMode(mode)
                 .filter(rule -> evaluate(rule.getMatchRule(), context) == MatchState.MATCH)
                 .onErrorResume(e -> {
@@ -72,10 +72,11 @@ public class InjectHelper {
         if (targetPath.isEmpty()) {
             return Flux.empty();
         }
+        RouteMatcher.Route currentRoute = parseCurrentPathRoute(targetPath);
 
         return getRulesByMode(mode)
                 .filter(rule -> MatchRule.supportsDomPathPrecheck(rule.getMatchRule()))
-                .filter(rule -> pathPrecheckMatches(rule.getMatchRule(), targetPath))
+                .filter(rule -> pathPrecheckMatches(rule.getMatchRule(), targetPath, currentRoute))
                 .onErrorResume(e -> {
                     log.error("Failed to get matched rules for mode: {}", mode, e);
                     return Flux.empty();
@@ -91,10 +92,11 @@ public class InjectHelper {
         if (targetPath.isEmpty()) {
             return Mono.just(false);
         }
+        RouteMatcher.Route currentRoute = parseCurrentPathRoute(targetPath);
 
         return getRulesByMode(mode)
                 .any(rule -> !MatchRule.supportsDomPathPrecheck(rule.getMatchRule())
-                        || pathPrecheckMatches(rule.getMatchRule(), targetPath))
+                        || pathPrecheckMatches(rule.getMatchRule(), targetPath, currentRoute))
                 .defaultIfEmpty(false);
     }
 
@@ -166,7 +168,7 @@ public class InjectHelper {
         }
         MatchState state = switch (rule.getType()) {
             case GROUP -> evaluateGroup(rule, context);
-            case PATH -> evaluatePath(rule, context.path());
+            case PATH -> evaluatePath(rule, context.path(), context.route());
             case TEMPLATE_ID -> evaluateTemplateId(rule, context.templateId());
         };
         if (Boolean.TRUE.equals(rule.getNegate())) {
@@ -214,7 +216,7 @@ public class InjectHelper {
         return hasUnknown ? MatchState.UNKNOWN : MatchState.NO_MATCH;
     }
 
-    private MatchState evaluatePath(MatchRule rule, String currentPath) {
+    private MatchState evaluatePath(MatchRule rule, String currentPath, RouteMatcher.Route currentRoute) {
         if (currentPath == null || currentPath.isBlank()) {
             return MatchState.NO_MATCH;
         }
@@ -226,7 +228,7 @@ public class InjectHelper {
         boolean matched = switch (matcher) {
             case EXACT -> value.equals(currentPath);
             case REGEX -> matchesRegex(value, currentPath);
-            case ANT -> matchesAntPath(value, currentPath);
+            case ANT -> matchesAntPath(value, currentPath, currentRoute);
         };
         return matched ? MatchState.MATCH : MatchState.NO_MATCH;
     }
@@ -248,10 +250,12 @@ public class InjectHelper {
         return matched ? MatchState.MATCH : MatchState.NO_MATCH;
     }
 
-    private boolean matchesAntPath(String pattern, String currentPath) {
+    private boolean matchesAntPath(String pattern, String currentPath, RouteMatcher.Route currentRoute) {
+        if (currentRoute == null) {
+            return false;
+        }
         try {
-            RouteMatcher.Route requestRoute = routeMatcher.parseRoute(currentPath);
-            return routeMatcher.match(pattern, requestRoute);
+            return routeMatcher.match(pattern, currentRoute);
         } catch (PatternParseException e) {
             log.warn("Parse route pattern [{}] failed for path [{}]", pattern, currentPath, e);
             return false;
@@ -286,27 +290,41 @@ public class InjectHelper {
      * 对能先按路径缩小范围的规则，这里可提前跳过大部分页面；
      * 对不能缩小范围的规则，则会退化成“所有 HTML 页面都先进入处理，再在后面看模板 ID”等完整条件。
      */
-    private boolean pathPrecheckMatches(MatchRule rule, String currentPath) {
+    private boolean pathPrecheckMatches(MatchRule rule, String currentPath, RouteMatcher.Route currentRoute) {
         if (rule == null || rule.getType() == null) {
             return false;
         }
         boolean matched = switch (rule.getType()) {
-            case GROUP -> pathPrecheckGroupMatches(rule, currentPath);
-            case PATH -> evaluatePath(rule, currentPath) == MatchState.MATCH;
+            case GROUP -> pathPrecheckGroupMatches(rule, currentPath, currentRoute);
+            case PATH -> evaluatePath(rule, currentPath, currentRoute) == MatchState.MATCH;
             case TEMPLATE_ID -> true;
         };
         return Boolean.TRUE.equals(rule.getNegate()) ^ matched;
     }
 
-    private boolean pathPrecheckGroupMatches(MatchRule rule, String currentPath) {
+    private boolean pathPrecheckGroupMatches(MatchRule rule, String currentPath,
+                                             RouteMatcher.Route currentRoute) {
         if (rule.getChildren() == null || rule.getChildren().isEmpty()) {
             return false;
         }
         MatchRule.Operator operator = rule.getOperator() == null ? MatchRule.Operator.AND : rule.getOperator();
         return switch (operator) {
-            case AND -> rule.getChildren().stream().allMatch(child -> pathPrecheckMatches(child, currentPath));
-            case OR -> rule.getChildren().stream().anyMatch(child -> pathPrecheckMatches(child, currentPath));
+            case AND -> rule.getChildren().stream()
+                    .allMatch(child -> pathPrecheckMatches(child, currentPath, currentRoute));
+            case OR -> rule.getChildren().stream()
+                    .anyMatch(child -> pathPrecheckMatches(child, currentPath, currentRoute));
         };
+    }
+
+    /**
+     * why: 同一次规则求值里，页面路径本身不会变化；
+     * 因此先把当前路径解析成 Route，再在多条 PATH/ANT 条件之间复用，避免重复 parseRoute。
+     */
+    protected RouteMatcher.Route parseCurrentPathRoute(String currentPath) {
+        if (currentPath == null || currentPath.isBlank()) {
+            return null;
+        }
+        return routeMatcher.parseRoute(currentPath);
     }
 
     private MatchState negate(MatchState state) {
@@ -323,7 +341,7 @@ public class InjectHelper {
         return new PathPatternRouteMatcher(parser);
     }
 
-    private record MatchContext(String path, String templateId) {
+    private record MatchContext(String path, String templateId, RouteMatcher.Route route) {
     }
 
     private record RegexPatternHolder(Pattern pattern, String errorMessage) {

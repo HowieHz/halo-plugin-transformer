@@ -206,6 +206,26 @@ class InjectHelperTest {
         assertEquals("SNIPPET-BSNIPPET-C", resolved.get(1).code());
     }
 
+    // why: 同一次完整匹配里，多条 PATH/ANT 条件共享同一个当前路径；应只 parseRoute 一次，再在整棵规则树里复用。
+    @Test
+    void shouldParseCurrentPathOnlyOnceDuringSingleMatchEvaluation() {
+        CountingInjectHelper helper = new CountingInjectHelper(ruleManager, snippetManager);
+        InjectionRule rule = createRule(group(MatchRule.Operator.AND,
+                MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
+                group(MatchRule.Operator.OR,
+                        MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/demo"),
+                        MatchRule.pathRule(MatchRule.Matcher.ANT, "/archives/**"))));
+        when(ruleManager.listActiveByMode(InjectionRule.Mode.SELECTOR)).thenReturn(Flux.just(rule));
+
+        List<InjectionRule> matched = helper
+                .getMatchedRules("/posts/demo", "post", InjectionRule.Mode.SELECTOR)
+                .collectList()
+                .block();
+
+        assertEquals(List.of(rule), matched);
+        assertEquals(1, helper.routeParseCount.get());
+    }
+
     private InjectionRule createRule(MatchRule matchRule) {
         InjectionRule rule = new InjectionRule();
         rule.setEnabled(true);
@@ -246,6 +266,7 @@ class InjectHelperTest {
 
     private static class CountingInjectHelper extends InjectHelper {
         private final AtomicInteger compileCount = new AtomicInteger();
+        private final AtomicInteger routeParseCount = new AtomicInteger();
 
         CountingInjectHelper(InjectionRuleManager ruleManager, CodeSnippetManager snippetManager) {
             super(ruleManager, snippetManager);
@@ -255,6 +276,12 @@ class InjectHelperTest {
         protected Pattern compileRegexPattern(String pattern) {
             compileCount.incrementAndGet();
             return super.compileRegexPattern(pattern);
+        }
+
+        @Override
+        protected org.springframework.util.RouteMatcher.Route parseCurrentPathRoute(String currentPath) {
+            routeParseCount.incrementAndGet();
+            return super.parseCurrentPathRoute(currentPath);
         }
     }
 }
