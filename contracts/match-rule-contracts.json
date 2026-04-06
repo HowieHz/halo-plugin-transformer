@@ -1,5 +1,5 @@
 {
-    "version": 2,
+    "version": 3,
     "cases": [
         {
             "name": "and_group_with_path_and_template_is_path_scoped",
@@ -187,6 +187,324 @@
                     "ok": false,
                     "relativePath": "value",
                     "message": "不支持该字段；条件组仅支持 \"type\"、\"negate\"、\"operator\"、\"children\""
+                }
+            }
+        },
+        {
+            "name": "group_rule_requires_explicit_negate",
+            "input": {
+                "type": "GROUP",
+                "operator": "AND",
+                "children": [
+                    {
+                        "type": "PATH",
+                        "negate": false,
+                        "matcher": "ANT",
+                        "value": "/**"
+                    }
+                ]
+            },
+            "shared": {
+                "writeValidation": {
+                    "ok": false,
+                    "relativePath": "negate",
+                    "message": "缺少必填字段 \"negate\"；该字段可选值为 true、false"
+                }
+            }
+        },
+        {
+            "name": "group_rule_rejects_empty_children",
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": []
+            },
+            "shared": {
+                "writeValidation": {
+                    "ok": false,
+                    "relativePath": "children",
+                    "message": "不能有空组"
+                }
+            }
+        },
+        {
+            "name": "path_rule_rejects_operator_field",
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    {
+                        "type": "PATH",
+                        "negate": false,
+                        "operator": "AND",
+                        "matcher": "ANT",
+                        "value": "/posts/**"
+                    }
+                ]
+            },
+            "shared": {
+                "writeValidation": {
+                    "ok": false,
+                    "relativePath": "children[0].operator",
+                    "message": "仅条件组可使用 operator"
+                }
+            }
+        },
+        {
+            "name": "path_rule_rejects_unknown_field",
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    {
+                        "type": "PATH",
+                        "negate": false,
+                        "matcher": "ANT",
+                        "value": "/posts/**",
+                        "extra": true
+                    }
+                ]
+            },
+            "shared": {
+                "writeValidation": {
+                    "ok": false,
+                    "relativePath": "children[0].extra",
+                    "message": "不支持该字段；页面路径条件仅支持 \"type\"、\"negate\"、\"matcher\"、\"value\""
+                }
+            }
+        },
+        {
+            "name": "path_rule_requires_non_empty_value",
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    {
+                        "type": "PATH",
+                        "negate": false,
+                        "matcher": "ANT",
+                        "value": "   "
+                    }
+                ]
+            },
+            "shared": {
+                "writeValidation": {
+                    "ok": false,
+                    "relativePath": "children[0].value",
+                    "message": "必须是非空字符串"
+                }
+            }
+        },
+        {
+            "name": "template_rule_requires_non_empty_value",
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    {
+                        "type": "TEMPLATE_ID",
+                        "negate": false,
+                        "matcher": "EXACT",
+                        "value": "   "
+                    }
+                ]
+            },
+            "shared": {
+                "writeValidation": {
+                    "ok": false,
+                    "relativePath": "children[0].value",
+                    "message": "必须是非空字符串"
+                }
+            }
+        },
+        {
+            "name": "path_rule_rejects_invalid_regex",
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    {
+                        "type": "PATH",
+                        "negate": false,
+                        "matcher": "REGEX",
+                        "value": "["
+                    }
+                ]
+            },
+            "shared": {
+                "writeValidation": {
+                    "ok": false,
+                    "relativePath": "children[0].value"
+                }
+            },
+            "java": {
+                "writeValidation": {
+                    "message": "正则表达式无效，Unclosed character class"
+                }
+            },
+            "ts": {
+                "writeValidation": {
+                    "message": "正则表达式无效：Invalid regular expression: /[/: Unterminated character class"
+                }
+            }
+        },
+        {
+            "name": "template_rule_rejects_invalid_regex",
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    {
+                        "type": "TEMPLATE_ID",
+                        "negate": false,
+                        "matcher": "REGEX",
+                        "value": "["
+                    }
+                ]
+            },
+            "shared": {
+                "writeValidation": {
+                    "ok": false,
+                    "relativePath": "children[0].value"
+                }
+            },
+            "java": {
+                "writeValidation": {
+                    "message": "正则表达式无效，Unclosed character class"
+                }
+            },
+            "ts": {
+                "writeValidation": {
+                    "message": "正则表达式无效：Invalid regular expression: /[/: Unterminated character class"
+                }
+            }
+        },
+        {
+            "name": "template_only_group_is_not_path_scoped",
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    {
+                        "type": "TEMPLATE_ID",
+                        "negate": false,
+                        "matcher": "EXACT",
+                        "value": "post"
+                    }
+                ]
+            },
+            "shared": {
+                "domPathPrecheck": false,
+                "writeValidation": {
+                    "ok": true
+                }
+            }
+        },
+        {
+            "name": "negated_template_rule_is_not_path_scoped",
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    {
+                        "type": "TEMPLATE_ID",
+                        "negate": true,
+                        "matcher": "EXACT",
+                        "value": "post"
+                    }
+                ]
+            },
+            "shared": {
+                "domPathPrecheck": false,
+                "writeValidation": {
+                    "ok": true
+                }
+            }
+        },
+        {
+            "name": "negated_group_with_template_is_not_path_scoped",
+            "input": {
+                "type": "GROUP",
+                "negate": true,
+                "operator": "AND",
+                "children": [
+                    {
+                        "type": "TEMPLATE_ID",
+                        "negate": false,
+                        "matcher": "EXACT",
+                        "value": "post"
+                    }
+                ]
+            },
+            "shared": {
+                "domPathPrecheck": false,
+                "writeValidation": {
+                    "ok": true
+                }
+            }
+        },
+        {
+            "name": "or_group_with_only_path_branches_is_path_scoped",
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "OR",
+                "children": [
+                    {
+                        "type": "PATH",
+                        "negate": false,
+                        "matcher": "EXACT",
+                        "value": "/about"
+                    },
+                    {
+                        "type": "PATH",
+                        "negate": false,
+                        "matcher": "ANT",
+                        "value": "/posts/**"
+                    }
+                ]
+            },
+            "shared": {
+                "domPathPrecheck": true,
+                "writeValidation": {
+                    "ok": true
+                }
+            }
+        },
+        {
+            "name": "and_group_with_only_template_branches_is_not_path_scoped",
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    {
+                        "type": "TEMPLATE_ID",
+                        "negate": false,
+                        "matcher": "EXACT",
+                        "value": "post"
+                    },
+                    {
+                        "type": "TEMPLATE_ID",
+                        "negate": false,
+                        "matcher": "REGEX",
+                        "value": "^(post|page)$"
+                    }
+                ]
+            },
+            "shared": {
+                "domPathPrecheck": false,
+                "writeValidation": {
+                    "ok": true
                 }
             }
         }
