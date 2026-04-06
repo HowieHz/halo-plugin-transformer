@@ -1,0 +1,219 @@
+{
+    "version": 1,
+    "cases": [
+        {
+            "name": "and_group_with_path_and_template_is_path_scoped",
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    {
+                        "type": "PATH",
+                        "negate": false,
+                        "matcher": "ANT",
+                        "value": "/posts/**"
+                    },
+                    {
+                        "type": "TEMPLATE_ID",
+                        "negate": false,
+                        "matcher": "EXACT",
+                        "value": "post"
+                    }
+                ]
+            },
+            "shared": {
+                "domPathPrecheck": true
+            },
+            "java": {
+                "writeValidation": {
+                    "ok": true
+                }
+            },
+            "ts": {
+                "writeValidation": {
+                    "ok": true
+                }
+            }
+        },
+        {
+            "name": "or_group_with_path_and_template_is_not_path_scoped",
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "OR",
+                "children": [
+                    {
+                        "type": "PATH",
+                        "negate": false,
+                        "matcher": "ANT",
+                        "value": "/posts/**"
+                    },
+                    {
+                        "type": "TEMPLATE_ID",
+                        "negate": false,
+                        "matcher": "EXACT",
+                        "value": "post"
+                    }
+                ]
+            },
+            "shared": {
+                "domPathPrecheck": false
+            },
+            "java": {
+                "writeValidation": {
+                    "ok": true
+                }
+            },
+            "ts": {
+                "writeValidation": {
+                    "ok": true
+                }
+            }
+        },
+        {
+            "name": "negated_path_group_stays_path_scoped",
+            "input": {
+                "type": "GROUP",
+                "negate": true,
+                "operator": "AND",
+                "children": [
+                    {
+                        "type": "PATH",
+                        "negate": false,
+                        "matcher": "ANT",
+                        "value": "/archives/**"
+                    }
+                ]
+            },
+            "shared": {
+                "domPathPrecheck": true
+            },
+            "java": {
+                "writeValidation": {
+                    "ok": true
+                }
+            },
+            "ts": {
+                "writeValidation": {
+                    "ok": true
+                }
+            }
+        },
+        {
+            "name": "root_must_be_group",
+            "input": {
+                "type": "PATH",
+                "negate": false,
+                "matcher": "ANT",
+                "value": "/**"
+            },
+            "java": {
+                "writeValidation": {
+                    "ok": false,
+                    "path": "matchRule.type",
+                    "message": "根节点必须是 GROUP"
+                }
+            },
+            "ts": {
+                "writeValidation": {
+                    "ok": false,
+                    "path": "$.type",
+                    "message": "根节点必须是 GROUP"
+                }
+            }
+        },
+        {
+            "name": "template_id_rejects_ant_matcher",
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    {
+                        "type": "TEMPLATE_ID",
+                        "negate": false,
+                        "matcher": "ANT",
+                        "value": "post"
+                    }
+                ]
+            },
+            "java": {
+                "writeValidation": {
+                    "ok": false,
+                    "path": "matchRule.children[0].matcher",
+                    "message": "模板 ID 仅支持 \"REGEX\" 或 \"EXACT\""
+                }
+            },
+            "ts": {
+                "writeValidation": {
+                    "ok": false,
+                    "path": "$.children[0].matcher",
+                    "message": "模板 ID 仅支持 \"REGEX\" 或 \"EXACT\""
+                }
+            }
+        },
+        {
+            "name": "leaf_rule_rejects_children_field",
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    {
+                        "type": "PATH",
+                        "negate": false,
+                        "matcher": "ANT",
+                        "value": "/posts/**",
+                        "children": []
+                    }
+                ]
+            },
+            "java": {
+                "writeValidation": {
+                    "ok": false,
+                    "path": "matchRule.children[0].children",
+                    "message": "仅条件组可使用 children"
+                }
+            },
+            "ts": {
+                "writeValidation": {
+                    "ok": false,
+                    "path": "$.children[0].children",
+                    "message": "仅条件组可使用 children"
+                }
+            }
+        },
+        {
+            "name": "group_rule_rejects_leaf_value_field",
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "value": "",
+                "children": [
+                    {
+                        "type": "PATH",
+                        "negate": false,
+                        "matcher": "ANT",
+                        "value": "/**"
+                    }
+                ]
+            },
+            "java": {
+                "writeValidation": {
+                    "ok": false,
+                    "path": "matchRule.value",
+                    "message": "仅叶子条件可使用 value"
+                }
+            },
+            "ts": {
+                "writeValidation": {
+                    "ok": false,
+                    "path": "$.value",
+                    "message": "不支持该字段；条件组仅支持 \"type\"、\"negate\"、\"operator\"、\"children\""
+                }
+            }
+        }
+    ]
+}

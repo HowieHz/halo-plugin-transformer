@@ -27,6 +27,20 @@ describe('sortByOrderMap', () => {
 
     expect(sorted.map((item) => item.id)).toEqual(['rule-a', 'rule-b', 'rule-c'])
   })
+
+  // why: 前后端在同 order、同显示名时都必须回退到 id；
+  // 否则前端即时拖拽后的顺序和后端保存后再读出的顺序会发生抖动。
+  it('sorts same-order and same-name items by id', () => {
+    const items = [
+      { id: 'rule-b', name: 'Same' },
+      { id: 'rule-a', name: 'Same' },
+      { id: 'rule-c', name: 'Same' },
+    ]
+
+    const sorted = sortByOrderMap(items, {})
+
+    expect(sorted.map((item) => item.id)).toEqual(['rule-a', 'rule-b', 'rule-c'])
+  })
 })
 
 describe('buildExplicitOrderMap', () => {

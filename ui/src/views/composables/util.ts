@@ -30,14 +30,14 @@ export function displayNameOf(item: { id: string; name?: string | null }) {
 
 /**
  * why: 排序映射只保存“显式排过序”的项；未出现的资源默认按 0 处理并排到前面，
- * 同值时再按名称字符序稳定排序，避免新增项或未排序项每次刷新都乱跳。
+ * 同值时再按名称字符序、最后按 id 稳定排序，确保前端即时排序与后端回存后的顺序契约一致。
  */
 export function sortByOrderMap<T extends { id: string; name?: string | null }>(
   items: T[],
   orders: OrderMap,
 ) {
   return items
-    .map((item, index) => ({ item, index }))
+    .map((item) => ({ item }))
     .sort((a, b) => {
       const aOrder = Number.isFinite(orders[a.item.id]) ? orders[a.item.id] : 0
       const bOrder = Number.isFinite(orders[b.item.id]) ? orders[b.item.id] : 0
@@ -51,7 +51,10 @@ export function sortByOrderMap<T extends { id: string; name?: string | null }>(
       if (nameCompare !== 0) {
         return nameCompare
       }
-      return a.index - b.index
+      return a.item.id.localeCompare(b.item.id, undefined, {
+        numeric: true,
+        sensitivity: 'base',
+      })
     })
     .map(({ item }) => item)
 }
