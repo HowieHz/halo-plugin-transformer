@@ -122,8 +122,7 @@ const dirty = computed(() => {
       matchRule: rule.value.matchRule,
       position: rule.value.position,
       wrapMarker: rule.value.wrapMarker,
-      matchRuleDraft: rule.value.matchRuleDraft,
-      matchRuleEditorMode: rule.value.matchRuleEditorMode,
+      matchRuleSource: rule.value.matchRuleSource,
       snippetIds: selectedSnippetIds.value,
     }) !==
     JSON.stringify({
@@ -135,8 +134,7 @@ const dirty = computed(() => {
       matchRule: initialRule.matchRule,
       position: initialRule.position,
       wrapMarker: initialRule.wrapMarker,
-      matchRuleDraft: initialRule.matchRuleDraft,
-      matchRuleEditorMode: initialRule.matchRuleEditorMode,
+      matchRuleSource: initialRule.matchRuleSource,
       snippetIds: [],
     })
   )
@@ -275,9 +273,8 @@ defineExpose({
       <FormField v-slot="{ inputId, labelId }" label="匹配规则" required>
         <div :id="inputId" :aria-labelledby="labelId">
           <MatchRuleEditor
-            :draft="rule.matchRuleDraft"
-            :editor-mode="rule.matchRuleEditorMode"
             :model-value="rule.matchRule"
+            :source="rule.matchRuleSource"
             @change="void 0"
             @update:state="Object.assign(rule, $event)"
           />

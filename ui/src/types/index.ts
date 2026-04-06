@@ -26,6 +26,7 @@ export type MatchRuleType = 'GROUP' | 'PATH' | 'TEMPLATE_ID'
 export type MatchRuleOperator = 'AND' | 'OR'
 export type MatchRuleMatcher = 'ANT' | 'REGEX' | 'EXACT'
 export type MatchRuleEditorMode = 'SIMPLE' | 'JSON'
+export type MatchRuleSourceKind = 'RULE_TREE' | 'JSON_DRAFT'
 
 export interface MatchRule {
   type: MatchRuleType
@@ -34,6 +35,11 @@ export interface MatchRule {
   matcher?: MatchRuleMatcher
   value?: string
   children?: MatchRule[]
+}
+
+export interface MatchRuleSource {
+  kind: MatchRuleSourceKind
+  data: MatchRule | string
 }
 
 export interface InjectionRuleWritePayload {
@@ -57,8 +63,7 @@ export interface InjectionRuleViewModel extends InjectionRuleWritePayload {
 }
 
 export interface InjectionRuleEditorState {
-  matchRuleDraft?: string
-  matchRuleEditorMode?: MatchRuleEditorMode
+  matchRuleSource?: MatchRuleSource
 }
 
 export type CodeSnippet = CodeSnippetViewModel
@@ -158,6 +163,9 @@ export function makeSnippet(override: Partial<CodeSnippetViewModel> = {}): CodeS
 }
 
 export function makeRule(override: Partial<EditableInjectionRule> = {}): EditableInjectionRule {
+  const matchRule = makeMatchRuleGroup({
+    children: [makePathMatchRule({ value: '' })],
+  })
   return {
     apiVersion: 'injector.erzbir.com/v1alpha1',
     kind: 'InjectionRule',
@@ -169,14 +177,14 @@ export function makeRule(override: Partial<EditableInjectionRule> = {}): Editabl
     sortOrder: undefined,
     mode: 'FOOTER',
     match: '',
-    matchRule: makeMatchRuleGroup({
-      children: [makePathMatchRule({ value: '' })],
-    }),
+    matchRule,
     position: 'APPEND',
     wrapMarker: true,
     snippetIds: [],
-    matchRuleDraft: undefined,
-    matchRuleEditorMode: undefined,
+    matchRuleSource: {
+      kind: 'RULE_TREE',
+      data: JSON.parse(JSON.stringify(matchRule)) as MatchRule,
+    },
     ...override,
   }
 }

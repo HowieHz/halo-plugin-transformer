@@ -1,16 +1,13 @@
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue'
-import type {
-  CodeSnippet,
-  EditableInjectionRule,
-  InjectionRule,
-  MatchRuleEditorMode,
-} from '@/types'
+import type { CodeSnippet, EditableInjectionRule, InjectionRule, MatchRuleSource } from '@/types'
 import { MODE_OPTIONS, POSITION_OPTIONS } from '@/types'
 import {
-  formatMatchRule,
+  cloneMatchRule,
+  cloneMatchRuleSource,
   getDomRulePerformanceWarning,
   persistMatchRuleEditorState,
+  makeRuleTreeSource,
 } from '@/views/composables/matchRule'
 import ItemPicker from './ItemPicker.vue'
 import EditorToolbar from './EditorToolbar.vue'
@@ -102,9 +99,8 @@ watch(
       },
       wrapMarker: currentRule.value.wrapMarker,
       matchRule: {
-        matchRule: currentRule.value.matchRule,
-        matchRuleDraft: currentRule.value.matchRuleDraft ?? '',
-        matchRuleEditorMode: currentRule.value.matchRuleEditorMode ?? 'SIMPLE',
+        matchRule: cloneMatchRule(currentRule.value.matchRule),
+        matchRuleSource: cloneCurrentMatchRuleSource(),
       },
       snippetIds: props.selectedSnippetIds,
     })
@@ -153,15 +149,19 @@ function updateRuleSnapshot(next: EditableInjectionRule) {
 }
 
 function currentMatchRuleSnapshot() {
-  const formattedDraft = currentRule.value ? formatMatchRule(currentRule.value.matchRule) : ''
-  const currentDraft = currentRule.value?.matchRuleDraft?.trim()
-  const hasCustomDraft = !!currentDraft && currentDraft !== formattedDraft
-
   return {
-    matchRule: currentRule.value?.matchRule,
-    matchRuleDraft: hasCustomDraft ? currentDraft : '',
-    matchRuleEditorMode: hasCustomDraft ? (currentRule.value?.matchRuleEditorMode ?? 'JSON') : '',
+    matchRule: currentRule.value ? cloneMatchRule(currentRule.value.matchRule) : undefined,
+    matchRuleSource: currentRule.value ? cloneCurrentMatchRuleSource() : undefined,
   }
+}
+
+function cloneCurrentMatchRuleSource() {
+  if (!currentRule.value) {
+    return makeRuleTreeSource({ type: 'GROUP', negate: false, operator: 'AND', children: [] })
+  }
+  return cloneMatchRuleSource(
+    currentRule.value.matchRuleSource ?? makeRuleTreeSource(currentRule.value.matchRule),
+  )
 }
 
 function updateMatchRuleField(patch: Partial<EditableInjectionRule>) {
@@ -171,19 +171,16 @@ function updateMatchRuleField(patch: Partial<EditableInjectionRule>) {
     ...currentRule.value,
     ...patch,
   }
-  const formattedDraft = formatMatchRule(next.matchRule)
-  const nextDraft = next.matchRuleDraft?.trim()
-  const hasCustomDraft = !!nextDraft && nextDraft !== formattedDraft
   const after = {
-    matchRule: next.matchRule,
-    matchRuleDraft: hasCustomDraft ? nextDraft : '',
-    matchRuleEditorMode: hasCustomDraft ? (next.matchRuleEditorMode ?? 'JSON') : '',
+    matchRule: cloneMatchRule(next.matchRule),
+    matchRuleSource: cloneMatchRuleSource(
+      next.matchRuleSource ?? makeRuleTreeSource(next.matchRule),
+    ),
   }
   undo.trackChange('matchRule', previous, after)
   persistMatchRuleEditorState({
     id: next.id,
-    matchRuleDraft: next.matchRuleDraft,
-    matchRuleEditorMode: next.matchRuleEditorMode,
+    matchRuleSource: next.matchRuleSource,
   })
   updateRuleSnapshot(next)
 }
@@ -234,9 +231,8 @@ function canUndo(
         }
       : field === 'matchRule'
         ? {
-            matchRule: currentRule.value.matchRule,
-            matchRuleDraft: currentRule.value.matchRuleDraft ?? '',
-            matchRuleEditorMode: currentRule.value.matchRuleEditorMode ?? 'SIMPLE',
+            matchRule: cloneMatchRule(currentRule.value.matchRule),
+            matchRuleSource: cloneCurrentMatchRuleSource(),
           }
         : field === 'snippetIds'
           ? props.selectedSnippetIds
@@ -264,9 +260,8 @@ function undoField(
         }
       : field === 'matchRule'
         ? {
-            matchRule: currentRule.value.matchRule,
-            matchRuleDraft: currentRule.value.matchRuleDraft ?? '',
-            matchRuleEditorMode: currentRule.value.matchRuleEditorMode ?? 'SIMPLE',
+            matchRule: cloneMatchRule(currentRule.value.matchRule),
+            matchRuleSource: cloneCurrentMatchRuleSource(),
           }
         : field === 'snippetIds'
           ? props.selectedSnippetIds
@@ -287,17 +282,12 @@ function undoField(
   if (field === 'matchRule') {
     const snapshot = previous as {
       matchRule: InjectionRule['matchRule']
-      matchRuleDraft: string
-      matchRuleEditorMode: MatchRuleEditorMode | ''
+      matchRuleSource?: MatchRuleSource
     }
     const next = {
       ...currentRule.value,
       matchRule: snapshot.matchRule,
-      matchRuleDraft: snapshot.matchRuleDraft || formatMatchRule(snapshot.matchRule),
-      matchRuleEditorMode:
-        snapshot.matchRuleDraft && snapshot.matchRuleEditorMode
-          ? snapshot.matchRuleEditorMode
-          : currentRule.value.matchRuleEditorMode,
+      matchRuleSource: snapshot.matchRuleSource ?? makeRuleTreeSource(snapshot.matchRule),
     }
     persistMatchRuleEditorState(next)
     updateRuleSnapshot(next)
@@ -341,17 +331,12 @@ function resetField(
   if (field === 'matchRule') {
     const snapshot = baseline as {
       matchRule: InjectionRule['matchRule']
-      matchRuleDraft: string
-      matchRuleEditorMode: MatchRuleEditorMode | ''
+      matchRuleSource?: MatchRuleSource
     }
     const next = {
       ...currentRule.value,
       matchRule: snapshot.matchRule,
-      matchRuleDraft: snapshot.matchRuleDraft || formatMatchRule(snapshot.matchRule),
-      matchRuleEditorMode:
-        snapshot.matchRuleDraft && snapshot.matchRuleEditorMode
-          ? snapshot.matchRuleEditorMode
-          : currentRule.value.matchRuleEditorMode,
+      matchRuleSource: snapshot.matchRuleSource ?? makeRuleTreeSource(snapshot.matchRule),
     }
     persistMatchRuleEditorState(next)
     updateRuleSnapshot(next)
@@ -572,9 +557,8 @@ async function exportRule() {
           <template #default="{ inputId, labelId }">
             <div :id="inputId" :aria-labelledby="labelId">
               <MatchRuleEditor
-                :draft="currentRule.matchRuleDraft"
-                :editor-mode="currentRule.matchRuleEditorMode"
                 :model-value="currentRule.matchRule"
+                :source="currentRule.matchRuleSource"
                 @change="emit('field-change')"
                 @update:state="updateMatchRuleField($event)"
               />

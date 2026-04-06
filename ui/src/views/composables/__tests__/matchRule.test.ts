@@ -20,8 +20,9 @@ describe('matchRule editor state', () => {
 
     const hydrated = hydrateRuleForEditor(savedRule)
 
-    expect(hydrated.matchRuleEditorMode).toBe('SIMPLE')
-    expect(hydrated.matchRuleDraft).toContain('"type": "GROUP"')
+    expect(hydrated.matchRuleSource).toMatchObject({
+      kind: 'RULE_TREE',
+    })
   })
 
   // why: `type` 写成布尔值时，应先明确提示“必须是字符串”，避免用户误以为只是枚举值写错。
@@ -88,8 +89,8 @@ describe('matchRule editor state', () => {
     expect(result.error?.message).toBe('条件组缺少必填字段 "operator"；该字段可选值为 "AND"、"OR"')
   })
 
-  // why: 简单模式保存时必须只信当前可视化规则树，不能再被旧的 JSON 草稿反向污染。
-  it('ignores stale json draft when current editor mode is simple', () => {
+  // why: 简单模式保存时必须只信当前规则树来源，不能被高级模式草稿心智反向污染。
+  it('resolves rule tree source when current source is simple', () => {
     const rule = makeRule({
       matchRule: {
         type: 'GROUP',
@@ -97,20 +98,15 @@ describe('matchRule editor state', () => {
         operator: 'AND',
         children: [{ type: 'PATH', negate: false, matcher: 'ANT', value: '/**' }],
       },
-      matchRuleEditorMode: 'SIMPLE',
-      matchRuleDraft: `{
-  "type": "GROUP",
-  "negate": false,
-  "operator": "AND",
-  "children": [
-    {
-      "type": "PATH",
-      "negate": false,
-      "matcher": "REGEX",
-      "value": "/**"
-    }
-  ]
-}`,
+      matchRuleSource: {
+        kind: 'RULE_TREE',
+        data: {
+          type: 'GROUP',
+          negate: false,
+          operator: 'AND',
+          children: [{ type: 'PATH', negate: false, matcher: 'ANT', value: '/**' }],
+        },
+      },
     })
 
     const result = resolveRuleMatchRule(rule)

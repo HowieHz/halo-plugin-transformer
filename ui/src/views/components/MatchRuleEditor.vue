@@ -1,12 +1,14 @@
 <script lang="ts" setup>
 import { computed, ref, useId, watch } from 'vue'
 import { Dialog, VButton } from '@halo-dev/components'
-import type { MatchRule, MatchRuleEditorMode } from '@/types'
+import type { MatchRule, MatchRuleEditorMode, MatchRuleSource } from '@/types'
 import { makeMatchRuleGroup } from '@/types'
 import {
   formatMatchRule,
   formatMatchRuleError,
   type MatchRuleValidationError,
+  makeJsonDraftSource,
+  makeRuleTreeSource,
   normalizeMatchRule,
   parseMatchRuleDraft,
   validateSimpleMatchRuleTree,
@@ -15,26 +17,27 @@ import MatchRuleNodeEditor from './MatchRuleNodeEditor.vue'
 
 const props = defineProps<{
   modelValue: MatchRule
-  draft?: string
-  editorMode?: MatchRuleEditorMode
+  source?: MatchRuleSource
 }>()
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: MatchRule): void
-  (e: 'update:draft', value: string): void
-  (e: 'update:editorMode', value: MatchRuleEditorMode): void
+  (e: 'update:source', value: MatchRuleSource): void
   (
     e: 'update:state',
     value: Partial<{
       matchRule: MatchRule
-      matchRuleDraft: string
-      matchRuleEditorMode: MatchRuleEditorMode
+      matchRuleSource: MatchRuleSource
     }>,
   ): void
   (e: 'change'): void
 }>()
 
-const jsonDraft = ref(props.draft || formatMatchRule(props.modelValue))
+const jsonDraft = ref(
+  props.source?.kind === 'JSON_DRAFT'
+    ? String(props.source.data ?? '')
+    : formatMatchRule(props.modelValue),
+)
 const editorId = useId()
 const simplePanelId = `match-rule-simple-${editorId}`
 const jsonPanelId = `match-rule-json-${editorId}`
@@ -46,25 +49,36 @@ const jsonVerticalPadding = 8
 const jsonHighlightInset = 3
 
 watch(
-  () => props.draft,
+  () => props.source,
   (value) => {
-    if (typeof value === 'string' && value !== jsonDraft.value) {
-      jsonDraft.value = value
+    if (value?.kind === 'JSON_DRAFT') {
+      const nextDraft = String(value.data ?? '')
+      if (nextDraft !== jsonDraft.value) {
+        jsonDraft.value = nextDraft
+      }
+      return
+    }
+    const nextDraft = formatMatchRule(props.modelValue)
+    if (nextDraft !== jsonDraft.value) {
+      jsonDraft.value = nextDraft
     }
   },
+  { deep: true },
 )
 
 watch(
   () => props.modelValue,
   (value) => {
-    if (!props.draft) {
+    if (props.source?.kind !== 'JSON_DRAFT') {
       jsonDraft.value = formatMatchRule(value)
     }
   },
   { deep: true },
 )
 
-const currentMode = computed(() => props.editorMode ?? 'SIMPLE')
+const currentMode = computed<MatchRuleEditorMode>(() =>
+  props.source?.kind === 'JSON_DRAFT' ? 'JSON' : 'SIMPLE',
+)
 const parseResult = computed(() => parseMatchRuleDraft(jsonDraft.value))
 const parseError = computed(() => formatMatchRuleError(parseResult.value.error))
 const jsonLines = computed(() => jsonDraft.value.split('\n'))
@@ -101,19 +115,15 @@ function isEqualValue(a: unknown, b: unknown) {
 function emitStatePatch(
   patch: Partial<{
     matchRule: MatchRule
-    matchRuleDraft: string
-    matchRuleEditorMode: MatchRuleEditorMode
+    matchRuleSource: MatchRuleSource
   }>,
 ) {
   const hasChanges = Object.entries(patch).some(([key, value]) => {
     if (key === 'matchRule') {
       return !isEqualValue(props.modelValue, value)
     }
-    if (key === 'matchRuleDraft') {
-      return (props.draft ?? '') !== value
-    }
-    if (key === 'matchRuleEditorMode') {
-      return (props.editorMode ?? 'SIMPLE') !== value
+    if (key === 'matchRuleSource') {
+      return !isEqualValue(props.source ?? makeRuleTreeSource(props.modelValue), value)
     }
     return false
   })
@@ -172,40 +182,29 @@ function getModeSwitchWarning(mode: MatchRuleEditorMode) {
 }
 
 function applyModeSwitch(mode: MatchRuleEditorMode, overwriteDraft: boolean) {
-  const patch: Partial<{
-    matchRule: MatchRule
-    matchRuleDraft: string
-    matchRuleEditorMode: MatchRuleEditorMode
-  }> = {
-    matchRuleEditorMode: mode,
-  }
+  const patch: Partial<{ matchRule: MatchRule; matchRuleSource: MatchRuleSource }> = {}
   if (mode === 'JSON' || overwriteDraft) {
     const text = formatMatchRule(props.modelValue)
     jsonDraft.value = text
-    patch.matchRuleDraft = text
+    patch.matchRuleSource = makeJsonDraftSource(text)
+  } else {
+    patch.matchRuleSource = makeRuleTreeSource(props.modelValue)
   }
   emitStatePatch(patch)
 }
 
 function updateSimple(value: MatchRule) {
   const normalized = normalizeMatchRule(value)
-  const draft = formatMatchRule(normalized)
   emitStatePatch({
     matchRule: normalized,
-    matchRuleDraft: draft,
-    matchRuleEditorMode: 'SIMPLE',
+    matchRuleSource: makeRuleTreeSource(normalized),
   })
 }
 
 function updateJsonDraft(value: string) {
   jsonDraft.value = value
-  const patch: Partial<{
-    matchRule: MatchRule
-    matchRuleDraft: string
-    matchRuleEditorMode: MatchRuleEditorMode
-  }> = {
-    matchRuleDraft: value,
-    matchRuleEditorMode: 'JSON',
+  const patch: Partial<{ matchRule: MatchRule; matchRuleSource: MatchRuleSource }> = {
+    matchRuleSource: makeJsonDraftSource(value),
   }
   if (parseResult.value.rule) {
     patch.matchRule = parseResult.value.rule
@@ -219,8 +218,7 @@ function formatJson() {
   jsonDraft.value = next
   emitStatePatch({
     matchRule: parsed || makeMatchRuleGroup(),
-    matchRuleDraft: next,
-    matchRuleEditorMode: 'JSON',
+    matchRuleSource: makeJsonDraftSource(next),
   })
 }
 

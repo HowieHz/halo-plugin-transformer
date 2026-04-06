@@ -3,9 +3,15 @@ import {
   makeSnippet,
   type CodeSnippet,
   type EditableInjectionRule,
-  type MatchRuleEditorMode,
+  type MatchRuleSource,
 } from '@/types'
-import { cloneMatchRule, normalizeMatchRule, validateMatchRuleObject } from './matchRule'
+import {
+  makeJsonDraftSource,
+  makeRuleTreeSource,
+  normalizeMatchRule,
+  parseMatchRuleDraft,
+  validateMatchRuleObject,
+} from './matchRule'
 
 type TransferResourceType = 'snippet' | 'rule'
 
@@ -29,11 +35,9 @@ interface RuleTransferData {
   description: string
   mode: EditableInjectionRule['mode']
   match: string
-  matchRule: EditableInjectionRule['matchRule']
   position: EditableInjectionRule['position']
   wrapMarker: boolean
-  matchRuleDraft?: string
-  matchRuleEditorMode?: MatchRuleEditorMode
+  matchRuleSource: MatchRuleSource
 }
 
 type SnippetTransferEnvelope = TransferEnvelope<'snippet', SnippetTransferData>
@@ -62,6 +66,7 @@ export function buildSnippetTransfer(snippet: CodeSnippet): SnippetTransferEnvel
  * 这样用户再导入时，既能得到同一条规则，也不会把关联代码块一并复制过去。
  */
 export function buildRuleTransfer(rule: EditableInjectionRule): RuleTransferEnvelope {
+  const matchRuleSource = buildRuleTransferMatchRuleSource(rule)
   return {
     format: 'halo-plugin-injector',
     version: 1,
@@ -72,11 +77,9 @@ export function buildRuleTransfer(rule: EditableInjectionRule): RuleTransferEnve
       description: rule.description,
       mode: rule.mode,
       match: rule.match,
-      matchRule: cloneMatchRule(rule.matchRule),
       position: rule.position,
       wrapMarker: rule.wrapMarker,
-      matchRuleDraft: rule.matchRuleDraft,
-      matchRuleEditorMode: rule.matchRuleEditorMode,
+      matchRuleSource,
     },
   }
 }
@@ -178,11 +181,9 @@ export function parseRuleTransfer(raw: string): EditableInjectionRule {
       'description',
       'mode',
       'match',
-      'matchRule',
       'position',
       'wrapMarker',
-      'matchRuleDraft',
-      'matchRuleEditorMode',
+      'matchRuleSource',
     ],
     '注入规则',
   )
@@ -199,9 +200,6 @@ export function parseRuleTransfer(raw: string): EditableInjectionRule {
   if (typeof data.match !== 'string') {
     throw new Error('导入失败：`match` 必须是字符串')
   }
-  if (!isPlainObject(data.matchRule)) {
-    throw new Error('导入失败：`matchRule` 必须是对象')
-  }
   validateEnumField('position', data.position, [
     'APPEND',
     'PREPEND',
@@ -213,39 +211,80 @@ export function parseRuleTransfer(raw: string): EditableInjectionRule {
   if (typeof data.wrapMarker !== 'boolean') {
     throw new Error('导入失败：`wrapMarker` 必须是布尔值；仅支持 true 或 false')
   }
-  if (data.matchRuleDraft !== undefined && typeof data.matchRuleDraft !== 'string') {
-    throw new Error('导入失败：`matchRuleDraft` 必须是字符串')
-  }
-  validateEnumField('matchRuleEditorMode', data.matchRuleEditorMode, ['SIMPLE', 'JSON'], {
-    required: false,
-  })
-  const matchRuleResult = validateMatchRuleObject(data.matchRule, 'data.matchRule')
-  if (matchRuleResult.error) {
-    return makeRule({
-      enabled: data.enabled,
-      name: data.name,
-      description: data.description,
-      mode: data.mode,
-      match: data.match,
-      matchRule: normalizeMatchRule(data.matchRule),
-      position: data.position,
-      wrapMarker: data.wrapMarker,
-      matchRuleDraft: JSON.stringify(data.matchRule, null, 2),
-      matchRuleEditorMode: 'JSON',
-    })
-  }
+  const matchRuleState = parseImportedMatchRuleSource(data.matchRuleSource)
   return makeRule({
     enabled: data.enabled,
     name: data.name,
     description: data.description,
     mode: data.mode,
     match: data.match,
-    matchRule: matchRuleResult.rule!,
+    matchRule: matchRuleState.matchRule,
     position: data.position,
     wrapMarker: data.wrapMarker,
-    matchRuleDraft: data.matchRuleDraft,
-    matchRuleEditorMode: data.matchRuleEditorMode,
+    matchRuleSource: matchRuleState.matchRuleSource,
   })
+}
+
+function buildRuleTransferMatchRuleSource(rule: EditableInjectionRule): MatchRuleSource {
+  const source = rule.matchRuleSource ?? makeRuleTreeSource(rule.matchRule)
+  if (source.kind !== 'JSON_DRAFT') {
+    return makeRuleTreeSource(rule.matchRule)
+  }
+
+  const draft = String(source.data ?? '')
+  const parsed = parseMatchRuleDraft(draft)
+  if (parsed.rule) {
+    return makeRuleTreeSource(parsed.rule)
+  }
+
+  return makeJsonDraftSource(draft)
+}
+
+function parseImportedMatchRuleSource(source: unknown): {
+  matchRule: EditableInjectionRule['matchRule']
+  matchRuleSource: MatchRuleSource
+} {
+  if (!isPlainObject(source)) {
+    throw new Error('导入失败：`matchRuleSource` 必须是对象')
+  }
+
+  ensureAllowedFields(source, ['kind', 'data'], '匹配规则来源')
+  validateEnumField('matchRuleSource.kind', source.kind, ['RULE_TREE', 'JSON_DRAFT'])
+
+  if (!Object.prototype.hasOwnProperty.call(source, 'data')) {
+    throw new Error('导入失败：`matchRuleSource.data` 缺少必填字段')
+  }
+
+  if (source.kind === 'JSON_DRAFT') {
+    if (typeof source.data !== 'string') {
+      throw new Error('导入失败：`matchRuleSource.data` 必须是字符串')
+    }
+    const parsed = parseMatchRuleDraft(source.data)
+    return {
+      matchRule:
+        parsed.rule ??
+        normalizeMatchRule({ type: 'GROUP', negate: false, operator: 'AND', children: [] }),
+      matchRuleSource: makeJsonDraftSource(source.data),
+    }
+  }
+
+  if (!isPlainObject(source.data)) {
+    throw new Error('导入失败：`matchRuleSource.data` 必须是对象')
+  }
+
+  const matchRuleResult = validateMatchRuleObject(source.data, 'data.matchRuleSource.data')
+  if (matchRuleResult.error) {
+    return {
+      matchRule: normalizeMatchRule(source.data),
+      matchRuleSource: makeJsonDraftSource(JSON.stringify(source.data, null, 2)),
+    }
+  }
+
+  const matchRule = matchRuleResult.rule ?? normalizeMatchRule(source.data)
+  return {
+    matchRule,
+    matchRuleSource: makeRuleTreeSource(matchRule),
+  }
 }
 
 function parseEnvelope<

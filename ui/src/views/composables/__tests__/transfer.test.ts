@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { parseRuleTransfer, parseSnippetTransfer } from '../transfer'
+import { makeRule } from '@/types'
+import { buildRuleTransfer, parseRuleTransfer, parseSnippetTransfer } from '../transfer'
 
 describe('parseRuleTransfer', () => {
   // why: 导入时若只是把字段名写错，应丢弃错键并回退到该类型的默认匹配方式，避免整份 JSON 直接失效。
@@ -16,18 +17,21 @@ describe('parseRuleTransfer', () => {
         match: '',
         position: 'APPEND',
         wrapMarker: true,
-        matchRule: {
-          type: 'GROUP',
-          negate: false,
-          operator: 'AND',
-          children: [
-            {
-              type: 'PATH',
-              negate: false,
-              ' m a tc her': 'REGEX',
-              value: '/**',
-            },
-          ],
+        matchRuleSource: {
+          kind: 'RULE_TREE',
+          data: {
+            type: 'GROUP',
+            negate: false,
+            operator: 'AND',
+            children: [
+              {
+                type: 'PATH',
+                negate: false,
+                ' m a tc her': 'REGEX',
+                value: '/**',
+              },
+            ],
+          },
         },
       },
     })
@@ -55,8 +59,11 @@ describe('parseRuleTransfer', () => {
         match: '',
         position: 'APPEND',
         wrapMarker: true,
-        matchRule: {
-          type: 'GROUP',
+        matchRuleSource: {
+          kind: 'RULE_TREE',
+          data: {
+            type: 'GROUP',
+          },
         },
       },
     })
@@ -85,15 +92,18 @@ describe('parseRuleTransfer', () => {
         match: '',
         position: 'APPEND',
         wrapMarker: true,
-        matchRule: {
-          type: 'GROUP',
-          negate: false,
-          operator: 'AND',
-          children: [
-            {
-              type: 'PATH',
-            },
-          ],
+        matchRuleSource: {
+          kind: 'RULE_TREE',
+          data: {
+            type: 'GROUP',
+            negate: false,
+            operator: 'AND',
+            children: [
+              {
+                type: 'PATH',
+              },
+            ],
+          },
         },
       },
     })
@@ -109,7 +119,7 @@ describe('parseRuleTransfer', () => {
   })
 
   // why: `type` 无法安全补默认值；导入时应保留原始 JSON 草稿并切到高级模式，让用户继续修正。
-  it('falls back to json mode when imported matchRule is missing type', () => {
+  it('falls back to json draft when imported rule tree is missing type', () => {
     const raw = JSON.stringify({
       format: 'halo-plugin-injector',
       version: 1,
@@ -122,29 +132,32 @@ describe('parseRuleTransfer', () => {
         match: '',
         position: 'APPEND',
         wrapMarker: true,
-        matchRule: {
-          negate: false,
-          operator: 'AND',
-          children: [
-            {
-              matcher: 'ANT',
-              value: '/**',
-            },
-          ],
+        matchRuleSource: {
+          kind: 'RULE_TREE',
+          data: {
+            negate: false,
+            operator: 'AND',
+            children: [
+              {
+                matcher: 'ANT',
+                value: '/**',
+              },
+            ],
+          },
         },
       },
     })
 
     const rule = parseRuleTransfer(raw)
 
-    expect(rule.matchRuleEditorMode).toBe('JSON')
-    expect(rule.matchRuleDraft).toContain('"matcher": "ANT"')
+    expect(rule.matchRuleSource).toMatchObject({ kind: 'JSON_DRAFT' })
+    expect(String(rule.matchRuleSource?.data)).toContain('"matcher": "ANT"')
     expect(rule.matchRule.type).toBe('GROUP')
     expect(rule.matchRule.children?.length).toBeGreaterThan(0)
   })
 
   // why: 只要 `matchRule` 根节点仍是对象，哪怕 children 类型写错，也应保留原始 JSON 并转高级模式继续修。
-  it('falls back to json mode when imported children is not an array', () => {
+  it('falls back to json draft when imported children is not an array', () => {
     const raw = JSON.stringify({
       format: 'halo-plugin-injector',
       version: 1,
@@ -157,23 +170,26 @@ describe('parseRuleTransfer', () => {
         match: '',
         position: 'APPEND',
         wrapMarker: true,
-        matchRule: {
-          type: 'GROUP',
-          negate: false,
-          operator: 'AND',
-          children: {},
+        matchRuleSource: {
+          kind: 'RULE_TREE',
+          data: {
+            type: 'GROUP',
+            negate: false,
+            operator: 'AND',
+            children: {},
+          },
         },
       },
     })
 
     const rule = parseRuleTransfer(raw)
 
-    expect(rule.matchRuleEditorMode).toBe('JSON')
-    expect(rule.matchRuleDraft).toContain('"children": {}')
+    expect(rule.matchRuleSource).toMatchObject({ kind: 'JSON_DRAFT' })
+    expect(String(rule.matchRuleSource?.data)).toContain('"children": {}')
   })
 
   // why: 字段类型写错仍属于“对象树内部可修问题”，导入时应进入高级模式，而不是直接拦死。
-  it('falls back to json mode when imported negate has wrong type', () => {
+  it('falls back to json draft when imported negate has wrong type', () => {
     const raw = JSON.stringify({
       format: 'halo-plugin-injector',
       version: 1,
@@ -186,19 +202,22 @@ describe('parseRuleTransfer', () => {
         match: '',
         position: 'APPEND',
         wrapMarker: true,
-        matchRule: {
-          type: 'GROUP',
-          negate: 'false',
-          operator: 'AND',
-          children: [],
+        matchRuleSource: {
+          kind: 'RULE_TREE',
+          data: {
+            type: 'GROUP',
+            negate: 'false',
+            operator: 'AND',
+            children: [],
+          },
         },
       },
     })
 
     const rule = parseRuleTransfer(raw)
 
-    expect(rule.matchRuleEditorMode).toBe('JSON')
-    expect(rule.matchRuleDraft).toContain('"negate": "false"')
+    expect(rule.matchRuleSource).toMatchObject({ kind: 'JSON_DRAFT' })
+    expect(String(rule.matchRuleSource?.data)).toContain('"negate": "false"')
   })
 
   // why: 导入枚举字段若传了非字符串值，应先提示“必须是字符串”，而不是笼统的“不合法”。
@@ -215,11 +234,14 @@ describe('parseRuleTransfer', () => {
         match: '',
         position: 'APPEND',
         wrapMarker: true,
-        matchRule: {
-          type: 'GROUP',
-          negate: false,
-          operator: 'AND',
-          children: [{ type: 'PATH', negate: false, matcher: 'ANT', value: '/**' }],
+        matchRuleSource: {
+          kind: 'RULE_TREE',
+          data: {
+            type: 'GROUP',
+            negate: false,
+            operator: 'AND',
+            children: [{ type: 'PATH', negate: false, matcher: 'ANT', value: '/**' }],
+          },
         },
       },
     })
@@ -243,11 +265,14 @@ describe('parseRuleTransfer', () => {
         match: '',
         position: 'APPEND',
         wrapMarker: true,
-        matchRule: {
-          type: 'GROUP',
-          negate: false,
-          operator: 'AND',
-          children: [{ type: 'PATH', negate: false, matcher: 'ANT', value: '/**' }],
+        matchRuleSource: {
+          kind: 'RULE_TREE',
+          data: {
+            type: 'GROUP',
+            negate: false,
+            operator: 'AND',
+            children: [{ type: 'PATH', negate: false, matcher: 'ANT', value: '/**' }],
+          },
         },
       },
     })
@@ -271,11 +296,14 @@ describe('parseRuleTransfer', () => {
         match: '',
         position: 'APPEND',
         wrapMarker: true,
-        matchRule: {
-          type: 'GROUP',
-          negate: false,
-          operator: 'AND',
-          children: [{ type: 'PATH', negate: false, matcher: 'ANT', value: '/**' }],
+        matchRuleSource: {
+          kind: 'RULE_TREE',
+          data: {
+            type: 'GROUP',
+            negate: false,
+            operator: 'AND',
+            children: [{ type: 'PATH', negate: false, matcher: 'ANT', value: '/**' }],
+          },
         },
       },
     })
@@ -338,5 +366,52 @@ describe('parseSnippetTransfer', () => {
     expect(() => parseSnippetTransfer(raw)).toThrow(
       '导入失败：`enabled` 必须是布尔值；仅支持 true 或 false',
     )
+  })
+})
+
+describe('buildRuleTransfer', () => {
+  // why: 高级模式里的 JSON 草稿若已经能稳定解析成规则树，导出时应优先收敛成 RULE_TREE，避免把无意义草稿继续传下去。
+  it('exports valid json drafts as rule trees', () => {
+    const rule = makeRule({
+      matchRuleSource: {
+        kind: 'JSON_DRAFT',
+        data: `{
+  "type": "GROUP",
+  "negate": false,
+  "operator": "AND",
+  "children": [
+    {
+      "type": "PATH",
+      "negate": false,
+      "matcher": "ANT",
+      "value": "/**"
+    }
+  ]
+}`,
+      },
+    })
+
+    const payload = buildRuleTransfer(rule)
+
+    expect(payload.data.matchRuleSource).toMatchObject({
+      kind: 'RULE_TREE',
+    })
+  })
+
+  // why: 高级模式草稿仍有错误时，导出必须原样保留 JSON_DRAFT，避免把错误悄悄改写成另一份规则树。
+  it('keeps invalid json drafts as json drafts during export', () => {
+    const rule = makeRule({
+      matchRuleSource: {
+        kind: 'JSON_DRAFT',
+        data: '{ "type": "GROUP", "negate": false, "operator": "AND", "children": [',
+      },
+    })
+
+    const payload = buildRuleTransfer(rule)
+
+    expect(payload.data.matchRuleSource).toEqual({
+      kind: 'JSON_DRAFT',
+      data: '{ "type": "GROUP", "negate": false, "operator": "AND", "children": [',
+    })
   })
 })

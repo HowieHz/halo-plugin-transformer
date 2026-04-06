@@ -565,10 +565,7 @@ export function useInjectorData() {
 
   function discardRuleEdit() {
     if (editRule.value?.id) {
-      clearPersistedMatchRuleDraft(
-        editRule.value.id,
-        editRule.value.matchRuleEditorMode ?? 'SIMPLE',
-      )
+      clearPersistedMatchRuleDraft(editRule.value.id, editRule.value.matchRuleSource)
     }
     _syncEditRule()
   }
