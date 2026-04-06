@@ -343,7 +343,10 @@ function validateMatchRuleInput(
 
   const type = input.type
   if (!hasOwnKey(input, 'type') && !options.allowMissingRequiredKeys) {
-    return invalid(`${path}.type`, '缺少必填字段 "type"；仅支持 "GROUP"、"PATH"、"TEMPLATE_ID"')
+    return invalid(
+      `${path}.type`,
+      '缺少必填字段 "type"；该字段可选值为 "GROUP"、"PATH"、"TEMPLATE_ID"',
+    )
   }
   if (input.type !== undefined && typeof input.type !== 'string') {
     return invalid(`${path}.type`, '必须是字符串；仅支持 "GROUP"、"PATH"、"TEMPLATE_ID"')
@@ -369,7 +372,10 @@ function validateMatchRuleInput(
       )
     }
     if (!hasOwnKey(input, 'operator') && !options.allowMissingRequiredKeys) {
-      return invalid(`${path}.operator`, '条件组缺少必填字段 "operator"；仅支持 "AND" 或 "OR"')
+      return invalid(
+        `${path}.operator`,
+        '条件组缺少必填字段 "operator"；该字段可选值为 "AND"、"OR"',
+      )
     }
     if (!hasOwnKey(input, 'children') && !options.allowMissingRequiredKeys) {
       return invalid(`${path}.children`, '条件组缺少必填字段 "children"')
@@ -430,8 +436,8 @@ function validateMatchRuleInput(
     return invalid(
       `${path}.matcher`,
       type === 'PATH'
-        ? '页面路径条件缺少必填字段 "matcher"；仅支持 "ANT"、"REGEX"、"EXACT"'
-        : '模板 ID 条件缺少必填字段 "matcher"；仅支持 "REGEX" 或 "EXACT"',
+        ? '页面路径条件缺少必填字段 "matcher"；该字段可选值为 "ANT"、"REGEX"、"EXACT"'
+        : '模板 ID 条件缺少必填字段 "matcher"；该字段可选值为 "REGEX"、"EXACT"',
     )
   }
   if (!hasOwnKey(input, 'value') && !options.allowMissingRequiredKeys) {

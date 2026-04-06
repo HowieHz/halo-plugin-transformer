@@ -39,7 +39,9 @@ describe('matchRule editor state', () => {
     const result = parseMatchRuleDraft('{ "negate": false }')
 
     expect(result.error?.path).toBe('$.type')
-    expect(result.error?.message).toBe('缺少必填字段 "type"；仅支持 "GROUP"、"PATH"、"TEMPLATE_ID"')
+    expect(result.error?.message).toBe(
+      '缺少必填字段 "type"；该字段可选值为 "GROUP"、"PATH"、"TEMPLATE_ID"',
+    )
   })
 
   // why: `type` 是字符串但值不合法时，提示里也应带上带引号的允许值，保持和其它枚举字段一致。
@@ -68,6 +70,14 @@ describe('matchRule editor state', () => {
 
     expect(result.error?.path).toBe('$.children')
     expect(result.error?.message).toBe('条件组缺少必填字段 "children"')
+  })
+
+  // why: 枚举型必填字段缺失时，提示“该字段可选值”为语义更自然，也更方便用户直接补值。
+  it('reports missing operator with field options wording', () => {
+    const result = parseMatchRuleDraft('{ "type": "GROUP", "negate": false, "children": [] }')
+
+    expect(result.error?.path).toBe('$.operator')
+    expect(result.error?.message).toBe('条件组缺少必填字段 "operator"；该字段可选值为 "AND"、"OR"')
   })
 
   // why: 简单模式保存时必须只信当前可视化规则树，不能再被旧的 JSON 草稿反向污染。
