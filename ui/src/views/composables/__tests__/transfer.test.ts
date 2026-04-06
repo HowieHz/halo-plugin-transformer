@@ -143,6 +143,64 @@ describe('parseRuleTransfer', () => {
     expect(rule.matchRule.children?.length).toBeGreaterThan(0)
   })
 
+  // why: 只要 `matchRule` 根节点仍是对象，哪怕 children 类型写错，也应保留原始 JSON 并转高级模式继续修。
+  it('falls back to json mode when imported children is not an array', () => {
+    const raw = JSON.stringify({
+      format: 'halo-plugin-injector',
+      version: 1,
+      resourceType: 'rule',
+      data: {
+        enabled: true,
+        name: 'demo',
+        description: '',
+        mode: 'FOOTER',
+        match: '',
+        position: 'APPEND',
+        wrapMarker: true,
+        matchRule: {
+          type: 'GROUP',
+          negate: false,
+          operator: 'AND',
+          children: {},
+        },
+      },
+    })
+
+    const rule = parseRuleTransfer(raw)
+
+    expect(rule.matchRuleEditorMode).toBe('JSON')
+    expect(rule.matchRuleDraft).toContain('"children": {}')
+  })
+
+  // why: 字段类型写错仍属于“对象树内部可修问题”，导入时应进入高级模式，而不是直接拦死。
+  it('falls back to json mode when imported negate has wrong type', () => {
+    const raw = JSON.stringify({
+      format: 'halo-plugin-injector',
+      version: 1,
+      resourceType: 'rule',
+      data: {
+        enabled: true,
+        name: 'demo',
+        description: '',
+        mode: 'FOOTER',
+        match: '',
+        position: 'APPEND',
+        wrapMarker: true,
+        matchRule: {
+          type: 'GROUP',
+          negate: 'false',
+          operator: 'AND',
+          children: [],
+        },
+      },
+    })
+
+    const rule = parseRuleTransfer(raw)
+
+    expect(rule.matchRuleEditorMode).toBe('JSON')
+    expect(rule.matchRuleDraft).toContain('"negate": "false"')
+  })
+
   // why: 导入枚举字段若传了非字符串值，应先提示“必须是字符串”，而不是笼统的“不合法”。
   it('reports enum type errors before invalid enum values during import', () => {
     const raw = JSON.stringify({
