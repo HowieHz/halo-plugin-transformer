@@ -2,6 +2,7 @@ package com.erzbir.halo.injector;
 
 import com.erzbir.halo.injector.scheme.CodeSnippet;
 import com.erzbir.halo.injector.scheme.InjectionRule;
+import com.erzbir.halo.injector.scheme.ResourceOrder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import run.halo.app.extension.Scheme;
@@ -30,12 +31,15 @@ public class HaloInjectorPlugin extends BasePlugin {
     private void registerScheme() {
         schemeManager.register(CodeSnippet.class);
         schemeManager.register(InjectionRule.class);
+        schemeManager.register(ResourceOrder.class);
     }
 
     private void unregisterScheme() {
-        Scheme pushLogScheme = schemeManager.get(CodeSnippet.class);
-        Scheme pushUniqueScheme = schemeManager.get(InjectionRule.class);
-        schemeManager.unregister(pushLogScheme);
-        schemeManager.unregister(pushUniqueScheme);
+        Scheme codeSnippetScheme = schemeManager.get(CodeSnippet.class);
+        Scheme injectionRuleScheme = schemeManager.get(InjectionRule.class);
+        Scheme resourceOrderScheme = schemeManager.get(ResourceOrder.class);
+        schemeManager.unregister(codeSnippetScheme);
+        schemeManager.unregister(injectionRuleScheme);
+        schemeManager.unregister(resourceOrderScheme);
     }
 }
