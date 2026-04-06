@@ -212,6 +212,14 @@ export function useInjectorData() {
     }
   }
 
+  async function _reloadSnippetOrders() {
+    snippetOrders.value = (await snippetApi.getOrder()).data
+  }
+
+  async function _reloadRuleOrders() {
+    ruleOrders.value = (await ruleApi.getOrder()).data
+  }
+
   function _syncEditSnippet() {
     if (!selectedSnippetId.value) {
       editSnippet.value = null
@@ -541,7 +549,12 @@ export function useInjectorData() {
       }
     } catch (error) {
       Toast.error(getErrorMessage(error, '更新顺序失败'))
-      await fetchAll()
+      pendingSnippetOrders.value = null
+      try {
+        await _reloadSnippetOrders()
+      } catch (reloadError) {
+        Toast.error(getErrorMessage(reloadError, '重新加载代码块顺序失败'))
+      }
     } finally {
       syncingSnippetReorder.value = false
     }
@@ -581,7 +594,12 @@ export function useInjectorData() {
       }
     } catch (error) {
       Toast.error(getErrorMessage(error, '更新顺序失败'))
-      await fetchAll()
+      pendingRuleOrders.value = null
+      try {
+        await _reloadRuleOrders()
+      } catch (reloadError) {
+        Toast.error(getErrorMessage(reloadError, '重新加载注入规则顺序失败'))
+      }
     } finally {
       syncingRuleReorder.value = false
     }

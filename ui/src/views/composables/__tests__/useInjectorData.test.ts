@@ -189,4 +189,124 @@ describe('useInjectorData', () => {
     expect(ruleApi.update).toHaveBeenCalledTimes(1)
     expect(snippetApi.update).not.toHaveBeenCalled()
   })
+
+  // why: 左侧排序保存失败时，只应回拉排序映射；右侧未保存的规则草稿不能被整页重载冲掉。
+  it('keeps unsaved rule editor state when rule reorder persistence fails', async () => {
+    const ruleA = makeRule({
+      id: 'rule-a',
+      metadata: { name: 'rule-a' },
+      name: 'Rule A',
+      matchRule: {
+        type: 'GROUP',
+        negate: false,
+        operator: 'AND',
+        children: [
+          {
+            type: 'PATH',
+            negate: false,
+            matcher: 'ANT',
+            value: '/a/**',
+          },
+        ],
+      },
+    })
+    const ruleB = makeRule({
+      id: 'rule-b',
+      metadata: { name: 'rule-b' },
+      name: 'Rule B',
+      matchRule: {
+        type: 'GROUP',
+        negate: false,
+        operator: 'AND',
+        children: [
+          {
+            type: 'PATH',
+            negate: false,
+            matcher: 'ANT',
+            value: '/b/**',
+          },
+        ],
+      },
+    })
+    delete (ruleA as { matchRuleSource?: unknown }).matchRuleSource
+    delete (ruleB as { matchRuleSource?: unknown }).matchRuleSource
+
+    snippetApi.list.mockResolvedValue({ data: listOf([]) })
+    snippetApi.getOrder.mockResolvedValue({ data: {} })
+    ruleApi.list.mockResolvedValue({ data: listOf([ruleA, ruleB]) })
+    ruleApi.getOrder
+      .mockResolvedValueOnce({ data: { 'rule-a': 10, 'rule-b': 20 } })
+      .mockResolvedValueOnce({ data: { 'rule-a': 10, 'rule-b': 20 } })
+    ruleApi.updateOrder.mockRejectedValue(new Error('boom'))
+
+    const store = useInjectorData()
+    await store.fetchAll()
+    store.selectedRuleId.value = 'rule-a'
+    await nextTick()
+
+    store.editRule.value = {
+      ...store.editRule.value!,
+      name: 'draft rule name',
+    }
+    store.editDirty.value = true
+
+    await store.reorderRule({
+      sourceId: 'rule-a',
+      targetId: 'rule-b',
+      placement: 'after',
+    })
+
+    expect(store.editRule.value?.name).toBe('draft rule name')
+    expect(store.editDirty.value).toBe(true)
+    expect(ruleApi.list).toHaveBeenCalledTimes(1)
+    expect(snippetApi.list).toHaveBeenCalledTimes(1)
+    expect(ruleApi.getOrder).toHaveBeenCalledTimes(2)
+  })
+
+  // why: 代码块排序失败同理只能恢复左侧顺序，不能把右侧未保存代码内容覆盖掉。
+  it('keeps unsaved snippet editor state when snippet reorder persistence fails', async () => {
+    const snippetA = makeSnippet({
+      id: 'snippet-a',
+      metadata: { name: 'snippet-a' },
+      name: 'Snippet A',
+      code: '<div>a</div>',
+    })
+    const snippetB = makeSnippet({
+      id: 'snippet-b',
+      metadata: { name: 'snippet-b' },
+      name: 'Snippet B',
+      code: '<div>b</div>',
+    })
+
+    snippetApi.list.mockResolvedValue({ data: listOf([snippetA, snippetB]) })
+    snippetApi.getOrder
+      .mockResolvedValueOnce({ data: { 'snippet-a': 10, 'snippet-b': 20 } })
+      .mockResolvedValueOnce({ data: { 'snippet-a': 10, 'snippet-b': 20 } })
+    snippetApi.updateOrder.mockRejectedValue(new Error('boom'))
+    ruleApi.list.mockResolvedValue({ data: listOf([]) })
+    ruleApi.getOrder.mockResolvedValue({ data: {} })
+
+    const store = useInjectorData()
+    await store.fetchAll()
+    store.selectedSnippetId.value = 'snippet-a'
+    await nextTick()
+
+    store.editSnippet.value = {
+      ...store.editSnippet.value!,
+      code: '<div>draft</div>',
+    }
+    store.editDirty.value = true
+
+    await store.reorderSnippet({
+      sourceId: 'snippet-a',
+      targetId: 'snippet-b',
+      placement: 'after',
+    })
+
+    expect(store.editSnippet.value?.code).toBe('<div>draft</div>')
+    expect(store.editDirty.value).toBe(true)
+    expect(snippetApi.list).toHaveBeenCalledTimes(1)
+    expect(ruleApi.list).toHaveBeenCalledTimes(1)
+    expect(snippetApi.getOrder).toHaveBeenCalledTimes(2)
+  })
 })
