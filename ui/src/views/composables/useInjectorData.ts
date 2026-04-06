@@ -156,6 +156,28 @@ export function useInjectorData() {
     return ordered
   }
 
+  async function _persistSnippetOrders(items: CodeSnippetViewModel[]) {
+    const nextOrders = buildExplicitOrderMap(items)
+    snippetOrders.value = { ...nextOrders }
+    try {
+      snippetOrders.value = (await snippetApi.updateOrder(nextOrders)).data
+      return true
+    } catch (error) {
+      return getErrorMessage(error, '代码块顺序保存失败')
+    }
+  }
+
+  async function _persistRuleOrders(items: InjectionRule[]) {
+    const nextOrders = buildExplicitOrderMap(items)
+    ruleOrders.value = { ...nextOrders }
+    try {
+      ruleOrders.value = (await ruleApi.updateOrder(nextOrders)).data
+      return true
+    } catch (error) {
+      return getErrorMessage(error, '注入规则顺序保存失败')
+    }
+  }
+
   /**
    * why: 前端先做一轮用户可读的快速校验，
    * 把大多数结构问题拦在保存前；后端仍会复核，防止绕过 UI 直接写入坏数据。
@@ -277,8 +299,13 @@ export function useInjectorData() {
       const id = res.data.id
       if (nextRuleIds.length) await _applySnippetRuleSelection(id, nextRuleIds)
       await fetchAll()
+      const orderResult = await _persistSnippetOrders(snippets.value)
       selectedSnippetId.value = id
-      Toast.success('代码块已创建')
+      if (orderResult === true) {
+        Toast.success('代码块已创建')
+      } else {
+        Toast.warning(`代码块已创建，但顺序保存失败：${orderResult}`)
+      }
       return id
     } catch (error) {
       Toast.error(getErrorMessage(error, '创建失败'))
@@ -309,8 +336,13 @@ export function useInjectorData() {
       const id = res.data.id
       if (nextSnippetIds.length) await _applyRuleSnippetSelection(id, nextSnippetIds)
       await fetchAll()
+      const orderResult = await _persistRuleOrders(rules.value)
       selectedRuleId.value = res.data.id
-      Toast.success('规则已创建')
+      if (orderResult === true) {
+        Toast.success('规则已创建')
+      } else {
+        Toast.warning(`规则已创建，但顺序保存失败：${orderResult}`)
+      }
       return res.data.id
     } catch (error) {
       Toast.error(getErrorMessage(error, '创建失败'))
@@ -449,7 +481,12 @@ export function useInjectorData() {
           editSnippet.value = null
           editSnippetRuleIds.value = []
           editDirty.value = false
-          Toast.success('代码块已删除')
+          const orderResult = await _persistSnippetOrders(snippets.value)
+          if (orderResult === true) {
+            Toast.success('代码块已删除')
+          } else {
+            Toast.warning(`代码块已删除，但顺序保存失败：${orderResult}`)
+          }
         } catch (error) {
           Toast.error(getErrorMessage(error, '删除失败'))
         }
@@ -473,7 +510,12 @@ export function useInjectorData() {
           editRule.value = null
           editRuleSnippetIds.value = []
           editDirty.value = false
-          Toast.success('规则已删除')
+          const orderResult = await _persistRuleOrders(rules.value)
+          if (orderResult === true) {
+            Toast.success('规则已删除')
+          } else {
+            Toast.warning(`规则已删除，但顺序保存失败：${orderResult}`)
+          }
         } catch (error) {
           Toast.error(getErrorMessage(error, '删除失败'))
         }
