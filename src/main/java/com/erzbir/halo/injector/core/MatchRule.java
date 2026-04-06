@@ -160,10 +160,10 @@ public class MatchRule {
 
     private static void validateGroupRule(MatchRule rule, String path) {
         if (rule.isMatcherDefined()) {
-            throw new IllegalArgumentException(path + ".matcher：仅叶子条件可使用 matcher");
+            throw new IllegalArgumentException(path + ".matcher：" + unknownFieldMessage(Type.GROUP));
         }
         if (rule.isValueDefined()) {
-            throw new IllegalArgumentException(path + ".value：仅叶子条件可使用 value");
+            throw new IllegalArgumentException(path + ".value：" + unknownFieldMessage(Type.GROUP));
         }
         List<MatchRule> children = rule.getChildren();
         if (children == null || children.isEmpty()) {

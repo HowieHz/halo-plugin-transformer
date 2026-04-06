@@ -1,5 +1,5 @@
 {
-    "version": 1,
+    "version": 2,
     "cases": [
         {
             "name": "and_group_with_path_and_template_is_path_scoped",
@@ -23,14 +23,7 @@
                 ]
             },
             "shared": {
-                "domPathPrecheck": true
-            },
-            "java": {
-                "writeValidation": {
-                    "ok": true
-                }
-            },
-            "ts": {
+                "domPathPrecheck": true,
                 "writeValidation": {
                     "ok": true
                 }
@@ -58,14 +51,7 @@
                 ]
             },
             "shared": {
-                "domPathPrecheck": false
-            },
-            "java": {
-                "writeValidation": {
-                    "ok": true
-                }
-            },
-            "ts": {
+                "domPathPrecheck": false,
                 "writeValidation": {
                     "ok": true
                 }
@@ -87,14 +73,7 @@
                 ]
             },
             "shared": {
-                "domPathPrecheck": true
-            },
-            "java": {
-                "writeValidation": {
-                    "ok": true
-                }
-            },
-            "ts": {
+                "domPathPrecheck": true,
                 "writeValidation": {
                     "ok": true
                 }
@@ -108,17 +87,10 @@
                 "matcher": "ANT",
                 "value": "/**"
             },
-            "java": {
+            "shared": {
                 "writeValidation": {
                     "ok": false,
-                    "path": "matchRule.type",
-                    "message": "根节点必须是 GROUP"
-                }
-            },
-            "ts": {
-                "writeValidation": {
-                    "ok": false,
-                    "path": "$.type",
+                    "relativePath": "type",
                     "message": "根节点必须是 GROUP"
                 }
             }
@@ -138,18 +110,35 @@
                     }
                 ]
             },
-            "java": {
+            "shared": {
                 "writeValidation": {
                     "ok": false,
-                    "path": "matchRule.children[0].matcher",
+                    "relativePath": "children[0].matcher",
                     "message": "模板 ID 仅支持 \"REGEX\" 或 \"EXACT\""
                 }
+            }
+        },
+        {
+            "name": "group_rule_rejects_leaf_matcher_field",
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "matcher": "ANT",
+                "children": [
+                    {
+                        "type": "PATH",
+                        "negate": false,
+                        "matcher": "ANT",
+                        "value": "/**"
+                    }
+                ]
             },
-            "ts": {
+            "shared": {
                 "writeValidation": {
                     "ok": false,
-                    "path": "$.children[0].matcher",
-                    "message": "模板 ID 仅支持 \"REGEX\" 或 \"EXACT\""
+                    "relativePath": "matcher",
+                    "message": "不支持该字段；条件组仅支持 \"type\"、\"negate\"、\"operator\"、\"children\""
                 }
             }
         },
@@ -169,17 +158,10 @@
                     }
                 ]
             },
-            "java": {
+            "shared": {
                 "writeValidation": {
                     "ok": false,
-                    "path": "matchRule.children[0].children",
-                    "message": "仅条件组可使用 children"
-                }
-            },
-            "ts": {
-                "writeValidation": {
-                    "ok": false,
-                    "path": "$.children[0].children",
+                    "relativePath": "children[0].children",
                     "message": "仅条件组可使用 children"
                 }
             }
@@ -200,17 +182,10 @@
                     }
                 ]
             },
-            "java": {
+            "shared": {
                 "writeValidation": {
                     "ok": false,
-                    "path": "matchRule.value",
-                    "message": "仅叶子条件可使用 value"
-                }
-            },
-            "ts": {
-                "writeValidation": {
-                    "ok": false,
-                    "path": "$.value",
+                    "relativePath": "value",
                     "message": "不支持该字段；条件组仅支持 \"type\"、\"negate\"、\"operator\"、\"children\""
                 }
             }

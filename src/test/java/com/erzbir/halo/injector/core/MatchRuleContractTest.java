@@ -30,7 +30,11 @@ class MatchRuleContractTest {
     @MethodSource("contractCases")
     void shouldMatchWriteValidationContract(ContractCase contractCase) {
         MatchRule rule = deserializeRule(contractCase.input());
-        WriteValidationExpectation expectation = contractCase.javaSide().writeValidation();
+        ResolvedWriteValidationExpectation expectation = resolveWriteValidation(
+                contractCase.shared(),
+                contractCase.javaSide(),
+                "matchRule"
+        );
 
         if (expectation.ok()) {
             assertDoesNotThrow(() -> MatchRule.validateForWrite(rule));
@@ -106,12 +110,45 @@ class MatchRuleContractTest {
     private record ContractSuite(int version, List<ContractCase> cases) {
     }
 
+    private ResolvedWriteValidationExpectation resolveWriteValidation(SharedExpectation shared,
+                                                                     SideExpectation override,
+                                                                     String rootPath) {
+        WriteValidationExpectation sharedExpectation =
+                shared != null ? shared.writeValidation() : null;
+        WriteValidationExpectation overrideExpectation =
+                override != null ? override.writeValidation() : null;
+
+        Boolean ok = overrideExpectation != null && overrideExpectation.ok() != null
+                ? overrideExpectation.ok()
+                : sharedExpectation != null ? sharedExpectation.ok() : null;
+        String relativePath = overrideExpectation != null && overrideExpectation.relativePath() != null
+                ? overrideExpectation.relativePath()
+                : sharedExpectation != null ? sharedExpectation.relativePath() : null;
+        String message = overrideExpectation != null && overrideExpectation.message() != null
+                ? overrideExpectation.message()
+                : sharedExpectation != null ? sharedExpectation.message() : null;
+
+        if (ok == null) {
+            throw new IllegalStateException("Missing writeValidation.ok in contract fixture");
+        }
+
+        return new ResolvedWriteValidationExpectation(ok, formatRuntimePath(rootPath, relativePath),
+                message);
+    }
+
+    private String formatRuntimePath(String rootPath, String relativePath) {
+        if (relativePath == null || relativePath.isBlank()) {
+            return rootPath;
+        }
+        return rootPath + "." + relativePath;
+    }
+
     private record ContractCase(
             String name,
             JsonNode input,
             SharedExpectation shared,
             @JsonProperty("java") SideExpectation javaSide,
-            SideExpectation ts
+            @JsonProperty("ts") SideExpectation ts
     ) {
         @Override
         public String toString() {
@@ -119,13 +156,16 @@ class MatchRuleContractTest {
         }
     }
 
-    private record SharedExpectation(Boolean domPathPrecheck) {
+    private record SharedExpectation(Boolean domPathPrecheck, WriteValidationExpectation writeValidation) {
     }
 
     private record SideExpectation(WriteValidationExpectation writeValidation) {
     }
 
-    private record WriteValidationExpectation(boolean ok, String path, String message) {
+    private record WriteValidationExpectation(Boolean ok, String relativePath, String message) {
+    }
+
+    private record ResolvedWriteValidationExpectation(boolean ok, String path, String message) {
         private String formattedMessage() {
             return path + "：" + message;
         }

@@ -5,8 +5,8 @@ import { describe, expect, it } from 'vitest'
 import { parseMatchRuleDraft, supportsDomPathPrecheck } from '../matchRule'
 
 interface WriteValidationExpectation {
-  ok: boolean
-  path?: string
+  ok?: boolean
+  relativePath?: string
   message?: string
 }
 
@@ -16,13 +16,14 @@ interface SideExpectation {
 
 interface SharedExpectation {
   domPathPrecheck?: boolean
+  writeValidation?: WriteValidationExpectation
 }
 
 interface MatchRuleContractCase {
   name: string
   input: unknown
   shared?: SharedExpectation
-  ts: SideExpectation
+  ts?: SideExpectation
 }
 
 interface MatchRuleContractSuite {
@@ -37,7 +38,7 @@ describe('matchRule contract fixtures', () => {
   for (const contractCase of contractSuite.cases) {
     it(`matches write validation contract: ${contractCase.name}`, () => {
       const result = parseMatchRuleDraft(JSON.stringify(contractCase.input))
-      const expectation = contractCase.ts.writeValidation
+      const expectation = resolveWriteValidation(contractCase, '$')
 
       if (expectation.ok) {
         expect(result.error).toBeNull()
@@ -68,6 +69,32 @@ describe('matchRule contract fixtures', () => {
 function loadContractSuite(): MatchRuleContractSuite {
   const fixturePath = locateContractFixture()
   return JSON.parse(readFileSync(fixturePath, 'utf8')) as MatchRuleContractSuite
+}
+
+function resolveWriteValidation(contractCase: MatchRuleContractCase, rootPath: string) {
+  const sharedExpectation = contractCase.shared?.writeValidation
+  const runtimeExpectation = contractCase.ts?.writeValidation
+
+  const ok = runtimeExpectation?.ok ?? sharedExpectation?.ok
+  if (typeof ok !== 'boolean') {
+    throw new Error(`Missing writeValidation.ok in contract case: ${contractCase.name}`)
+  }
+
+  const relativePath = runtimeExpectation?.relativePath ?? sharedExpectation?.relativePath
+  const message = runtimeExpectation?.message ?? sharedExpectation?.message
+
+  return {
+    ok,
+    path: formatRuntimePath(rootPath, relativePath),
+    message,
+  }
+}
+
+function formatRuntimePath(rootPath: string, relativePath?: string) {
+  if (!relativePath?.trim()) {
+    return rootPath
+  }
+  return `${rootPath}.${relativePath}`
 }
 
 function locateContractFixture(): string {

@@ -161,7 +161,29 @@ class InjectionRuleValidatorTest {
                 () -> validator.validateForWrite(rule).block()
         );
 
-        assertEquals("matchRule.value：仅叶子条件可使用 value", error.getReason());
+        assertEquals(
+                "matchRule.value：不支持该字段；条件组仅支持 \"type\"、\"negate\"、\"operator\"、\"children\"",
+                error.getReason()
+        );
+    }
+
+    // why: GROUP 上误带 matcher 时，也应走和前端一致的“条件组允许字段”提示，避免两端错误文案分叉。
+    @Test
+    void shouldRejectMatcherFieldOnGroupRuleWithSharedMessage() {
+        InjectionRule rule = makeRule();
+        MatchRule group = makeGroup(MatchRule.pathRule(MatchRule.Matcher.ANT, "/**"));
+        group.setMatcher(MatchRule.Matcher.ANT);
+        setMatchRuleDirectly(rule, group);
+
+        InjectionRuleValidationException error = assertThrows(
+                InjectionRuleValidationException.class,
+                () -> validator.validateForWrite(rule).block()
+        );
+
+        assertEquals(
+                "matchRule.matcher：不支持该字段；条件组仅支持 \"type\"、\"negate\"、\"operator\"、\"children\"",
+                error.getReason()
+        );
     }
 
     // why: 叶子节点显式携带空 children 也说明结构写脏了，不能因为它是空数组就悄悄放过。
