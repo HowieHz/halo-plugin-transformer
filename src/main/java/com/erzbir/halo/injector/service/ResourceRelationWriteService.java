@@ -32,13 +32,16 @@ public class ResourceRelationWriteService {
      * 避免前端再发第二轮补写请求，导致“主资源成功、反向关联失败”的半成功状态。
      */
     public Mono<CodeSnippet> createSnippetWithRelations(CodeSnippet snippet) {
-        String snippetId = requireSnippetId(snippet);
         snippet.setRuleIds(normalizeIds(snippet.getRuleIds()));
-        return prepareRuleSyncPlan(snippetId, snippet.getRuleIds())
-                .flatMap(plan -> client.create(snippet)
-                        .flatMap(created -> applyRuleSync(plan)
+        return prepareRulesForCreate(snippet.getRuleIds())
+                .flatMap(originalRules -> client.create(snippet)
+                        .flatMap(created -> applyRuleSync(new RuleSyncPlan(
+                                        requireSnippetId(created),
+                                        normalizeIds(created.getRuleIds()),
+                                        originalRules
+                                ))
                                 .thenReturn(created)
-                                .onErrorResume(error -> rollbackRules(plan.originalRules())
+                                .onErrorResume(error -> rollbackRules(originalRules)
                                         .then(rollbackCreatedSnippet(created))
                                         .then(Mono.error(error)))));
     }
@@ -80,13 +83,16 @@ public class ResourceRelationWriteService {
      * 双向关联由服务端统一完成后，前端只需提交一次规则保存请求即可。
      */
     public Mono<InjectionRule> createRuleWithRelations(InjectionRule rule) {
-        String ruleId = requireRuleId(rule);
         rule.setSnippetIds(normalizeIds(rule.getSnippetIds()));
-        return prepareSnippetSyncPlan(ruleId, rule.getSnippetIds())
-                .flatMap(plan -> client.create(rule)
-                        .flatMap(created -> applySnippetSync(plan)
+        return prepareSnippetsForCreate(rule.getSnippetIds())
+                .flatMap(originalSnippets -> client.create(rule)
+                        .flatMap(created -> applySnippetSync(new SnippetSyncPlan(
+                                        requireRuleId(created),
+                                        normalizeIds(created.getSnippetIds()),
+                                        originalSnippets
+                                ))
                                 .thenReturn(created)
-                                .onErrorResume(error -> rollbackSnippets(plan.originalSnippets())
+                                .onErrorResume(error -> rollbackSnippets(originalSnippets)
                                         .then(rollbackCreatedRule(created))
                                         .then(Mono.error(error)))));
     }
@@ -137,6 +143,18 @@ public class ResourceRelationWriteService {
                 });
     }
 
+    Mono<List<InjectionRule>> prepareRulesForCreate(Set<String> nextRuleIds) {
+        return client.list(InjectionRule.class, null, null)
+                .collectList()
+                .map(allRules -> {
+                    validateRuleTargets(nextRuleIds, allRules);
+                    return allRules.stream()
+                            .filter(rule -> nextRuleIds.contains(rule.getId()))
+                            .map(rule -> copy(rule, InjectionRule.class))
+                            .toList();
+                });
+    }
+
     Mono<SnippetSyncPlan> prepareSnippetSyncPlan(String ruleId, Set<String> nextSnippetIds) {
         return client.list(CodeSnippet.class, null, null)
                 .collectList()
@@ -148,6 +166,18 @@ public class ResourceRelationWriteService {
                             .map(snippet -> copy(snippet, CodeSnippet.class))
                             .toList();
                     return new SnippetSyncPlan(ruleId, nextSnippetIds, originalSnippets);
+                });
+    }
+
+    Mono<List<CodeSnippet>> prepareSnippetsForCreate(Set<String> nextSnippetIds) {
+        return client.list(CodeSnippet.class, null, null)
+                .collectList()
+                .map(allSnippets -> {
+                    validateSnippetTargets(nextSnippetIds, allSnippets);
+                    return allSnippets.stream()
+                            .filter(snippet -> nextSnippetIds.contains(snippet.getId()))
+                            .map(snippet -> copy(snippet, CodeSnippet.class))
+                            .toList();
                 });
     }
 
