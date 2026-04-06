@@ -6,7 +6,6 @@ import com.erzbir.halo.injector.util.CodeSnippetValidationException;
 import com.erzbir.halo.injector.util.InjectionRuleValidationException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
@@ -20,10 +19,13 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class ResourceRelationWriteService {
     private final ReactiveExtensionClient client;
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public ResourceRelationWriteService(ReactiveExtensionClient client) {
+        this.client = client;
+    }
 
     /**
      * why: 代码块与规则之间是双向持久化关联；创建时必须在服务端一次写链路里同步规则侧，

@@ -2,7 +2,6 @@ package com.erzbir.halo.injector.service;
 
 import com.erzbir.halo.injector.scheme.CodeSnippet;
 import com.erzbir.halo.injector.scheme.InjectionRule;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -30,7 +29,7 @@ class ResourceRelationWriteServiceTest {
     @BeforeEach
     void setUp() {
         client = Mockito.mock(ReactiveExtensionClient.class);
-        service = new ResourceRelationWriteService(client, new ObjectMapper());
+        service = new ResourceRelationWriteService(client);
     }
 
     // why: 创建代码块时，后端必须把规则侧的 `snippetIds` 一并补齐，避免再依赖前端第二轮补写。
