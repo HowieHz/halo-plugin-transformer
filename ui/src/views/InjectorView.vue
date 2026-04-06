@@ -83,6 +83,7 @@ onMounted(fetchAll)
 const leaveConfirmVisible = ref(false)
 const leaveConfirmCanSave = ref(false)
 const pendingLeaveAction = ref<null | (() => void | Promise<void>)>(null)
+const postCreatePrompt = ref<null | { tab: ActiveTab; id: string }>(null)
 
 function normalizeTab(tab: unknown): ActiveTab {
   return tab === 'rules' ? 'rules' : 'snippets'
@@ -251,6 +252,10 @@ function closeLeaveConfirm() {
   pendingLeaveAction.value = null
 }
 
+function closePostCreatePrompt() {
+  postCreatePrompt.value = null
+}
+
 async function runPendingLeaveAction() {
   const action = pendingLeaveAction.value
   closeLeaveConfirm()
@@ -295,6 +300,40 @@ async function confirmSaveAndLeave() {
     return
   }
   await runPendingLeaveAction()
+}
+
+function resetCreateForm(tab: ActiveTab) {
+  if (tab === 'snippets') {
+    snippetFormRef.value?.reset()
+    return
+  }
+  ruleFormRef.value?.reset()
+}
+
+function keepCreatingCreatedResource() {
+  if (!postCreatePrompt.value) {
+    return
+  }
+  resetCreateForm(postCreatePrompt.value.tab)
+  closePostCreatePrompt()
+}
+
+function focusCreatedResource() {
+  const prompt = postCreatePrompt.value
+  if (!prompt) {
+    return
+  }
+  resetCreateForm(prompt.tab)
+  if (prompt.tab === 'snippets') {
+    showSnippetModal.value = false
+    activeTab.value = 'snippets'
+    selectedSnippetId.value = prompt.id
+  } else {
+    showRuleModal.value = false
+    activeTab.value = 'rules'
+    selectedRuleId.value = prompt.id
+  }
+  closePostCreatePrompt()
 }
 
 function handleTabSwitch(tab: ActiveTab) {
@@ -350,12 +389,16 @@ watch([snippets, rules], () => {
 
 async function handleAddSnippet(...args: Parameters<typeof addSnippet>) {
   const id = await addSnippet(...args)
-  if (id) showSnippetModal.value = false
+  if (id) {
+    postCreatePrompt.value = { tab: 'snippets', id }
+  }
 }
 
 async function handleAddRule(...args: Parameters<typeof addRule>) {
   const id = await addRule(...args)
-  if (id) showRuleModal.value = false
+  if (id) {
+    postCreatePrompt.value = { tab: 'rules', id }
+  }
 }
 
 function jumpToRule(id: string) {
@@ -419,6 +462,32 @@ function jumpToSnippet(id: string) {
           >
             {{ savingEditor ? '保存中...' : '保存' }}
           </VButton>
+        </VSpace>
+      </template>
+    </VModal>
+
+    <VModal
+      v-if="postCreatePrompt"
+      :title="postCreatePrompt.tab === 'snippets' ? '代码块已创建' : '注入规则已创建'"
+      :width="460"
+      @close="focusCreatedResource"
+    >
+      <div class=":uno: px-1 py-1 text-sm leading-6 text-gray-700">
+        {{
+          postCreatePrompt.tab === 'snippets'
+            ? '是否继续创建代码块？如果不继续，页面会切换到刚创建的代码块。'
+            : '是否继续创建注入规则？如果不继续，页面会切换到刚创建的注入规则。'
+        }}
+      </div>
+
+      <template #footer>
+        <VSpace>
+          <VButton @click="focusCreatedResource">
+            {{
+              postCreatePrompt.tab === 'snippets' ? '查看刚创建的代码块' : '查看刚创建的注入规则'
+            }}
+          </VButton>
+          <VButton type="secondary" @click="keepCreatingCreatedResource">继续创建</VButton>
         </VSpace>
       </template>
     </VModal>
