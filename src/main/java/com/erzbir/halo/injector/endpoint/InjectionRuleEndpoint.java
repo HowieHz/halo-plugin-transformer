@@ -2,6 +2,7 @@ package com.erzbir.halo.injector.endpoint;
 
 import com.erzbir.halo.injector.manager.InjectionRuleManager;
 import com.erzbir.halo.injector.scheme.InjectionRule;
+import com.erzbir.halo.injector.service.ResourceRelationWriteService;
 import com.erzbir.halo.injector.util.InjectionRuleValidationException;
 import com.erzbir.halo.injector.util.InjectionRuleValidator;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
     private final ReactiveExtensionClient client;
     private final InjectionRuleValidator validator;
     private final InjectionRuleManager ruleManager;
+    private final ResourceRelationWriteService relationWriteService;
 
     @Override
     public RouterFunction<ServerResponse> endpoint() {
@@ -49,7 +51,7 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
         return request.bodyToMono(InjectionRule.class)
                 .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
                 .flatMap(validator::validateForWrite)
-                .flatMap(client::create)
+                .flatMap(relationWriteService::createRuleWithRelations)
                 .doOnSuccess(created -> ruleManager.invalidateAndWarmUpAsync())
                 .flatMap(created -> ServerResponse.created(URI.create("/apis/" + READ_API_VERSION + "/injectionRules/"
                                 + created.getMetadata().getName()))
@@ -63,14 +65,21 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
      */
     private Mono<ServerResponse> updateRule(ServerRequest request) {
         String name = request.pathVariable("name");
-        return request.bodyToMono(InjectionRule.class)
-                .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
-                .filter(rule -> rule.getMetadata() != null
-                        && StringUtils.hasText(rule.getMetadata().getName())
-                        && Objects.equals(rule.getMetadata().getName(), name))
-                .switchIfEmpty(Mono.error(new InjectionRuleValidationException("metadata.name 与路径参数不一致")))
-                .flatMap(validator::validateForWrite)
-                .flatMap(client::update)
+        return client.fetch(InjectionRule.class, name)
+                .switchIfEmpty(Mono.error(new ServerWebInputException("未找到要更新的规则")))
+                .zipWhen(existing -> request.bodyToMono(InjectionRule.class)
+                        .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空"))))
+                .map(tuple -> {
+                    InjectionRule rule = tuple.getT2();
+                    if (rule.getMetadata() == null
+                            || !StringUtils.hasText(rule.getMetadata().getName())
+                            || !Objects.equals(rule.getMetadata().getName(), name)) {
+                        throw new InjectionRuleValidationException("metadata.name 与路径参数不一致");
+                    }
+                    return tuple;
+                })
+                .flatMap(tuple -> validator.validateForWrite(tuple.getT2())
+                        .then(relationWriteService.updateRuleWithRelations(tuple.getT1(), tuple.getT2())))
                 .doOnSuccess(updated -> ruleManager.invalidateAndWarmUpAsync())
                 .flatMap(updated -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
@@ -85,9 +94,9 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
         String name = request.pathVariable("name");
         return client.fetch(InjectionRule.class, name)
                 .switchIfEmpty(Mono.error(new ServerWebInputException("未找到要删除的规则")))
-                .flatMap(client::delete)
-                .doOnSuccess(deleted -> ruleManager.invalidateAndWarmUpAsync())
-                .flatMap(deleted -> ServerResponse.noContent().build());
+                .flatMap(relationWriteService::deleteRuleWithRelations)
+                .doOnSuccess(ignored -> ruleManager.invalidateAndWarmUpAsync())
+                .then(ServerResponse.noContent().build());
     }
 
     @Override

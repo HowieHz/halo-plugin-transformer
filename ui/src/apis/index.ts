@@ -40,7 +40,7 @@ export const snippetApi = {
   },
 
   delete(id: string) {
-    return axiosInstance.delete(`${SNIPPETS}/${id}`)
+    return axiosInstance.delete(`${SNIPPETS_WRITE}/${id}`)
   },
 }
 

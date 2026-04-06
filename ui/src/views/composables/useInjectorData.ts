@@ -190,44 +190,6 @@ export function useInjectorData() {
     return null
   }
 
-  async function _applySnippetRuleSelection(snippetId: string, nextRuleIds: string[]) {
-    const next = new Set(uniqueStrings(nextRuleIds))
-    const current = new Set(
-      rules.value.filter((r) => r.snippetIds?.includes(snippetId)).map((r) => r.id),
-    )
-    await Promise.all(
-      rules.value.map(async (rule) => {
-        const has = current.has(rule.id)
-        const shouldHave = next.has(rule.id)
-        if (has === shouldHave) return
-        const updatedIds = shouldHave
-          ? uniqueStrings([...(rule.snippetIds ?? []), snippetId])
-          : (rule.snippetIds ?? []).filter((id) => id !== snippetId)
-        const payload = makeRulePayload(rule, updatedIds)
-        if (!payload) throw new Error('匹配规则有误')
-        await ruleApi.update(rule.id, payload)
-      }),
-    )
-  }
-
-  async function _applyRuleSnippetSelection(ruleId: string, nextSnippetIds: string[]) {
-    const next = new Set(uniqueStrings(nextSnippetIds))
-    const current = new Set(
-      snippets.value.filter((s) => s.ruleIds?.includes(ruleId)).map((s) => s.id),
-    )
-    await Promise.all(
-      snippets.value.map(async (snippet) => {
-        const has = current.has(snippet.id)
-        const shouldHave = next.has(snippet.id)
-        if (has === shouldHave) return
-        const updatedIds = shouldHave
-          ? uniqueStrings([...(snippet.ruleIds ?? []), ruleId])
-          : (snippet.ruleIds ?? []).filter((id) => id !== ruleId)
-        await snippetApi.update(snippet.id, _makeSnippetPayload(snippet, updatedIds))
-      }),
-    )
-  }
-
   async function fetchAll() {
     loading.value = true
     try {
@@ -296,7 +258,6 @@ export function useInjectorData() {
     try {
       const res = await snippetApi.add(_makeSnippetPayload(snippet, nextRuleIds))
       const id = res.data.id
-      if (nextRuleIds.length) await _applySnippetRuleSelection(id, nextRuleIds)
       await fetchAll()
       const orderResult = await _persistSnippetOrders(snippets.value)
       selectedSnippetId.value = id
@@ -332,8 +293,6 @@ export function useInjectorData() {
         return null
       }
       const res = await ruleApi.add(payload)
-      const id = res.data.id
-      if (nextSnippetIds.length) await _applyRuleSnippetSelection(id, nextSnippetIds)
       await fetchAll()
       const orderResult = await _persistRuleOrders(rules.value)
       selectedRuleId.value = res.data.id
@@ -364,7 +323,6 @@ export function useInjectorData() {
     savingEditor.value = true
     try {
       await snippetApi.update(currentSnippet.id, _makeSnippetPayload(currentSnippet, nextRuleIds))
-      await _applySnippetRuleSelection(currentSnippet.id, nextRuleIds)
       await fetchAll()
       editDirty.value = false
       Toast.success('保存成功')
@@ -393,7 +351,6 @@ export function useInjectorData() {
         return false
       }
       await ruleApi.update(editRule.value.id, payload)
-      await _applyRuleSnippetSelection(editRule.value.id, nextSnippetIds)
       await fetchAll()
       editDirty.value = false
       Toast.success('保存成功')
@@ -473,13 +430,12 @@ export function useInjectorData() {
       confirmType: 'danger',
       async onConfirm() {
         try {
-          await _applySnippetRuleSelection(id, [])
           await snippetApi.delete(id)
-          snippetsResp.value.items = snippetsResp.value.items.filter((s) => s.id !== id)
           if (selectedSnippetId.value === id) selectedSnippetId.value = null
           editSnippet.value = null
           editSnippetRuleIds.value = []
           editDirty.value = false
+          await fetchAll()
           const orderResult = await _persistSnippetOrders(snippets.value)
           if (orderResult === true) {
             Toast.success('代码块已删除')
@@ -502,13 +458,12 @@ export function useInjectorData() {
       confirmType: 'danger',
       async onConfirm() {
         try {
-          await _applyRuleSnippetSelection(id, [])
           await ruleApi.delete(id)
-          rulesResp.value.items = rulesResp.value.items.filter((r) => r.id !== id)
           if (selectedRuleId.value === id) selectedRuleId.value = null
           editRule.value = null
           editRuleSnippetIds.value = []
           editDirty.value = false
+          await fetchAll()
           const orderResult = await _persistRuleOrders(rules.value)
           if (orderResult === true) {
             Toast.success('规则已删除')
