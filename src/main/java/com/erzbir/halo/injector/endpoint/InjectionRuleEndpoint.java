@@ -1,5 +1,6 @@
 package com.erzbir.halo.injector.endpoint;
 
+import com.erzbir.halo.injector.manager.InjectionRuleManager;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import com.erzbir.halo.injector.util.InjectionRuleValidationException;
 import com.erzbir.halo.injector.util.InjectionRuleValidator;
@@ -19,6 +20,7 @@ import run.halo.app.extension.ReactiveExtensionClient;
 import java.net.URI;
 import java.util.Objects;
 
+import static org.springframework.web.reactive.function.server.RequestPredicates.DELETE;
 import static org.springframework.web.reactive.function.server.RequestPredicates.POST;
 import static org.springframework.web.reactive.function.server.RequestPredicates.PUT;
 import static org.springframework.web.reactive.function.server.RouterFunctions.route;
@@ -30,10 +32,13 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
 
     private final ReactiveExtensionClient client;
     private final InjectionRuleValidator validator;
+    private final InjectionRuleManager ruleManager;
+
     @Override
     public RouterFunction<ServerResponse> endpoint() {
         return route(POST("/injectionRules"), this::createRule)
-                .andRoute(PUT("/injectionRules/{name}"), this::updateRule);
+                .andRoute(PUT("/injectionRules/{name}"), this::updateRule)
+                .andRoute(DELETE("/injectionRules/{name}"), this::deleteRule);
     }
 
     /**
@@ -45,6 +50,7 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
                 .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
                 .flatMap(validator::validateForWrite)
                 .flatMap(client::create)
+                .doOnSuccess(created -> ruleManager.invalidateCache())
                 .flatMap(created -> ServerResponse.created(URI.create("/apis/" + READ_API_VERSION + "/injectionRules/"
                                 + created.getMetadata().getName()))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -65,9 +71,23 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
                 .switchIfEmpty(Mono.error(new InjectionRuleValidationException("metadata.name 与路径参数不一致")))
                 .flatMap(validator::validateForWrite)
                 .flatMap(client::update)
+                .doOnSuccess(updated -> ruleManager.invalidateCache())
                 .flatMap(updated -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(updated));
+    }
+
+    /**
+     * why: 规则删除也走 console 写接口，确保运行时规则快照能立刻失效；
+     * 否则即便有短 TTL，刚删除的规则也可能在极短时间内继续参与匹配。
+     */
+    private Mono<ServerResponse> deleteRule(ServerRequest request) {
+        String name = request.pathVariable("name");
+        return client.fetch(InjectionRule.class, name)
+                .switchIfEmpty(Mono.error(new ServerWebInputException("未找到要删除的规则")))
+                .flatMap(client::delete)
+                .doOnSuccess(deleted -> ruleManager.invalidateCache())
+                .flatMap(deleted -> ServerResponse.noContent().build());
     }
 
     @Override

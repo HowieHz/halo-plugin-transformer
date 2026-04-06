@@ -35,8 +35,7 @@ public class InjectHelper {
     protected final Map<String, RegexPatternHolder> regexPatternCache = new ConcurrentHashMap<>();
 
     public Flux<InjectionRule> getRulesByMode(InjectionRule.Mode mode) {
-        return ruleManager.list()
-                .filter(rule -> mode.equals(rule.getMode()));
+        return ruleManager.listActiveByMode(mode);
     }
 
     public Flux<InjectionRule> getMatchedRules(String targetPath,
@@ -53,7 +52,6 @@ public class InjectHelper {
                                                InjectionRule.Mode mode) {
         MatchContext context = new MatchContext(targetPath, templateId);
         return getRulesByMode(mode)
-                .filter(rule -> rule.isEnabled() && rule.isValid())
                 .filter(rule -> evaluate(rule.getMatchRule(), context) == MatchState.MATCH)
                 .onErrorResume(e -> {
                     log.error("Failed to get matched rules for mode: {}", mode, e);
@@ -72,7 +70,6 @@ public class InjectHelper {
         }
 
         return getRulesByMode(mode)
-                .filter(rule -> rule.isEnabled() && rule.isValid())
                 .filter(rule -> MatchRule.supportsDomPathPrecheck(rule.getMatchRule()))
                 .filter(rule -> pathPrecheckMatches(rule.getMatchRule(), targetPath))
                 .onErrorResume(e -> {
@@ -92,7 +89,6 @@ public class InjectHelper {
         }
 
         return getRulesByMode(mode)
-                .filter(rule -> rule.isEnabled() && rule.isValid())
                 .any(rule -> !MatchRule.supportsDomPathPrecheck(rule.getMatchRule())
                         || pathPrecheckMatches(rule.getMatchRule(), targetPath))
                 .defaultIfEmpty(false);

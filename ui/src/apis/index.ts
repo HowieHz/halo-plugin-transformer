@@ -66,6 +66,6 @@ export const ruleApi = {
   },
 
   delete(id: string) {
-    return axiosInstance.delete(`${RULES}/${id}`)
+    return axiosInstance.delete(`${RULES_WRITE}/${id}`)
   },
 }
