@@ -175,10 +175,7 @@ async function exportSnippet() {
 
         <FormField label="描述">
           <template v-if="canUndo('description')" #actions>
-            <FieldUndoButton
-              @reset="resetField('description')"
-              @undo="undoField('description')"
-            />
+            <FieldUndoButton @reset="resetField('description')" @undo="undoField('description')" />
           </template>
           <template #default="{ inputId }">
             <input

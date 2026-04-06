@@ -167,6 +167,27 @@ describe('matchRule editor state', () => {
     expect(getDomRulePerformanceWarning(rule)).toBeNull()
   })
 
+  // why: 高级模式里如果 JSON 草稿已经损坏，性能提示必须跟随当前 source 一起失效；
+  // 不能继续读取旧的合法规则树，否则用户会看到基于过期状态生成的错误提示。
+  it('hides dom performance warning when json draft is invalid even if last rule tree was valid', () => {
+    const rule = makeRule({
+      mode: 'ID',
+      match: 'main-content',
+      matchRule: {
+        type: 'GROUP',
+        negate: false,
+        operator: 'AND',
+        children: [{ type: 'PATH', negate: false, matcher: 'ANT', value: '/**' }],
+      },
+      matchRuleSource: {
+        kind: 'JSON_DRAFT',
+        data: '{',
+      },
+    })
+
+    expect(getDomRulePerformanceWarning(rule)).toBeNull()
+  })
+
   // why: 简单模式应一次收集所有可定位错误，避免用户修完一个后才看到同层或子层的下一个错误。
   it('collects multiple simple mode errors at the same time', () => {
     const result = validateSimpleMatchRuleTree({

@@ -484,7 +484,12 @@ export function useInjectorData() {
     targetId: string
     placement: ReorderPlacement
   }) {
-    const ordered = reorderItems(snippets.value, payload.sourceId, payload.targetId, payload.placement)
+    const ordered = reorderItems(
+      snippets.value,
+      payload.sourceId,
+      payload.targetId,
+      payload.placement,
+    )
     if (!ordered) {
       return
     }

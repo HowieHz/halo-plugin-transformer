@@ -97,7 +97,8 @@ export function buildMatchRuleEditorSourceForMode(
 
   return {
     matchRule: normalized,
-    matchRuleSource: mode === 'JSON' ? makeJsonDraftSource(jsonDraft) : makeRuleTreeSource(normalized),
+    matchRuleSource:
+      mode === 'JSON' ? makeJsonDraftSource(jsonDraft) : makeRuleTreeSource(normalized),
     jsonDraft,
   }
 }
@@ -245,7 +246,7 @@ export function hydrateRuleForEditor(rule: InjectionRuleViewModel): EditableInje
 }
 
 export function resolveRuleMatchRule(
-  rule: InjectionRuleViewModel & Partial<InjectionRuleEditorState>,
+  rule: Pick<InjectionRuleViewModel, 'matchRule'> & Partial<InjectionRuleEditorState>,
 ): MatchRuleParseResult {
   if (rule.matchRuleSource?.kind === 'JSON_DRAFT') {
     return parseMatchRuleDraft(String(rule.matchRuleSource.data ?? ''))
@@ -269,13 +270,18 @@ export function supportsDomPathPrecheck(rule: MatchRule | null): boolean {
   return analyzePathPrecheckKind(rule) === 'PATH_SCOPED'
 }
 
+/**
+ * why: 性能提示也必须和保存/export 一样基于当前 editor source 解析结果，
+ * 不能在 JSON_DRAFT 已经变坏时还继续读取旧的 `matchRule`，否则就会出现状态错位。
+ */
 export function getDomRulePerformanceWarning(
-  rule: Pick<InjectionRuleViewModel, 'mode' | 'matchRule'>,
+  rule: Pick<InjectionRuleViewModel, 'mode' | 'matchRule'> & Partial<InjectionRuleEditorState>,
 ): string | null {
-  if (validateMatchRuleTree(normalizeMatchRule(rule.matchRule)).error) {
+  const result = resolveRuleMatchRule(rule)
+  if (!result.rule || result.error) {
     return null
   }
-  if ((rule.mode !== 'SELECTOR' && rule.mode !== 'ID') || supportsDomPathPrecheck(rule.matchRule)) {
+  if ((rule.mode !== 'SELECTOR' && rule.mode !== 'ID') || supportsDomPathPrecheck(result.rule)) {
     return null
   }
   return '⚠ 当前规则还不能先按页面路径缩小范围。建议在“全部满足（AND）”里先加入“页面路径匹配”，再按需叠加模板 ID 等条件。否则元素 ID / CSS 选择器模式会先处理所有页面，再继续判断其它条件，因此会多一些处理开销。'

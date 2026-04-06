@@ -45,6 +45,27 @@ public class SnippetReferenceService {
     }
 
     /**
+     * why: 更新规则时不能因为历史坏关联就把“改名称/描述/启用状态”这种无关写入也一并拦住；
+     * 因此这里只校验“新增关联”，已存在的旧关联允许先保留，并由显式清理路径来修复。
+     */
+    public Mono<LinkedHashSet<String>> normalizeAndValidateAddedSnippetIds(Set<String> existingSnippetIds,
+                                                                           Set<String> nextSnippetIds) {
+        LinkedHashSet<String> normalizedExisting = normalizeIds(existingSnippetIds);
+        LinkedHashSet<String> normalizedNext = normalizeIds(nextSnippetIds);
+        LinkedHashSet<String> addedSnippetIds = new LinkedHashSet<>(normalizedNext);
+        addedSnippetIds.removeAll(normalizedExisting);
+        if (addedSnippetIds.isEmpty()) {
+            return Mono.just(normalizedNext);
+        }
+        return client.list(CodeSnippet.class, null, null)
+                .collectList()
+                .map(allSnippets -> {
+                    validateSnippetTargets(addedSnippetIds, allSnippets);
+                    return normalizedNext;
+                });
+    }
+
+    /**
      * why: 删除代码块时，规则侧的 `snippetIds` 仍是唯一真源；
      * 因此要先从所有引用它的规则里摘掉，再删除代码块本身，避免留下悬挂引用。
      */

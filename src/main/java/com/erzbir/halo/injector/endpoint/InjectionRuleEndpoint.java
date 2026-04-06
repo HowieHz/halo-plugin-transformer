@@ -78,10 +78,10 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
                             || !Objects.equals(rule.getMetadata().getName(), name)) {
                         throw new InjectionRuleValidationException("metadata.name 与路径参数不一致");
                     }
-                    return rule;
+                    return tuple;
                 })
-                .flatMap(validator::validateForWrite)
-                .flatMap(this::normalizeAndValidateSnippetReferences)
+                .flatMap(tuple -> validator.validateForWrite(tuple.getT2())
+                        .then(normalizeAndValidateAddedSnippetReferences(tuple.getT1(), tuple.getT2())))
                 .flatMap(client::update)
                 .doOnSuccess(updated -> ruleManager.invalidateAndWarmUpAsync())
                 .flatMap(updated -> ServerResponse.ok()
@@ -111,6 +111,20 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
                 .map(snippetIds -> {
                     rule.setSnippetIds(new LinkedHashSet<>(snippetIds));
                     return rule;
+                });
+    }
+
+    /**
+     * why: 更新规则时只校验新增的 `snippetIds`；
+     * 这样历史坏关联不会把无关字段编辑也一并卡死，同时仍然阻止新的坏引用继续写入。
+     */
+    private Mono<InjectionRule> normalizeAndValidateAddedSnippetReferences(InjectionRule existingRule,
+                                                                           InjectionRule nextRule) {
+        return snippetReferenceService.normalizeAndValidateAddedSnippetIds(existingRule.getSnippetIds(),
+                        nextRule.getSnippetIds())
+                .map(snippetIds -> {
+                    nextRule.setSnippetIds(new LinkedHashSet<>(snippetIds));
+                    return nextRule;
                 });
     }
 

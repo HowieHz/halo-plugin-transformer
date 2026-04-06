@@ -68,6 +68,43 @@ class SnippetReferenceServiceTest {
         assertEquals("snippetIds：代码块 snippet-a 当前无法关联", error.getReason());
     }
 
+    // why: 更新规则时若只是保留历史坏关联，不应把“改名称/描述/启用状态”这类无关更新一并拦住；
+    // 只有新增关联才需要重新校验。
+    @Test
+    void shouldAllowKeepingExistingInvalidSnippetReferenceDuringUpdate() {
+        CodeSnippet invalidSnippet = snippet("snippet-a");
+        invalidSnippet.setCode("");
+        when(client.list(eq(CodeSnippet.class), isNull(), isNull())).thenReturn(Flux.just(invalidSnippet));
+
+        LinkedHashSet<String> result = service.normalizeAndValidateAddedSnippetIds(
+                Set.of("snippet-a"),
+                Set.of("snippet-a")
+        ).block();
+
+        assertEquals(new LinkedHashSet<>(Set.of("snippet-a")), result);
+    }
+
+    // why: 即使规则本身带着历史坏关联，新增一个新的坏关联也必须被明确拦下，
+    // 避免“兼容历史脏数据”演变成“继续写入新的脏数据”。
+    @Test
+    void shouldRejectNewInvalidSnippetReferenceDuringUpdate() {
+        CodeSnippet validSnippet = snippet("snippet-a");
+        CodeSnippet invalidSnippet = snippet("snippet-b");
+        invalidSnippet.setCode("");
+        when(client.list(eq(CodeSnippet.class), isNull(), isNull()))
+                .thenReturn(Flux.just(validSnippet, invalidSnippet));
+
+        InjectionRuleValidationException error = assertThrows(
+                InjectionRuleValidationException.class,
+                () -> service.normalizeAndValidateAddedSnippetIds(
+                        Set.of("snippet-a"),
+                        Set.of("snippet-a", "snippet-b")
+                ).block()
+        );
+
+        assertEquals("snippetIds：代码块 snippet-b 当前无法关联", error.getReason());
+    }
+
     // why: 删除代码块后必须从所有规则真源里摘掉它，确保不会残留失效 snippetId。
     @Test
     void shouldDetachDeletedSnippetFromRules() {
