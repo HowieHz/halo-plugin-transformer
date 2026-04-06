@@ -12,7 +12,6 @@ export interface CodeSnippetWritePayload {
   code: string
   description: string
   enabled: boolean
-  ruleIds: string[]
 }
 
 export interface CodeSnippetViewModel extends CodeSnippetWritePayload {
@@ -154,7 +153,6 @@ export function makeSnippet(override: Partial<CodeSnippetViewModel> = {}): CodeS
     code: '',
     description: '',
     enabled: true,
-    ruleIds: [],
     ...override,
   }
 }

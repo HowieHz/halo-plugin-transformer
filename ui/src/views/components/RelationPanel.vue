@@ -41,16 +41,16 @@ const emit = defineEmits<{
           v-if="selectedSnippetId"
           :items="rulesUsingSnippet"
           list-label="引用当前代码块的规则列表"
-          empty-text="该代码块暂未被任何规则引用, 请在编辑面板中添加"
+          empty-text="该代码块暂未被任何规则引用，请到规则编辑器中关联"
           @select="emit('jump-to-rule', $event)"
         >
-          <template #meta="{ item: r }">
-            <span class=":uno: text-xs text-gray-500">{{ rulePreview(r) }}</span>
+          <template #meta="{ item: rule }">
+            <span class=":uno: text-xs text-gray-500">{{ rulePreview(rule) }}</span>
             <span
               class=":uno: mt-0.5 block overflow-hidden text-ellipsis whitespace-nowrap text-xs text-gray-400"
-              :title="matchRuleExpression(r.matchRule)"
+              :title="matchRuleExpression(rule.matchRule)"
             >
-              {{ matchRuleExpression(r.matchRule) }}
+              {{ matchRuleExpression(rule.matchRule) }}
             </span>
           </template>
 
@@ -69,7 +69,7 @@ const emit = defineEmits<{
           v-if="selectedRuleId"
           :items="snippetsInRule"
           list-label="当前规则关联的代码块列表"
-          empty-text="该规则暂未关联代码块, 请在编辑面板中添加"
+          empty-text="该规则暂未关联代码块，请在规则编辑器中添加"
           @select="emit('jump-to-snippet', $event)"
         >
           <template #hint>

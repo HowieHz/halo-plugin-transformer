@@ -4,6 +4,7 @@ import { Dialog, VButton } from '@halo-dev/components'
 import type { MatchRule, MatchRuleEditorMode, MatchRuleSource } from '@/types'
 import { makeMatchRuleGroup } from '@/types'
 import {
+  buildMatchRuleEditorSourceForMode,
   formatMatchRule,
   formatMatchRuleError,
   type MatchRuleValidationError,
@@ -144,12 +145,12 @@ function switchMode(mode: MatchRuleEditorMode) {
       description: warningConfig.description,
       confirmType: warningConfig.confirmType,
       onConfirm() {
-        applyModeSwitch(mode, warningConfig.overwriteDraft)
+        applyModeSwitch(mode)
       },
     })
     return
   }
-  applyModeSwitch(mode, false)
+  applyModeSwitch(mode)
 }
 
 function getModeSwitchWarning(mode: MatchRuleEditorMode) {
@@ -161,7 +162,6 @@ function getModeSwitchWarning(mode: MatchRuleEditorMode) {
 你当前这份未保存的 JSON 内容会被覆盖。
 确认继续吗？`,
       confirmType: 'danger' as const,
-      overwriteDraft: true,
     }
   }
 
@@ -174,23 +174,19 @@ function getModeSwitchWarning(mode: MatchRuleEditorMode) {
 这也会替换你之前在高级模式里未保存的 JSON 草稿。
 确认继续吗？`,
       confirmType: 'danger' as const,
-      overwriteDraft: false,
     }
   }
 
   return null
 }
 
-function applyModeSwitch(mode: MatchRuleEditorMode, overwriteDraft: boolean) {
-  const patch: Partial<{ matchRule: MatchRule; matchRuleSource: MatchRuleSource }> = {}
-  if (mode === 'JSON' || overwriteDraft) {
-    const text = formatMatchRule(props.modelValue)
-    jsonDraft.value = text
-    patch.matchRuleSource = makeJsonDraftSource(text)
-  } else {
-    patch.matchRuleSource = makeRuleTreeSource(props.modelValue)
-  }
-  emitStatePatch(patch)
+function applyModeSwitch(mode: MatchRuleEditorMode) {
+  const nextState = buildMatchRuleEditorSourceForMode(mode, props.modelValue)
+  jsonDraft.value = nextState.jsonDraft
+  emitStatePatch({
+    matchRule: nextState.matchRule,
+    matchRuleSource: nextState.matchRuleSource,
+  })
 }
 
 function updateSimple(value: MatchRule) {

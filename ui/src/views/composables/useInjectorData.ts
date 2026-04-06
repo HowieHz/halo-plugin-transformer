@@ -65,8 +65,6 @@ export function useInjectorData() {
   const selectedRuleId = ref<string | null>(null)
 
   const editSnippet = ref<CodeSnippetViewModel | null>(null)
-  const editSnippetRuleIds = ref<string[]>([])
-
   const editRule = ref<EditableInjectionRule | null>(null)
   const editRuleSnippetIds = ref<string[]>([])
 
@@ -78,16 +76,16 @@ export function useInjectorData() {
 
   const rulesUsingSnippet = computed(() => {
     if (!selectedSnippetId.value) return []
-    return rules.value.filter((r) => r.snippetIds?.includes(selectedSnippetId.value!))
+    return rules.value.filter((rule) => rule.snippetIds?.includes(selectedSnippetId.value!))
   })
 
   const snippetsInRule = computed(() => {
     if (!selectedRuleId.value) return []
-    const rule = rules.value.find((r) => r.id === selectedRuleId.value)
+    const rule = rules.value.find((item) => item.id === selectedRuleId.value)
     if (!rule?.snippetIds?.length) return []
     return rule.snippetIds
-      .map((id) => snippets.value.find((s) => s.id === id))
-      .filter((s): s is CodeSnippetViewModel => !!s)
+      .map((id) => snippets.value.find((snippet) => snippet.id === id))
+      .filter((snippet): snippet is CodeSnippetViewModel => !!snippet)
   })
 
   const snippetEditorError = computed(() => {
@@ -99,39 +97,24 @@ export function useInjectorData() {
 
   const ruleEditorError = computed(() => {
     if (!editRule.value) return null
-    return _validateRule(editRule.value)
+    return validateRule(editRule.value)
   })
 
-  function _normalizeRuleSnippetIds(rule: InjectionRule, snippetIds: string[]) {
+  function normalizeRuleSnippetIds(rule: InjectionRule, snippetIds: string[]) {
     return rule.position === 'REMOVE' ? [] : uniqueStrings(snippetIds)
   }
 
-  function _normalizeSnippetRuleIds(ruleIds: string[]) {
-    const allowedRuleIds = new Set(
-      rules.value.filter((rule) => rule.position !== 'REMOVE').map((rule) => rule.id),
-    )
-    return uniqueStrings(ruleIds).filter((ruleId) => allowedRuleIds.has(ruleId))
-  }
-
   /**
-   * why: `id` 只是前端编辑态里便于选中和显示的派生字段，不属于代码块扩展对象本身；
-   * 写回后端时必须剔除，避免被严格字段校验当成脏数据拦下。
+   * why: `id` 只是前端展示态的派生字段，不属于后端写模型；
+   * 写回前统一剔除，避免被严格字段校验拦下。
    */
-  function _makeSnippetPayload(
-    snippet: CodeSnippetViewModel,
-    ruleIds?: string[],
-  ): CodeSnippetWritePayload {
-    const payload = {
-      ...snippet,
-      ruleIds: ruleIds ?? snippet.ruleIds,
-    } as CodeSnippetWritePayload & { id?: string }
+  function makeSnippetPayload(snippet: CodeSnippetViewModel): CodeSnippetWritePayload {
+    const payload = { ...snippet } as CodeSnippetWritePayload & { id?: string }
     delete payload.id
-    return {
-      ...payload,
-    }
+    return payload
   }
 
-  function _reorderItems<T extends { id: string }>(
+  function reorderItems<T extends { id: string }>(
     items: T[],
     sourceId: string,
     targetId: string,
@@ -155,7 +138,7 @@ export function useInjectorData() {
     return ordered
   }
 
-  async function _persistSnippetOrders(items: CodeSnippetViewModel[]) {
+  async function persistSnippetOrders(items: CodeSnippetViewModel[]) {
     const nextOrders = buildExplicitOrderMap(items)
     snippetOrders.value = { ...nextOrders }
     try {
@@ -166,7 +149,7 @@ export function useInjectorData() {
     }
   }
 
-  async function _persistRuleOrders(items: InjectionRule[]) {
+  async function persistRuleOrders(items: InjectionRule[]) {
     const nextOrders = buildExplicitOrderMap(items)
     ruleOrders.value = { ...nextOrders }
     try {
@@ -178,33 +161,39 @@ export function useInjectorData() {
   }
 
   /**
-   * why: 前端先做一轮用户可读的快速校验，
-   * 把大多数结构问题拦在保存前；后端仍会复核，防止绕过 UI 直接写入坏数据。
+   * why: 前端先做一层用户可读的快速校验，把大部分编辑态错误拦在保存前；
+   * 后端仍会复核，但这里要尽量把错误定位成用户能直接修的提示。
    */
-  function _validateRule(rule: EditableInjectionRule): string | null {
-    if ((rule.mode === 'SELECTOR' || rule.mode === 'ID') && !rule.match.trim())
+  function validateRule(rule: EditableInjectionRule): string | null {
+    if ((rule.mode === 'SELECTOR' || rule.mode === 'ID') && !rule.match.trim()) {
       return '请填写匹配内容'
+    }
     const result = resolveRuleMatchRule(rule)
-    if (result.error) return `匹配规则有误：${formatMatchRuleError(result.error)}`
-    if (!isValidMatchRule(result.rule)) return '请完善匹配规则'
+    if (result.error) {
+      return `匹配规则有误：${formatMatchRuleError(result.error)}`
+    }
+    if (!isValidMatchRule(result.rule)) {
+      return '请完善匹配规则'
+    }
     return null
   }
 
   async function fetchAll() {
     loading.value = true
     try {
-      const [sr, rr, snippetOrderResp, ruleOrderResp] = await Promise.all([
-        snippetApi.list(),
-        ruleApi.list(),
-        snippetApi.getOrder(),
-        ruleApi.getOrder(),
-      ])
-      snippetsResp.value = sr.data
-      rulesResp.value = rr.data
-      snippetOrders.value = snippetOrderResp.data
-      ruleOrders.value = ruleOrderResp.data
-      _syncEditSnippet()
-      _syncEditRule()
+      const [snippetResponse, ruleResponse, snippetOrderResponse, ruleOrderResponse] =
+        await Promise.all([
+          snippetApi.list(),
+          ruleApi.list(),
+          snippetApi.getOrder(),
+          ruleApi.getOrder(),
+        ])
+      snippetsResp.value = snippetResponse.data
+      rulesResp.value = ruleResponse.data
+      snippetOrders.value = snippetOrderResponse.data
+      ruleOrders.value = ruleOrderResponse.data
+      syncEditSnippet()
+      syncEditRule()
     } catch (error) {
       Toast.error(getErrorMessage(error, '加载数据失败'))
     } finally {
@@ -212,62 +201,52 @@ export function useInjectorData() {
     }
   }
 
-  async function _reloadSnippetOrders() {
+  async function reloadSnippetOrders() {
     snippetOrders.value = (await snippetApi.getOrder()).data
   }
 
-  async function _reloadRuleOrders() {
+  async function reloadRuleOrders() {
     ruleOrders.value = (await ruleApi.getOrder()).data
   }
 
-  function _syncEditSnippet() {
+  function syncEditSnippet() {
     if (!selectedSnippetId.value) {
       editSnippet.value = null
-      editSnippetRuleIds.value = []
       editDirty.value = false
       return
     }
-    const found = snippets.value.find((s) => s.id === selectedSnippetId.value)
-    editSnippet.value = found ? found : null
-    editSnippetRuleIds.value = rules.value
-      .filter((r) => r.snippetIds?.includes(selectedSnippetId.value!))
-      .map((r) => r.id)
+    const found = snippets.value.find((snippet) => snippet.id === selectedSnippetId.value)
+    editSnippet.value = found ?? null
     editDirty.value = false
   }
 
-  function _syncEditRule() {
+  function syncEditRule() {
     if (!selectedRuleId.value) {
       editRule.value = null
       editRuleSnippetIds.value = []
       editDirty.value = false
       return
     }
-    const found = rules.value.find((r) => r.id === selectedRuleId.value)
+    const found = rules.value.find((rule) => rule.id === selectedRuleId.value)
     editRule.value = found ? hydrateRuleForEditor(found) : null
-    editRuleSnippetIds.value = snippets.value
-      .filter((s) => s.ruleIds?.includes(selectedRuleId.value!))
-      .map((s) => s.id)
+    editRuleSnippetIds.value = found ? [...(found.snippetIds ?? [])] : []
     editDirty.value = false
   }
 
-  watch(selectedSnippetId, _syncEditSnippet)
-  watch(selectedRuleId, _syncEditRule)
+  watch(selectedSnippetId, syncEditSnippet)
+  watch(selectedRuleId, syncEditRule)
 
-  async function addSnippet(
-    snippet: CodeSnippetViewModel,
-    ruleIds: string[],
-  ): Promise<string | null> {
+  async function addSnippet(snippet: CodeSnippetViewModel): Promise<string | null> {
     if (!snippet.code.trim()) {
       Toast.error('代码内容不能为空')
       return null
     }
-    const nextRuleIds = _normalizeSnippetRuleIds(ruleIds)
     creating.value = true
     try {
-      const res = await snippetApi.add(_makeSnippetPayload(snippet, nextRuleIds))
-      const id = res.data.id
+      const response = await snippetApi.add(makeSnippetPayload(snippet))
+      const id = response.data.id
       await fetchAll()
-      const orderResult = await _persistSnippetOrders(snippets.value)
+      const orderResult = await persistSnippetOrders(snippets.value)
       selectedSnippetId.value = id
       if (orderResult === true) {
         Toast.success('代码块已创建')
@@ -287,12 +266,12 @@ export function useInjectorData() {
     rule: EditableInjectionRule,
     snippetIds: string[],
   ): Promise<string | null> {
-    const err = _validateRule(rule)
-    if (err) {
-      Toast.error(err)
+    const error = validateRule(rule)
+    if (error) {
+      Toast.error(error)
       return null
     }
-    const nextSnippetIds = _normalizeRuleSnippetIds(rule, snippetIds)
+    const nextSnippetIds = normalizeRuleSnippetIds(rule, snippetIds)
     creating.value = true
     try {
       const payload = makeRulePayload(rule, nextSnippetIds)
@@ -300,16 +279,16 @@ export function useInjectorData() {
         Toast.error('匹配规则有误，请先修正后再保存')
         return null
       }
-      const res = await ruleApi.add(payload)
+      const response = await ruleApi.add(payload)
       await fetchAll()
-      const orderResult = await _persistRuleOrders(rules.value)
-      selectedRuleId.value = res.data.id
+      const orderResult = await persistRuleOrders(rules.value)
+      selectedRuleId.value = response.data.id
       if (orderResult === true) {
         Toast.success('规则已创建')
       } else {
         Toast.warning(`规则已创建，但顺序保存失败：${orderResult}`)
       }
-      return res.data.id
+      return response.data.id
     } catch (error) {
       Toast.error(getErrorMessage(error, '创建失败'))
       return null
@@ -326,11 +305,9 @@ export function useInjectorData() {
     if (!editSnippet.value) {
       return false
     }
-    const currentSnippet = editSnippet.value
-    const nextRuleIds = _normalizeSnippetRuleIds(editSnippetRuleIds.value)
     savingEditor.value = true
     try {
-      await snippetApi.update(currentSnippet.id, _makeSnippetPayload(currentSnippet, nextRuleIds))
+      await snippetApi.update(editSnippet.value.id, makeSnippetPayload(editSnippet.value))
       await fetchAll()
       editDirty.value = false
       Toast.success('保存成功')
@@ -345,12 +322,12 @@ export function useInjectorData() {
 
   async function saveRule() {
     if (!editRule.value) return false
-    const err = ruleEditorError.value
-    if (err) {
-      Toast.error(err)
+    const error = ruleEditorError.value
+    if (error) {
+      Toast.error(error)
       return false
     }
-    const nextSnippetIds = _normalizeRuleSnippetIds(editRule.value, editRuleSnippetIds.value)
+    const nextSnippetIds = normalizeRuleSnippetIds(editRule.value, editRuleSnippetIds.value)
     savingEditor.value = true
     try {
       const payload = makeRulePayload(editRule.value, nextSnippetIds)
@@ -385,7 +362,7 @@ export function useInjectorData() {
       const sourceSnippet = nextEnabled ? editSnippet.value : savedSnippet
       await snippetApi.update(
         sourceSnippet.id,
-        _makeSnippetPayload({
+        makeSnippetPayload({
           ...sourceSnippet,
           enabled: nextEnabled,
         }),
@@ -403,7 +380,7 @@ export function useInjectorData() {
     const savedRule = rules.value.find((rule) => rule.id === editRule.value?.id)
     if (!savedRule) return
     if (nextEnabled) {
-      const validationError = _validateRule(editRule.value)
+      const validationError = validateRule(editRule.value)
       if (validationError) {
         Toast.error(`当前规则有错误，暂时无法启用：${validationError}`)
         return
@@ -415,8 +392,8 @@ export function useInjectorData() {
       const payload = makeRulePayload(
         sourceRule,
         nextEnabled
-          ? _normalizeRuleSnippetIds(editRule.value, editRuleSnippetIds.value)
-          : _normalizeRuleSnippetIds(savedRule, [...(savedRule.snippetIds ?? [])]),
+          ? normalizeRuleSnippetIds(editRule.value, editRuleSnippetIds.value)
+          : normalizeRuleSnippetIds(savedRule, [...(savedRule.snippetIds ?? [])]),
       )
       if (!payload) {
         Toast.error('当前规则有错误，暂时无法启用：匹配规则有误，请先修正后再操作')
@@ -431,18 +408,10 @@ export function useInjectorData() {
     }
   }
 
-  function toggleRuleInSnippetEditor(ruleId: string) {
-    const ids = editSnippetRuleIds.value
-    editSnippetRuleIds.value = ids.includes(ruleId)
-      ? ids.filter((id) => id !== ruleId)
-      : [...ids, ruleId]
-    editDirty.value = true
-  }
-
   function toggleSnippetInRuleEditor(snippetId: string) {
     const ids = editRuleSnippetIds.value
     editRuleSnippetIds.value = ids.includes(snippetId)
-      ? ids.filter((n) => n !== snippetId)
+      ? ids.filter((id) => id !== snippetId)
       : [...ids, snippetId]
     editDirty.value = true
   }
@@ -459,10 +428,9 @@ export function useInjectorData() {
           await snippetApi.delete(id)
           if (selectedSnippetId.value === id) selectedSnippetId.value = null
           editSnippet.value = null
-          editSnippetRuleIds.value = []
           editDirty.value = false
           await fetchAll()
-          const orderResult = await _persistSnippetOrders(snippets.value)
+          const orderResult = await persistSnippetOrders(snippets.value)
           if (orderResult === true) {
             Toast.success('代码块已删除')
           } else {
@@ -490,7 +458,7 @@ export function useInjectorData() {
           editRuleSnippetIds.value = []
           editDirty.value = false
           await fetchAll()
-          const orderResult = await _persistRuleOrders(rules.value)
+          const orderResult = await persistRuleOrders(rules.value)
           if (orderResult === true) {
             Toast.success('规则已删除')
           } else {
@@ -504,28 +472,19 @@ export function useInjectorData() {
   }
 
   function discardSnippetEdit() {
-    _syncEditSnippet()
+    syncEditSnippet()
   }
 
   function discardRuleEdit() {
-    _syncEditRule()
+    syncEditRule()
   }
 
-  /**
-   * why: 左侧资源列表的拖拽排序属于持久化排序，而不是临时前端排序；
-   * 当前列表会被固化成显式的 1..n；未出现在 order map 里的新资源仍按默认 0 排到最前面。
-   */
   async function reorderSnippet(payload: {
     sourceId: string
     targetId: string
     placement: ReorderPlacement
   }) {
-    const ordered = _reorderItems(
-      snippets.value,
-      payload.sourceId,
-      payload.targetId,
-      payload.placement,
-    )
+    const ordered = reorderItems(snippets.value, payload.sourceId, payload.targetId, payload.placement)
     if (!ordered) {
       return
     }
@@ -551,7 +510,7 @@ export function useInjectorData() {
       Toast.error(getErrorMessage(error, '更新顺序失败'))
       pendingSnippetOrders.value = null
       try {
-        await _reloadSnippetOrders()
+        await reloadSnippetOrders()
       } catch (reloadError) {
         Toast.error(getErrorMessage(reloadError, '重新加载代码块顺序失败'))
       }
@@ -565,12 +524,7 @@ export function useInjectorData() {
     targetId: string
     placement: ReorderPlacement
   }) {
-    const ordered = _reorderItems(
-      rules.value,
-      payload.sourceId,
-      payload.targetId,
-      payload.placement,
-    )
+    const ordered = reorderItems(rules.value, payload.sourceId, payload.targetId, payload.placement)
     if (!ordered) {
       return
     }
@@ -596,7 +550,7 @@ export function useInjectorData() {
       Toast.error(getErrorMessage(error, '更新顺序失败'))
       pendingRuleOrders.value = null
       try {
-        await _reloadRuleOrders()
+        await reloadRuleOrders()
       } catch (reloadError) {
         Toast.error(getErrorMessage(reloadError, '重新加载注入规则顺序失败'))
       }
@@ -614,7 +568,6 @@ export function useInjectorData() {
     selectedSnippetId,
     selectedRuleId,
     editSnippet,
-    editSnippetRuleIds,
     editRule,
     editRuleSnippetIds,
     editDirty,
@@ -628,7 +581,6 @@ export function useInjectorData() {
     toggleSnippetEnabled,
     confirmDeleteSnippet,
     discardSnippetEdit,
-    toggleRuleInSnippetEditor,
     reorderSnippet,
     addRule,
     saveRule,

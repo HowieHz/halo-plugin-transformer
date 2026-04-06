@@ -2,7 +2,7 @@ package com.erzbir.halo.injector.endpoint;
 
 import com.erzbir.halo.injector.manager.InjectionRuleManager;
 import com.erzbir.halo.injector.scheme.CodeSnippet;
-import com.erzbir.halo.injector.service.ResourceRelationWriteService;
+import com.erzbir.halo.injector.service.SnippetReferenceService;
 import com.erzbir.halo.injector.util.CodeSnippetValidationException;
 import com.erzbir.halo.injector.util.CodeSnippetValidator;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +32,7 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
 
     private final ReactiveExtensionClient client;
     private final CodeSnippetValidator validator;
-    private final ResourceRelationWriteService relationWriteService;
+    private final SnippetReferenceService snippetReferenceService;
     private final InjectionRuleManager ruleManager;
 
     @Override
@@ -43,13 +43,14 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
     }
 
     /**
-     * why: 代码块创建也统一走 console 写接口，保证控制台导入、表单提交和脚本调用共享同一套落库校验。
+     * why: 代码块已经不再承担关系真源；创建接口只负责校验并写入代码块本体，
+     * 不再暗中补写规则，避免再次把关系写复杂。
      */
     private Mono<ServerResponse> createSnippet(ServerRequest request) {
         return request.bodyToMono(CodeSnippet.class)
                 .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
                 .flatMap(validator::validateForWrite)
-                .flatMap(relationWriteService::createSnippetWithRelations)
+                .flatMap(client::create)
                 .doOnSuccess(created -> ruleManager.invalidateAndWarmUpAsync())
                 .flatMap(created -> ServerResponse.created(URI.create("/apis/" + READ_API_VERSION + "/codeSnippets/"
                                 + created.getMetadata().getName()))
@@ -58,8 +59,8 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
     }
 
     /**
-     * why: 更新接口同样要强制 metadata.name 与路径参数一致，
-     * 避免客户端借 update 把内容写到另一条资源上。
+     * why: 更新接口同样只处理代码块本体；同时强制 `metadata.name` 与路径参数一致，
+     * 避免客户端借 update 接口把内容写进另一条资源。
      */
     private Mono<ServerResponse> updateSnippet(ServerRequest request) {
         String name = request.pathVariable("name");
@@ -74,10 +75,10 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
                             || !Objects.equals(snippet.getMetadata().getName(), name)) {
                         throw new CodeSnippetValidationException("metadata.name 与路径参数不一致");
                     }
-                    return tuple;
+                    return snippet;
                 })
-                .flatMap(tuple -> validator.validateForWrite(tuple.getT2())
-                        .then(relationWriteService.updateSnippetWithRelations(tuple.getT1(), tuple.getT2())))
+                .flatMap(validator::validateForWrite)
+                .flatMap(client::update)
                 .doOnSuccess(updated -> ruleManager.invalidateAndWarmUpAsync())
                 .flatMap(updated -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
@@ -85,22 +86,20 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
     }
 
     /**
-     * why: 删除代码块也必须同步清掉规则侧残留引用；
-     * 否则前端重新拉取规则时，仍会看到已删除代码块挂在某些规则上。
+     * why: 唯一真源已经转到规则侧，删除代码块时必须先摘掉规则里的 `snippetIds`，
+     * 保证读模型、运行时和控制台都不会再看到悬挂引用。
      */
     private Mono<ServerResponse> deleteSnippet(ServerRequest request) {
         String name = request.pathVariable("name");
         return client.fetch(CodeSnippet.class, name)
                 .switchIfEmpty(Mono.error(new ServerWebInputException("未找到要删除的代码块")))
-                .flatMap(relationWriteService::deleteSnippetWithRelations)
+                .flatMap(snippetReferenceService::deleteSnippetAndDetachRules)
                 .doOnSuccess(ignored -> ruleManager.invalidateAndWarmUpAsync())
                 .then(ServerResponse.noContent().build());
     }
 
     @Override
     public GroupVersion groupVersion() {
-        // 代码块写接口与排序接口统一挂到 console 分组下，目的是在落库前插入插件自定义校验；
-        // 读路径仍然走扩展资源标准接口，避免影响现有查询链路。
         return GroupVersion.parseAPIVersion("console.api.injector.erzbir.com/v1alpha1");
     }
 }

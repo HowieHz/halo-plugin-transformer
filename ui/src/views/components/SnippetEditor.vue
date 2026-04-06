@@ -1,11 +1,9 @@
 <script lang="ts" setup>
-import type { CodeSnippet, InjectionRule } from '@/types'
-import ItemPicker from './ItemPicker.vue'
+import type { CodeSnippet } from '@/types'
 import EditorToolbar from './EditorToolbar.vue'
 import EditorFooter from './EditorFooter.vue'
 import ExportJsonFallbackModal from './ExportJsonFallbackModal.vue'
 import FormField from './FormField.vue'
-import { rulePreview, sortSelectedFirst } from '@/views/composables/util'
 import FieldUndoButton from './FieldUndoButton.vue'
 import { useFieldUndo } from '@/views/composables/useFieldUndo'
 import { computed, ref, watch } from 'vue'
@@ -17,8 +15,6 @@ import {
 
 const props = defineProps<{
   snippet: CodeSnippet | null
-  rules: InjectionRule[]
-  selectedRuleIds: string[]
   saving: boolean
   dirty: boolean
 }>()
@@ -27,21 +23,10 @@ const emit = defineEmits<{
   (e: 'save'): void
   (e: 'delete'): void
   (e: 'toggle-enabled'): void
-  (e: 'replace-rule-ids', ruleIds: string[]): void
-  (e: 'toggle-rule', ruleId: string): void
   (e: 'field-change'): void
   (e: 'update:snippet', snippet: CodeSnippet): void
 }>()
 
-const selectableRules = computed(() => props.rules.filter((rule) => rule.position !== 'REMOVE'))
-const visibleSelectedRuleIds = computed(() =>
-  props.selectedRuleIds.filter((ruleId) =>
-    selectableRules.value.some((rule) => rule.id === ruleId),
-  ),
-)
-const sortedRules = computed(() =>
-  sortSelectedFirst(selectableRules.value, visibleSelectedRuleIds.value),
-)
 const undo = useFieldUndo()
 const exportFallback = ref<TransferFileDraft | null>(null)
 const codeDraft = ref('')
@@ -66,7 +51,6 @@ watch(
     undo.resetBaseline({
       name: props.snippet.name,
       description: props.snippet.description,
-      ruleIds: visibleSelectedRuleIds.value,
       code: props.snippet.code,
     })
   },
@@ -81,10 +65,6 @@ watch(
   { immediate: true },
 )
 
-/**
- * why: 用户正常编辑时才记录撤销历史；撤销/重置写回旧值时必须跳过入栈，
- * 否则连续撤销会在新旧值之间反复横跳，无法稳定回退到更早状态。
- */
 function updateField<K extends keyof CodeSnippet>(
   key: K,
   value: CodeSnippet[K],
@@ -98,60 +78,34 @@ function updateField<K extends keyof CodeSnippet>(
   emit('field-change')
 }
 
-function handleToggleRule(ruleId: string) {
-  const previous = visibleSelectedRuleIds.value
-  const next = previous.includes(ruleId)
-    ? previous.filter((id) => id !== ruleId)
-    : [...previous, ruleId]
-  undo.trackChange('ruleIds', previous, next)
-  emit('toggle-rule', ruleId)
-}
-
-function canUndo(field: 'name' | 'description' | 'ruleIds' | 'code') {
+function canUndo(field: 'name' | 'description' | 'code') {
   if (!props.snippet) return false
   const current =
-    field === 'ruleIds'
-      ? visibleSelectedRuleIds.value
-      : field === 'name'
-        ? props.snippet.name
-        : field === 'description'
-          ? props.snippet.description
-          : props.snippet.code
+    field === 'name'
+      ? props.snippet.name
+      : field === 'description'
+        ? props.snippet.description
+        : props.snippet.code
   return undo.isModified(field, current)
 }
 
-function undoField(field: 'name' | 'description' | 'ruleIds' | 'code') {
+function undoField(field: 'name' | 'description' | 'code') {
   if (!props.snippet) return
   const current =
-    field === 'ruleIds'
-      ? visibleSelectedRuleIds.value
-      : field === 'name'
-        ? props.snippet.name
-        : field === 'description'
-          ? props.snippet.description
-          : props.snippet.code
+    field === 'name'
+      ? props.snippet.name
+      : field === 'description'
+        ? props.snippet.description
+        : props.snippet.code
   const previous = undo.undo(field, current)
   if (previous === undefined) return
-
-  if (field === 'ruleIds') {
-    emit('replace-rule-ids', previous as string[])
-    return
-  }
-
   updateField(field, previous as CodeSnippet[typeof field], { trackHistory: false })
 }
 
-function resetField(field: 'name' | 'description' | 'ruleIds' | 'code') {
+function resetField(field: 'name' | 'description' | 'code') {
   if (!props.snippet) return
   const baseline = undo.reset(field)
   if (baseline === undefined) return
-
-  if (field === 'ruleIds') {
-    emit('replace-rule-ids', baseline as string[])
-    emit('field-change')
-    return
-  }
-
   updateField(field, baseline as CodeSnippet[typeof field], { trackHistory: false })
 }
 
@@ -213,7 +167,7 @@ async function exportSnippet() {
               :id="inputId"
               :value="snippet.name"
               class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
-              placeholder="不填默认为 ID"
+              placeholder="不填默认显示为 ID"
               @change="updateField('name', ($event.target as HTMLInputElement).value)"
             />
           </template>
@@ -221,7 +175,10 @@ async function exportSnippet() {
 
         <FormField label="描述">
           <template v-if="canUndo('description')" #actions>
-            <FieldUndoButton @reset="resetField('description')" @undo="undoField('description')" />
+            <FieldUndoButton
+              @reset="resetField('description')"
+              @undo="undoField('description')"
+            />
           </template>
           <template #default="{ inputId }">
             <input
@@ -230,31 +187,6 @@ async function exportSnippet() {
               class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
               placeholder="说明此代码块的用途"
               @change="updateField('description', ($event.target as HTMLInputElement).value)"
-            />
-          </template>
-        </FormField>
-
-        <FormField label="关联规则">
-          <template #actions>
-            <div class=":uno: flex items-center gap-2">
-              <span aria-live="polite" class=":uno: text-xs text-gray-400">
-                {{ visibleSelectedRuleIds.length }} 个已选
-              </span>
-              <FieldUndoButton
-                v-if="canUndo('ruleIds')"
-                @reset="resetField('ruleIds')"
-                @undo="undoField('ruleIds')"
-              />
-            </div>
-          </template>
-          <template #default>
-            <ItemPicker
-              :items="sortedRules"
-              label="关联规则选择列表"
-              :preview-fn="rulePreview"
-              :selected-ids="visibleSelectedRuleIds"
-              empty-text="暂无规则, 请先创建"
-              @toggle="handleToggleRule"
             />
           </template>
         </FormField>

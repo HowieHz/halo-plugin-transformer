@@ -8,6 +8,7 @@ import {
   makeMatchRuleGroup,
   makePathMatchRule,
   makeTemplateMatchRule,
+  type MatchRuleEditorMode,
 } from '@/types'
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -79,6 +80,25 @@ export function makeJsonDraftSource(draft: string): MatchRuleSource {
   return {
     kind: 'JSON_DRAFT',
     data: draft,
+  }
+}
+
+/**
+ * why: 模式切换的核心语义应当只由“目标模式”决定：
+ * 切到简单模式一定收敛成规则树，切到高级模式一定生成新的 JSON 草稿，
+ * 避免再用额外布尔值把“切换模式”和“是否覆盖草稿”两层语义搅在一起。
+ */
+export function buildMatchRuleEditorSourceForMode(
+  mode: MatchRuleEditorMode,
+  rule: MatchRule,
+): { matchRule: MatchRule; matchRuleSource: MatchRuleSource; jsonDraft: string } {
+  const normalized = normalizeMatchRule(rule)
+  const jsonDraft = formatMatchRule(normalized)
+
+  return {
+    matchRule: normalized,
+    matchRuleSource: mode === 'JSON' ? makeJsonDraftSource(jsonDraft) : makeRuleTreeSource(normalized),
+    jsonDraft,
   }
 }
 

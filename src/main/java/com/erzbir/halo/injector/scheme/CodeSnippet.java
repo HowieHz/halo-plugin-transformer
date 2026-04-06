@@ -3,7 +3,6 @@ package com.erzbir.halo.injector.scheme;
 import com.erzbir.halo.injector.core.ICodeSnippet;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import run.halo.app.extension.AbstractExtension;
@@ -11,8 +10,6 @@ import run.halo.app.extension.GVK;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
-
-import static io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -23,7 +20,6 @@ public class CodeSnippet extends AbstractExtension implements ICodeSnippet {
     private String code = "";
     private String description = "";
     private Boolean enabled = true;
-    private Set<String> ruleIds = new LinkedHashSet<>();
     @JsonIgnore
     private final Set<String> unknownFields = new LinkedHashSet<>();
 

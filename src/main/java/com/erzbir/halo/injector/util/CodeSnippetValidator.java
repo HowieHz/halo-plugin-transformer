@@ -8,8 +8,7 @@ import reactor.core.publisher.Mono;
 @Component
 public class CodeSnippetValidator {
     /**
-     * why: 代码块也需要和注入规则一样，在写入期拦住坏数据；
-     * 否则即使前端导入页做了提示，绕过 UI 的写入仍可能把空代码或错字段落库。
+     * why: 代码块写入期也要兜底校验，避免绕过 UI 后把空代码或脏字段直接落库。
      */
     public Mono<CodeSnippet> validateForWrite(CodeSnippet snippet) {
         if (snippet == null) {
@@ -18,7 +17,7 @@ public class CodeSnippetValidator {
         if (!snippet.getUnknownFields().isEmpty()) {
             String field = snippet.getUnknownFields().iterator().next();
             return Mono.error(new CodeSnippetValidationException(
-                    field + "：不支持该字段；代码块仅支持 \"enabled\"、\"name\"、\"description\"、\"code\"、\"ruleIds\""
+                    field + "：不支持该字段；代码块仅支持 \"enabled\"、\"name\"、\"description\"、\"code\""
             ));
         }
         if (!StringUtils.hasText(snippet.getCode())) {

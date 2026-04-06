@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest'
 import { makeRule } from '@/types'
 import {
+  buildMatchRuleEditorSourceForMode,
   getDomRulePerformanceWarning,
   hydrateRuleForEditor,
   parseMatchRuleDraft,
@@ -116,6 +117,26 @@ describe('matchRule editor state', () => {
       type: 'PATH',
       matcher: 'ANT',
       value: '/**',
+    })
+  })
+
+  // why: 模式切回简单时必须无条件收敛为 RULE_TREE，不能把坏掉的 JSON 草稿继续带回去，
+  // 否则用户看到的是简单模式，底层却还残留 JSON_DRAFT，后续保存与导出都会语义错位。
+  it('builds rule tree source when switching editor mode to simple', () => {
+    const source = buildMatchRuleEditorSourceForMode(
+      'SIMPLE',
+      makeRule({
+        matchRule: {
+          type: 'GROUP',
+          negate: false,
+          operator: 'AND',
+          children: [{ type: 'PATH', negate: false, matcher: 'ANT', value: '/**' }],
+        },
+      }).matchRule,
+    )
+
+    expect(source.matchRuleSource).toMatchObject({
+      kind: 'RULE_TREE',
     })
   })
 

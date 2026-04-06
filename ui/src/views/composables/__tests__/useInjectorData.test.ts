@@ -169,7 +169,6 @@ describe('useInjectorData', () => {
     const savedSnippet = makeSnippet({
       id: 'snippet-a',
       metadata: { name: 'snippet-a' },
-      ruleIds: ['rule-a'],
       code: '<div>ok</div>',
     })
 

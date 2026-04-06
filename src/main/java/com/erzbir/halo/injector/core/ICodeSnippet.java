@@ -1,7 +1,5 @@
 package com.erzbir.halo.injector.core;
 
-import java.util.Set;
-
 public interface ICodeSnippet {
     String getId();
 
@@ -12,6 +10,4 @@ public interface ICodeSnippet {
     String getCode();
 
     boolean isEnabled();
-
-    Set<String> getRuleIds();
 }

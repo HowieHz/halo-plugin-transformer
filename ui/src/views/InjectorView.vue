@@ -35,7 +35,7 @@ const snippetFormRef = ref<{
   reset: () => void
   hasUnsavedChanges: () => boolean
   getValidationError: () => string | null
-  getSubmitPayload: () => { snippet: CodeSnippet; ruleIds: string[] }
+  getSubmitPayload: () => { snippet: CodeSnippet }
 } | null>(null)
 const ruleFormRef = ref<{
   reset: () => void
@@ -53,7 +53,6 @@ const {
   selectedSnippetId,
   selectedRuleId,
   editSnippet,
-  editSnippetRuleIds,
   editRule,
   editRuleSnippetIds,
   editDirty,
@@ -67,7 +66,6 @@ const {
   toggleSnippetEnabled,
   confirmDeleteSnippet,
   discardSnippetEdit,
-  toggleRuleInSnippetEditor,
   reorderSnippet,
   addRule,
   saveRule,
@@ -283,7 +281,7 @@ async function confirmSaveAndLeave() {
   let saved = false
   if (showSnippetModal.value) {
     const payload = snippetFormRef.value?.getSubmitPayload()
-    saved = payload ? !!(await addSnippet(payload.snippet, payload.ruleIds)) : false
+    saved = payload ? !!(await addSnippet(payload.snippet)) : false
     if (saved) {
       showSnippetModal.value = false
     }
@@ -425,7 +423,6 @@ function jumpToSnippet(id: string) {
     <SnippetFormModal
       v-if="showSnippetModal"
       ref="snippetFormRef"
-      :rules="rules"
       :saving="creating"
       @close="requestEditorLeave(closeSnippetModal)"
       @submit="handleAddSnippet"
@@ -571,16 +568,12 @@ function jumpToSnippet(id: string) {
             <SnippetEditor
               v-if="activeTab === 'snippets'"
               :dirty="editDirty"
-              :rules="rules"
               :saving="savingEditor"
-              :selected-rule-ids="editSnippetRuleIds"
               :snippet="editSnippet"
               @delete="confirmDeleteSnippet"
               @save="saveSnippet"
               @field-change="editDirty = true"
-              @replace-rule-ids="editSnippetRuleIds = $event"
               @toggle-enabled="toggleSnippetEnabled"
-              @toggle-rule="toggleRuleInSnippetEditor"
               @update:snippet="editSnippet = $event"
             />
             <RuleEditor

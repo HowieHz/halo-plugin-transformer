@@ -1,26 +1,22 @@
 <script lang="ts" setup>
 import { Toast, VButton } from '@halo-dev/components'
 import { computed, onMounted, ref } from 'vue'
-import type { CodeSnippet, InjectionRule } from '@/types'
+import type { CodeSnippet } from '@/types'
 import { makeSnippet } from '@/types'
 import BaseFormModal from './BaseFormModal.vue'
-import ItemPicker from './ItemPicker.vue'
 import FormField from './FormField.vue'
-import { rulePreview } from '@/views/composables/util'
 import { parseSnippetTransfer } from '@/views/composables/transfer'
 
 const props = defineProps<{
-  rules: InjectionRule[]
   saving: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'close'): void
-  (e: 'submit', snippet: CodeSnippet, ruleIds: string[]): void
+  (e: 'submit', snippet: CodeSnippet): void
 }>()
 
 const snippet = ref<CodeSnippet>(makeSnippet())
-const selectedRuleIds = ref<string[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
 const initialSnippet = makeSnippet()
 const codeScrollTop = ref(0)
@@ -39,18 +35,10 @@ onMounted(reset)
 
 function reset() {
   snippet.value = makeSnippet()
-  selectedRuleIds.value = []
-}
-
-function toggleRule(id: string) {
-  const ids = selectedRuleIds.value
-  const idx = ids.indexOf(id)
-  if (idx === -1) selectedRuleIds.value.push(id)
-  else selectedRuleIds.value.splice(idx, 1)
 }
 
 function handleSubmit() {
-  emit('submit', snippet.value, selectedRuleIds.value)
+  emit('submit', snippet.value)
 }
 
 function syncCodeScroll(event: Event) {
@@ -69,7 +57,6 @@ async function handleImport(event: Event) {
   }
   try {
     snippet.value = parseSnippetTransfer(await file.text())
-    selectedRuleIds.value = []
     if (!snippet.value.code.trim()) {
       Toast.warning('已导入代码块 JSON，但当前内容仍有错误：代码内容不能为空')
     } else {
@@ -82,15 +69,13 @@ async function handleImport(event: Event) {
   }
 }
 
-const selectableRules = computed(() => props.rules.filter((rule) => rule.position !== 'REMOVE'))
 const validationError = computed(() => codeFieldError.value)
 const dirty = computed(() => {
   return (
     snippet.value.enabled !== initialSnippet.enabled ||
     snippet.value.name !== initialSnippet.name ||
     snippet.value.description !== initialSnippet.description ||
-    snippet.value.code !== initialSnippet.code ||
-    selectedRuleIds.value.length > 0
+    snippet.value.code !== initialSnippet.code
   )
 })
 
@@ -107,7 +92,6 @@ function getSubmitPayload() {
     snippet: {
       ...snippet.value,
     },
-    ruleIds: [...selectedRuleIds.value],
   }
 }
 
@@ -122,7 +106,8 @@ defineExpose({
 <template>
   <BaseFormModal
     hide-default-title
-    :saving="saving"
+    :saving="props.saving"
+    :show-picker="false"
     title="新建代码块"
     @close="emit('close')"
     @submit="handleSubmit"
@@ -146,7 +131,7 @@ defineExpose({
           :id="inputId"
           v-model="snippet.name"
           class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
-          placeholder="不填默认为 ID"
+          placeholder="不填默认显示为 ID"
         />
       </FormField>
 
@@ -208,21 +193,6 @@ defineExpose({
           </p>
         </div>
       </FormField>
-    </template>
-
-    <template #picker>
-      <div class=":uno: flex items-center justify-between">
-        <label class=":uno: text-xs font-medium text-gray-600">关联规则</label>
-        <span class=":uno: text-xs text-gray-400">{{ selectedRuleIds.length }} 个已选</span>
-      </div>
-      <ItemPicker
-        :items="selectableRules"
-        label="关联规则选择列表"
-        :preview-fn="rulePreview"
-        :selected-ids="selectedRuleIds"
-        empty-text="暂无规则, 请先创建"
-        @toggle="toggleRule"
-      />
     </template>
   </BaseFormModal>
 </template>

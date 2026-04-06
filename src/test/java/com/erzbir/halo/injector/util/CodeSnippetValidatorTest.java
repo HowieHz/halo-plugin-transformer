@@ -13,7 +13,7 @@ class CodeSnippetValidatorTest {
     private final CodeSnippetValidator validator = new CodeSnippetValidator();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // why: 合法代码块必须能顺利落库，避免后端兜底误伤正常创建和更新。
+    // why: 合法代码块必须能稳定通过写入校验，避免后端误伤正常创建与更新。
     @Test
     void shouldAllowValidSnippetDuringWriteValidation() {
         CodeSnippet snippet = new CodeSnippet();
@@ -25,7 +25,7 @@ class CodeSnippetValidatorTest {
         assertDoesNotThrow(() -> validator.validateForWrite(snippet).block());
     }
 
-    // why: 空代码块即使来自导入或脚本调用，也不能进入存储层，否则运行时只会表现为“没有注入”。
+    // why: 空代码块写进去只会表现为“没有注入”，因此必须在写入期明确拦下。
     @Test
     void shouldRejectBlankCodeDuringWriteValidation() {
         CodeSnippet snippet = new CodeSnippet();
@@ -42,7 +42,7 @@ class CodeSnippetValidatorTest {
         assertEquals("code：请填写代码内容", error.getReason());
     }
 
-    // why: 代码块写接口也要拒绝未知字段，避免导入或脚本调用把拼错的键静默落库。
+    // why: 代码块模型已经不再接受关系字段或其它未知字段；写入期要明确拒绝脏字段。
     @Test
     void shouldRejectUnknownSnippetFieldDuringWriteValidation() throws Exception {
         CodeSnippet snippet = objectMapper.readValue("""
@@ -58,7 +58,7 @@ class CodeSnippetValidatorTest {
         );
 
         assertEquals(
-                "unknownField：不支持该字段；代码块仅支持 \"enabled\"、\"name\"、\"description\"、\"code\"、\"ruleIds\"",
+                "unknownField：不支持该字段；代码块仅支持 \"enabled\"、\"name\"、\"description\"、\"code\"",
                 error.getReason()
         );
     }
