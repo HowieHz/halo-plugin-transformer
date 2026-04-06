@@ -15,8 +15,11 @@ import {
 
 type TransferResourceType = 'snippet' | 'rule'
 
+export const TRANSFER_SCHEMA_URL =
+  'https://raw.githubusercontent.com/Erzbir/halo-plugin-injector/main/ui/public/injector.schema.json'
+
 interface TransferEnvelope<TType extends TransferResourceType, TData> {
-  format: 'halo-plugin-injector'
+  $schema?: string
   version: 1
   resourceType: TType
   data: TData
@@ -49,7 +52,7 @@ type RuleTransferEnvelope = TransferEnvelope<'rule', RuleTransferData>
  */
 export function buildSnippetTransfer(snippet: CodeSnippet): SnippetTransferEnvelope {
   return {
-    format: 'halo-plugin-injector',
+    $schema: TRANSFER_SCHEMA_URL,
     version: 1,
     resourceType: 'snippet',
     data: {
@@ -68,7 +71,7 @@ export function buildSnippetTransfer(snippet: CodeSnippet): SnippetTransferEnvel
 export function buildRuleTransfer(rule: EditableInjectionRule): RuleTransferEnvelope {
   const matchRuleSource = buildRuleTransferMatchRuleSource(rule)
   return {
-    format: 'halo-plugin-injector',
+    $schema: TRANSFER_SCHEMA_URL,
     version: 1,
     resourceType: 'rule',
     data: {
@@ -288,7 +291,7 @@ function parseImportedMatchRuleSource(source: unknown): {
 }
 
 function parseEnvelope<
-  T extends { format: string; version: number; resourceType: string; data: unknown },
+  T extends { $schema?: string; version: number; resourceType: string; data: unknown },
 >(raw: string, expectedType: TransferResourceType) {
   let parsed: unknown
   try {
@@ -299,8 +302,9 @@ function parseEnvelope<
   if (!isPlainObject(parsed)) {
     throw new Error('导入失败：根节点必须是对象')
   }
-  if (parsed.format !== 'halo-plugin-injector') {
-    throw new Error('导入失败：不是 Injector 导出的 JSON')
+  ensureAllowedFields(parsed, ['$schema', 'version', 'resourceType', 'data'], '导入文件')
+  if (parsed.$schema !== undefined && typeof parsed.$schema !== 'string') {
+    throw new Error('导入失败：`$schema` 必须是字符串')
   }
   if (parsed.version !== 1) {
     throw new Error('导入失败：暂不支持这个导出版本')

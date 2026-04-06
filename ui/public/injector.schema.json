@@ -1,0 +1,221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Erzbir/halo-plugin-injector/main/ui/public/injector.schema.json",
+  "title": "Halo Plugin Injector Transfer",
+  "description": "JSON import/export schema for Halo Plugin Injector resources.",
+  "type": "object",
+  "required": ["version", "resourceType", "data"],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "type": "integer"
+    },
+    "resourceType": {
+      "type": "string",
+      "enum": ["snippet", "rule"]
+    },
+    "data": true
+  },
+  "additionalProperties": false,
+  "oneOf": [
+    {
+      "title": "Snippet Transfer v1",
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "resourceType": {
+          "const": "snippet"
+        },
+        "data": {
+          "$ref": "#/$defs/snippetDataV1"
+        }
+      }
+    },
+    {
+      "title": "Rule Transfer v1",
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "resourceType": {
+          "const": "rule"
+        },
+        "data": {
+          "$ref": "#/$defs/ruleDataV1"
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "snippetDataV1": {
+      "type": "object",
+      "required": ["enabled", "name", "description", "code"],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ruleDataV1": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "name",
+        "description",
+        "mode",
+        "match",
+        "position",
+        "wrapMarker",
+        "matchRuleSource"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["HEAD", "FOOTER", "ID", "SELECTOR"]
+        },
+        "match": {
+          "type": "string"
+        },
+        "position": {
+          "type": "string",
+          "enum": ["APPEND", "PREPEND", "BEFORE", "AFTER", "REPLACE", "REMOVE"]
+        },
+        "wrapMarker": {
+          "type": "boolean"
+        },
+        "matchRuleSource": {
+          "$ref": "#/$defs/matchRuleSource"
+        }
+      },
+      "additionalProperties": false
+    },
+    "matchRuleSource": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "data"],
+          "properties": {
+            "kind": {
+              "const": "RULE_TREE"
+            },
+            "data": {
+              "$ref": "#/$defs/matchRuleGroup"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "data"],
+          "properties": {
+            "kind": {
+              "const": "JSON_DRAFT"
+            },
+            "data": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "matchRuleNode": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/matchRuleGroup"
+        },
+        {
+          "$ref": "#/$defs/matchRulePath"
+        },
+        {
+          "$ref": "#/$defs/matchRuleTemplateId"
+        }
+      ]
+    },
+    "matchRuleGroup": {
+      "type": "object",
+      "required": ["type", "negate", "operator", "children"],
+      "properties": {
+        "type": {
+          "const": "GROUP"
+        },
+        "negate": {
+          "type": "boolean"
+        },
+        "operator": {
+          "type": "string",
+          "enum": ["AND", "OR"]
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/matchRuleNode"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "matchRulePath": {
+      "type": "object",
+      "required": ["type", "negate", "matcher", "value"],
+      "properties": {
+        "type": {
+          "const": "PATH"
+        },
+        "negate": {
+          "type": "boolean"
+        },
+        "matcher": {
+          "type": "string",
+          "enum": ["ANT", "REGEX", "EXACT"]
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "matchRuleTemplateId": {
+      "type": "object",
+      "required": ["type", "negate", "matcher", "value"],
+      "properties": {
+        "type": {
+          "const": "TEMPLATE_ID"
+        },
+        "negate": {
+          "type": "boolean"
+        },
+        "matcher": {
+          "type": "string",
+          "enum": ["REGEX", "EXACT"]
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

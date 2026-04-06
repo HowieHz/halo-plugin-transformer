@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { makeRule } from '@/types'
-import { buildRuleTransfer, parseRuleTransfer, parseSnippetTransfer } from '../transfer'
+import {
+  buildRuleTransfer,
+  parseRuleTransfer,
+  parseSnippetTransfer,
+  TRANSFER_SCHEMA_URL,
+} from '../transfer'
 
 describe('parseRuleTransfer', () => {
   // why: 导入时若只是把字段名写错，应丢弃错键并回退到该类型的默认匹配方式，避免整份 JSON 直接失效。
   it('drops unknown matchRule keys and falls back to default matcher', () => {
     const raw = JSON.stringify({
-      format: 'halo-plugin-injector',
       version: 1,
       resourceType: 'rule',
       data: {
@@ -48,7 +52,6 @@ describe('parseRuleTransfer', () => {
   // why: 导入时若缺少可安全补全的字段，应自动补默认值；但 GROUP 缺少 children 时应补成空组，而不是偷偷塞一个默认子规则。
   it('fills missing matchRule fields with defaults during import', () => {
     const raw = JSON.stringify({
-      format: 'halo-plugin-injector',
       version: 1,
       resourceType: 'rule',
       data: {
@@ -81,7 +84,6 @@ describe('parseRuleTransfer', () => {
   // why: 叶子规则缺少 matcher / value 时，仍可按已知 type 安全补默认值，方便用户先导入再继续编辑。
   it('fills missing leaf matchRule fields during import', () => {
     const raw = JSON.stringify({
-      format: 'halo-plugin-injector',
       version: 1,
       resourceType: 'rule',
       data: {
@@ -121,7 +123,7 @@ describe('parseRuleTransfer', () => {
   // why: `type` 无法安全补默认值；导入时应保留原始 JSON 草稿并切到高级模式，让用户继续修正。
   it('falls back to json draft when imported rule tree is missing type', () => {
     const raw = JSON.stringify({
-      format: 'halo-plugin-injector',
+      $schema: TRANSFER_SCHEMA_URL,
       version: 1,
       resourceType: 'rule',
       data: {
@@ -159,7 +161,6 @@ describe('parseRuleTransfer', () => {
   // why: 只要 `matchRule` 根节点仍是对象，哪怕 children 类型写错，也应保留原始 JSON 并转高级模式继续修。
   it('falls back to json draft when imported children is not an array', () => {
     const raw = JSON.stringify({
-      format: 'halo-plugin-injector',
       version: 1,
       resourceType: 'rule',
       data: {
@@ -191,7 +192,6 @@ describe('parseRuleTransfer', () => {
   // why: 字段类型写错仍属于“对象树内部可修问题”，导入时应进入高级模式，而不是直接拦死。
   it('falls back to json draft when imported negate has wrong type', () => {
     const raw = JSON.stringify({
-      format: 'halo-plugin-injector',
       version: 1,
       resourceType: 'rule',
       data: {
@@ -223,7 +223,6 @@ describe('parseRuleTransfer', () => {
   // why: 导入枚举字段若传了非字符串值，应先提示“必须是字符串”，而不是笼统的“不合法”。
   it('reports enum type errors before invalid enum values during import', () => {
     const raw = JSON.stringify({
-      format: 'halo-plugin-injector',
       version: 1,
       resourceType: 'rule',
       data: {
@@ -254,7 +253,6 @@ describe('parseRuleTransfer', () => {
   // why: 导入枚举字段若本身就是字符串，只需提示允许值即可，不必重复强调类型。
   it('reports quoted allowed enum values for invalid import enums', () => {
     const raw = JSON.stringify({
-      format: 'halo-plugin-injector',
       version: 1,
       resourceType: 'rule',
       data: {
@@ -285,7 +283,6 @@ describe('parseRuleTransfer', () => {
   // why: 导入里的布尔字段若不是 boolean，也应明确提示 true / false，避免只看到“类型不对”却不知道期望值。
   it('reports allowed boolean values for import boolean fields', () => {
     const raw = JSON.stringify({
-      format: 'halo-plugin-injector',
       version: 1,
       resourceType: 'rule',
       data: {
@@ -318,7 +315,6 @@ describe('parseSnippetTransfer', () => {
   // why: 代码块导入若缺少可补默认值的字段，应直接补默认值，让用户先导入再继续编辑。
   it('fills missing snippet fields with defaults during import', () => {
     const raw = JSON.stringify({
-      format: 'halo-plugin-injector',
       version: 1,
       resourceType: 'snippet',
       data: {},
@@ -337,7 +333,6 @@ describe('parseSnippetTransfer', () => {
   // why: 代码块导入也不应静默吞掉未知字段，否则用户会以为自己导入成功了完整模板。
   it('rejects unknown snippet fields during import', () => {
     const raw = JSON.stringify({
-      format: 'halo-plugin-injector',
       version: 1,
       resourceType: 'snippet',
       data: {
@@ -355,7 +350,6 @@ describe('parseSnippetTransfer', () => {
   // why: 代码块布尔字段也要和注入规则导入一样，给出 true / false 提示。
   it('reports allowed boolean values for snippet import booleans', () => {
     const raw = JSON.stringify({
-      format: 'halo-plugin-injector',
       version: 1,
       resourceType: 'snippet',
       data: {
@@ -367,9 +361,33 @@ describe('parseSnippetTransfer', () => {
       '导入失败：`enabled` 必须是布尔值；仅支持 true 或 false',
     )
   })
+
+  // why: `$schema` 只用于编辑器提示；若类型写错，也应在导入入口直接指出，而不是等后续结构校验时才报模糊错误。
+  it('reports invalid schema field type for snippet imports', () => {
+    const raw = JSON.stringify({
+      $schema: 123,
+      version: 1,
+      resourceType: 'snippet',
+      data: {},
+    })
+
+    expect(() => parseSnippetTransfer(raw)).toThrow('导入失败：`$schema` 必须是字符串')
+  })
 })
 
 describe('buildRuleTransfer', () => {
+  // why: 导出后的包裹层应只保留 version/resourceType/data，并自动附带 schema 提示，不再继续输出旧的 format 字段。
+  it('exports schema url without legacy format field', () => {
+    const payload = buildRuleTransfer(makeRule())
+
+    expect(payload).toMatchObject({
+      $schema: TRANSFER_SCHEMA_URL,
+      version: 1,
+      resourceType: 'rule',
+    })
+    expect('format' in payload).toBe(false)
+  })
+
   // why: 高级模式里的 JSON 草稿若已经能稳定解析成规则树，导出时应优先收敛成 RULE_TREE，避免把无意义草稿继续传下去。
   it('exports valid json drafts as rule trees', () => {
     const rule = makeRule({
