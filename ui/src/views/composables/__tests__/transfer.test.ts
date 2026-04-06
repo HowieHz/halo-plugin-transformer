@@ -41,7 +41,7 @@ describe('parseRuleTransfer', () => {
     })
   })
 
-  // why: 导入时若缺少可安全补全的字段，应自动补默认值；但像 negate 这类显式必填字段仍需保留并校验。
+  // why: 导入时若缺少可安全补全的字段，应自动补默认值；但 GROUP 缺少 children 时应补成空组，而不是偷偷塞一个默认子规则。
   it('fills missing matchRule fields with defaults during import', () => {
     const raw = JSON.stringify({
       format: 'halo-plugin-injector',
@@ -57,6 +57,38 @@ describe('parseRuleTransfer', () => {
         wrapMarker: true,
         matchRule: {
           type: 'GROUP',
+        },
+      },
+    })
+
+    const rule = parseRuleTransfer(raw)
+
+    expect(rule.matchRule).toMatchObject({
+      type: 'GROUP',
+      negate: false,
+      operator: 'AND',
+      children: [],
+    })
+  })
+
+  // why: 叶子规则缺少 matcher / value 时，仍可按已知 type 安全补默认值，方便用户先导入再继续编辑。
+  it('fills missing leaf matchRule fields during import', () => {
+    const raw = JSON.stringify({
+      format: 'halo-plugin-injector',
+      version: 1,
+      resourceType: 'rule',
+      data: {
+        enabled: true,
+        name: 'demo',
+        description: '',
+        mode: 'FOOTER',
+        match: '',
+        position: 'APPEND',
+        wrapMarker: true,
+        matchRule: {
+          type: 'GROUP',
+          negate: false,
+          operator: 'AND',
           children: [
             {
               type: 'PATH',
@@ -68,18 +100,11 @@ describe('parseRuleTransfer', () => {
 
     const rule = parseRuleTransfer(raw)
 
-    expect(rule.matchRule).toMatchObject({
-      type: 'GROUP',
+    expect(rule.matchRule.children?.[0]).toMatchObject({
+      type: 'PATH',
       negate: false,
-      operator: 'AND',
-      children: [
-        {
-          type: 'PATH',
-          negate: false,
-          matcher: 'ANT',
-          value: '/**',
-        },
-      ],
+      matcher: 'ANT',
+      value: '/**',
     })
   })
 

@@ -392,7 +392,11 @@ function validateMatchRuleInput(
     if (hasOwnKey(input, 'children') && !Array.isArray(input.children)) {
       return invalid(`${path}.children`, '必须是数组')
     }
-    const rawChildren = Array.isArray(input.children) ? input.children : [makePathMatchRule()]
+    const rawChildren = Array.isArray(input.children)
+      ? input.children
+      : options.allowMissingRequiredKeys
+        ? []
+        : [makePathMatchRule()]
     if (!rawChildren.length && !options.allowEmptyGroup) {
       return invalid(`${path}.children`, '不能有空组')
     }
