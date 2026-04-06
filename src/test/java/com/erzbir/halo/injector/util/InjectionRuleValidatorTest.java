@@ -65,7 +65,24 @@ class InjectionRuleValidatorTest {
                 () -> validator.validateForWrite(rule).block()
         );
 
-        assertEquals("matchRule.children[0].matcher：缺少必填字段；仅支持 \"ANT\"、\"REGEX\"、\"EXACT\"", error.getReason());
+        assertEquals("matchRule.children[0].matcher：缺少必填字段 \"matcher\"；该字段可选值为 \"ANT\"、\"REGEX\"、\"EXACT\"", error.getReason());
+    }
+
+    // why: `negate` 也要求显式给出 true/false，避免后端把“省略字段”静默吞成 false。
+    @Test
+    void shouldRejectMatchRuleWithoutExplicitNegateDuringWriteValidation() {
+        InjectionRule rule = makeRule();
+        MatchRule child = MatchRule.pathRule(MatchRule.Matcher.ANT, "/**");
+        setNegateDirectly(child, null);
+        setNegateDefinedDirectly(child, false);
+        setMatchRuleDirectly(rule, makeGroup(child));
+
+        InjectionRuleValidationException error = assertThrows(
+                InjectionRuleValidationException.class,
+                () -> validator.validateForWrite(rule).block()
+        );
+
+        assertEquals("matchRule.children[0].negate：缺少必填字段 \"negate\"；该字段可选值为 true、false", error.getReason());
     }
 
     // why: JSON 里的错键不能被静默吞掉，否则像 `matcher` 拼错这类问题会在保存时被悄悄写成默认行为。
@@ -142,6 +159,7 @@ class InjectionRuleValidatorTest {
         MatchRule pathBranch = MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**");
         MatchRule orGroup = new MatchRule();
         orGroup.setType(MatchRule.Type.GROUP);
+        orGroup.setNegate(false);
         orGroup.setOperator(MatchRule.Operator.OR);
         orGroup.setChildren(java.util.List.of(pathBranch, templateBranch));
         setMatchRuleDirectly(rule, makeGroup(orGroup));
@@ -192,6 +210,7 @@ class InjectionRuleValidatorTest {
     private MatchRule makeGroup(MatchRule child) {
         MatchRule group = new MatchRule();
         group.setType(MatchRule.Type.GROUP);
+        group.setNegate(false);
         group.setOperator(MatchRule.Operator.AND);
         group.setChildren(java.util.List.of(child));
         return group;
@@ -222,6 +241,26 @@ class InjectionRuleValidatorTest {
             var field = InjectionRule.class.getDeclaredField("wrapMarker");
             field.setAccessible(true);
             field.set(rule, wrapMarker);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void setNegateDirectly(MatchRule rule, Boolean negate) {
+        try {
+            var field = MatchRule.class.getDeclaredField("negate");
+            field.setAccessible(true);
+            field.set(rule, negate);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void setNegateDefinedDirectly(MatchRule rule, boolean negateDefined) {
+        try {
+            var field = MatchRule.class.getDeclaredField("negateDefined");
+            field.setAccessible(true);
+            field.set(rule, negateDefined);
         } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }

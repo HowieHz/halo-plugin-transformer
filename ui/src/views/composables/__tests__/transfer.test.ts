@@ -41,7 +41,7 @@ describe('parseRuleTransfer', () => {
     })
   })
 
-  // why: 导入时若缺少可安全补全的字段，应自动补默认值，让用户能先导入再继续编辑。
+  // why: 导入时若缺少可安全补全的字段，应自动补默认值；但像 negate 这类显式必填字段仍需保留并校验。
   it('fills missing matchRule fields with defaults during import', () => {
     const raw = JSON.stringify({
       format: 'halo-plugin-injector',
@@ -57,7 +57,6 @@ describe('parseRuleTransfer', () => {
         wrapMarker: true,
         matchRule: {
           type: 'GROUP',
-          negate: false,
           children: [
             {
               type: 'PATH',
@@ -71,10 +70,12 @@ describe('parseRuleTransfer', () => {
 
     expect(rule.matchRule).toMatchObject({
       type: 'GROUP',
+      negate: false,
       operator: 'AND',
       children: [
         {
           type: 'PATH',
+          negate: false,
           matcher: 'ANT',
           value: '/**',
         },

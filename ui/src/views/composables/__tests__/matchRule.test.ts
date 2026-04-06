@@ -72,6 +72,14 @@ describe('matchRule editor state', () => {
     expect(result.error?.message).toBe('条件组缺少必填字段 "children"')
   })
 
+  // why: `negate` 语义上也属于结构字段；显式写出 true / false，才能避免“省略就默认 false”的隐式歧义。
+  it('requires explicit negate field', () => {
+    const result = parseMatchRuleDraft('{ "type": "GROUP", "operator": "AND", "children": [] }')
+
+    expect(result.error?.path).toBe('$.negate')
+    expect(result.error?.message).toBe('缺少必填字段 "negate"；该字段可选值为 true、false')
+  })
+
   // why: 枚举型必填字段缺失时，提示“该字段可选值”为语义更自然，也更方便用户直接补值。
   it('reports missing operator with field options wording', () => {
     const result = parseMatchRuleDraft('{ "type": "GROUP", "negate": false, "children": [] }')

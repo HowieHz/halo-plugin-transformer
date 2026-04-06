@@ -355,6 +355,9 @@ function validateMatchRuleInput(
     return invalid(`${path}.type`, '仅支持 "GROUP"、"PATH"、"TEMPLATE_ID"')
   }
 
+  if (!hasOwnKey(input, 'negate') && !options.allowMissingRequiredKeys) {
+    return invalid(`${path}.negate`, '缺少必填字段 "negate"；该字段可选值为 true、false')
+  }
   if (input.negate !== undefined && typeof input.negate !== 'boolean') {
     return invalid(`${path}.negate`, '必须是布尔值；仅支持 true 或 false')
   }

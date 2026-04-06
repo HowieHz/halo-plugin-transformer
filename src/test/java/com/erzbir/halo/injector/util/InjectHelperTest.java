@@ -190,6 +190,7 @@ class InjectHelperTest {
     private MatchRule group(MatchRule.Operator operator, MatchRule... children) {
         MatchRule rule = new MatchRule();
         rule.setType(MatchRule.Type.GROUP);
+        rule.setNegate(false);
         rule.setOperator(operator);
         rule.setChildren(List.of(children));
         return rule;

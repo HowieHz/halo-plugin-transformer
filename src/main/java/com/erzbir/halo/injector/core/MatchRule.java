@@ -15,16 +15,19 @@ import java.util.regex.PatternSyntaxException;
 @Data
 public class MatchRule {
     private Type type = Type.GROUP;
-    private Boolean negate = false;
+    private Boolean negate;
     private Operator operator;
     private Matcher matcher;
     private String value;
     private List<MatchRule> children = new ArrayList<>();
     @JsonIgnore
+    private boolean negateDefined;
+    @JsonIgnore
     private final Set<String> unknownFields = new LinkedHashSet<>();
 
     public static MatchRule defaultRule() {
         MatchRule root = new MatchRule();
+        root.setNegate(false);
         root.setOperator(Operator.AND);
         root.getChildren().add(pathRule(Matcher.ANT, "/**"));
         return root;
@@ -33,6 +36,7 @@ public class MatchRule {
     public static MatchRule pathRule(Matcher matcher, String value) {
         MatchRule rule = new MatchRule();
         rule.setType(Type.PATH);
+        rule.setNegate(false);
         rule.setMatcher(matcher);
         rule.setValue(value);
         return rule;
@@ -41,9 +45,19 @@ public class MatchRule {
     public static MatchRule templateRule(Matcher matcher, String value) {
         MatchRule rule = new MatchRule();
         rule.setType(Type.TEMPLATE_ID);
+        rule.setNegate(false);
         rule.setMatcher(matcher);
         rule.setValue(value);
         return rule;
+    }
+
+    /**
+     * why: 写入期要区分“显式写了 false”和“完全没传 negate”，
+     * 因此这里额外记录字段是否出现过，避免 Jackson 用默认值把“缺失”悄悄吞掉。
+     */
+    public void setNegate(Boolean negate) {
+        this.negate = negate;
+        this.negateDefined = true;
     }
 
     /**
@@ -102,6 +116,12 @@ public class MatchRule {
         if (requireGroupRoot && rule.getType() != Type.GROUP) {
             throw new IllegalArgumentException(path + ".type：根节点必须是 GROUP");
         }
+        if (!rule.isNegateDefined()) {
+            throw new IllegalArgumentException(path + ".negate：缺少必填字段 \"negate\"；该字段可选值为 true、false");
+        }
+        if (rule.getNegate() == null) {
+            throw new IllegalArgumentException(path + ".negate：必须是布尔值；仅支持 true 或 false");
+        }
 
         switch (rule.getType()) {
             case GROUP -> validateGroupRule(rule, path);
@@ -122,7 +142,7 @@ public class MatchRule {
             throw new IllegalArgumentException(path + ".children：不能有空组");
         }
         if (rule.getOperator() == null) {
-            throw new IllegalArgumentException(path + ".operator：缺少必填字段；仅支持 \"AND\" 或 \"OR\"");
+            throw new IllegalArgumentException(path + ".operator：缺少必填字段 \"operator\"；该字段可选值为 \"AND\"、\"OR\"");
         }
         if (rule.getOperator() != Operator.AND && rule.getOperator() != Operator.OR) {
             throw new IllegalArgumentException(path + ".operator：仅支持 \"AND\" 或 \"OR\"");
@@ -140,7 +160,7 @@ public class MatchRule {
             throw new IllegalArgumentException(path + ".children：仅条件组可使用 children");
         }
         if (rule.getMatcher() == null) {
-            throw new IllegalArgumentException(path + ".matcher：缺少必填字段；仅支持 \"ANT\"、\"REGEX\"、\"EXACT\"");
+            throw new IllegalArgumentException(path + ".matcher：缺少必填字段 \"matcher\"；该字段可选值为 \"ANT\"、\"REGEX\"、\"EXACT\"");
         }
         if (!rule.supportsPathMatcher(rule.getMatcher())) {
             throw new IllegalArgumentException(path + ".matcher：路径规则仅支持 \"ANT\"、\"REGEX\"、\"EXACT\"");
@@ -159,7 +179,7 @@ public class MatchRule {
             throw new IllegalArgumentException(path + ".children：仅条件组可使用 children");
         }
         if (rule.getMatcher() == null) {
-            throw new IllegalArgumentException(path + ".matcher：缺少必填字段；仅支持 \"REGEX\" 或 \"EXACT\"");
+            throw new IllegalArgumentException(path + ".matcher：缺少必填字段 \"matcher\"；该字段可选值为 \"REGEX\"、\"EXACT\"");
         }
         if (!rule.supportsTemplateMatcher(rule.getMatcher())) {
             throw new IllegalArgumentException(path + ".matcher：模板 ID 仅支持 \"REGEX\" 或 \"EXACT\"");
