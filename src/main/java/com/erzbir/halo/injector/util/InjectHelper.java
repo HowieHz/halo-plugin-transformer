@@ -16,6 +16,10 @@ import org.springframework.web.util.pattern.PatternParseException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
@@ -105,6 +109,55 @@ public class InjectHelper {
                 .filter(CodeSnippet::isEnabled)
                 .map(CodeSnippet::getCode)
                 .reduce("", String::concat);
+    }
+
+    /**
+     * why: 同一次注入流程里，多条规则可能复用同一个代码块；
+     * 这里先按唯一 snippetId 批量拉取，再按各规则自己的顺序回拼，避免重复 `get` 同一条代码块。
+     */
+    public Mono<List<ResolvedRuleCode>> resolveRuleCodes(List<InjectionRule> rules) {
+        if (rules == null || rules.isEmpty()) {
+            return Mono.just(List.of());
+        }
+        return loadSnippetsByIds(collectUniqueSnippetIds(rules))
+                .map(snippetsById -> rules.stream()
+                        .map(rule -> new ResolvedRuleCode(rule, concatCode(rule, snippetsById)))
+                        .toList());
+    }
+
+    Mono<Map<String, CodeSnippet>> loadSnippetsByIds(Collection<String> snippetIds) {
+        if (snippetIds == null || snippetIds.isEmpty()) {
+            return Mono.just(Map.of());
+        }
+        return Flux.fromIterable(snippetIds)
+                .flatMap(id -> snippetManager.get(id).map(snippet -> Map.entry(id, snippet)))
+                .collectMap(Map.Entry::getKey, Map.Entry::getValue, LinkedHashMap::new);
+    }
+
+    List<String> collectUniqueSnippetIds(List<InjectionRule> rules) {
+        LinkedHashSet<String> uniqueIds = new LinkedHashSet<>();
+        for (InjectionRule rule : rules) {
+            if (rule == null || rule.getSnippetIds() == null || rule.getSnippetIds().isEmpty()) {
+                continue;
+            }
+            uniqueIds.addAll(rule.getSnippetIds());
+        }
+        return List.copyOf(uniqueIds);
+    }
+
+    String concatCode(InjectionRule rule, Map<String, CodeSnippet> snippetsById) {
+        if (rule == null || rule.getSnippetIds() == null || rule.getSnippetIds().isEmpty()) {
+            return "";
+        }
+        StringBuilder builder = new StringBuilder();
+        for (String snippetId : rule.getSnippetIds()) {
+            CodeSnippet snippet = snippetsById.get(snippetId);
+            if (snippet == null || !snippet.isEnabled() || !snippet.isValid()) {
+                continue;
+            }
+            builder.append(snippet.getCode());
+        }
+        return builder.toString();
     }
 
     private MatchState evaluate(MatchRule rule, MatchContext context) {
@@ -274,6 +327,9 @@ public class InjectHelper {
     }
 
     private record RegexPatternHolder(Pattern pattern, String errorMessage) {
+    }
+
+    public record ResolvedRuleCode(InjectionRule rule, String code) {
     }
 
     private enum MatchState {

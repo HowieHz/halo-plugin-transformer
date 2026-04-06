@@ -14,6 +14,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import run.halo.app.extension.Metadata;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -38,8 +39,12 @@ class InjectorWebFilterTest {
                 .thenReturn(Flux.just(selectorRule));
         when(injectHelper.getMatchedRules("/demo", "post", InjectionRule.Mode.ID))
                 .thenReturn(Flux.just(idRule));
-        when(injectHelper.getConcatCode(selectorRule)).thenReturn(Mono.just("<span class='selector'>S</span>"));
-        when(injectHelper.getConcatCode(idRule)).thenReturn(Mono.just("<span class='id'>I</span>"));
+        when(injectHelper.resolveRuleCodes(List.of(selectorRule))).thenReturn(Mono.just(List.of(
+                new InjectHelper.ResolvedRuleCode(selectorRule, "<span class='selector'>S</span>")
+        )));
+        when(injectHelper.resolveRuleCodes(List.of(idRule))).thenReturn(Mono.just(List.of(
+                new InjectHelper.ResolvedRuleCode(idRule, "<span class='id'>I</span>")
+        )));
 
         String result = filter.inject(
                 "<html><body><main id='root'><div class='slot'>A</div></main></body></html>",

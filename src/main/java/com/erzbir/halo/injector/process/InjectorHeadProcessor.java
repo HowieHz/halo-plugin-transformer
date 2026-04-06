@@ -1,7 +1,6 @@
 package com.erzbir.halo.injector.process;
 
 import com.erzbir.halo.injector.core.HeadInjector;
-import com.erzbir.halo.injector.manager.CodeSnippetManager;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import com.erzbir.halo.injector.util.InjectHelper;
 import lombok.extern.slf4j.Slf4j;
@@ -23,8 +22,8 @@ public class InjectorHeadProcessor extends AbstractTemplateProcessor
     private final HeadInjector headInjector;
 
     public InjectorHeadProcessor(InjectHelper injectHelper,
-                                 HeadInjector headInjector, CodeSnippetManager codeSnippetManager) {
-        super(injectHelper, codeSnippetManager);
+                                 HeadInjector headInjector) {
+        super(injectHelper);
         this.headInjector = headInjector;
     }
 

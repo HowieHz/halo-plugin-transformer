@@ -119,9 +119,10 @@ public class InjectorWebFilter implements AdditionalWebFilter {
     private Flux<DomInjectionPlan> collectPlans(String path, String templateId, InjectionRule.Mode mode,
                                                 HTMLInjector injector) {
         return injectHelper.getMatchedRules(path, templateId, mode)
-                .concatMap(rule ->
-                        injectHelper.getConcatCode(rule)
-                                .map(code -> new DomInjectionPlan(injector, rule, code)));
+                .collectList()
+                .flatMapMany(rules -> injectHelper.resolveRuleCodes(rules)
+                        .flatMapMany(Flux::fromIterable)
+                        .map(resolved -> new DomInjectionPlan(injector, resolved.rule(), resolved.code())));
     }
 
     private Mono<List<DomInjectionPlan>> collectDomInjectionPlans(String path, String templateId) {

@@ -1,7 +1,6 @@
 package com.erzbir.halo.injector.process;
 
 import com.erzbir.halo.injector.core.FooterInjector;
-import com.erzbir.halo.injector.manager.CodeSnippetManager;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import com.erzbir.halo.injector.util.InjectHelper;
 import lombok.extern.slf4j.Slf4j;
@@ -23,8 +22,8 @@ public class InjectorFooterProcessor extends AbstractTemplateProcessor
         implements TemplateFooterProcessor {
     private final FooterInjector footerInjector;
 
-    public InjectorFooterProcessor(InjectHelper injectHelper, FooterInjector footerInjector, CodeSnippetManager codeSnippetManager) {
-        super(injectHelper, codeSnippetManager);
+    public InjectorFooterProcessor(InjectHelper injectHelper, FooterInjector footerInjector) {
+        super(injectHelper);
         this.footerInjector = footerInjector;
     }
 

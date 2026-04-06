@@ -2,6 +2,7 @@ package com.erzbir.halo.injector.util;
 
 import com.erzbir.halo.injector.manager.CodeSnippetManager;
 import com.erzbir.halo.injector.manager.InjectionRuleManager;
+import com.erzbir.halo.injector.scheme.CodeSnippet;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import com.erzbir.halo.injector.core.MatchRule;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,6 +18,7 @@ import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -178,6 +180,32 @@ class InjectHelperTest {
         assertEquals(1, helper.compileCount.get());
     }
 
+    // why: 同一次注入里若多条规则复用同一个代码块，应只加载一次代码块，再按各规则自己的关联顺序回拼。
+    @Test
+    void shouldLoadSharedSnippetOnlyOnceWhenResolvingMultipleRules() {
+        InjectionRule firstRule = createRule(group(MatchRule.Operator.AND,
+                MatchRule.pathRule(MatchRule.Matcher.ANT, "/**")));
+        firstRule.setSnippetIds(new java.util.LinkedHashSet<>(List.of("snippet-a", "snippet-b")));
+        InjectionRule secondRule = createRule(group(MatchRule.Operator.AND,
+                MatchRule.pathRule(MatchRule.Matcher.ANT, "/**")));
+        secondRule.setSnippetIds(new java.util.LinkedHashSet<>(List.of("snippet-b", "snippet-c")));
+
+        AtomicInteger fetchCount = new AtomicInteger();
+        when(snippetManager.get(anyString())).thenAnswer(invocation -> {
+            fetchCount.incrementAndGet();
+            String id = invocation.getArgument(0, String.class);
+            return reactor.core.publisher.Mono.just(snippet(id, id.toUpperCase()));
+        });
+
+        List<InjectHelper.ResolvedRuleCode> resolved = injectHelper
+                .resolveRuleCodes(List.of(firstRule, secondRule))
+                .block();
+
+        assertEquals(3, fetchCount.get());
+        assertEquals("SNIPPET-ASNIPPET-B", resolved.get(0).code());
+        assertEquals("SNIPPET-BSNIPPET-C", resolved.get(1).code());
+    }
+
     private InjectionRule createRule(MatchRule matchRule) {
         InjectionRule rule = new InjectionRule();
         rule.setEnabled(true);
@@ -204,6 +232,16 @@ class InjectHelperTest {
         } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private CodeSnippet snippet(String id, String code) {
+        CodeSnippet snippet = new CodeSnippet();
+        var metadata = new run.halo.app.extension.Metadata();
+        metadata.setName(id);
+        snippet.setMetadata(metadata);
+        snippet.setEnabled(true);
+        snippet.setCode(code);
+        return snippet;
     }
 
     private static class CountingInjectHelper extends InjectHelper {

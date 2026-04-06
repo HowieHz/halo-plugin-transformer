@@ -1,6 +1,5 @@
 package com.erzbir.halo.injector.process;
 
-import com.erzbir.halo.injector.manager.CodeSnippetManager;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import com.erzbir.halo.injector.util.ContextUtil;
 import com.erzbir.halo.injector.util.InjectHelper;
@@ -19,7 +18,6 @@ import reactor.core.publisher.Mono;
 public abstract class AbstractTemplateProcessor {
 
     protected final InjectHelper injectHelper;
-    protected final CodeSnippetManager codeSnippetManager;
 
     protected abstract InjectionRule.Mode mode();
 
@@ -31,14 +29,16 @@ public abstract class AbstractTemplateProcessor {
         String templateId = ContextUtil.exposeTemplateId(context);
 
         return injectHelper.getMatchedRules(path, templateId, mode())
-                .flatMap(rule ->
-                        injectHelper.getConcatCode(rule)
-                                .doOnNext(code -> {
-                                    doProcess(context, model, code, rule.getWrapMarker());
-                                }).doOnSuccess(s -> log.debug("Injected rule: [{}] into [{}]",
-                                        rule.getId(),
-                                        path))
-                )
+                .collectList()
+                .flatMap(injectHelper::resolveRuleCodes)
+                .flatMapMany(reactor.core.publisher.Flux::fromIterable)
+                .doOnNext(resolved -> {
+                                    InjectionRule rule = resolved.rule();
+                                    doProcess(context, model, resolved.code(), rule.getWrapMarker());
+                                })
+                .doOnNext(resolved -> log.debug("Injected rule: [{}] into [{}]",
+                        resolved.rule().getId(),
+                        path))
                 .then();
     }
 }
