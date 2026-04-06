@@ -2,9 +2,9 @@
 import { Toast, VButton } from '@halo-dev/components'
 import { computed, onMounted, ref } from 'vue'
 import {
-  type CodeSnippet,
-  type EditableInjectionRule,
-  makeRule,
+  type CodeSnippetReadModel,
+  type InjectionRuleEditorDraft,
+  makeRuleEditorDraft,
   MODE_OPTIONS,
   POSITION_OPTIONS,
 } from '@/types'
@@ -22,24 +22,24 @@ import { updateSelectByWheel } from '@/views/composables/selectWheel.ts'
 import { parseRuleTransfer } from '@/views/composables/transfer.ts'
 
 defineProps<{
-  snippets: CodeSnippet[]
+  snippets: CodeSnippetReadModel[]
   saving: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'close'): void
-  (e: 'submit', rule: EditableInjectionRule, snippetIds: string[]): void
+  (e: 'submit', rule: InjectionRuleEditorDraft, snippetIds: string[]): void
 }>()
 
-const rule = ref<EditableInjectionRule>(makeRule())
+const rule = ref<InjectionRuleEditorDraft>(makeRuleEditorDraft())
 const selectedSnippetIds = ref<string[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
-const initialRule = makeRule()
+const initialRule = makeRuleEditorDraft()
 
 onMounted(reset)
 
 function reset() {
-  rule.value = makeRule()
+  rule.value = makeRuleEditorDraft()
   selectedSnippetIds.value = []
 }
 
@@ -90,7 +90,7 @@ async function handleImport(event: Event) {
   }
 }
 
-function resolveImportedRuleValidationError(importedRule: EditableInjectionRule) {
+function resolveImportedRuleValidationError(importedRule: InjectionRuleEditorDraft) {
   if (
     (importedRule.mode === 'SELECTOR' || importedRule.mode === 'ID') &&
     !importedRule.match.trim()

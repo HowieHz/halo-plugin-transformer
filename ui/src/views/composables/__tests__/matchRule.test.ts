@@ -1,25 +1,25 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it } from 'vitest'
-import { makeRule } from '@/types'
+import { makeRuleEditorDraft } from '@/types'
 import {
   buildMatchRuleEditorSourceForMode,
   getDomRulePerformanceWarning,
-  hydrateRuleForEditor,
   parseMatchRuleDraft,
   resolveRuleMatchRule,
   validateSimpleMatchRuleTree,
 } from '../matchRule'
+import { hydrateRuleEditorDraft } from '../ruleDraft'
 
 describe('matchRule editor state', () => {
   // why: 刷新页面应回到已保存内容；不应再恢复本地未保存草稿或编辑模式。
   it('hydrates editor from saved rule only', () => {
-    const savedRule = makeRule({
+    const savedRule = makeRuleEditorDraft({
       id: 'rule-a',
       metadata: { name: 'rule-a', generateName: 'InjectionRule-' },
     })
 
-    const hydrated = hydrateRuleForEditor(savedRule)
+    const hydrated = hydrateRuleEditorDraft(savedRule)
 
     expect(hydrated.matchRuleSource).toMatchObject({
       kind: 'RULE_TREE',
@@ -92,7 +92,7 @@ describe('matchRule editor state', () => {
 
   // why: 简单模式保存时必须只信当前规则树来源，不能被高级模式草稿心智反向污染。
   it('resolves rule tree source when current source is simple', () => {
-    const rule = makeRule({
+    const rule = makeRuleEditorDraft({
       matchRule: {
         type: 'GROUP',
         negate: false,
@@ -125,7 +125,7 @@ describe('matchRule editor state', () => {
   it('builds rule tree source when switching editor mode to simple', () => {
     const source = buildMatchRuleEditorSourceForMode(
       'SIMPLE',
-      makeRule({
+      makeRuleEditorDraft({
         matchRule: {
           type: 'GROUP',
           negate: false,
@@ -142,7 +142,7 @@ describe('matchRule editor state', () => {
 
   // why: 新建注入规则时，首个匹配条件应留空等待用户填写，而不是偷偷预填默认路径。
   it('starts new rules with an empty first match value', () => {
-    const rule = makeRule()
+    const rule = makeRuleEditorDraft()
 
     expect(rule.matchRule.children?.[0]).toMatchObject({
       type: 'PATH',
@@ -153,7 +153,7 @@ describe('matchRule editor state', () => {
 
   // why: 空组或空值这类“当前还不合法”的编辑中间态，应优先显示校验错误，不该再叠加性能提示干扰判断。
   it('hides dom performance warning when match rule is currently invalid', () => {
-    const rule = makeRule({
+    const rule = makeRuleEditorDraft({
       mode: 'ID',
       match: 'main-content',
       matchRule: {
@@ -170,7 +170,7 @@ describe('matchRule editor state', () => {
   // why: 高级模式里如果 JSON 草稿已经损坏，性能提示必须跟随当前 source 一起失效；
   // 不能继续读取旧的合法规则树，否则用户会看到基于过期状态生成的错误提示。
   it('hides dom performance warning when json draft is invalid even if last rule tree was valid', () => {
-    const rule = makeRule({
+    const rule = makeRuleEditorDraft({
       mode: 'ID',
       match: 'main-content',
       matchRule: {

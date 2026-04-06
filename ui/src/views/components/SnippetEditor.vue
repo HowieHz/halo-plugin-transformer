@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { CodeSnippet } from '@/types'
+import type { CodeSnippetEditorDraft } from '@/types'
 import EditorToolbar from './EditorToolbar.vue'
 import EditorFooter from './EditorFooter.vue'
 import ExportJsonFallbackModal from './ExportJsonFallbackModal.vue'
@@ -14,7 +14,7 @@ import {
 } from '@/views/composables/transfer'
 
 const props = defineProps<{
-  snippet: CodeSnippet | null
+  snippet: CodeSnippetEditorDraft | null
   saving: boolean
   dirty: boolean
 }>()
@@ -24,7 +24,7 @@ const emit = defineEmits<{
   (e: 'delete'): void
   (e: 'toggle-enabled'): void
   (e: 'field-change'): void
-  (e: 'update:snippet', snippet: CodeSnippet): void
+  (e: 'update:snippet', snippet: CodeSnippetEditorDraft): void
 }>()
 
 const undo = useFieldUndo()
@@ -65,9 +65,9 @@ watch(
   { immediate: true },
 )
 
-function updateField<K extends keyof CodeSnippet>(
+function updateField<K extends keyof CodeSnippetEditorDraft>(
   key: K,
-  value: CodeSnippet[K],
+  value: CodeSnippetEditorDraft[K],
   options?: { trackHistory?: boolean },
 ) {
   if (!props.snippet) return
@@ -99,14 +99,16 @@ function undoField(field: 'name' | 'description' | 'code') {
         : props.snippet.code
   const previous = undo.undo(field, current)
   if (previous === undefined) return
-  updateField(field, previous as CodeSnippet[typeof field], { trackHistory: false })
+  updateField(field, previous as CodeSnippetEditorDraft[typeof field], { trackHistory: false })
 }
 
 function resetField(field: 'name' | 'description' | 'code') {
   if (!props.snippet) return
   const baseline = undo.reset(field)
   if (baseline === undefined) return
-  updateField(field, baseline as CodeSnippet[typeof field], { trackHistory: false })
+  updateField(field, baseline as CodeSnippetEditorDraft[typeof field], {
+    trackHistory: false,
+  })
 }
 
 function syncCodeScroll(event: Event) {

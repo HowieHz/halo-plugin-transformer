@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import type { CodeSnippet, InjectionRule } from '@/types'
-import ItemListV from './ItemListV.vue'
+import type { CodeSnippetReadModel, InjectionRuleReadModel } from '@/types'
+import ResourceList from './ResourceList.vue'
 import { rulePreview } from '@/views/composables/util'
 import { matchRuleExpression } from '@/views/composables/matchRule'
 
@@ -8,8 +8,8 @@ defineProps<{
   mode: 'snippets' | 'rules'
   selectedSnippetId: string | null
   selectedRuleId: string | null
-  rulesUsingSnippet: InjectionRule[]
-  snippetsInRule: CodeSnippet[]
+  rulesUsingSnippet: InjectionRuleReadModel[]
+  snippetsInRule: CodeSnippetReadModel[]
 }>()
 
 const emit = defineEmits<{
@@ -37,7 +37,7 @@ const emit = defineEmits<{
 
     <div class=":uno: flex-1 overflow-y-auto">
       <template v-if="mode === 'snippets'">
-        <ItemListV
+        <ResourceList
           v-if="selectedSnippetId"
           :items="rulesUsingSnippet"
           list-label="引用当前代码块的规则列表"
@@ -61,11 +61,11 @@ const emit = defineEmits<{
               点击跳转到规则 →
             </span>
           </template>
-        </ItemListV>
+        </ResourceList>
       </template>
 
       <template v-else>
-        <ItemListV
+        <ResourceList
           v-if="selectedRuleId"
           :items="snippetsInRule"
           list-label="当前规则关联的代码块列表"
@@ -79,7 +79,7 @@ const emit = defineEmits<{
               点击跳转到代码块 →
             </span>
           </template>
-        </ItemListV>
+        </ResourceList>
       </template>
     </div>
   </div>

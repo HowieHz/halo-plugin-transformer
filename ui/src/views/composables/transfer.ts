@@ -1,8 +1,8 @@
 import {
-  makeRule,
-  makeSnippet,
-  type CodeSnippet,
-  type EditableInjectionRule,
+  makeRuleEditorDraft,
+  makeSnippetEditorDraft,
+  type CodeSnippetEditorDraft,
+  type InjectionRuleEditorDraft,
   type MatchRuleSource,
 } from '@/types'
 import {
@@ -36,9 +36,9 @@ interface RuleTransferData {
   enabled: boolean
   name: string
   description: string
-  mode: EditableInjectionRule['mode']
+  mode: InjectionRuleEditorDraft['mode']
   match: string
-  position: EditableInjectionRule['position']
+  position: InjectionRuleEditorDraft['position']
   wrapMarker: boolean
   matchRuleSource: MatchRuleSource
 }
@@ -50,7 +50,7 @@ type RuleTransferEnvelope = TransferEnvelope<'rule', RuleTransferData>
  * why: 导入导出只面向用户可编辑内容；像 id、排序、metadata、关联关系这类系统字段
  * 不应跟着资源模板流转，避免“导入即复制脏状态”。
  */
-export function buildSnippetTransfer(snippet: CodeSnippet): SnippetTransferEnvelope {
+export function buildSnippetTransfer(snippet: CodeSnippetEditorDraft): SnippetTransferEnvelope {
   return {
     $schema: TRANSFER_SCHEMA_URL,
     version: 1,
@@ -68,7 +68,7 @@ export function buildSnippetTransfer(snippet: CodeSnippet): SnippetTransferEnvel
  * why: 规则导出保留当前编辑器看到的规则内容与编辑模式，
  * 这样用户再导入时，既能得到同一条规则，也不会把关联代码块一并复制过去。
  */
-export function buildRuleTransfer(rule: EditableInjectionRule): RuleTransferEnvelope {
+export function buildRuleTransfer(rule: InjectionRuleEditorDraft): RuleTransferEnvelope {
   const matchRuleSource = buildRuleTransferMatchRuleSource(rule)
   return {
     $schema: TRANSFER_SCHEMA_URL,
@@ -149,7 +149,7 @@ export async function downloadTransferFile(draft: TransferFileDraft) {
   await writable.close()
 }
 
-export function parseSnippetTransfer(raw: string): CodeSnippet {
+export function parseSnippetTransfer(raw: string): CodeSnippetEditorDraft {
   const envelope = parseEnvelope<SnippetTransferEnvelope>(raw, 'snippet')
   const data = envelope.data
   ensureAllowedFields(data, ['enabled', 'name', 'description', 'code'], '代码块')
@@ -165,7 +165,7 @@ export function parseSnippetTransfer(raw: string): CodeSnippet {
   if (data.code !== undefined && typeof data.code !== 'string') {
     throw new Error('导入失败：`code` 必须是字符串')
   }
-  return makeSnippet({
+  return makeSnippetEditorDraft({
     enabled: typeof data.enabled === 'boolean' ? data.enabled : true,
     name: typeof data.name === 'string' ? data.name : '',
     description: typeof data.description === 'string' ? data.description : '',
@@ -173,7 +173,7 @@ export function parseSnippetTransfer(raw: string): CodeSnippet {
   })
 }
 
-export function parseRuleTransfer(raw: string): EditableInjectionRule {
+export function parseRuleTransfer(raw: string): InjectionRuleEditorDraft {
   const envelope = parseEnvelope<RuleTransferEnvelope>(raw, 'rule')
   const data = envelope.data
   ensureAllowedFields(
@@ -215,7 +215,7 @@ export function parseRuleTransfer(raw: string): EditableInjectionRule {
     throw new Error('导入失败：`wrapMarker` 必须是布尔值；仅支持 true 或 false')
   }
   const matchRuleState = parseImportedMatchRuleSource(data.matchRuleSource)
-  return makeRule({
+  return makeRuleEditorDraft({
     enabled: data.enabled,
     name: data.name,
     description: data.description,
@@ -228,7 +228,7 @@ export function parseRuleTransfer(raw: string): EditableInjectionRule {
   })
 }
 
-function buildRuleTransferMatchRuleSource(rule: EditableInjectionRule): MatchRuleSource {
+function buildRuleTransferMatchRuleSource(rule: InjectionRuleEditorDraft): MatchRuleSource {
   const source = rule.matchRuleSource ?? makeRuleTreeSource(rule.matchRule)
   if (source.kind !== 'JSON_DRAFT') {
     return makeRuleTreeSource(rule.matchRule)
@@ -244,7 +244,7 @@ function buildRuleTransferMatchRuleSource(rule: EditableInjectionRule): MatchRul
 }
 
 function parseImportedMatchRuleSource(source: unknown): {
-  matchRule: EditableInjectionRule['matchRule']
+  matchRule: InjectionRuleEditorDraft['matchRule']
   matchRuleSource: MatchRuleSource
 } {
   if (!isPlainObject(source)) {

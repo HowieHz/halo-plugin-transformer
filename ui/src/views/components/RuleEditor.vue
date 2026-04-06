@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue'
-import type { CodeSnippet, EditableInjectionRule, InjectionRule, MatchRuleSource } from '@/types'
+import type { CodeSnippetReadModel, InjectionRuleEditorDraft, MatchRuleSource } from '@/types'
 import { MODE_OPTIONS, POSITION_OPTIONS } from '@/types'
 import {
   cloneMatchRule,
@@ -25,8 +25,8 @@ import {
 } from '@/views/composables/transfer.ts'
 
 const props = defineProps<{
-  rule: EditableInjectionRule | null
-  snippets: CodeSnippet[]
+  rule: InjectionRuleEditorDraft | null
+  snippets: CodeSnippetReadModel[]
   selectedSnippetIds: string[]
   saving: boolean
   dirty: boolean
@@ -39,11 +39,11 @@ const emit = defineEmits<{
   (e: 'replace-snippet-ids', snippetIds: string[]): void
   (e: 'toggle-snippet', snippetId: string): void
   (e: 'field-change'): void
-  (e: 'update:rule', rule: EditableInjectionRule): void
+  (e: 'update:rule', rule: InjectionRuleEditorDraft): void
 }>()
 
 const sortedSnippets = computed(() => sortSelectedFirst(props.snippets, props.selectedSnippetIds))
-const pendingRule = ref<EditableInjectionRule | null>(null)
+const pendingRule = ref<InjectionRuleEditorDraft | null>(null)
 const currentRule = computed(() => pendingRule.value ?? props.rule)
 const exportFallback = ref<TransferFileDraft | null>(null)
 
@@ -110,9 +110,9 @@ watch(
  * why: 正常编辑需要记录撤销历史，但撤销/重置本身不能再次入栈，
  * 否则会把“当前值”重新压回历史，导致连续撤销时来回跳动。
  */
-function updateField<K extends keyof InjectionRule>(
+function updateField<K extends keyof InjectionRuleEditorDraft>(
   key: K,
-  value: InjectionRule[K],
+  value: InjectionRuleEditorDraft[K],
   options?: { trackHistory?: boolean },
 ) {
   if (!currentRule.value) return
@@ -140,7 +140,7 @@ function updateField<K extends keyof InjectionRule>(
   emit('field-change')
 }
 
-function updateRuleSnapshot(next: EditableInjectionRule) {
+function updateRuleSnapshot(next: InjectionRuleEditorDraft) {
   pendingRule.value = next
   emit('update:rule', next)
   emit('field-change')
@@ -162,7 +162,7 @@ function cloneCurrentMatchRuleSource() {
   )
 }
 
-function updateMatchRuleField(patch: Partial<EditableInjectionRule>) {
+function updateMatchRuleField(patch: Partial<InjectionRuleEditorDraft>) {
   if (!currentRule.value) return
   const previous = currentMatchRuleSnapshot()
   const next = {
@@ -195,7 +195,7 @@ function beginMatchEdit() {
 function handleMatchInput(event: Event) {
   const value = (event.target as HTMLInputElement).value
   matchDraft.value = value
-  updateField('match', value as InjectionRule['match'], { trackHistory: false })
+  updateField('match', value as InjectionRuleEditorDraft['match'], { trackHistory: false })
 }
 
 function commitMatchDraft() {
@@ -264,7 +264,10 @@ function undoField(
   if (previous === undefined) return
 
   if (field === 'position') {
-    const snapshot = previous as { position: InjectionRule['position']; wrapMarker: boolean }
+    const snapshot = previous as {
+      position: InjectionRuleEditorDraft['position']
+      wrapMarker: boolean
+    }
     updateRuleSnapshot({
       ...currentRule.value,
       position: snapshot.position,
@@ -275,7 +278,7 @@ function undoField(
 
   if (field === 'matchRule') {
     const snapshot = previous as {
-      matchRule: InjectionRule['matchRule']
+      matchRule: InjectionRuleEditorDraft['matchRule']
       matchRuleSource?: MatchRuleSource
     }
     const next = {
@@ -293,7 +296,7 @@ function undoField(
     return
   }
 
-  updateField(field, previous as InjectionRule[typeof field], { trackHistory: false })
+  updateField(field, previous as InjectionRuleEditorDraft[typeof field], { trackHistory: false })
 }
 
 function resetField(
@@ -312,7 +315,10 @@ function resetField(
   if (baseline === undefined) return
 
   if (field === 'position') {
-    const snapshot = baseline as { position: InjectionRule['position']; wrapMarker: boolean }
+    const snapshot = baseline as {
+      position: InjectionRuleEditorDraft['position']
+      wrapMarker: boolean
+    }
     updateRuleSnapshot({
       ...currentRule.value,
       position: snapshot.position,
@@ -323,7 +329,7 @@ function resetField(
 
   if (field === 'matchRule') {
     const snapshot = baseline as {
-      matchRule: InjectionRule['matchRule']
+      matchRule: InjectionRuleEditorDraft['matchRule']
       matchRuleSource?: MatchRuleSource
     }
     const next = {
@@ -341,7 +347,9 @@ function resetField(
     return
   }
 
-  updateField(field, baseline as InjectionRule[typeof field], { trackHistory: false })
+  updateField(field, baseline as InjectionRuleEditorDraft[typeof field], {
+    trackHistory: false,
+  })
 }
 
 async function exportRule() {
@@ -424,7 +432,7 @@ async function exportRule() {
               @change="
                 updateField(
                   'mode',
-                  ($event.target as HTMLSelectElement).value as InjectionRule['mode'],
+                  ($event.target as HTMLSelectElement).value as InjectionRuleEditorDraft['mode'],
                 )
               "
             >
@@ -488,7 +496,8 @@ async function exportRule() {
                 @change="
                   updateField(
                     'position',
-                    ($event.target as HTMLSelectElement).value as InjectionRule['position'],
+                    ($event.target as HTMLSelectElement)
+                      .value as InjectionRuleEditorDraft['position'],
                   )
                 "
               >

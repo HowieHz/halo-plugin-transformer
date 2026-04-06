@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import { Toast, VButton } from '@halo-dev/components'
 import { computed, onMounted, ref } from 'vue'
-import type { CodeSnippet } from '@/types'
-import { makeSnippet } from '@/types'
+import type { CodeSnippetEditorDraft } from '@/types'
+import { makeSnippetEditorDraft } from '@/types'
 import BaseFormModal from './BaseFormModal.vue'
 import FormField from './FormField.vue'
 import { parseSnippetTransfer } from '@/views/composables/transfer'
@@ -13,12 +13,12 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'close'): void
-  (e: 'submit', snippet: CodeSnippet): void
+  (e: 'submit', snippet: CodeSnippetEditorDraft): void
 }>()
 
-const snippet = ref<CodeSnippet>(makeSnippet())
+const snippet = ref<CodeSnippetEditorDraft>(makeSnippetEditorDraft())
 const fileInput = ref<HTMLInputElement | null>(null)
-const initialSnippet = makeSnippet()
+const initialSnippet = makeSnippetEditorDraft()
 const codeScrollTop = ref(0)
 
 const codeLines = computed(() => {
@@ -34,7 +34,7 @@ const codeFieldError = computed(() => (!snippet.value.code.trim() ? '代码内�
 onMounted(reset)
 
 function reset() {
-  snippet.value = makeSnippet()
+  snippet.value = makeSnippetEditorDraft()
 }
 
 function handleSubmit() {

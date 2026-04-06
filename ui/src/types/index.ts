@@ -14,7 +14,11 @@ export interface CodeSnippetWritePayload {
   enabled: boolean
 }
 
-export interface CodeSnippetViewModel extends CodeSnippetWritePayload {
+export interface CodeSnippetReadModel extends CodeSnippetWritePayload {
+  id: string
+}
+
+export interface CodeSnippetEditorDraft extends CodeSnippetWritePayload {
   id: string
 }
 
@@ -55,7 +59,7 @@ export interface InjectionRuleWritePayload {
   snippetIds: string[]
 }
 
-export interface InjectionRuleViewModel extends InjectionRuleWritePayload {
+export interface InjectionRuleReadModel extends InjectionRuleWritePayload {
   id: string
 }
 
@@ -63,9 +67,10 @@ export interface InjectionRuleEditorState {
   matchRuleSource?: MatchRuleSource
 }
 
-export type CodeSnippet = CodeSnippetViewModel
-export type InjectionRule = InjectionRuleViewModel
-export type EditableInjectionRule = InjectionRuleViewModel & InjectionRuleEditorState
+export interface InjectionRuleEditorDraft
+  extends InjectionRuleWritePayload, InjectionRuleEditorState {
+  id: string
+}
 
 export interface ItemList<T> {
   page: number
@@ -143,7 +148,12 @@ export function makeMatchRuleGroup(override: Partial<MatchRule> = {}): MatchRule
   }
 }
 
-export function makeSnippet(override: Partial<CodeSnippetViewModel> = {}): CodeSnippetViewModel {
+/**
+ * why: 新建与导入流程都应围绕编辑草稿工作，而不是把只读返回模型直接塞进表单。
+ */
+export function makeSnippetEditorDraft(
+  override: Partial<CodeSnippetEditorDraft> = {},
+): CodeSnippetEditorDraft {
   return {
     apiVersion: 'injector.erzbir.com/v1alpha1',
     kind: 'CodeSnippet',
@@ -157,7 +167,13 @@ export function makeSnippet(override: Partial<CodeSnippetViewModel> = {}): CodeS
   }
 }
 
-export function makeRule(override: Partial<EditableInjectionRule> = {}): EditableInjectionRule {
+/**
+ * why: 规则编辑器需要一个自洽的草稿起点，包含规则树与 `matchRuleSource`；
+ * 这样简单模式、JSON 模式、导入导出都能共享同一份编辑态模型。
+ */
+export function makeRuleEditorDraft(
+  override: Partial<InjectionRuleEditorDraft> = {},
+): InjectionRuleEditorDraft {
   const matchRule = makeMatchRuleGroup({
     children: [makePathMatchRule({ value: '' })],
   })

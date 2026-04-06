@@ -16,13 +16,13 @@ import { useInjectorData } from './composables/useInjectorData.ts'
 import { rulePreview } from './composables/util.ts'
 import { matchRuleExpression } from './composables/matchRule.ts'
 
-import ItemListV from './components/ItemListV.vue'
+import ResourceList from './components/ResourceList.vue'
 import SnippetEditor from './components/SnippetEditor.vue'
 import RuleEditor from './components/RuleEditor.vue'
 import RelationPanel from './components/RelationPanel.vue'
 import SnippetFormModal from './components/SnippetFormModal.vue'
 import RuleFormModal from './components/RuleFormModal.vue'
-import type { CodeSnippet, EditableInjectionRule } from '@/types'
+import type { CodeSnippetEditorDraft, InjectionRuleEditorDraft } from '@/types'
 
 const activeTab = ref<ActiveTab>('snippets')
 const route = useRoute()
@@ -35,13 +35,13 @@ const snippetFormRef = ref<{
   reset: () => void
   hasUnsavedChanges: () => boolean
   getValidationError: () => string | null
-  getSubmitPayload: () => { snippet: CodeSnippet }
+  getSubmitPayload: () => { snippet: CodeSnippetEditorDraft }
 } | null>(null)
 const ruleFormRef = ref<{
   reset: () => void
   hasUnsavedChanges: () => boolean
   getValidationError: () => string | null
-  getSubmitPayload: () => { rule: EditableInjectionRule; snippetIds: string[] }
+  getSubmitPayload: () => { rule: InjectionRuleEditorDraft; snippetIds: string[] }
 } | null>(null)
 
 const {
@@ -521,7 +521,7 @@ function jumpToSnippet(id: string) {
 
             <VLoading v-if="loading" />
 
-            <ItemListV
+            <ResourceList
               v-else-if="activeTab === 'snippets'"
               :items="snippets"
               list-label="代码块列表"
@@ -534,7 +534,7 @@ function jumpToSnippet(id: string) {
               @select="handleSnippetSelect"
             />
 
-            <ItemListV
+            <ResourceList
               v-else
               :items="rules"
               list-label="注入规则列表"
@@ -555,7 +555,7 @@ function jumpToSnippet(id: string) {
                   {{ matchRuleExpression(r.matchRule) }}
                 </span>
               </template>
-            </ItemListV>
+            </ResourceList>
 
             <div class=":uno: h-12 flex items-center justify-center border-t bg-white shrink-0">
               <VButton size="sm" type="secondary" @click="handleOpenCreateModal(activeTab)">

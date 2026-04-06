@@ -1,8 +1,8 @@
 import { axiosInstance } from '@halo-dev/api-client'
 import type {
-  CodeSnippetViewModel,
+  CodeSnippetReadModel,
   CodeSnippetWritePayload,
-  InjectionRuleViewModel,
+  InjectionRuleReadModel,
   InjectionRuleWritePayload,
   ItemList,
 } from '@/types'
@@ -20,15 +20,15 @@ export type OrderMap = Record<string, number>
 
 export const snippetApi = {
   list() {
-    return axiosInstance.get<ItemList<CodeSnippetViewModel>>(SNIPPETS)
+    return axiosInstance.get<ItemList<CodeSnippetReadModel>>(SNIPPETS)
   },
 
   add(snippet: CodeSnippetWritePayload) {
-    return axiosInstance.post<CodeSnippetViewModel>(SNIPPETS_WRITE, snippet)
+    return axiosInstance.post<CodeSnippetReadModel>(SNIPPETS_WRITE, snippet)
   },
 
   update(id: string, snippet: CodeSnippetWritePayload) {
-    return axiosInstance.put<CodeSnippetViewModel>(`${SNIPPETS_WRITE}/${id}`, snippet)
+    return axiosInstance.put<CodeSnippetReadModel>(`${SNIPPETS_WRITE}/${id}`, snippet)
   },
 
   getOrder() {
@@ -46,15 +46,15 @@ export const snippetApi = {
 
 export const ruleApi = {
   list() {
-    return axiosInstance.get<ItemList<InjectionRuleViewModel>>(RULES)
+    return axiosInstance.get<ItemList<InjectionRuleReadModel>>(RULES)
   },
 
   add(rule: InjectionRuleWritePayload) {
-    return axiosInstance.post<InjectionRuleViewModel>(RULES_WRITE, rule)
+    return axiosInstance.post<InjectionRuleReadModel>(RULES_WRITE, rule)
   },
 
   update(id: string, rule: InjectionRuleWritePayload) {
-    return axiosInstance.put<InjectionRuleViewModel>(`${RULES_WRITE}/${id}`, rule)
+    return axiosInstance.put<InjectionRuleReadModel>(`${RULES_WRITE}/${id}`, rule)
   },
 
   getOrder() {

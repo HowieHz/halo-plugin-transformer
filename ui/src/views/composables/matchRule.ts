@@ -1,8 +1,6 @@
 import {
-  type EditableInjectionRule,
-  type InjectionRuleViewModel,
+  type InjectionRuleEditorDraft,
   type InjectionRuleEditorState,
-  type InjectionRuleWritePayload,
   type MatchRuleSource,
   type MatchRule,
   makeMatchRuleGroup,
@@ -236,17 +234,8 @@ export function validateMatchRuleObject(input: unknown, path = 'matchRule'): Mat
   })
 }
 
-export function hydrateRuleForEditor(rule: InjectionRuleViewModel): EditableInjectionRule {
-  const matchRule = normalizeMatchRule(rule.matchRule)
-  return {
-    ...rule,
-    matchRule,
-    matchRuleSource: makeRuleTreeSource(matchRule),
-  }
-}
-
 export function resolveRuleMatchRule(
-  rule: Pick<InjectionRuleViewModel, 'matchRule'> & Partial<InjectionRuleEditorState>,
+  rule: Pick<InjectionRuleEditorDraft, 'matchRule'> & Partial<InjectionRuleEditorState>,
 ): MatchRuleParseResult {
   if (rule.matchRuleSource?.kind === 'JSON_DRAFT') {
     return parseMatchRuleDraft(String(rule.matchRuleSource.data ?? ''))
@@ -275,7 +264,7 @@ export function supportsDomPathPrecheck(rule: MatchRule | null): boolean {
  * 不能在 JSON_DRAFT 已经变坏时还继续读取旧的 `matchRule`，否则就会出现状态错位。
  */
 export function getDomRulePerformanceWarning(
-  rule: Pick<InjectionRuleViewModel, 'mode' | 'matchRule'> & Partial<InjectionRuleEditorState>,
+  rule: Pick<InjectionRuleEditorDraft, 'mode' | 'matchRule'> & Partial<InjectionRuleEditorState>,
 ): string | null {
   const result = resolveRuleMatchRule(rule)
   if (!result.rule || result.error) {
@@ -285,35 +274,6 @@ export function getDomRulePerformanceWarning(
     return null
   }
   return '⚠ 当前规则还不能先按页面路径缩小范围。建议在“全部满足（AND）”里先加入“页面路径匹配”，再按需叠加模板 ID 等条件。否则元素 ID / CSS 选择器模式会先处理所有页面，再继续判断其它条件，因此会多一些处理开销。'
-}
-
-/**
- * why: 发送到后端前统一收敛编辑态字段，避免 JSON 草稿、REMOVE 的空代码块关联等 UI 细节污染持久化模型。
- */
-export function makeRulePayload(
-  rule: InjectionRuleViewModel & Partial<InjectionRuleEditorState>,
-  snippetIds: string[],
-): InjectionRuleWritePayload | null {
-  const result = resolveRuleMatchRule(rule)
-  if (!result.rule) {
-    return null
-  }
-  const normalizedSnippetIds = rule.position === 'REMOVE' ? [] : snippetIds
-  const normalizedWrapMarker = rule.position === 'REMOVE' ? false : rule.wrapMarker
-  return {
-    apiVersion: rule.apiVersion,
-    kind: rule.kind,
-    metadata: rule.metadata,
-    name: rule.name,
-    description: rule.description,
-    enabled: rule.enabled,
-    mode: rule.mode,
-    match: rule.match.trim(),
-    matchRule: result.rule,
-    position: rule.position,
-    wrapMarker: normalizedWrapMarker,
-    snippetIds: normalizedSnippetIds,
-  }
 }
 
 export function matchRuleExpression(rule: MatchRule): string {

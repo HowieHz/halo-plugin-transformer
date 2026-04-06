@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { makeRule } from '@/types'
+import { makeRuleEditorDraft } from '@/types'
 import {
   buildRuleTransfer,
   parseRuleTransfer,
@@ -378,7 +378,7 @@ describe('parseSnippetTransfer', () => {
 describe('buildRuleTransfer', () => {
   // why: 导出后的包裹层应只保留 version/resourceType/data，并自动附带 schema 提示，不再继续输出旧的 format 字段。
   it('exports schema url without legacy format field', () => {
-    const payload = buildRuleTransfer(makeRule())
+    const payload = buildRuleTransfer(makeRuleEditorDraft())
 
     expect(payload).toMatchObject({
       $schema: TRANSFER_SCHEMA_URL,
@@ -390,7 +390,7 @@ describe('buildRuleTransfer', () => {
 
   // why: 高级模式里的 JSON 草稿若已经能稳定解析成规则树，导出时应优先收敛成 RULE_TREE，避免把无意义草稿继续传下去。
   it('exports valid json drafts as rule trees', () => {
-    const rule = makeRule({
+    const rule = makeRuleEditorDraft({
       matchRuleSource: {
         kind: 'JSON_DRAFT',
         data: `{
@@ -418,7 +418,7 @@ describe('buildRuleTransfer', () => {
 
   // why: 高级模式草稿仍有错误时，导出必须原样保留 JSON_DRAFT，避免把错误悄悄改写成另一份规则树。
   it('keeps invalid json drafts as json drafts during export', () => {
-    const rule = makeRule({
+    const rule = makeRuleEditorDraft({
       matchRuleSource: {
         kind: 'JSON_DRAFT',
         data: '{ "type": "GROUP", "negate": false, "operator": "AND", "children": [',

@@ -1,4 +1,4 @@
-import { type InjectionRule, MODE_OPTIONS, POSITION_OPTIONS } from '@/types'
+import { type InjectionRuleReadModel, MODE_OPTIONS, POSITION_OPTIONS } from '@/types'
 import type { OrderMap } from '@/apis'
 
 export function modeLabel(mode: string) {
@@ -9,7 +9,7 @@ export function positionLabel(pos?: string) {
   if (!pos) return ''
   return POSITION_OPTIONS.find((o) => o.value === pos)?.label ?? pos
 }
-export function rulePreview(rule: InjectionRule) {
+export function rulePreview(rule: InjectionRuleReadModel) {
   return `${modeLabel(rule.mode)} · ${positionLabel(rule.position)}`
 }
 

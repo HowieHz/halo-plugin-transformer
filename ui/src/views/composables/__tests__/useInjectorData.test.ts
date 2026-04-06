@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
-import { makeRule, makeSnippet, type ItemList } from '@/types'
+import { makeRuleEditorDraft, makeSnippetEditorDraft, type ItemList } from '@/types'
 
 const { toast, dialog, snippetApi, ruleApi } = vi.hoisted(() => ({
   toast: {
@@ -62,7 +62,7 @@ describe('useInjectorData', () => {
 
   // why: 用户只是想停用规则时，不应因为当前右侧存在未保存的坏草稿而被拦住；停用应基于已保存规则快照完成。
   it('disables invalid draft rules by using the persisted rule snapshot', async () => {
-    const savedRule = makeRule({
+    const savedRule = makeRuleEditorDraft({
       id: 'rule-a',
       metadata: { name: 'rule-a' },
       enabled: true,
@@ -113,7 +113,7 @@ describe('useInjectorData', () => {
 
   // why: 停用代码块同理也不应被空代码草稿拦住；应直接基于已保存代码块完成停用。
   it('disables invalid draft snippets by using the persisted snippet snapshot', async () => {
-    const savedSnippet = makeSnippet({
+    const savedSnippet = makeSnippetEditorDraft({
       id: 'snippet-a',
       metadata: { name: 'snippet-a' },
       enabled: true,
@@ -147,7 +147,7 @@ describe('useInjectorData', () => {
 
   // why: 前端保存规则时不应再去二次改写代码块；双向关联应交给后端单接口完成。
   it('saves rules without issuing secondary snippet update requests', async () => {
-    const savedRule = makeRule({
+    const savedRule = makeRuleEditorDraft({
       id: 'rule-a',
       metadata: { name: 'rule-a' },
       snippetIds: ['snippet-a'],
@@ -166,7 +166,7 @@ describe('useInjectorData', () => {
       },
     })
     delete (savedRule as { matchRuleSource?: unknown }).matchRuleSource
-    const savedSnippet = makeSnippet({
+    const savedSnippet = makeSnippetEditorDraft({
       id: 'snippet-a',
       metadata: { name: 'snippet-a' },
       code: '<div>ok</div>',
@@ -191,7 +191,7 @@ describe('useInjectorData', () => {
 
   // why: 左侧排序保存失败时，只应回拉排序映射；右侧未保存的规则草稿不能被整页重载冲掉。
   it('keeps unsaved rule editor state when rule reorder persistence fails', async () => {
-    const ruleA = makeRule({
+    const ruleA = makeRuleEditorDraft({
       id: 'rule-a',
       metadata: { name: 'rule-a' },
       name: 'Rule A',
@@ -209,7 +209,7 @@ describe('useInjectorData', () => {
         ],
       },
     })
-    const ruleB = makeRule({
+    const ruleB = makeRuleEditorDraft({
       id: 'rule-b',
       metadata: { name: 'rule-b' },
       name: 'Rule B',
@@ -264,13 +264,13 @@ describe('useInjectorData', () => {
 
   // why: 代码块排序失败同理只能恢复左侧顺序，不能把右侧未保存代码内容覆盖掉。
   it('keeps unsaved snippet editor state when snippet reorder persistence fails', async () => {
-    const snippetA = makeSnippet({
+    const snippetA = makeSnippetEditorDraft({
       id: 'snippet-a',
       metadata: { name: 'snippet-a' },
       name: 'Snippet A',
       code: '<div>a</div>',
     })
-    const snippetB = makeSnippet({
+    const snippetB = makeSnippetEditorDraft({
       id: 'snippet-b',
       metadata: { name: 'snippet-b' },
       name: 'Snippet B',
