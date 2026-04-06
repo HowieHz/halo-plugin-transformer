@@ -1,5 +1,6 @@
 package com.erzbir.halo.injector;
 
+import com.erzbir.halo.injector.manager.InjectionRuleManager;
 import com.erzbir.halo.injector.scheme.CodeSnippet;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import com.erzbir.halo.injector.scheme.ResourceOrder;
@@ -17,10 +18,12 @@ import run.halo.app.plugin.BasePlugin;
 @Component
 public class HaloInjectorPlugin extends BasePlugin {
     private final SchemeManager schemeManager;
+    private final InjectionRuleManager injectionRuleManager;
 
     @Override
     public void start() {
         registerScheme();
+        injectionRuleManager.warmUpCacheAsync();
     }
 
     @Override

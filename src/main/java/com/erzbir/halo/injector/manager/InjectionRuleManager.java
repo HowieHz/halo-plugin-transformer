@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import run.halo.app.extension.ReactiveExtensionClient;
 
 import java.time.Duration;
@@ -46,6 +47,32 @@ public class InjectionRuleManager {
      */
     public void invalidateCache() {
         snapshotExpiresAtNanos = 0L;
+    }
+
+    /**
+     * why: 启动后和写入成功后都可以主动预热规则快照，
+     * 把首次真实请求的冷加载成本提前到后台任务里，尽量降低 TTFB 抖动。
+     */
+    public void warmUpCacheAsync() {
+        warmUpCache()
+                .subscribeOn(Schedulers.boundedElastic())
+                .subscribe(
+                        snapshot -> log.debug("Warmed rule snapshot with {} total rules", snapshot.allRules().size()),
+                        error -> log.warn("Failed to warm rule snapshot", error)
+                );
+    }
+
+    /**
+     * why: 写后既要立刻让旧快照失效，也要马上在后台拉一份新快照，
+     * 这样下一次请求更大概率直接命中热缓存，而不是承担一次冷加载。
+     */
+    public void invalidateAndWarmUpAsync() {
+        invalidateCache();
+        warmUpCacheAsync();
+    }
+
+    Mono<RuleSnapshot> warmUpCache() {
+        return currentSnapshot();
     }
 
     Mono<RuleSnapshot> currentSnapshot() {

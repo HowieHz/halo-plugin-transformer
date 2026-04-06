@@ -74,6 +74,46 @@ class InjectionRuleManagerTest {
         assertEquals(List.of("rule-b"), second.stream().map(InjectionRule::getId).toList());
     }
 
+    // why: 启动预热会把首次读规则的冷加载提前完成；预热完成后，首个真实读取应直接命中已热好的快照。
+    @Test
+    void shouldWarmSnapshotBeforeFirstRead() {
+        AtomicInteger fetchCount = new AtomicInteger();
+        when(client.list(InjectionRule.class, null, null)).thenAnswer(invocation -> {
+            fetchCount.incrementAndGet();
+            return Flux.just(rule("rule-a", InjectionRule.Mode.SELECTOR, true, "main"));
+        });
+
+        manager.warmUpCache().block();
+        List<InjectionRule> rules = manager.listActiveByMode(InjectionRule.Mode.SELECTOR)
+                .collectList()
+                .block();
+
+        assertEquals(1, fetchCount.get());
+        assertEquals(List.of("rule-a"), rules.stream().map(InjectionRule::getId).toList());
+    }
+
+    // why: 写后预热要在失效之后立刻拉新快照，避免下一次请求再承担一次冷加载。
+    @Test
+    void shouldWarmNewSnapshotImmediatelyAfterInvalidate() {
+        AtomicInteger fetchCount = new AtomicInteger();
+        when(client.list(InjectionRule.class, null, null)).thenAnswer(invocation -> {
+            int round = fetchCount.incrementAndGet();
+            return round == 1
+                    ? Flux.just(rule("rule-a", InjectionRule.Mode.SELECTOR, true, "main"))
+                    : Flux.just(rule("rule-b", InjectionRule.Mode.SELECTOR, true, "main"));
+        });
+
+        manager.warmUpCache().block();
+        manager.invalidateCache();
+        manager.warmUpCache().block();
+        List<InjectionRule> rules = manager.listActiveByMode(InjectionRule.Mode.SELECTOR)
+                .collectList()
+                .block();
+
+        assertEquals(2, fetchCount.get());
+        assertEquals(List.of("rule-b"), rules.stream().map(InjectionRule::getId).toList());
+    }
+
     // why: 快照里只应保留“当前真正可参与运行时匹配”的规则，避免每次请求再重复做 enabled/valid 过滤。
     @Test
     void shouldKeepOnlyEnabledAndValidRulesInActiveSnapshot() {

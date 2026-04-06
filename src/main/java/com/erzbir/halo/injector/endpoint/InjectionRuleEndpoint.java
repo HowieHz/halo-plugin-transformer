@@ -50,7 +50,7 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
                 .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
                 .flatMap(validator::validateForWrite)
                 .flatMap(client::create)
-                .doOnSuccess(created -> ruleManager.invalidateCache())
+                .doOnSuccess(created -> ruleManager.invalidateAndWarmUpAsync())
                 .flatMap(created -> ServerResponse.created(URI.create("/apis/" + READ_API_VERSION + "/injectionRules/"
                                 + created.getMetadata().getName()))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -71,7 +71,7 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
                 .switchIfEmpty(Mono.error(new InjectionRuleValidationException("metadata.name 与路径参数不一致")))
                 .flatMap(validator::validateForWrite)
                 .flatMap(client::update)
-                .doOnSuccess(updated -> ruleManager.invalidateCache())
+                .doOnSuccess(updated -> ruleManager.invalidateAndWarmUpAsync())
                 .flatMap(updated -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(updated));
@@ -86,7 +86,7 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
         return client.fetch(InjectionRule.class, name)
                 .switchIfEmpty(Mono.error(new ServerWebInputException("未找到要删除的规则")))
                 .flatMap(client::delete)
-                .doOnSuccess(deleted -> ruleManager.invalidateCache())
+                .doOnSuccess(deleted -> ruleManager.invalidateAndWarmUpAsync())
                 .flatMap(deleted -> ServerResponse.noContent().build());
     }
 
