@@ -366,9 +366,22 @@ export function useInjectorData() {
   async function toggleSnippetEnabled() {
     if (!editSnippet.value) return
     const nextEnabled = !editSnippet.value.enabled
+    const savedSnippet = snippets.value.find((snippet) => snippet.id === editSnippet.value?.id)
+    if (!savedSnippet) return
+    if (nextEnabled && snippetEditorError.value) {
+      Toast.error(`当前代码块有错误，暂时无法启用：${snippetEditorError.value}`)
+      return
+    }
     try {
       editSnippet.value.enabled = nextEnabled
-      await snippetApi.update(editSnippet.value.id, _makeSnippetPayload(editSnippet.value))
+      const sourceSnippet = nextEnabled ? editSnippet.value : savedSnippet
+      await snippetApi.update(
+        sourceSnippet.id,
+        _makeSnippetPayload({
+          ...sourceSnippet,
+          enabled: nextEnabled,
+        }),
+      )
       await fetchAll()
     } catch (error) {
       editSnippet.value.enabled = !nextEnabled
@@ -379,6 +392,8 @@ export function useInjectorData() {
   async function toggleRuleEnabled() {
     if (!editRule.value) return
     const nextEnabled = !editRule.value.enabled
+    const savedRule = rules.value.find((rule) => rule.id === editRule.value?.id)
+    if (!savedRule) return
     if (nextEnabled) {
       const validationError = _validateRule(editRule.value)
       if (validationError) {
@@ -388,9 +403,12 @@ export function useInjectorData() {
     }
     try {
       editRule.value.enabled = nextEnabled
+      const sourceRule = nextEnabled ? editRule.value : { ...savedRule, enabled: nextEnabled }
       const payload = makeRulePayload(
-        editRule.value,
-        _normalizeRuleSnippetIds(editRule.value, editRuleSnippetIds.value),
+        sourceRule,
+        nextEnabled
+          ? _normalizeRuleSnippetIds(editRule.value, editRuleSnippetIds.value)
+          : _normalizeRuleSnippetIds(savedRule, [...(savedRule.snippetIds ?? [])]),
       )
       if (!payload) {
         Toast.error('当前规则有错误，暂时无法启用：匹配规则有误，请先修正后再操作')
