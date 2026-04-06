@@ -148,6 +148,38 @@ class InjectionRuleValidatorTest {
         assertEquals("matchRule.children[0].children：仅条件组可使用 children", error.getReason());
     }
 
+    // why: 条件组即使带空字符串 value 也属于脏字段，后端要拒绝，避免“看似没值其实已写脏结构”。
+    @Test
+    void shouldRejectValueFieldOnGroupRuleEvenWhenBlank() {
+        InjectionRule rule = makeRule();
+        MatchRule group = makeGroup(MatchRule.pathRule(MatchRule.Matcher.ANT, "/**"));
+        group.setValue("");
+        setMatchRuleDirectly(rule, group);
+
+        InjectionRuleValidationException error = assertThrows(
+                InjectionRuleValidationException.class,
+                () -> validator.validateForWrite(rule).block()
+        );
+
+        assertEquals("matchRule.value：仅叶子条件可使用 value", error.getReason());
+    }
+
+    // why: 叶子节点显式携带空 children 也说明结构写脏了，不能因为它是空数组就悄悄放过。
+    @Test
+    void shouldRejectEmptyChildrenFieldOnLeafRule() {
+        InjectionRule rule = makeRule();
+        MatchRule child = MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**");
+        child.setChildren(java.util.List.of());
+        setMatchRuleDirectly(rule, makeGroup(child));
+
+        InjectionRuleValidationException error = assertThrows(
+                InjectionRuleValidationException.class,
+                () -> validator.validateForWrite(rule).block()
+        );
+
+        assertEquals("matchRule.children[0].children：仅条件组可使用 children", error.getReason());
+    }
+
     // why: 对愿意接受性能退化的用户，“路径 OR 模板”这类规则仍应允许保存，由配置页给出警告即可。
     @Test
     void shouldAllowUnsupportedDomPathPrecheckRule() {

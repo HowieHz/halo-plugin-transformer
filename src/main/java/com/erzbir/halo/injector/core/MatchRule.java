@@ -23,6 +23,14 @@ public class MatchRule {
     @JsonIgnore
     private boolean negateDefined;
     @JsonIgnore
+    private boolean operatorDefined;
+    @JsonIgnore
+    private boolean matcherDefined;
+    @JsonIgnore
+    private boolean valueDefined;
+    @JsonIgnore
+    private boolean childrenDefined;
+    @JsonIgnore
     private final Set<String> unknownFields = new LinkedHashSet<>();
 
     public static MatchRule defaultRule() {
@@ -58,6 +66,26 @@ public class MatchRule {
     public void setNegate(Boolean negate) {
         this.negate = negate;
         this.negateDefined = true;
+    }
+
+    public void setOperator(Operator operator) {
+        this.operator = operator;
+        this.operatorDefined = true;
+    }
+
+    public void setMatcher(Matcher matcher) {
+        this.matcher = matcher;
+        this.matcherDefined = true;
+    }
+
+    public void setValue(String value) {
+        this.value = value;
+        this.valueDefined = true;
+    }
+
+    public void setChildren(List<MatchRule> children) {
+        this.children = children == null ? null : new ArrayList<>(children);
+        this.childrenDefined = true;
     }
 
     /**
@@ -131,10 +159,10 @@ public class MatchRule {
     }
 
     private static void validateGroupRule(MatchRule rule, String path) {
-        if (rule.getMatcher() != null) {
+        if (rule.isMatcherDefined()) {
             throw new IllegalArgumentException(path + ".matcher：仅叶子条件可使用 matcher");
         }
-        if (rule.getValue() != null && StringUtils.hasText(rule.getValue())) {
+        if (rule.isValueDefined()) {
             throw new IllegalArgumentException(path + ".value：仅叶子条件可使用 value");
         }
         List<MatchRule> children = rule.getChildren();
@@ -153,10 +181,10 @@ public class MatchRule {
     }
 
     private static void validatePathRule(MatchRule rule, String path) {
-        if (rule.getOperator() != null) {
+        if (rule.isOperatorDefined()) {
             throw new IllegalArgumentException(path + ".operator：仅条件组可使用 operator");
         }
-        if (rule.getChildren() != null && !rule.getChildren().isEmpty()) {
+        if (rule.isChildrenDefined()) {
             throw new IllegalArgumentException(path + ".children：仅条件组可使用 children");
         }
         if (rule.getMatcher() == null) {
@@ -172,10 +200,10 @@ public class MatchRule {
     }
 
     private static void validateTemplateRule(MatchRule rule, String path) {
-        if (rule.getOperator() != null) {
+        if (rule.isOperatorDefined()) {
             throw new IllegalArgumentException(path + ".operator：仅条件组可使用 operator");
         }
-        if (rule.getChildren() != null && !rule.getChildren().isEmpty()) {
+        if (rule.isChildrenDefined()) {
             throw new IllegalArgumentException(path + ".children：仅条件组可使用 children");
         }
         if (rule.getMatcher() == null) {
