@@ -1,6 +1,5 @@
 package com.erzbir.halo.injector.core;
 
-import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
@@ -14,20 +13,16 @@ import org.springframework.stereotype.Component;
 public class SelectorInjector implements HTMLInjector {
 
     @Override
-    public String inject(String html, String match, String code, IInjectionRule.Position position, boolean wrapMarker) {
-        Document doc = Jsoup.parse(html);
-
-        Elements elements = doc.select(match);
+    public boolean inject(Document document, String match, String code, IInjectionRule.Position position,
+                          boolean wrapMarker) {
+        Elements elements = document.select(match);
         if (elements.isEmpty()) {
-            return html;
+            return false;
         }
 
         for (Element element : elements) {
             InjectUtil.inject(element, processCode(code, wrapMarker), position);
         }
-
-        doc.outputSettings(new Document.OutputSettings().prettyPrint(false));
-
-        return doc.html();
+        return true;
     }
 }

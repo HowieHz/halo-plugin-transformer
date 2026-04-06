@@ -6,6 +6,8 @@ import com.erzbir.halo.injector.core.SelectorInjector;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import com.erzbir.halo.injector.util.ContextUtil;
 import com.erzbir.halo.injector.util.InjectHelper;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
@@ -29,6 +31,7 @@ import reactor.core.publisher.Mono;
 import run.halo.app.security.AdditionalWebFilter;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Set;
 
 import static org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers.pathMatchers;
@@ -101,48 +104,55 @@ public class InjectorWebFilter implements AdditionalWebFilter {
     }
 
     public Mono<String> inject(String html, String permalink, String templateId) {
-        return dispatchInject(html, permalink, templateId, InjectionRule.Mode.SELECTOR)
-                .flatMap(
-                        ctx -> dispatchInject(ctx, permalink, templateId, InjectionRule.Mode.ID)).onErrorResume(e -> {
+        return collectDomInjectionPlans(permalink, templateId)
+                .map(plans -> applyDomInjections(html, permalink, plans))
+                .onErrorResume(e -> {
                     log.warn("Failed to inject HTML response", e);
                     return Mono.just(html);
                 });
     }
 
     /**
-     * why: 两类 DOM 注入器共享同一条调度链，避免“先选规则、再取代码、再执行注入”的流程复制两份；
-     * 同时保留按规则顺序串行 reduce，确保最终 HTML 与用户配置顺序一致。
+     * why: 先按既有顺序收集 SELECTOR 与 ID 两类 DOM 规则，
+     * 再在同一份 Document 上顺序执行，避免每命中一条规则就重复 Jsoup.parse / doc.html。
      */
-    private Mono<String> dispatchInject(
-            String html,
-            String path,
-            String templateId,
-            InjectionRule.Mode mode) {
-
-        HTMLInjector injector = switch (mode) {
-            case SELECTOR -> selectorInjector;
-            case ID -> elementIDInjector;
-            default -> null;
-        };
-
-        if (injector == null) {
-            log.warn("No injector found for mode {}", mode);
-            return Mono.just(html);
-        }
-
+    private Flux<DomInjectionPlan> collectPlans(String path, String templateId, InjectionRule.Mode mode,
+                                                HTMLInjector injector) {
         return injectHelper.getMatchedRules(path, templateId, mode)
                 .concatMap(rule ->
                         injectHelper.getConcatCode(rule)
-                                .map(code -> new Object[]{rule, code})
+                                .map(code -> new DomInjectionPlan(injector, rule, code)));
+    }
+
+    private Mono<List<DomInjectionPlan>> collectDomInjectionPlans(String path, String templateId) {
+        return Flux.concat(
+                        collectPlans(path, templateId, InjectionRule.Mode.SELECTOR, selectorInjector),
+                        collectPlans(path, templateId, InjectionRule.Mode.ID, elementIDInjector)
                 )
-                .reduce(html, (ctx, tuple) -> {
-                    InjectionRule rule = (InjectionRule) tuple[0];
-                    String code = (String) tuple[1];
+                .collectList();
+    }
 
-                    log.debug("Injected rule: [{}] into [{}]", rule.getId(), path);
+    String applyDomInjections(String html, String path, List<DomInjectionPlan> plans) {
+        if (plans.isEmpty()) {
+            return html;
+        }
+        Document document = parseHtmlDocument(html);
+        document.outputSettings(new Document.OutputSettings().prettyPrint(false));
+        boolean modified = false;
+        for (DomInjectionPlan plan : plans) {
+            boolean applied = plan.injector()
+                    .inject(document, plan.rule().getMatch(), plan.code(),
+                            plan.rule().getPosition(), plan.rule().getWrapMarker());
+            if (applied) {
+                modified = true;
+                log.debug("Injected rule: [{}] into [{}]", plan.rule().getId(), path);
+            }
+        }
+        return modified ? document.html() : html;
+    }
 
-                    return injector.inject(ctx, rule.getMatch(), code, rule.getPosition(), rule.getWrapMarker());
-                });
+    Document parseHtmlDocument(String html) {
+        return Jsoup.parse(html);
     }
 
     @Override
@@ -194,5 +204,8 @@ public class InjectorWebFilter implements AdditionalWebFilter {
             }).flux().map(Flux::just);
             return super.writeAndFlushWith(processedBody);
         }
+    }
+
+    record DomInjectionPlan(HTMLInjector injector, InjectionRule rule, String code) {
     }
 }
