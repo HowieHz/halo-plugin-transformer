@@ -6,7 +6,6 @@ import {
   cloneMatchRule,
   cloneMatchRuleSource,
   getDomRulePerformanceWarning,
-  persistMatchRuleEditorState,
   makeRuleTreeSource,
 } from '@/views/composables/matchRule'
 import ItemPicker from './ItemPicker.vue'
@@ -178,10 +177,6 @@ function updateMatchRuleField(patch: Partial<EditableInjectionRule>) {
     ),
   }
   undo.trackChange('matchRule', previous, after)
-  persistMatchRuleEditorState({
-    id: next.id,
-    matchRuleSource: next.matchRuleSource,
-  })
   updateRuleSnapshot(next)
 }
 
@@ -289,7 +284,6 @@ function undoField(
       matchRule: snapshot.matchRule,
       matchRuleSource: snapshot.matchRuleSource ?? makeRuleTreeSource(snapshot.matchRule),
     }
-    persistMatchRuleEditorState(next)
     updateRuleSnapshot(next)
     return
   }
@@ -338,7 +332,6 @@ function resetField(
       matchRule: snapshot.matchRule,
       matchRuleSource: snapshot.matchRuleSource ?? makeRuleTreeSource(snapshot.matchRule),
     }
-    persistMatchRuleEditorState(next)
     updateRuleSnapshot(next)
     return
   }

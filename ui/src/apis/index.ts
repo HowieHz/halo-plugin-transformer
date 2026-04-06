@@ -11,15 +11,12 @@ const BASE = '/apis/injector.erzbir.com/v1alpha1'
 const CONSOLE_BASE = '/apis/console.api.injector.erzbir.com/v1alpha1'
 const SNIPPETS = `${BASE}/codeSnippets`
 const SNIPPETS_WRITE = `${CONSOLE_BASE}/codeSnippets`
-const SNIPPETS_REORDER = `${CONSOLE_BASE}/codeSnippets/reorder`
+const SNIPPET_ORDER = `${CONSOLE_BASE}/snippet-order`
 const RULES = `${BASE}/injectionRules`
 const RULES_WRITE = `${CONSOLE_BASE}/injectionRules`
-const RULES_REORDER = `${CONSOLE_BASE}/injectionRules/reorder`
+const RULE_ORDER = `${CONSOLE_BASE}/rule-order`
 
-interface SortOrderItem {
-  id: string
-  sortOrder: number
-}
+export type OrderMap = Record<string, number>
 
 export const snippetApi = {
   list() {
@@ -34,8 +31,12 @@ export const snippetApi = {
     return axiosInstance.put<CodeSnippetViewModel>(`${SNIPPETS_WRITE}/${id}`, snippet)
   },
 
-  reorder(items: SortOrderItem[]) {
-    return axiosInstance.put<CodeSnippetViewModel[]>(SNIPPETS_REORDER, { items })
+  getOrder() {
+    return axiosInstance.get<OrderMap>(SNIPPET_ORDER)
+  },
+
+  updateOrder(orders: OrderMap) {
+    return axiosInstance.put<OrderMap>(SNIPPET_ORDER, { orders })
   },
 
   delete(id: string) {
@@ -56,8 +57,12 @@ export const ruleApi = {
     return axiosInstance.put<InjectionRuleViewModel>(`${RULES_WRITE}/${id}`, rule)
   },
 
-  reorder(items: SortOrderItem[]) {
-    return axiosInstance.put<InjectionRuleViewModel[]>(RULES_REORDER, { items })
+  getOrder() {
+    return axiosInstance.get<OrderMap>(RULE_ORDER)
+  },
+
+  updateOrder(orders: OrderMap) {
+    return axiosInstance.put<OrderMap>(RULE_ORDER, { orders })
   },
 
   delete(id: string) {

@@ -224,19 +224,6 @@ export function hydrateRuleForEditor(rule: InjectionRuleViewModel): EditableInje
   }
 }
 
-/**
- * why: 刷新页面应回到已保存内容，而不是恢复未保存草稿；
- * 因此前端不再持久化匹配规则编辑器状态，这里保留空实现仅用于调用方复用。
- */
-export function persistMatchRuleEditorState(
-  _rule: Pick<InjectionRuleViewModel, 'id'> & InjectionRuleEditorState,
-) {}
-
-/**
- * why: 既然不再持久化编辑器状态，放弃修改时也无需再清理本地草稿。
- */
-export function clearPersistedMatchRuleDraft(_ruleId: string, _source?: MatchRuleSource) {}
-
 export function resolveRuleMatchRule(
   rule: InjectionRuleViewModel & Partial<InjectionRuleEditorState>,
 ): MatchRuleParseResult {
@@ -294,7 +281,6 @@ export function makeRulePayload(
     name: rule.name,
     description: rule.description,
     enabled: rule.enabled,
-    sortOrder: rule.sortOrder,
     mode: rule.mode,
     match: rule.match.trim(),
     matchRule: result.rule,

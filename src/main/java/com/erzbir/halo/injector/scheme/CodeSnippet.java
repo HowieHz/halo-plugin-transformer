@@ -23,7 +23,6 @@ public class CodeSnippet extends AbstractExtension implements ICodeSnippet {
     private String code = "";
     private String description = "";
     private Boolean enabled = true;
-    private Integer sortOrder;
     private Set<String> ruleIds = new LinkedHashSet<>();
     @JsonIgnore
     private final Set<String> unknownFields = new LinkedHashSet<>();

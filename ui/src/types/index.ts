@@ -12,7 +12,6 @@ export interface CodeSnippetWritePayload {
   code: string
   description: string
   enabled: boolean
-  sortOrder?: number
   ruleIds: string[]
 }
 
@@ -49,7 +48,6 @@ export interface InjectionRuleWritePayload {
   name: string
   description: string
   enabled: boolean
-  sortOrder?: number
   mode: InjectionMode
   match: string
   matchRule: MatchRule
@@ -156,7 +154,6 @@ export function makeSnippet(override: Partial<CodeSnippetViewModel> = {}): CodeS
     code: '',
     description: '',
     enabled: true,
-    sortOrder: undefined,
     ruleIds: [],
     ...override,
   }
@@ -174,7 +171,6 @@ export function makeRule(override: Partial<EditableInjectionRule> = {}): Editabl
     name: '',
     description: '',
     enabled: true,
-    sortOrder: undefined,
     mode: 'FOOTER',
     match: '',
     matchRule,

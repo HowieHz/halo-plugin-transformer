@@ -1,7 +1,7 @@
 import { computed, ref, watch } from 'vue'
 import type { AxiosError } from 'axios'
 import { Dialog, Toast } from '@halo-dev/components'
-import { ruleApi, snippetApi } from '@/apis'
+import { ruleApi, snippetApi, type OrderMap } from '@/apis'
 import type {
   CodeSnippetViewModel,
   CodeSnippetWritePayload,
@@ -9,9 +9,8 @@ import type {
   InjectionRule,
   ItemList,
 } from '@/types'
-import { sortBySortOrder, uniqueStrings } from './util'
+import { buildExplicitOrderMap, sortByOrderMap, uniqueStrings } from './util'
 import {
-  clearPersistedMatchRuleDraft,
   formatMatchRuleError,
   hydrateRuleForEditor,
   isValidMatchRule,
@@ -57,9 +56,11 @@ export function useInjectorData() {
 
   const snippetsResp = ref<ItemList<CodeSnippetViewModel>>(emptyList())
   const rulesResp = ref<ItemList<InjectionRule>>(emptyList())
+  const snippetOrders = ref<OrderMap>({})
+  const ruleOrders = ref<OrderMap>({})
 
-  const snippets = computed(() => sortBySortOrder(snippetsResp.value.items))
-  const rules = computed(() => sortBySortOrder(rulesResp.value.items))
+  const snippets = computed(() => sortByOrderMap(snippetsResp.value.items, snippetOrders.value))
+  const rules = computed(() => sortByOrderMap(rulesResp.value.items, ruleOrders.value))
 
   const selectedSnippetId = ref<string | null>(null)
   const selectedRuleId = ref<string | null>(null)
@@ -73,8 +74,8 @@ export function useInjectorData() {
   const editDirty = ref(false)
   const syncingSnippetReorder = ref(false)
   const syncingRuleReorder = ref(false)
-  const pendingSnippetOrderIds = ref<string[] | null>(null)
-  const pendingRuleOrderIds = ref<string[] | null>(null)
+  const pendingSnippetOrders = ref<OrderMap | null>(null)
+  const pendingRuleOrders = ref<OrderMap | null>(null)
 
   const rulesUsingSnippet = computed(() => {
     if (!selectedSnippetId.value) return []
@@ -121,15 +122,14 @@ export function useInjectorData() {
     snippet: CodeSnippetViewModel,
     ruleIds?: string[],
   ): CodeSnippetWritePayload {
-    const { id: _id, ...payload } = snippet
+    const payload = {
+      ...snippet,
+      ruleIds: ruleIds ?? snippet.ruleIds,
+    } as CodeSnippetWritePayload & { id?: string }
+    delete payload.id
     return {
       ...payload,
-      ruleIds: ruleIds ?? payload.ruleIds,
     }
-  }
-
-  function _nextSortOrder(items: Array<{ sortOrder?: number }>) {
-    return items.reduce((max, item) => Math.max(max, item.sortOrder ?? 0), 0) + 1
   }
 
   function _reorderItems<T extends { id: string }>(
@@ -154,83 +154,6 @@ export function useInjectorData() {
     const insertIndex = placement === 'before' ? nextTargetIndex : nextTargetIndex + 1
     ordered.splice(insertIndex, 0, moving)
     return ordered
-  }
-
-  function _assignSortOrder<T extends { sortOrder?: number }>(items: T[]) {
-    return items.map((item, index) => ({
-      ...item,
-      sortOrder: index + 1,
-    }))
-  }
-
-  function _replaceOrderedItems<T extends { id: string }>(currentItems: T[], orderedItems: T[]) {
-    const currentById = new Map(currentItems.map((item) => [item.id, item]))
-    return orderedItems.map((item) => ({
-      ...(currentById.get(item.id) ?? item),
-      ...item,
-    }))
-  }
-
-  function _mergeUpdatedItems<T extends { id: string; sortOrder?: number }>(
-    items: T[],
-    updatedItems: T[],
-  ) {
-    const updatedById = new Map(updatedItems.map((item) => [item.id, item]))
-    return items.map((item) => ({
-      ...item,
-      ...updatedById.get(item.id),
-      sortOrder: item.sortOrder,
-    }))
-  }
-
-  function _collectOrderIds<T extends { id: string }>(items: T[]) {
-    return items.map((item) => item.id)
-  }
-
-  function _restoreOrderByIds<T extends { id: string }>(items: T[], orderIds: string[]) {
-    const byId = new Map(items.map((item) => [item.id, item]))
-    const seen = new Set(orderIds)
-    return [
-      ...orderIds.map((id) => byId.get(id)).filter((item): item is T => !!item),
-      ...items.filter((item) => !seen.has(item.id)),
-    ]
-  }
-
-  function _applyLocalOrderedItems<T extends { id: string; sortOrder?: number }>(
-    currentItems: T[],
-    orderedItems: T[],
-  ) {
-    return _replaceOrderedItems(currentItems, _assignSortOrder(orderedItems))
-  }
-
-  function _syncEditSnippetSystemFields(items: CodeSnippetViewModel[]) {
-    if (!editSnippet.value) {
-      return
-    }
-    const found = items.find((item) => item.id === editSnippet.value?.id)
-    if (!found) {
-      return
-    }
-    editSnippet.value = {
-      ...editSnippet.value,
-      metadata: found.metadata,
-      sortOrder: found.sortOrder,
-    }
-  }
-
-  function _syncEditRuleSystemFields(items: InjectionRule[]) {
-    if (!editRule.value) {
-      return
-    }
-    const found = items.find((item) => item.id === editRule.value?.id)
-    if (!found) {
-      return
-    }
-    editRule.value = {
-      ...editRule.value,
-      metadata: found.metadata,
-      sortOrder: found.sortOrder,
-    }
   }
 
   /**
@@ -287,9 +210,16 @@ export function useInjectorData() {
   async function fetchAll() {
     loading.value = true
     try {
-      const [sr, rr] = await Promise.all([snippetApi.list(), ruleApi.list()])
+      const [sr, rr, snippetOrderResp, ruleOrderResp] = await Promise.all([
+        snippetApi.list(),
+        ruleApi.list(),
+        snippetApi.getOrder(),
+        ruleApi.getOrder(),
+      ])
       snippetsResp.value = sr.data
       rulesResp.value = rr.data
+      snippetOrders.value = snippetOrderResp.data
+      ruleOrders.value = ruleOrderResp.data
       _syncEditSnippet()
       _syncEditRule()
     } catch (error) {
@@ -341,13 +271,9 @@ export function useInjectorData() {
       return null
     }
     const nextRuleIds = _normalizeSnippetRuleIds(ruleIds)
-    const nextSnippet = {
-      ...snippet,
-      sortOrder: snippet.sortOrder ?? _nextSortOrder(snippets.value),
-    }
     creating.value = true
     try {
-      const res = await snippetApi.add(_makeSnippetPayload(nextSnippet, nextRuleIds))
+      const res = await snippetApi.add(_makeSnippetPayload(snippet, nextRuleIds))
       const id = res.data.id
       if (nextRuleIds.length) await _applySnippetRuleSelection(id, nextRuleIds)
       await fetchAll()
@@ -372,13 +298,9 @@ export function useInjectorData() {
       return null
     }
     const nextSnippetIds = _normalizeRuleSnippetIds(rule, snippetIds)
-    const nextRule = {
-      ...rule,
-      sortOrder: rule.sortOrder ?? _nextSortOrder(rules.value),
-    }
     creating.value = true
     try {
-      const payload = makeRulePayload(nextRule, nextSnippetIds)
+      const payload = makeRulePayload(rule, nextSnippetIds)
       if (!payload) {
         Toast.error('匹配规则有误，请先修正后再保存')
         return null
@@ -564,15 +486,12 @@ export function useInjectorData() {
   }
 
   function discardRuleEdit() {
-    if (editRule.value?.id) {
-      clearPersistedMatchRuleDraft(editRule.value.id, editRule.value.matchRuleSource)
-    }
     _syncEditRule()
   }
 
   /**
    * why: 左侧资源列表的拖拽排序属于持久化排序，而不是临时前端排序；
-   * 这里按当前显示顺序重排并一次性回写顺序值，同时保留编辑中的本地状态。
+   * 当前列表会被固化成显式的 1..n；未出现在 order map 里的新资源仍按默认 0 排到最前面。
    */
   async function reorderSnippet(payload: {
     sourceId: string
@@ -588,9 +507,8 @@ export function useInjectorData() {
     if (!ordered) {
       return
     }
-    snippetsResp.value.items = _applyLocalOrderedItems(snippetsResp.value.items, ordered)
-    _syncEditSnippetSystemFields(snippetsResp.value.items)
-    pendingSnippetOrderIds.value = _collectOrderIds(ordered)
+    snippetOrders.value = buildExplicitOrderMap(ordered)
+    pendingSnippetOrders.value = { ...snippetOrders.value }
     if (syncingSnippetReorder.value) {
       return
     }
@@ -599,20 +517,10 @@ export function useInjectorData() {
     savingReorder.value = true
     let updatedOnce = false
     try {
-      while (pendingSnippetOrderIds.value) {
-        const orderIds = pendingSnippetOrderIds.value
-        pendingSnippetOrderIds.value = null
-        const snapshot = _assignSortOrder(_restoreOrderByIds(snippetsResp.value.items, orderIds))
-        const updated = (
-          await snippetApi.reorder(
-            snapshot.map((snippet) => ({
-              id: snippet.id,
-              sortOrder: snippet.sortOrder ?? 0,
-            })),
-          )
-        ).data
-        snippetsResp.value.items = _mergeUpdatedItems(snippetsResp.value.items, updated)
-        _syncEditSnippetSystemFields(snippetsResp.value.items)
+      while (pendingSnippetOrders.value) {
+        const snapshot = pendingSnippetOrders.value
+        pendingSnippetOrders.value = null
+        snippetOrders.value = (await snippetApi.updateOrder(snapshot)).data
         updatedOnce = true
       }
       if (updatedOnce) {
@@ -641,9 +549,8 @@ export function useInjectorData() {
     if (!ordered) {
       return
     }
-    rulesResp.value.items = _applyLocalOrderedItems(rulesResp.value.items, ordered)
-    _syncEditRuleSystemFields(rulesResp.value.items)
-    pendingRuleOrderIds.value = _collectOrderIds(ordered)
+    ruleOrders.value = buildExplicitOrderMap(ordered)
+    pendingRuleOrders.value = { ...ruleOrders.value }
     if (syncingRuleReorder.value) {
       return
     }
@@ -652,20 +559,10 @@ export function useInjectorData() {
     savingReorder.value = true
     let updatedOnce = false
     try {
-      while (pendingRuleOrderIds.value) {
-        const orderIds = pendingRuleOrderIds.value
-        pendingRuleOrderIds.value = null
-        const snapshot = _assignSortOrder(_restoreOrderByIds(rulesResp.value.items, orderIds))
-        const updated = (
-          await ruleApi.reorder(
-            snapshot.map((rule) => ({
-              id: rule.id,
-              sortOrder: rule.sortOrder ?? 0,
-            })),
-          )
-        ).data
-        rulesResp.value.items = _mergeUpdatedItems(rulesResp.value.items, updated)
-        _syncEditRuleSystemFields(rulesResp.value.items)
+      while (pendingRuleOrders.value) {
+        const snapshot = pendingRuleOrders.value
+        pendingRuleOrders.value = null
+        ruleOrders.value = (await ruleApi.updateOrder(snapshot)).data
         updatedOnce = true
       }
       if (updatedOnce) {

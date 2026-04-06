@@ -29,13 +29,10 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
 
     private final ReactiveExtensionClient client;
     private final CodeSnippetValidator validator;
-    private final SortOrderEndpointSupport sortOrderEndpointSupport;
 
     @Override
     public RouterFunction<ServerResponse> endpoint() {
         return route(POST("/codeSnippets"), this::createSnippet)
-                .andRoute(PUT("/codeSnippets/reorder"), request ->
-                        sortOrderEndpointSupport.reorder(request, CodeSnippet.class, "代码块", CodeSnippet::setSortOrder))
                 .andRoute(PUT("/codeSnippets/{name}"), this::updateSnippet);
     }
 
