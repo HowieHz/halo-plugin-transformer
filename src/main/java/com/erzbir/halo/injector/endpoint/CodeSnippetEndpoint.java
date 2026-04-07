@@ -5,6 +5,7 @@ import com.erzbir.halo.injector.scheme.CodeSnippet;
 import com.erzbir.halo.injector.service.CodeSnippetDeletionService;
 import com.erzbir.halo.injector.util.CodeSnippetValidationException;
 import com.erzbir.halo.injector.util.CodeSnippetValidator;
+import com.erzbir.halo.injector.util.OptimisticConcurrencyGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -72,12 +73,18 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
                 .zipWhen(existing -> request.bodyToMono(CodeSnippet.class)
                         .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空"))))
                 .map(tuple -> {
+                    CodeSnippet existing = tuple.getT1();
                     CodeSnippet snippet = tuple.getT2();
                     if (snippet.getMetadata() == null
                             || snippet.getMetadata().getName() == null
                             || !Objects.equals(snippet.getMetadata().getName(), name)) {
                         throw new CodeSnippetValidationException("metadata.name 与路径参数不一致");
                     }
+                    OptimisticConcurrencyGuard.requireMatchingVersion(
+                            existing.getMetadata(),
+                            snippet.getMetadata(),
+                            "代码块"
+                    );
                     return deletionService.prepareForWrite(snippet);
                 })
                 .flatMap(validator::validateForWrite)
@@ -96,7 +103,7 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
         String name = request.pathVariable("name");
         return request.bodyToMono(EnabledPayload.class)
                 .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
-                .flatMap(payload -> updateSnippetEnabled(name, payload.enabled))
+                .flatMap(payload -> updateSnippetEnabled(name, payload))
                 .flatMap(updated -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(updated));
@@ -119,7 +126,8 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
      * why: 当用户只是切换启停时，后端必须基于已保存资源本体处理，
      * 不能让前端未保存草稿混进来，避免“启用偷偷保存 / 停用偷偷丢稿”。
      */
-    Mono<CodeSnippet> updateSnippetEnabled(String name, Boolean enabled) {
+    Mono<CodeSnippet> updateSnippetEnabled(String name, EnabledPayload payload) {
+        Boolean enabled = payload.enabled;
         if (enabled == null) {
             return Mono.error(new ServerWebInputException("enabled 不能为空"));
         }
@@ -129,6 +137,11 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
         return client.fetch(CodeSnippet.class, name)
                 .switchIfEmpty(Mono.error(new ServerWebInputException("未找到要更新的代码块")))
                 .flatMap(snippet -> {
+                    OptimisticConcurrencyGuard.requireMatchingVersion(
+                            snippet.getMetadata(),
+                            payload.metadata,
+                            "代码块"
+                    );
                     snippet.setEnabled(enabled);
                     return enabled ? validator.validateForWrite(snippet) : Mono.just(snippet);
                 })
@@ -139,6 +152,7 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
     @lombok.Data
     static final class EnabledPayload {
         private Boolean enabled;
+        private run.halo.app.extension.Metadata metadata;
     }
 
     @Override

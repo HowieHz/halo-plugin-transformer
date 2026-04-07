@@ -3,6 +3,7 @@ package com.erzbir.halo.injector.endpoint;
 import com.erzbir.halo.injector.scheme.CodeSnippet;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import com.erzbir.halo.injector.scheme.ResourceOrder;
+import com.erzbir.halo.injector.util.OptimisticConcurrencyGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -56,10 +57,10 @@ public class ResourceOrderEndpoint implements CustomEndpoint {
     private <T extends AbstractExtension> Mono<ServerResponse> getOrder(ServerRequest request, String orderName,
                                                                         Class<T> resourceType,
                                                                         Function<T, String> displayNameGetter) {
-        return buildEffectiveOrders(orderName, resourceType, displayNameGetter)
-                .flatMap(orders -> ServerResponse.ok()
+        return buildEffectiveOrderState(orderName, resourceType, displayNameGetter)
+                .flatMap(orderState -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(orders));
+                        .bodyValue(orderState));
     }
 
     private <T extends AbstractExtension> Mono<ServerResponse> putOrder(ServerRequest request, String orderName,
@@ -69,14 +70,14 @@ public class ResourceOrderEndpoint implements CustomEndpoint {
                 .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
                 .flatMap(payload -> saveOrder(payload, orderName, resourceLabel, resourceType,
                         displayNameGetter))
-                .flatMap(orders -> ServerResponse.ok()
+                .flatMap(orderState -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(orders));
+                        .bodyValue(orderState));
     }
 
-    <T extends AbstractExtension> Mono<Map<String, Integer>> buildEffectiveOrders(String orderName,
-                                                                                  Class<T> resourceType,
-                                                                                  Function<T, String> displayNameGetter) {
+    <T extends AbstractExtension> Mono<OrderState> buildEffectiveOrderState(String orderName,
+                                                                            Class<T> resourceType,
+                                                                            Function<T, String> displayNameGetter) {
         return Mono.zip(
                         client.list(resourceType, null, null).collectList(),
                         findStoredOrder(orderName).defaultIfEmpty(new ResourceOrder())
@@ -86,13 +87,16 @@ public class ResourceOrderEndpoint implements CustomEndpoint {
                     ResourceOrder storedOrder = tuple.getT2();
                     Map<String, Integer> sourceOrders =
                             storedOrder.getOrders() == null ? Map.of() : storedOrder.getOrders();
-                    return sanitizeOrders(sourceOrders, resources, displayNameGetter);
+                    return new OrderState(
+                            sanitizeOrders(sourceOrders, resources, displayNameGetter),
+                            storedOrder.getMetadata() == null ? null : storedOrder.getMetadata().getVersion()
+                    );
                 });
     }
 
-    <T extends AbstractExtension> Mono<Map<String, Integer>> saveOrder(OrderPayload payload, String orderName,
-                                                                       String resourceLabel, Class<T> resourceType,
-                                                                       Function<T, String> displayNameGetter) {
+    <T extends AbstractExtension> Mono<OrderState> saveOrder(OrderPayload payload, String orderName,
+                                                             String resourceLabel, Class<T> resourceType,
+                                                             Function<T, String> displayNameGetter) {
         return client.list(resourceType, null, null)
                 .collectList()
                 .flatMap(resources -> {
@@ -101,10 +105,20 @@ public class ResourceOrderEndpoint implements CustomEndpoint {
                     return findStoredOrder(orderName)
                             .defaultIfEmpty(newResourceOrder(orderName))
                             .flatMap(order -> {
+                                if (order.getMetadata() != null && order.getMetadata().getVersion() != null) {
+                                    OptimisticConcurrencyGuard.requireMatchingVersion(
+                                            order.getMetadata(),
+                                            payload.getMetadata(),
+                                            resourceLabel + "排序配置"
+                                    );
+                                }
                                 order.setOrders(sanitizedOrders);
                                 return persistOrder(order);
                             })
-                            .thenReturn(sanitizedOrders);
+                            .map(saved -> new OrderState(
+                                    sanitizedOrders,
+                                    saved.getMetadata() == null ? null : saved.getMetadata().getVersion()
+                            ));
                 });
     }
 
@@ -217,5 +231,13 @@ public class ResourceOrderEndpoint implements CustomEndpoint {
     @lombok.Data
     static class OrderPayload {
         private Map<String, Integer> orders = new LinkedHashMap<>();
+        private Metadata metadata;
+    }
+
+    @lombok.Data
+    @lombok.AllArgsConstructor
+    static class OrderState {
+        private Map<String, Integer> orders;
+        private Long version;
     }
 }

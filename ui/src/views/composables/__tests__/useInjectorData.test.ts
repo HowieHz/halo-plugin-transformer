@@ -89,9 +89,9 @@ describe('useInjectorData', () => {
     delete (savedRule as { matchRuleSource?: unknown }).matchRuleSource
 
     snippetApi.list.mockResolvedValue({ data: listOf([]) })
-    snippetApi.getOrder.mockResolvedValue({ data: {} })
+    snippetApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } })
     ruleApi.list.mockResolvedValue({ data: listOf([savedRule]) })
-    ruleApi.getOrder.mockResolvedValue({ data: {} })
+    ruleApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } })
     ruleApi.updateEnabled.mockResolvedValue({ data: { ...savedRule, enabled: true } })
 
     const store = useInjectorData()
@@ -130,10 +130,10 @@ describe('useInjectorData', () => {
     })
 
     snippetApi.list.mockResolvedValue({ data: listOf([savedSnippet]) })
-    snippetApi.getOrder.mockResolvedValue({ data: {} })
+    snippetApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } })
     snippetApi.updateEnabled.mockResolvedValue({ data: { ...savedSnippet, enabled: true } })
     ruleApi.list.mockResolvedValue({ data: listOf([]) })
-    ruleApi.getOrder.mockResolvedValue({ data: {} })
+    ruleApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } })
 
     const store = useInjectorData()
     await store.fetchAll()
@@ -187,9 +187,9 @@ describe('useInjectorData', () => {
     })
 
     snippetApi.list.mockResolvedValue({ data: listOf([savedSnippet]) })
-    snippetApi.getOrder.mockResolvedValue({ data: {} })
+    snippetApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } })
     ruleApi.list.mockResolvedValue({ data: listOf([savedRule]) })
-    ruleApi.getOrder.mockResolvedValue({ data: {} })
+    ruleApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } })
     ruleApi.update.mockResolvedValue({ data: savedRule })
 
     const store = useInjectorData()
@@ -245,11 +245,11 @@ describe('useInjectorData', () => {
     delete (ruleB as { matchRuleSource?: unknown }).matchRuleSource
 
     snippetApi.list.mockResolvedValue({ data: listOf([]) })
-    snippetApi.getOrder.mockResolvedValue({ data: {} })
+    snippetApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } })
     ruleApi.list.mockResolvedValue({ data: listOf([ruleA, ruleB]) })
     ruleApi.getOrder
-      .mockResolvedValueOnce({ data: { 'rule-a': 10, 'rule-b': 20 } })
-      .mockResolvedValueOnce({ data: { 'rule-a': 10, 'rule-b': 20 } })
+      .mockResolvedValueOnce({ data: { orders: { 'rule-a': 10, 'rule-b': 20 }, version: 1 } })
+      .mockResolvedValueOnce({ data: { orders: { 'rule-a': 10, 'rule-b': 20 }, version: 1 } })
     ruleApi.updateOrder.mockRejectedValue(new Error('boom'))
 
     const store = useInjectorData()
@@ -293,11 +293,15 @@ describe('useInjectorData', () => {
 
     snippetApi.list.mockResolvedValue({ data: listOf([snippetA, snippetB]) })
     snippetApi.getOrder
-      .mockResolvedValueOnce({ data: { 'snippet-a': 10, 'snippet-b': 20 } })
-      .mockResolvedValueOnce({ data: { 'snippet-a': 10, 'snippet-b': 20 } })
+      .mockResolvedValueOnce({
+        data: { orders: { 'snippet-a': 10, 'snippet-b': 20 }, version: 1 },
+      })
+      .mockResolvedValueOnce({
+        data: { orders: { 'snippet-a': 10, 'snippet-b': 20 }, version: 1 },
+      })
     snippetApi.updateOrder.mockRejectedValue(new Error('boom'))
     ruleApi.list.mockResolvedValue({ data: listOf([]) })
-    ruleApi.getOrder.mockResolvedValue({ data: {} })
+    ruleApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } })
 
     const store = useInjectorData()
     await store.fetchAll()

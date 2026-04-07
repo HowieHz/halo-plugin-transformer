@@ -2,7 +2,9 @@ package com.erzbir.halo.injector.endpoint;
 
 import com.erzbir.halo.injector.scheme.CodeSnippet;
 import com.erzbir.halo.injector.scheme.InjectionRule;
+import com.erzbir.halo.injector.util.OptimisticConcurrencyGuard;
 import org.junit.jupiter.api.Test;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebInputException;
 import run.halo.app.extension.Metadata;
 
@@ -67,6 +69,36 @@ class ResourceOrderEndpointTest {
         );
 
         assertEquals(Map.of("snippet-a", 1), sanitized);
+    }
+
+    // why: 排序接口现在依赖 Halo 的 metadata.version 做乐观并发；
+    // payload 必须显式携带版本，不能再默默退回 last-write-wins。
+    @Test
+    void shouldExposeOrderPayloadVersion() {
+        ResourceOrderEndpoint.OrderPayload payload = new ResourceOrderEndpoint.OrderPayload();
+        Metadata metadata = new Metadata();
+        metadata.setVersion(12L);
+        payload.setMetadata(metadata);
+
+        assertEquals(12L, payload.getMetadata().getVersion());
+    }
+
+    // why: 排序拖拽的冲突语义必须是显式 409；
+    // 否则平台有 version，插件接口却还在静默覆盖，等于把 Halo 的保护绕掉了。
+    @Test
+    void shouldRejectStaleOrderVersion() {
+        Metadata persisted = new Metadata();
+        persisted.setVersion(5L);
+        Metadata incoming = new Metadata();
+        incoming.setVersion(4L);
+
+        ResponseStatusException error = assertThrows(
+                ResponseStatusException.class,
+                () -> OptimisticConcurrencyGuard.requireMatchingVersion(persisted, incoming, "代码块排序配置")
+        );
+
+        assertEquals(409, error.getStatusCode().value());
+        assertEquals("代码块排序配置已被其他人修改，请刷新后重试", error.getReason());
     }
 
     private InjectionRule rule(String id, String name) {

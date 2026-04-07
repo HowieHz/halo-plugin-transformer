@@ -7,6 +7,7 @@ import com.erzbir.halo.injector.util.InjectionRuleValidationException;
 import com.erzbir.halo.injector.util.InjectionRuleValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
@@ -44,13 +45,14 @@ class InjectionRuleEndpointTest {
     @Test
     void shouldToggleRuleEnabledUsingPersistedRuleOnly() {
         InjectionRule rule = rule("rule-a", false);
+        rule.getMetadata().setVersion(9L);
         when(client.fetch(InjectionRule.class, "rule-a")).thenReturn(Mono.just(rule));
         when(validator.validateForWrite(any(InjectionRule.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
         when(snippetReferenceService.normalizeAndValidateSnippetIds(eq(rule.getSnippetIds())))
                 .thenReturn(Mono.just(new LinkedHashSet<>(rule.getSnippetIds())));
         when(client.update(any(InjectionRule.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
-        InjectionRule updated = endpoint.updateRuleEnabled("rule-a", true).block();
+        InjectionRule updated = endpoint.updateRuleEnabled("rule-a", enabledPayload(true, 9L)).block();
 
         assertEquals(true, updated.isEnabled());
         verify(client).update(any(InjectionRule.class));
@@ -62,10 +64,11 @@ class InjectionRuleEndpointTest {
     @Test
     void shouldDisableRuleWithoutRevalidatingIt() {
         InjectionRule rule = rule("rule-a", true);
+        rule.getMetadata().setVersion(4L);
         when(client.fetch(InjectionRule.class, "rule-a")).thenReturn(Mono.just(rule));
         when(client.update(any(InjectionRule.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
-        InjectionRule updated = endpoint.updateRuleEnabled("rule-a", false).block();
+        InjectionRule updated = endpoint.updateRuleEnabled("rule-a", enabledPayload(false, 4L)).block();
 
         assertEquals(false, updated.isEnabled());
         verify(validator, never()).validateForWrite(any(InjectionRule.class));
@@ -77,6 +80,7 @@ class InjectionRuleEndpointTest {
     @Test
     void shouldRejectEnablingInvalidPersistedRule() {
         InjectionRule rule = rule("rule-a", false);
+        rule.getMetadata().setVersion(11L);
         rule.setMode(InjectionRule.Mode.SELECTOR);
         rule.setMatch("");
         when(client.fetch(InjectionRule.class, "rule-a")).thenReturn(Mono.just(rule));
@@ -89,9 +93,26 @@ class InjectionRuleEndpointTest {
 
         InjectionRuleValidationException validationError = assertThrows(
                 InjectionRuleValidationException.class,
-                () -> endpointWithRealValidator.updateRuleEnabled("rule-a", true).block()
+                () -> endpointWithRealValidator.updateRuleEnabled("rule-a", enabledPayload(true, 11L)).block()
         );
         assertEquals("match：请填写匹配内容", validationError.getReason());
+        verify(client, never()).update(any(InjectionRule.class));
+    }
+
+    // why: 规则启停也必须带最新版本；否则旧页面可以把别人刚保存的 enabled 状态无提示覆盖掉。
+    @Test
+    void shouldRejectTogglingRuleEnabledWithStaleVersion() {
+        InjectionRule rule = rule("rule-a", false);
+        rule.getMetadata().setVersion(8L);
+        when(client.fetch(InjectionRule.class, "rule-a")).thenReturn(Mono.just(rule));
+
+        ResponseStatusException error = assertThrows(
+                ResponseStatusException.class,
+                () -> endpoint.updateRuleEnabled("rule-a", enabledPayload(true, 7L)).block()
+        );
+
+        assertEquals(409, error.getStatusCode().value());
+        assertEquals("注入规则已被其他人修改，请刷新后重试", error.getReason());
         verify(client, never()).update(any(InjectionRule.class));
     }
 
@@ -108,5 +129,14 @@ class InjectionRuleEndpointTest {
         rule.setMatchRule(com.erzbir.halo.injector.core.MatchRule.defaultRule());
         rule.setMatch("");
         return rule;
+    }
+
+    private InjectionRuleEndpoint.EnabledPayload enabledPayload(boolean enabled, long version) {
+        InjectionRuleEndpoint.EnabledPayload payload = new InjectionRuleEndpoint.EnabledPayload();
+        payload.setEnabled(enabled);
+        Metadata metadata = new Metadata();
+        metadata.setVersion(version);
+        payload.setMetadata(metadata);
+        return payload;
     }
 }

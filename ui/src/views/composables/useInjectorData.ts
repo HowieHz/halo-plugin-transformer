@@ -60,6 +60,8 @@ export function useInjectorData() {
   const rulesResp = ref<ItemList<InjectionRuleReadModel>>(emptyList())
   const snippetOrders = ref<OrderMap>({})
   const ruleOrders = ref<OrderMap>({})
+  const snippetOrderVersion = ref<number | null>(null)
+  const ruleOrderVersion = ref<number | null>(null)
 
   const snippets = computed(() => sortByOrderMap(snippetsResp.value.items, snippetOrders.value))
   const rules = computed(() => sortByOrderMap(rulesResp.value.items, ruleOrders.value))
@@ -142,7 +144,9 @@ export function useInjectorData() {
     const nextOrders = buildExplicitOrderMap(items)
     snippetOrders.value = { ...nextOrders }
     try {
-      snippetOrders.value = (await snippetApi.updateOrder(nextOrders)).data
+      const response = await snippetApi.updateOrder(nextOrders, snippetOrderVersion.value)
+      snippetOrders.value = response.data.orders
+      snippetOrderVersion.value = response.data.version
       return true
     } catch (error) {
       return getErrorMessage(error, '代码块顺序保存失败')
@@ -153,7 +157,9 @@ export function useInjectorData() {
     const nextOrders = buildExplicitOrderMap(items)
     ruleOrders.value = { ...nextOrders }
     try {
-      ruleOrders.value = (await ruleApi.updateOrder(nextOrders)).data
+      const response = await ruleApi.updateOrder(nextOrders, ruleOrderVersion.value)
+      ruleOrders.value = response.data.orders
+      ruleOrderVersion.value = response.data.version
       return true
     } catch (error) {
       return getErrorMessage(error, '注入规则顺序保存失败')
@@ -190,8 +196,10 @@ export function useInjectorData() {
         ])
       snippetsResp.value = snippetResponse.data
       rulesResp.value = ruleResponse.data
-      snippetOrders.value = snippetOrderResponse.data
-      ruleOrders.value = ruleOrderResponse.data
+      snippetOrders.value = snippetOrderResponse.data.orders
+      ruleOrders.value = ruleOrderResponse.data.orders
+      snippetOrderVersion.value = snippetOrderResponse.data.version
+      ruleOrderVersion.value = ruleOrderResponse.data.version
       hydrateSelectedSnippetDraft()
       hydrateSelectedRuleDraft()
     } catch (error) {
@@ -202,11 +210,15 @@ export function useInjectorData() {
   }
 
   async function reloadSnippetOrders() {
-    snippetOrders.value = (await snippetApi.getOrder()).data
+    const response = await snippetApi.getOrder()
+    snippetOrders.value = response.data.orders
+    snippetOrderVersion.value = response.data.version
   }
 
   async function reloadRuleOrders() {
-    ruleOrders.value = (await ruleApi.getOrder()).data
+    const response = await ruleApi.getOrder()
+    ruleOrders.value = response.data.orders
+    ruleOrderVersion.value = response.data.version
   }
 
   function hydrateSelectedSnippetDraft() {
@@ -378,7 +390,11 @@ export function useInjectorData() {
     const nextEnabled = !editSnippet.value.enabled
     const previousEnabled = editSnippet.value.enabled
     try {
-      const response = await snippetApi.updateEnabled(editSnippet.value.id, nextEnabled)
+      const response = await snippetApi.updateEnabled(
+        editSnippet.value.id,
+        nextEnabled,
+        editSnippet.value.metadata.version,
+      )
       applySavedSnippetSnapshot(response.data)
       Toast.success(nextEnabled ? '代码块已启用' : '代码块已停用')
     } catch (error) {
@@ -392,7 +408,11 @@ export function useInjectorData() {
     const nextEnabled = !editRule.value.enabled
     const previousEnabled = editRule.value.enabled
     try {
-      const response = await ruleApi.updateEnabled(editRule.value.id, nextEnabled)
+      const response = await ruleApi.updateEnabled(
+        editRule.value.id,
+        nextEnabled,
+        editRule.value.metadata.version,
+      )
       applySavedRuleSnapshot(response.data)
       Toast.success(nextEnabled ? '规则已启用' : '规则已停用')
     } catch (error) {
@@ -498,7 +518,9 @@ export function useInjectorData() {
       while (pendingSnippetOrders.value) {
         const snapshot = pendingSnippetOrders.value
         pendingSnippetOrders.value = null
-        snippetOrders.value = (await snippetApi.updateOrder(snapshot)).data
+        const response = await snippetApi.updateOrder(snapshot, snippetOrderVersion.value)
+        snippetOrders.value = response.data.orders
+        snippetOrderVersion.value = response.data.version
         updatedOnce = true
       }
       if (updatedOnce) {
@@ -538,7 +560,9 @@ export function useInjectorData() {
       while (pendingRuleOrders.value) {
         const snapshot = pendingRuleOrders.value
         pendingRuleOrders.value = null
-        ruleOrders.value = (await ruleApi.updateOrder(snapshot)).data
+        const response = await ruleApi.updateOrder(snapshot, ruleOrderVersion.value)
+        ruleOrders.value = response.data.orders
+        ruleOrderVersion.value = response.data.version
         updatedOnce = true
       }
       if (updatedOnce) {

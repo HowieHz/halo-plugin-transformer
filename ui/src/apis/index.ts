@@ -17,6 +17,10 @@ const RULES_WRITE = `${CONSOLE_BASE}/injectionRules`
 const RULE_ORDER = `${CONSOLE_BASE}/rule-order`
 
 export type OrderMap = Record<string, number>
+export interface PersistedOrderState {
+  orders: OrderMap
+  version: number | null
+}
 
 export const snippetApi = {
   list() {
@@ -31,16 +35,22 @@ export const snippetApi = {
     return axiosInstance.put<CodeSnippetReadModel>(`${SNIPPETS_WRITE}/${id}`, snippet)
   },
 
-  updateEnabled(id: string, enabled: boolean) {
-    return axiosInstance.put<CodeSnippetReadModel>(`${SNIPPETS_WRITE}/${id}/enabled`, { enabled })
+  updateEnabled(id: string, enabled: boolean, version: number | null | undefined) {
+    return axiosInstance.put<CodeSnippetReadModel>(`${SNIPPETS_WRITE}/${id}/enabled`, {
+      enabled,
+      metadata: { version: version ?? null },
+    })
   },
 
   getOrder() {
-    return axiosInstance.get<OrderMap>(SNIPPET_ORDER)
+    return axiosInstance.get<PersistedOrderState>(SNIPPET_ORDER)
   },
 
-  updateOrder(orders: OrderMap) {
-    return axiosInstance.put<OrderMap>(SNIPPET_ORDER, { orders })
+  updateOrder(orders: OrderMap, version: number | null | undefined) {
+    return axiosInstance.put<PersistedOrderState>(SNIPPET_ORDER, {
+      orders,
+      metadata: { version: version ?? null },
+    })
   },
 
   delete(id: string) {
@@ -61,16 +71,22 @@ export const ruleApi = {
     return axiosInstance.put<InjectionRuleReadModel>(`${RULES_WRITE}/${id}`, rule)
   },
 
-  updateEnabled(id: string, enabled: boolean) {
-    return axiosInstance.put<InjectionRuleReadModel>(`${RULES_WRITE}/${id}/enabled`, { enabled })
+  updateEnabled(id: string, enabled: boolean, version: number | null | undefined) {
+    return axiosInstance.put<InjectionRuleReadModel>(`${RULES_WRITE}/${id}/enabled`, {
+      enabled,
+      metadata: { version: version ?? null },
+    })
   },
 
   getOrder() {
-    return axiosInstance.get<OrderMap>(RULE_ORDER)
+    return axiosInstance.get<PersistedOrderState>(RULE_ORDER)
   },
 
-  updateOrder(orders: OrderMap) {
-    return axiosInstance.put<OrderMap>(RULE_ORDER, { orders })
+  updateOrder(orders: OrderMap, version: number | null | undefined) {
+    return axiosInstance.put<PersistedOrderState>(RULE_ORDER, {
+      orders,
+      metadata: { version: version ?? null },
+    })
   },
 
   delete(id: string) {

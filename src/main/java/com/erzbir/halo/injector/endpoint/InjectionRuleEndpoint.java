@@ -5,6 +5,7 @@ import com.erzbir.halo.injector.scheme.InjectionRule;
 import com.erzbir.halo.injector.service.SnippetReferenceService;
 import com.erzbir.halo.injector.util.InjectionRuleValidationException;
 import com.erzbir.halo.injector.util.InjectionRuleValidator;
+import com.erzbir.halo.injector.util.OptimisticConcurrencyGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -73,12 +74,18 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
                 .zipWhen(existing -> request.bodyToMono(InjectionRule.class)
                         .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空"))))
                 .map(tuple -> {
+                    InjectionRule existing = tuple.getT1();
                     InjectionRule rule = tuple.getT2();
                     if (rule.getMetadata() == null
                             || !StringUtils.hasText(rule.getMetadata().getName())
                             || !Objects.equals(rule.getMetadata().getName(), name)) {
                         throw new InjectionRuleValidationException("metadata.name 与路径参数不一致");
                     }
+                    OptimisticConcurrencyGuard.requireMatchingVersion(
+                            existing.getMetadata(),
+                            rule.getMetadata(),
+                            "注入规则"
+                    );
                     return tuple;
                 })
                 .flatMap(tuple -> validator.validateForWrite(tuple.getT2())
@@ -98,7 +105,7 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
         String name = request.pathVariable("name");
         return request.bodyToMono(EnabledPayload.class)
                 .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
-                .flatMap(payload -> updateRuleEnabled(name, payload.enabled))
+                .flatMap(payload -> updateRuleEnabled(name, payload))
                 .flatMap(updated -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(updated));
@@ -121,7 +128,8 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
      * why: 规则启用时必须基于已保存规则重新做完整可运行校验；
      * 这样即使前端当前有未保存草稿，启停语义也始终只围绕已持久化资源展开。
      */
-    Mono<InjectionRule> updateRuleEnabled(String name, Boolean enabled) {
+    Mono<InjectionRule> updateRuleEnabled(String name, EnabledPayload payload) {
+        Boolean enabled = payload.enabled;
         if (enabled == null) {
             return Mono.error(new ServerWebInputException("enabled 不能为空"));
         }
@@ -131,6 +139,11 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
         return client.fetch(InjectionRule.class, name)
                 .switchIfEmpty(Mono.error(new ServerWebInputException("未找到要更新的规则")))
                 .flatMap(rule -> {
+                    OptimisticConcurrencyGuard.requireMatchingVersion(
+                            rule.getMetadata(),
+                            payload.metadata,
+                            "注入规则"
+                    );
                     rule.setEnabled(enabled);
                     if (!enabled) {
                         return Mono.just(rule);
@@ -176,5 +189,6 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
     @lombok.Data
     static final class EnabledPayload {
         private Boolean enabled;
+        private run.halo.app.extension.Metadata metadata;
     }
 }
