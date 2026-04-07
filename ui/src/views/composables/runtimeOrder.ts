@@ -43,3 +43,26 @@ export function snapRuntimeOrderToPreset(value: number) {
 
   return normalized
 }
+
+/**
+ * why: 视觉提示应该帮助用户理解“当前处在哪个优先级区间”，
+ * 而不是再把大整数原样抛回界面，增加理解成本。
+ */
+export function describeRuntimeOrderRange(value: number) {
+  const normalized = clampRuntimeOrder(value)
+  const exactStep = RUNTIME_ORDER_STEPS.find((step) => step.value === normalized)
+  if (exactStep) {
+    return `当前档位：${exactStep.label}`
+  }
+
+  for (let index = 0; index < RUNTIME_ORDER_STEPS.length - 1; index += 1) {
+    const lower = RUNTIME_ORDER_STEPS[index]
+    const upper = RUNTIME_ORDER_STEPS[index + 1]
+    if (normalized > lower.value && normalized < upper.value) {
+      return `当前介于：${lower.label} 与 ${upper.label} 之间`
+    }
+  }
+
+  const lastStep = RUNTIME_ORDER_STEPS[RUNTIME_ORDER_STEPS.length - 1]
+  return `当前档位：${lastStep?.label ?? '最低'}`
+}

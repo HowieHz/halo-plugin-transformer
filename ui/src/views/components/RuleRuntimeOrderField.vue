@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { RUNTIME_ORDER_MAX, RUNTIME_ORDER_STEPS } from '@/types'
 import {
   clampRuntimeOrder,
+  describeRuntimeOrderRange,
   formatRuntimeOrder,
   snapRuntimeOrderToPreset,
 } from '@/views/composables/runtimeOrder'
@@ -33,6 +34,8 @@ const currentStepLabel = computed(() => {
   }
   return `自定义 ${formatRuntimeOrder(props.modelValue)}`
 })
+
+const currentRangeHint = computed(() => describeRuntimeOrderRange(props.modelValue))
 
 function updateRuntimeOrder(value: number) {
   emit('update:modelValue', clampRuntimeOrder(value))
@@ -144,6 +147,6 @@ function toggleEditMode() {
       </div>
     </template>
 
-    <p v-if="manualMode" class=":uno: text-xs text-gray-500">当前：{{ currentStepLabel }}</p>
+    <p class=":uno: text-xs text-gray-500">{{ currentRangeHint }}</p>
   </div>
 </template>

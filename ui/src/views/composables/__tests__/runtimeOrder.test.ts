@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { clampRuntimeOrder, formatRuntimeOrder, snapRuntimeOrderToPreset } from '../runtimeOrder'
+import {
+  clampRuntimeOrder,
+  describeRuntimeOrderRange,
+  formatRuntimeOrder,
+  snapRuntimeOrderToPreset,
+} from '../runtimeOrder'
 import { RUNTIME_ORDER_DEFAULT, RUNTIME_ORDER_MAX, RUNTIME_ORDER_STEPS } from '@/types'
 
 describe('runtimeOrder', () => {
@@ -25,6 +30,14 @@ describe('runtimeOrder', () => {
     )
     expect(snapRuntimeOrderToPreset(RUNTIME_ORDER_STEPS[2].value + 100_000_000)).toBe(
       RUNTIME_ORDER_STEPS[2].value + 100_000_000,
+    )
+  })
+
+  // why: 界面提示应解释当前所处优先级区间，而不是把难读的大整数直接回显给用户。
+  it('describes the current runtime order range without exposing raw integers', () => {
+    expect(describeRuntimeOrderRange(RUNTIME_ORDER_STEPS[0].value)).toBe('当前档位：最高')
+    expect(describeRuntimeOrderRange(RUNTIME_ORDER_STEPS[2].value + 100_000_000)).toBe(
+      '当前介于：较高 与 普通 之间',
     )
   })
 })
