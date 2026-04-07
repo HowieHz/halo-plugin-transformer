@@ -1,4 +1,4 @@
-<script lang="ts" setup>
+﻿<script lang="ts" setup>
 import { computed, ref, watch } from 'vue'
 import { RUNTIME_ORDER_MAX, RUNTIME_ORDER_STEPS } from '@/types'
 import {
@@ -8,7 +8,7 @@ import {
   snapRuntimeOrderToPreset,
 } from '@/views/composables/runtimeOrder'
 
-const RUNTIME_ORDER_HORIZONTAL_INSET_PX = 12
+const RUNTIME_ORDER_HORIZONTAL_INSET_PX = 16
 
 const props = defineProps<{
   modelValue: number
