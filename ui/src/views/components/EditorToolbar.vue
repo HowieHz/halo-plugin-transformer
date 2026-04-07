@@ -29,12 +29,12 @@ const emit = defineEmits<{
     <VSpace v-if="showActions">
       <VButton
         v-if="showExport"
-        aria-label="导出当前内容为 JSON"
+        aria-label="导出当前内容"
         size="sm"
-        title="导出当前内容为 JSON"
+        title="导出当前内容"
         @click="emit('export')"
       >
-        导出 JSON
+        导出
       </VButton>
       <VButton
         :aria-label="enabled ? '禁用当前内容' : '启用当前内容'"

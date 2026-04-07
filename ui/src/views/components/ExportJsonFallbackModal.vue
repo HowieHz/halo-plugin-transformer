@@ -54,10 +54,10 @@ async function copyAll() {
 </script>
 
 <template>
-  <VModal title="导出 JSON" :width="860" @close="emit('close')">
+  <VModal title="导出" :width="860" @close="emit('close')">
     <div class=":uno: space-y-3">
       <p class=":uno: text-sm leading-6 text-gray-700">
-        你可以预览下面这份 JSON，并选择“复制全部”或“另存为”。
+        你可以预览下面的内容，然后选择“复制全部”或“另存为”。
       </p>
       <textarea
         ref="textareaRef"
