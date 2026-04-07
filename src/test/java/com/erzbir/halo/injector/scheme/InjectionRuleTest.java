@@ -9,6 +9,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class InjectionRuleTest {
@@ -58,5 +59,44 @@ class InjectionRuleTest {
         String json = objectMapper.writeValueAsString(rule);
 
         assertFalse(json.contains("\"valid\""));
+    }
+
+    // why: 删除独立 ID 模式后，历史规则仍可能以旧值存在；
+    // 读取期必须把它无损迁成 SELECTOR，并把旧 id 值改写成 #id 选择器，避免启动时直接炸。
+    @Test
+    void shouldMigrateLegacyIdModeToSelectorWithHashPrefixedMatch() throws Exception {
+        InjectionRule rule = objectMapper.readValue("""
+                {
+                  "metadata": {
+                    "name": "rule-a"
+                  },
+                  "mode": "ID",
+                  "match": "main-content"
+                }
+                """, InjectionRule.class);
+
+        assertEquals(InjectionRule.Mode.SELECTOR, rule.getMode());
+        assertEquals("#main-content", rule.getMatch());
+    }
+
+    // why: 迁移兼容只发生在读取旧数据时；重新序列化时必须只输出新语义，
+    // 避免再把已经废弃的 ID 模式写回持久化层。
+    @Test
+    void shouldSerializeMigratedLegacyIdModeAsSelectorOnly() throws Exception {
+        InjectionRule rule = objectMapper.readValue("""
+                {
+                  "metadata": {
+                    "name": "rule-a"
+                  },
+                  "mode": "ID",
+                  "match": "main-content"
+                }
+                """, InjectionRule.class);
+
+        String json = objectMapper.writeValueAsString(rule);
+
+        assertTrue(json.contains("\"mode\":\"SELECTOR\""));
+        assertTrue(json.contains("\"match\":\"#main-content\""));
+        assertFalse(json.contains("\"mode\":\"ID\""));
     }
 }
