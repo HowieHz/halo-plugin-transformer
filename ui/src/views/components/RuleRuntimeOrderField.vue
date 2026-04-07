@@ -8,7 +8,7 @@ import {
   snapRuntimeOrderToPreset,
 } from '@/views/composables/runtimeOrder'
 
-const RUNTIME_ORDER_HORIZONTAL_INSET_PX = 8
+const RUNTIME_ORDER_HORIZONTAL_INSET_PX = 12
 
 const props = defineProps<{
   modelValue: number
