@@ -58,16 +58,16 @@ class InjectionRuleManagerTest {
         verify(client).watch(any(Watcher.class));
     }
 
-    // why: 当前快照应由 Halo watch 事件驱动刷新；
-    // 规则更新后不需要等 TTL，自身事件就应把新快照推到运行时读路径。
+    // why: 当前快照应由 Halo watch 事件直接增量更新；
+    // 规则更新后不需要再整表 list，自身事件就应把新快照推到运行时读路径。
     @Test
-    void shouldRefreshSnapshotFromWatchEvents() {
+    void shouldApplyWatchEventsWithoutFullReload() {
         AtomicInteger fetchCount = new AtomicInteger();
         when(client.list(InjectionRule.class, null, null)).thenAnswer(invocation -> {
             int round = fetchCount.incrementAndGet();
             return round == 1
-                    ? Flux.just(rule("rule-a", InjectionRule.Mode.SELECTOR, true, "main"))
-                    : Flux.just(rule("rule-b", InjectionRule.Mode.SELECTOR, true, "main"));
+                    ? Flux.just(namedRule("rule-a", "Before", InjectionRule.Mode.SELECTOR, true, "main"))
+                    : Flux.just(namedRule("rule-a", "After", InjectionRule.Mode.SELECTOR, true, "main"));
         });
 
         ArgumentCaptor<Watcher> watcherCaptor = ArgumentCaptor.forClass(Watcher.class);
@@ -78,13 +78,48 @@ class InjectionRuleManagerTest {
                 .collectList()
                 .block()
                 .stream()
-                .map(InjectionRule::getId)
+                .map(InjectionRule::getName)
                 .toList()
-                .equals(List.of("rule-a")));
+                .equals(List.of("Before")));
 
         watcherCaptor.getValue().onUpdate(
-                rule("rule-a", InjectionRule.Mode.SELECTOR, true, "main"),
-                rule("rule-b", InjectionRule.Mode.SELECTOR, true, "main")
+                namedRule("rule-a", "Before", InjectionRule.Mode.SELECTOR, true, "main"),
+                namedRule("rule-a", "After", InjectionRule.Mode.SELECTOR, true, "main")
+        );
+
+        waitUntil(() -> manager.listActiveByMode(InjectionRule.Mode.SELECTOR)
+                .collectList()
+                .block()
+                .stream()
+                .map(InjectionRule::getName)
+                .toList()
+                .equals(List.of("After")));
+
+        assertEquals(1, fetchCount.get());
+    }
+
+    // why: enabled 但暂时非法的规则不应污染运行时快照；
+    // 一旦同名规则被后续 watch 事件修正，缓存也应在不整表重载的前提下立刻恢复。
+    @Test
+    void shouldRecoverSkippedEnabledRuleFromSubsequentWatchUpdate() {
+        AtomicInteger fetchCount = new AtomicInteger();
+        when(client.list(InjectionRule.class, null, null)).thenAnswer(invocation -> {
+            fetchCount.incrementAndGet();
+            return Flux.just(rule("rule-a", InjectionRule.Mode.SELECTOR, true, ""));
+        });
+
+        ArgumentCaptor<Watcher> watcherCaptor = ArgumentCaptor.forClass(Watcher.class);
+        manager.startWatching();
+        verify(client).watch(watcherCaptor.capture());
+
+        waitUntil(() -> manager.listActiveByMode(InjectionRule.Mode.SELECTOR)
+                .collectList()
+                .block()
+                .isEmpty());
+
+        watcherCaptor.getValue().onUpdate(
+                rule("rule-a", InjectionRule.Mode.SELECTOR, true, ""),
+                rule("rule-a", InjectionRule.Mode.SELECTOR, true, "main")
         );
 
         waitUntil(() -> manager.listActiveByMode(InjectionRule.Mode.SELECTOR)
@@ -93,9 +128,9 @@ class InjectionRuleManagerTest {
                 .stream()
                 .map(InjectionRule::getId)
                 .toList()
-                .equals(List.of("rule-b")));
+                .equals(List.of("rule-a")));
 
-        assertEquals(2, fetchCount.get());
+        assertEquals(1, fetchCount.get());
     }
 
     // why: watch 不是永不掉线的“神链路”；一旦底层 watch 被释放，管理器应自动按退避策略重连，
@@ -223,10 +258,15 @@ class InjectionRuleManagerTest {
     }
 
     private InjectionRule rule(String id, InjectionRule.Mode mode, boolean enabled, String match) {
+        return namedRule(id, "", mode, enabled, match);
+    }
+
+    private InjectionRule namedRule(String id, String name, InjectionRule.Mode mode, boolean enabled, String match) {
         InjectionRule rule = new InjectionRule();
         Metadata metadata = new Metadata();
         metadata.setName(id);
         rule.setMetadata(metadata);
+        rule.setName(name);
         rule.setEnabled(enabled);
         rule.setMode(mode);
         rule.setMatch(match);

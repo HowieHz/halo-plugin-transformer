@@ -15,12 +15,12 @@ import run.halo.app.extension.Watcher;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
-import java.util.concurrent.Executors;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Executors;
 
 @Slf4j
 @Component
@@ -31,10 +31,12 @@ public class InjectionRuleManager {
 
     private final ReactiveExtensionClient client;
     private final Object refreshMonitor = new Object();
+    private final Object snapshotMonitor = new Object();
     private final Object watchMonitor = new Object();
     private final long watchReconnectBaseDelayMillis;
     private final long watchReconnectMaxDelayMillis;
     private volatile RuleSnapshot cachedSnapshot = RuleSnapshot.empty();
+    private volatile List<String> lastSkippedEnabledRuleIds = List.of();
     private volatile boolean refreshRequested;
     private volatile boolean refreshRunning;
     private volatile boolean watching;
@@ -140,19 +142,26 @@ public class InjectionRuleManager {
     Mono<RuleSnapshot> refreshSnapshot() {
         return client.list(InjectionRule.class, null, null)
                 .collectList()
-                .map(this::buildSnapshot)
-                .doOnNext(snapshot -> cachedSnapshot = snapshot);
+                .map(this::replaceSnapshot);
     }
 
     RuleSnapshot buildSnapshot(List<InjectionRule> rules) {
         List<InjectionRule> allRules = List.copyOf(rules);
         Map<InjectionRule.Mode, List<InjectionRule>> rulesByMode =
                 new EnumMap<>(InjectionRule.Mode.class);
+        List<String> skippedEnabledRuleIds = new ArrayList<>();
         for (InjectionRule.Mode mode : InjectionRule.Mode.values()) {
             rulesByMode.put(mode, new ArrayList<>());
         }
         for (InjectionRule rule : allRules) {
-            if (rule == null || rule.getMode() == null || !rule.isEnabled() || !rule.isValid()) {
+            if (rule == null) {
+                continue;
+            }
+            if (!rule.isEnabled()) {
+                continue;
+            }
+            if (rule.getMode() == null || !rule.isValid()) {
+                skippedEnabledRuleIds.add(describeRule(rule));
                 continue;
             }
             rulesByMode.get(rule.getMode()).add(rule);
@@ -163,6 +172,7 @@ public class InjectionRuleManager {
             entry.getValue().sort(runtimeOrderComparator());
             immutableByMode.put(entry.getKey(), List.copyOf(entry.getValue()));
         }
+        logSkippedEnabledRules(skippedEnabledRuleIds);
         return new RuleSnapshot(allRules, immutableByMode);
     }
 
@@ -176,6 +186,87 @@ public class InjectionRuleManager {
                 .comparingInt(InjectionRule::getRuntimeOrder)
                 .thenComparing(InjectionRule::getName, String.CASE_INSENSITIVE_ORDER)
                 .thenComparing(InjectionRule::getId, String.CASE_INSENSITIVE_ORDER);
+    }
+
+    /**
+     * why: watch 事件已经带着变更后的资源本体；直接在内存快照上做最小 upsert/remove，
+     * 比每收到一次事件就重新 list 全表更贴近 watch-driven cache，也能减少不必要 IO。
+     */
+    private void applyRuleEventSnapshot(RuleEventType eventType, InjectionRule rule) {
+        if (rule == null) {
+            requestRefreshAsync();
+            return;
+        }
+        String ruleId = describeRuleId(rule);
+        if (ruleId == null) {
+            log.debug("Falling back to full InjectionRule refresh because watch event had no resource name");
+            requestRefreshAsync();
+            return;
+        }
+        synchronized (snapshotMonitor) {
+            List<InjectionRule> nextRules = new ArrayList<>(cachedSnapshot.allRules());
+            int existingIndex = indexOfRule(nextRules, ruleId);
+            if (eventType == RuleEventType.DELETE) {
+                if (existingIndex >= 0) {
+                    nextRules.remove(existingIndex);
+                }
+            } else if (existingIndex >= 0) {
+                nextRules.set(existingIndex, rule);
+            } else {
+                nextRules.add(rule);
+            }
+            cachedSnapshot = buildSnapshot(nextRules);
+        }
+    }
+
+    private RuleSnapshot replaceSnapshot(List<InjectionRule> rules) {
+        synchronized (snapshotMonitor) {
+            RuleSnapshot snapshot = buildSnapshot(rules);
+            cachedSnapshot = snapshot;
+            return snapshot;
+        }
+    }
+
+    private int indexOfRule(List<InjectionRule> rules, String ruleId) {
+        for (int index = 0; index < rules.size(); index++) {
+            String currentRuleId = describeRuleId(rules.get(index));
+            if (ruleId.equals(currentRuleId)) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
+    private void logSkippedEnabledRules(List<String> skippedEnabledRuleIds) {
+        List<String> currentSkippedRuleIds = List.copyOf(skippedEnabledRuleIds);
+        List<String> previousSkippedRuleIds = lastSkippedEnabledRuleIds;
+        if (previousSkippedRuleIds.equals(currentSkippedRuleIds)) {
+            return;
+        }
+        lastSkippedEnabledRuleIds = currentSkippedRuleIds;
+        if (currentSkippedRuleIds.isEmpty()) {
+            if (!previousSkippedRuleIds.isEmpty()) {
+                log.info("All previously skipped enabled InjectionRule resources are back in the runtime snapshot");
+            }
+            return;
+        }
+        log.warn(
+                "Skipped {} enabled InjectionRule resource(s) from the runtime snapshot because they are invalid or incomplete: {}",
+                currentSkippedRuleIds.size(),
+                currentSkippedRuleIds
+        );
+    }
+
+    private String describeRule(InjectionRule rule) {
+        String ruleId = describeRuleId(rule);
+        return ruleId == null ? "<unnamed>" : ruleId;
+    }
+
+    private String describeRuleId(InjectionRule rule) {
+        if (rule == null || rule.getMetadata() == null) {
+            return null;
+        }
+        return rule.getMetadata().getName();
     }
 
     private void runRefreshLoopAsync() {
@@ -403,17 +494,17 @@ public class InjectionRuleManager {
 
         @Override
         public void onAdd(Extension extension) {
-            handleRuleEvent(extension);
+            handleRuleEvent(RuleEventType.ADD, extension);
         }
 
         @Override
         public void onUpdate(Extension oldExtension, Extension newExtension) {
-            handleRuleEvent(newExtension);
+            handleRuleEvent(RuleEventType.UPDATE, newExtension);
         }
 
         @Override
         public void onDelete(Extension extension) {
-            handleRuleEvent(extension);
+            handleRuleEvent(RuleEventType.DELETE, extension);
         }
 
         @Override
@@ -447,11 +538,24 @@ public class InjectionRuleManager {
             return disposedByManager;
         }
 
-        private void handleRuleEvent(Extension extension) {
-            if (disposed || extension == null || !RULE_GVK.equals(extension.groupVersionKind())) {
+        private void handleRuleEvent(RuleEventType eventType, Extension extension) {
+            if (disposed || extension == null) {
+                return;
+            }
+            if (extension instanceof InjectionRule rule) {
+                applyRuleEventSnapshot(eventType, rule);
+                return;
+            }
+            if (!RULE_GVK.equals(extension.groupVersionKind())) {
                 return;
             }
             requestRefreshAsync();
         }
+    }
+
+    private enum RuleEventType {
+        ADD,
+        UPDATE,
+        DELETE
     }
 }
