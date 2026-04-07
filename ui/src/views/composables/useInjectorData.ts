@@ -107,7 +107,7 @@ export function useInjectorData() {
    * why: 代码块关联属于写入语义，不应直接复用编辑器里“看起来像已选”的临时状态；
    * 这里集中收口 REMOVE 等模式差异，保证所有写路径都走同一套规则。
    */
-  function buildRuleSnippetIdsForWrite(
+  function resolvePersistedSnippetIdsForRule(
     rule: Pick<InjectionRuleEditorDraft, 'position'>,
     snippetIds: string[],
   ) {
@@ -293,7 +293,7 @@ export function useInjectorData() {
       Toast.error(error)
       return null
     }
-    const nextSnippetIds = buildRuleSnippetIdsForWrite(rule, snippetIds)
+    const nextSnippetIds = resolvePersistedSnippetIdsForRule(rule, snippetIds)
     creating.value = true
     try {
       const payload = buildRuleWritePayload(rule, nextSnippetIds)
@@ -349,7 +349,10 @@ export function useInjectorData() {
       Toast.error(error)
       return false
     }
-    const nextSnippetIds = buildRuleSnippetIdsForWrite(editRule.value, editRuleSnippetIds.value)
+    const nextSnippetIds = resolvePersistedSnippetIdsForRule(
+      editRule.value,
+      editRuleSnippetIds.value,
+    )
     savingEditor.value = true
     try {
       const payload = buildRuleWritePayload(editRule.value, nextSnippetIds)

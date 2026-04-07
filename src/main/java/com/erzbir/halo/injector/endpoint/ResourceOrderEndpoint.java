@@ -117,11 +117,12 @@ public class ResourceOrderEndpoint implements CustomEndpoint {
                 .switchIfEmpty(client.create(order));
     }
 
+    /**
+     * why: 排序资源本身就是按固定 `metadata.name` 寻址；
+     * 这里直接 `fetch` 比“先 list 再过滤”更贴合资源模型，也避免把读取语义写得像一次全表扫描。
+     */
     Mono<ResourceOrder> findStoredOrder(String orderName) {
-        return client.list(ResourceOrder.class, null, null)
-                .filter(order -> order.getMetadata() != null
-                        && Objects.equals(order.getMetadata().getName(), orderName))
-                .next();
+        return client.fetch(ResourceOrder.class, orderName);
     }
 
     ResourceOrder newResourceOrder(String orderName) {
