@@ -11,12 +11,12 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 @Component
-public class CodeSnippetDeletionService {
+public class CodeSnippetLifecycleService {
     static final String DELETION_FINALIZER = "injector.erzbir.com/code-snippet-reference-cleanup";
 
     private final ReactiveExtensionClient client;
 
-    public CodeSnippetDeletionService(ReactiveExtensionClient client) {
+    public CodeSnippetLifecycleService(ReactiveExtensionClient client) {
         this.client = client;
     }
 
@@ -24,24 +24,24 @@ public class CodeSnippetDeletionService {
      * why: 删除清理依赖 Halo finalizer 才能把“先标记删除，再异步摘引用，最后真正删除”
      * 收敛成平台原生生命周期；因此代码块在创建/更新落库前就要补齐 finalizer。
      */
-    public CodeSnippet prepareForWrite(CodeSnippet snippet) {
+    public CodeSnippet prepareForPersist(CodeSnippet snippet) {
         ensureMetadata(snippet);
         addDeletionFinalizer(snippet);
         return snippet;
     }
 
     /**
-     * why: 删除请求本身只负责进入 Halo 的 deleting 状态；
+     * why: 删除请求本身只负责让资源进入 Halo deleting 生命周期；
      * 真正的摘引用和最终删除由后端 reconciler 接手，避免再次回到脆弱的同步补偿写。
      */
-    public Mono<Void> requestDeletion(CodeSnippet snippet) {
+    public Mono<Void> markForDeletion(CodeSnippet snippet) {
         ensureMetadata(snippet);
         if (ExtensionUtil.isDeleted(snippet)) {
             return Mono.empty();
         }
         Mono<CodeSnippet> snippetToDelete = hasDeletionFinalizer(snippet)
                 ? Mono.just(snippet)
-                : client.update(prepareForWrite(snippet));
+                : client.update(prepareForPersist(snippet));
         return snippetToDelete.flatMap(client::delete).then();
     }
 
@@ -52,7 +52,7 @@ public class CodeSnippetDeletionService {
         return snippet.getMetadata().getFinalizers().contains(DELETION_FINALIZER);
     }
 
-    static boolean isDeletionManaged(CodeSnippet snippet) {
+    static boolean isDeletionPendingCleanup(CodeSnippet snippet) {
         return snippet != null
                 && ExtensionUtil.isDeleted(snippet)
                 && hasDeletionFinalizer(snippet);

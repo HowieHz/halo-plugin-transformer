@@ -36,7 +36,7 @@ public class CodeSnippetDeletionReconciler implements Reconciler<Reconciler.Requ
             return Result.doNotRetry();
         }
         CodeSnippet snippet = snippetOptional.get();
-        if (!CodeSnippetDeletionService.isDeletionManaged(snippet)) {
+        if (!CodeSnippetLifecycleService.isDeletionPendingCleanup(snippet)) {
             return Result.doNotRetry();
         }
 
@@ -50,11 +50,11 @@ public class CodeSnippetDeletionReconciler implements Reconciler<Reconciler.Requ
             return Result.doNotRetry();
         }
         CodeSnippet latestSnippet = latestSnippetOptional.get();
-        if (!CodeSnippetDeletionService.isDeletionManaged(latestSnippet)) {
+        if (!CodeSnippetLifecycleService.isDeletionPendingCleanup(latestSnippet)) {
             return Result.doNotRetry();
         }
 
-        CodeSnippetDeletionService.removeDeletionFinalizer(latestSnippet);
+        CodeSnippetLifecycleService.removeDeletionFinalizer(latestSnippet);
         client.update(latestSnippet);
         log.info("Completed finalizer cleanup for deleting snippet [{}]", request.name());
         return Result.doNotRetry();

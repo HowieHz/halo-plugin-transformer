@@ -2,7 +2,7 @@ package com.erzbir.halo.injector.endpoint;
 
 import com.erzbir.halo.injector.manager.InjectionRuleManager;
 import com.erzbir.halo.injector.scheme.CodeSnippet;
-import com.erzbir.halo.injector.service.CodeSnippetDeletionService;
+import com.erzbir.halo.injector.service.CodeSnippetLifecycleService;
 import com.erzbir.halo.injector.util.CodeSnippetValidationException;
 import com.erzbir.halo.injector.util.CodeSnippetValidator;
 import com.erzbir.halo.injector.util.OptimisticConcurrencyGuard;
@@ -34,7 +34,7 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
 
     private final ReactiveExtensionClient client;
     private final CodeSnippetValidator validator;
-    private final CodeSnippetDeletionService deletionService;
+    private final CodeSnippetLifecycleService lifecycleService;
     private final InjectionRuleManager ruleManager;
 
     @Override
@@ -52,7 +52,7 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
     private Mono<ServerResponse> createSnippet(ServerRequest request) {
         return request.bodyToMono(CodeSnippet.class)
                 .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
-                .map(deletionService::prepareForWrite)
+                .map(lifecycleService::prepareForPersist)
                 .flatMap(validator::validateForWrite)
                 .flatMap(client::create)
                 .doOnSuccess(created -> ruleManager.invalidateAndWarmUpAsync())
@@ -85,7 +85,7 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
                             snippet.getMetadata(),
                             "代码块"
                     );
-                    return deletionService.prepareForWrite(snippet);
+                    return lifecycleService.prepareForPersist(snippet);
                 })
                 .flatMap(validator::validateForWrite)
                 .flatMap(client::update)
@@ -117,7 +117,7 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
         String name = request.pathVariable("name");
         return client.fetch(CodeSnippet.class, name)
                 .switchIfEmpty(Mono.error(new ServerWebInputException("未找到要删除的代码块")))
-                .flatMap(deletionService::requestDeletion)
+                .flatMap(lifecycleService::markForDeletion)
                 .doOnSuccess(ignored -> ruleManager.invalidateAndWarmUpAsync())
                 .then(ServerResponse.noContent().build());
     }
@@ -142,7 +142,7 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
                             payload.metadata,
                             "代码块"
                     );
-                    deletionService.prepareForWrite(snippet);
+                    lifecycleService.prepareForPersist(snippet);
                     snippet.setEnabled(enabled);
                     return enabled ? validator.validateForWrite(snippet) : Mono.just(snippet);
                 })

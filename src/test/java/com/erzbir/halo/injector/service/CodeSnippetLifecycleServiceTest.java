@@ -14,14 +14,14 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-class CodeSnippetDeletionServiceTest {
+class CodeSnippetLifecycleServiceTest {
     private ReactiveExtensionClient client;
-    private CodeSnippetDeletionService service;
+    private CodeSnippetLifecycleService service;
 
     @BeforeEach
     void setUp() {
         client = mock(ReactiveExtensionClient.class);
-        service = new CodeSnippetDeletionService(client);
+        service = new CodeSnippetLifecycleService(client);
     }
 
     // why: 只有带着 finalizer 进入 delete，Halo 才会先标记 deleting 再交给 reconciler 清理引用；
@@ -32,7 +32,7 @@ class CodeSnippetDeletionServiceTest {
         when(client.update(any(CodeSnippet.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
         when(client.delete(any(CodeSnippet.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
-        service.requestDeletion(snippet).block();
+        service.markForDeletion(snippet).block();
 
         verify(client).update(any(CodeSnippet.class));
         verify(client).delete(any(CodeSnippet.class));
@@ -41,12 +41,12 @@ class CodeSnippetDeletionServiceTest {
     // why: 新建和更新写口都应把删除 finalizer 当成资源生命周期的一部分；
     // 这样即使未来走别的删除入口，也仍能复用同一套 finalizer 清理流程。
     @Test
-    void shouldAttachFinalizerDuringPrepareForWrite() {
+    void shouldAttachFinalizerDuringPrepareForPersist() {
         CodeSnippet snippet = snippet("snippet-a");
 
-        CodeSnippet prepared = service.prepareForWrite(snippet);
+        CodeSnippet prepared = service.prepareForPersist(snippet);
 
-        assertTrue(prepared.getMetadata().getFinalizers().contains(CodeSnippetDeletionService.DELETION_FINALIZER));
+        assertTrue(prepared.getMetadata().getFinalizers().contains(CodeSnippetLifecycleService.DELETION_FINALIZER));
     }
 
     // why: 已经处于 deleting 状态的代码块，不需要重复发起 delete；
@@ -56,7 +56,7 @@ class CodeSnippetDeletionServiceTest {
         CodeSnippet snippet = snippet("snippet-a");
         snippet.getMetadata().setDeletionTimestamp(java.time.Instant.now());
 
-        service.requestDeletion(snippet).block();
+        service.markForDeletion(snippet).block();
 
         verify(client, never()).update(any(CodeSnippet.class));
         verify(client, never()).delete(any(CodeSnippet.class));

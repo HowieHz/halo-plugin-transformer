@@ -67,7 +67,7 @@ class CodeSnippetDeletionReconcilerTest {
         CodeSnippet finalizedSnippet = assertInstanceOf(CodeSnippet.class, updatedResources.get(1));
         assertTrue(finalizedSnippet.getMetadata().getFinalizers() == null
                 || !finalizedSnippet.getMetadata().getFinalizers()
-                .contains(CodeSnippetDeletionService.DELETION_FINALIZER));
+                .contains(CodeSnippetLifecycleService.DELETION_FINALIZER));
         verify(ruleManager).invalidateAndWarmUpAsync();
         verify(client).fetch(InjectionRule.class, "rule-a");
     }
@@ -89,7 +89,7 @@ class CodeSnippetDeletionReconcilerTest {
         Metadata metadata = new Metadata();
         metadata.setName(id);
         metadata.setDeletionTimestamp(Instant.now());
-        metadata.setFinalizers(new LinkedHashSet<>(Set.of(CodeSnippetDeletionService.DELETION_FINALIZER)));
+        metadata.setFinalizers(new LinkedHashSet<>(Set.of(CodeSnippetLifecycleService.DELETION_FINALIZER)));
         snippet.setMetadata(metadata);
         return snippet;
     }
