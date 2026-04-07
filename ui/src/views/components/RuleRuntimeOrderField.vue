@@ -50,7 +50,6 @@ const currentStepLabel = computed(() => {
 })
 
 const currentRangeHint = computed(() => describeRuntimeOrderRange(previewRuntimeOrder.value))
-const interiorRuntimeOrderSteps = computed(() => RUNTIME_ORDER_STEPS.slice(1, -1))
 
 function updateRuntimeOrder(value: number) {
   emit('update:modelValue', clampRuntimeOrder(value))
@@ -133,30 +132,17 @@ function toggleEditMode() {
       />
     </template>
     <template v-else>
-      <div class=":uno: relative">
-        <div class=":uno: pointer-events-none absolute inset-x-0 top-1/2 h-3 -translate-y-1/2">
-          <span
-            v-for="step in interiorRuntimeOrderSteps"
-            :key="`${step.value}-tick`"
-            :style="{
-              left: stepPositionPercent(step.value),
-              transform: 'translateX(-50%)',
-            }"
-            class=":uno: absolute h-3 border-l border-dashed border-gray-400/70"
-          />
-        </div>
-        <input
-          :aria-valuetext="currentStepLabel"
-          :max="RUNTIME_ORDER_MAX"
-          min="0"
-          step="1"
-          :value="sliderDraft"
-          class="runtime-order-slider :uno: relative z-1 w-full bg-transparent"
-          type="range"
-          @input="updateRuntimeOrderFromSlider(Number(($event.target as HTMLInputElement).value))"
-          @change="commitRuntimeOrderFromSlider"
-        />
-      </div>
+      <input
+        :aria-valuetext="currentStepLabel"
+        :max="RUNTIME_ORDER_MAX"
+        min="0"
+        step="1"
+        :value="sliderDraft"
+        class="runtime-order-slider :uno: w-full bg-transparent"
+        type="range"
+        @input="updateRuntimeOrderFromSlider(Number(($event.target as HTMLInputElement).value))"
+        @change="commitRuntimeOrderFromSlider"
+      />
       <div class=":uno: relative -mt-3 h-4 overflow-visible text-[11px] text-gray-400">
         <button
           v-for="(step, index) in RUNTIME_ORDER_STEPS"
@@ -187,17 +173,23 @@ function toggleEditMode() {
 .runtime-order-slider {
   appearance: none;
   height: 1.5rem;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
 }
 
 .runtime-order-slider::-webkit-slider-runnable-track {
   height: 0.25rem;
   border-radius: 9999px;
+  border: none;
   background: rgb(209 213 219);
 }
 
 .runtime-order-slider::-moz-range-track {
   height: 0.25rem;
   border-radius: 9999px;
+  border: none;
   background: rgb(209 213 219);
 }
 
