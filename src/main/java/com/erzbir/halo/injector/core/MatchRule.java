@@ -1,5 +1,6 @@
 package com.erzbir.halo.injector.core;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
@@ -12,6 +13,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @Data
 public class MatchRule {
     private Type type = Type.GROUP;
@@ -19,7 +21,8 @@ public class MatchRule {
     private Operator operator;
     private Matcher matcher;
     private String value;
-    private List<MatchRule> children = new ArrayList<>();
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    private List<MatchRule> children;
     @JsonIgnore
     private boolean negateDefined;
     @JsonIgnore
@@ -37,7 +40,7 @@ public class MatchRule {
         MatchRule root = new MatchRule();
         root.setNegate(false);
         root.setOperator(Operator.AND);
-        root.getChildren().add(pathRule(Matcher.ANT, "/**"));
+        root.setChildren(List.of(pathRule(Matcher.ANT, "/**")));
         return root;
     }
 
@@ -115,6 +118,43 @@ public class MatchRule {
      */
     public static void validateForWrite(MatchRule rule) {
         validateForWrite(rule, "matchRule", true);
+    }
+
+    /**
+     * why: 持久化层只应保存这棵规则树真正有语义的字段；
+     * 否则 Java 默认值会把叶子节点的 `children: []`、组节点的空叶子字段一并写回存储，
+     * 之后再读出来就会被严格写校验误判成“用户显式传了不支持字段”。
+     */
+    public static MatchRule canonicalizeForStorage(MatchRule rule) {
+        if (rule == null) {
+            return null;
+        }
+        MatchRule canonicalRule = new MatchRule();
+        canonicalRule.setType(rule.getType());
+        if (rule.isNegateDefined() || rule.getNegate() != null) {
+            canonicalRule.setNegate(rule.getNegate());
+        }
+
+        if (rule.getType() == Type.GROUP) {
+            if (rule.isOperatorDefined() || rule.getOperator() != null) {
+                canonicalRule.setOperator(rule.getOperator());
+            }
+            if (rule.isChildrenDefined() || rule.getChildren() != null) {
+                List<MatchRule> canonicalChildren = rule.getChildren() == null
+                        ? null
+                        : rule.getChildren().stream().map(MatchRule::canonicalizeForStorage).toList();
+                canonicalRule.setChildren(canonicalChildren);
+            }
+            return canonicalRule;
+        }
+
+        if (rule.isMatcherDefined() || rule.getMatcher() != null) {
+            canonicalRule.setMatcher(rule.getMatcher());
+        }
+        if (rule.isValueDefined() || rule.getValue() != null) {
+            canonicalRule.setValue(rule.getValue());
+        }
+        return canonicalRule;
     }
 
     @JsonAnySetter

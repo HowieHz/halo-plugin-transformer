@@ -1,5 +1,6 @@
 package com.erzbir.halo.injector.endpoint;
 
+import com.erzbir.halo.injector.core.MatchRule;
 import com.erzbir.halo.injector.manager.InjectionRuleManager;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import com.erzbir.halo.injector.service.SnippetReferenceService;
@@ -13,6 +14,7 @@ import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
 
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -99,6 +101,31 @@ class InjectionRuleEndpointTest {
         verify(client, never()).update(any(InjectionRule.class));
     }
 
+    // why: 旧数据或服务端默认序列化会把叶子节点空 `children` 落库；
+    // 启用时应先收敛成规范持久化形状，再做严格校验，避免管理员被“系统自己写进去的脏形状”反向卡住。
+    @Test
+    void shouldCanonicalizePersistedMatchRuleBeforeEnabling() {
+        InjectionRule rule = rule("rule-a", false);
+        rule.getMetadata().setVersion(12L);
+        rule.setMatchRule(dirtyPersistedMatchRule());
+        when(client.fetch(InjectionRule.class, "rule-a")).thenReturn(Mono.just(rule));
+        when(snippetReferenceService.normalizeAndValidateSnippetIds(eq(rule.getSnippetIds())))
+                .thenReturn(Mono.just(new LinkedHashSet<>(rule.getSnippetIds())));
+        when(client.update(any(InjectionRule.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+        InjectionRuleEndpoint endpointWithRealValidator = new InjectionRuleEndpoint(
+                client,
+                new InjectionRuleValidator(),
+                ruleManager,
+                snippetReferenceService
+        );
+
+        InjectionRule updated = endpointWithRealValidator.updateRuleEnabled("rule-a", enabledPayload(true, 12L)).block();
+
+        assertEquals(true, updated.isEnabled());
+        assertEquals(null, updated.getMatchRule().getChildren().get(0).getChildren());
+        verify(client).update(any(InjectionRule.class));
+    }
+
     // why: 规则启停也必须带最新版本；否则旧页面可以把别人刚保存的 enabled 状态无提示覆盖掉。
     @Test
     void shouldRejectTogglingRuleEnabledWithStaleVersion() {
@@ -138,5 +165,15 @@ class InjectionRuleEndpointTest {
         metadata.setVersion(version);
         payload.setMetadata(metadata);
         return payload;
+    }
+
+    private MatchRule dirtyPersistedMatchRule() {
+        MatchRule leaf = MatchRule.pathRule(MatchRule.Matcher.ANT, "/**");
+        leaf.setChildren(List.of());
+        MatchRule root = new MatchRule();
+        root.setNegate(false);
+        root.setOperator(MatchRule.Operator.AND);
+        root.setChildren(List.of(leaf));
+        return root;
     }
 }

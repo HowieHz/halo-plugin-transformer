@@ -1,5 +1,6 @@
 package com.erzbir.halo.injector.endpoint;
 
+import com.erzbir.halo.injector.core.MatchRule;
 import com.erzbir.halo.injector.manager.InjectionRuleManager;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import com.erzbir.halo.injector.service.SnippetReferenceService;
@@ -55,6 +56,7 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
                 .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
                 .flatMap(validator::validateForWrite)
                 .flatMap(this::normalizeAndValidateSnippetReferences)
+                .map(this::canonicalizeRuleForStorage)
                 .flatMap(client::create)
                 .doOnSuccess(created -> ruleManager.invalidateAndWarmUpAsync())
                 .flatMap(created -> ServerResponse.created(URI.create("/apis/" + READ_API_VERSION + "/injectionRules/"
@@ -90,6 +92,7 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
                 })
                 .flatMap(tuple -> validator.validateForWrite(tuple.getT2())
                         .flatMap(ignored -> normalizeAndValidateAddedSnippetReferences(tuple.getT1(), tuple.getT2())))
+                .map(this::canonicalizeRuleForStorage)
                 .flatMap(client::update)
                 .doOnSuccess(updated -> ruleManager.invalidateAndWarmUpAsync())
                 .flatMap(updated -> ServerResponse.ok()
@@ -148,6 +151,7 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
                     if (!enabled) {
                         return Mono.just(rule);
                     }
+                    rule.setMatchRule(MatchRule.canonicalizeForStorage(rule.getMatchRule()));
                     return validator.validateForWrite(rule)
                             .flatMap(ignored -> normalizeAndValidateSnippetReferences(rule));
                 })
@@ -179,6 +183,15 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
                     nextRule.setSnippetIds(new LinkedHashSet<>(snippetIds));
                     return nextRule;
                 });
+    }
+
+    /**
+     * why: 规则写入前统一收敛成后端权威持久化形状；
+     * 这样新数据不会继续把 Java 默认字段噪音写进存储，历史可恢复数据也能沿着下一次成功写操作自然自愈。
+     */
+    private InjectionRule canonicalizeRuleForStorage(InjectionRule rule) {
+        rule.setMatchRule(MatchRule.canonicalizeForStorage(rule.getMatchRule()));
+        return rule;
     }
 
     @Override
