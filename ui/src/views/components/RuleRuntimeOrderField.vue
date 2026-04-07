@@ -18,31 +18,49 @@ const emit = defineEmits<{
 
 const manualMode = ref(false)
 const manualDraft = ref(String(props.modelValue))
+const sliderDraft = ref(props.modelValue)
 
 watch(
   () => props.modelValue,
   (value) => {
     manualDraft.value = String(value)
+    sliderDraft.value = value
   },
   { immediate: true },
 )
 
+const displayedRuntimeOrder = computed(() => {
+  if (!manualMode.value) {
+    return sliderDraft.value
+  }
+  const parsed = Number(manualDraft.value)
+  return Number.isFinite(parsed) ? clampRuntimeOrder(parsed) : props.modelValue
+})
+
 const currentStepLabel = computed(() => {
-  const exact = RUNTIME_ORDER_STEPS.find((step) => step.value === props.modelValue)
+  const exact = RUNTIME_ORDER_STEPS.find((step) => step.value === displayedRuntimeOrder.value)
   if (exact) {
     return `${exact.label}（${formatRuntimeOrder(exact.value)}）`
   }
-  return `自定义 ${formatRuntimeOrder(props.modelValue)}`
+  return `自定义 ${formatRuntimeOrder(displayedRuntimeOrder.value)}`
 })
 
-const currentRangeHint = computed(() => describeRuntimeOrderRange(props.modelValue))
+const currentRangeHint = computed(() => describeRuntimeOrderRange(displayedRuntimeOrder.value))
 
 function updateRuntimeOrder(value: number) {
   emit('update:modelValue', clampRuntimeOrder(value))
 }
 
 function updateRuntimeOrderFromSlider(value: number) {
-  emit('update:modelValue', snapRuntimeOrderToPreset(value))
+  const normalized = clampRuntimeOrder(value)
+  sliderDraft.value = normalized
+  emit('update:modelValue', normalized)
+}
+
+function commitRuntimeOrderFromSlider() {
+  const snapped = snapRuntimeOrderToPreset(sliderDraft.value)
+  sliderDraft.value = snapped
+  emit('update:modelValue', snapped)
 }
 
 function updateRuntimeOrderPreset(index: number) {
@@ -83,6 +101,7 @@ function commitManualDraft() {
 function toggleEditMode() {
   manualMode.value = !manualMode.value
   manualDraft.value = String(props.modelValue)
+  sliderDraft.value = props.modelValue
 }
 </script>
 
@@ -120,10 +139,11 @@ function toggleEditMode() {
         :max="RUNTIME_ORDER_MAX"
         min="0"
         step="1"
-        :value="modelValue"
+        :value="sliderDraft"
         class=":uno: w-full accent-primary"
         type="range"
         @input="updateRuntimeOrderFromSlider(Number(($event.target as HTMLInputElement).value))"
+        @change="commitRuntimeOrderFromSlider"
       />
       <div class=":uno: relative h-4 text-[11px] text-gray-400">
         <button
@@ -134,7 +154,7 @@ function toggleEditMode() {
             transform: stepTransform(index),
           }"
           :class="
-            step.value === modelValue
+            step.value === displayedRuntimeOrder
               ? ':uno: text-primary'
               : ':uno: text-gray-400 hover:text-gray-600'
           "
