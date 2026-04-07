@@ -2,6 +2,7 @@ package com.erzbir.halo.injector.manager;
 
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -44,10 +45,19 @@ public class InjectionRuleManager {
     private volatile int reconnectFailureCount;
     private volatile int refreshFailureCount;
 
+    /**
+     * why: 生产 bean 需要明确主构造器；本类额外保留了一个仅供测试覆盖退避参数的构造器，
+     * 若不显式标记，Spring 会把它当成“多构造器 bean”并退回去找无参构造，最终导致插件启动失败。
+     */
+    @Autowired
     public InjectionRuleManager(ReactiveExtensionClient client) {
         this(client, WATCH_RECONNECT_BASE_DELAY_MILLIS, WATCH_RECONNECT_MAX_DELAY_MILLIS);
     }
 
+    /**
+     * why: 测试需要把退避窗口缩短到毫秒级，才能稳定覆盖重连与 refresh retry 语义；
+     * 因此保留一个包级构造器注入测试参数，但不暴露给 Spring 作为候选主构造器。
+     */
     InjectionRuleManager(ReactiveExtensionClient client, long watchReconnectBaseDelayMillis,
                          long watchReconnectMaxDelayMillis) {
         this.client = client;
