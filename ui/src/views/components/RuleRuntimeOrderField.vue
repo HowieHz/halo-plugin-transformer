@@ -80,13 +80,7 @@ function stepPositionPercent(value: number) {
   return `${(value / RUNTIME_ORDER_MAX) * 100}%`
 }
 
-function stepTransform(index: number) {
-  if (index === 0) {
-    return 'translateX(0)'
-  }
-  if (index === RUNTIME_ORDER_STEPS.length - 1) {
-    return 'translateX(-100%)'
-  }
+function stepTransform() {
   return 'translateX(-50%)'
 }
 
@@ -140,7 +134,7 @@ function toggleEditMode() {
     </template>
     <template v-else>
       <div class=":uno: relative">
-        <div class=":uno: pointer-events-none absolute inset-x-0 top-1/2 h-4 -translate-y-1/2">
+        <div class=":uno: pointer-events-none absolute inset-x-0 top-1/2 h-3 -translate-y-1/2">
           <span
             v-for="step in interiorRuntimeOrderSteps"
             :key="`${step.value}-tick`"
@@ -148,7 +142,7 @@ function toggleEditMode() {
               left: stepPositionPercent(step.value),
               transform: 'translateX(-50%)',
             }"
-            class=":uno: absolute h-4 border-l border-dashed border-gray-400/70"
+            class=":uno: absolute h-3 border-l border-dashed border-gray-400/70"
           />
         </div>
         <input
@@ -163,13 +157,13 @@ function toggleEditMode() {
           @change="commitRuntimeOrderFromSlider"
         />
       </div>
-      <div class=":uno: relative -mt-1 h-4 text-[11px] text-gray-400">
+      <div class=":uno: relative -mt-3 h-4 overflow-visible text-[11px] text-gray-400">
         <button
           v-for="(step, index) in RUNTIME_ORDER_STEPS"
           :key="step.value"
           :style="{
             left: stepPositionPercent(step.value),
-            transform: stepTransform(index),
+            transform: stepTransform(),
           }"
           :class="
             step.value === previewRuntimeOrder
