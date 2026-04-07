@@ -16,6 +16,12 @@ import java.util.Set;
 @GVK(kind = "InjectionRule", group = "injector.erzbir.com", version = "v1alpha1",
         singular = "injectionRule", plural = "injectionRules")
 public class InjectionRule extends AbstractExtension implements IInjectionRule {
+    /**
+     * why: 新建规则默认应落在最低优先级预设，而不是一创建就抢到既有规则前面；
+     * 只有用户显式调高优先级时，才改变同阶段执行顺序。
+     */
+    public static final int DEFAULT_RUNTIME_ORDER = 2147483645;
+
     private String name = "";
     private String description = "";
     private Boolean enabled = true;
@@ -24,6 +30,7 @@ public class InjectionRule extends AbstractExtension implements IInjectionRule {
     private MatchRule matchRule = MatchRule.defaultRule();
     private Position position = Position.APPEND;
     private boolean wrapMarker = true;
+    private int runtimeOrder = DEFAULT_RUNTIME_ORDER;
     private Set<String> snippetIds = new LinkedHashSet<>();
 
     @Override

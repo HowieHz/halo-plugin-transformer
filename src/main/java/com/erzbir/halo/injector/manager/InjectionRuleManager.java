@@ -10,6 +10,7 @@ import run.halo.app.extension.ReactiveExtensionClient;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -120,9 +121,20 @@ public class InjectionRuleManager {
         Map<InjectionRule.Mode, List<InjectionRule>> immutableByMode =
                 new EnumMap<>(InjectionRule.Mode.class);
         for (var entry : rulesByMode.entrySet()) {
+            entry.getValue().sort(runtimeOrderComparator());
             immutableByMode.put(entry.getKey(), List.copyOf(entry.getValue()));
         }
         return new RuleSnapshot(allRules, immutableByMode);
+    }
+
+    /**
+     * why: 控制台左侧 `rule-order` 只是展示顺序；运行时只承诺同一执行阶段内按显式
+     * `runtimeOrder` 升序执行，并用稳定资源 id 兜底，避免继续依赖底层 list 返回顺序。
+     */
+    private Comparator<InjectionRule> runtimeOrderComparator() {
+        return Comparator
+                .comparingInt(InjectionRule::getRuntimeOrder)
+                .thenComparing(InjectionRule::getId, String.CASE_INSENSITIVE_ORDER);
     }
 
     record RuleSnapshot(List<InjectionRule> allRules, Map<InjectionRule.Mode, List<InjectionRule>> rulesByMode) {

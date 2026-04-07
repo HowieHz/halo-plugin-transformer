@@ -261,6 +261,20 @@ class InjectionRuleValidatorTest {
         assertEquals("wrapMarker：REMOVE 模式下无需输出注释标记", error.getReason());
     }
 
+    // why: runtimeOrder 是同阶段运行优先级契约；负数会破坏“值越小越靠前”的非负范围约定，必须在写入期拒绝。
+    @Test
+    void shouldRejectNegativeRuntimeOrder() {
+        InjectionRule rule = makeRule();
+        rule.setRuntimeOrder(-1);
+
+        InjectionRuleValidationException error = assertThrows(
+                InjectionRuleValidationException.class,
+                () -> validator.validateForWrite(rule).block()
+        );
+
+        assertEquals("runtimeOrder：不能小于 0", error.getReason());
+    }
+
     private InjectionRule makeRule() {
         InjectionRule rule = new InjectionRule();
         rule.setMatchRule(MatchRule.defaultRule());

@@ -3,6 +3,7 @@ import type {
   InjectionRuleReadModel,
   InjectionRuleWritePayload,
 } from '@/types'
+import { RUNTIME_ORDER_DEFAULT } from '@/types'
 import { normalizeMatchRule, resolveRuleMatchRule, makeRuleTreeSource } from './matchRule'
 
 /**
@@ -13,6 +14,7 @@ export function hydrateRuleEditorDraft(rule: InjectionRuleReadModel): InjectionR
   const matchRule = normalizeMatchRule(rule.matchRule)
   return {
     ...rule,
+    runtimeOrder: Number.isInteger(rule.runtimeOrder) ? rule.runtimeOrder : RUNTIME_ORDER_DEFAULT,
     matchRule,
     matchRuleSource: makeRuleTreeSource(matchRule),
   }
@@ -46,6 +48,7 @@ export function buildRuleWritePayload(
     matchRule: result.rule,
     position: rule.position,
     wrapMarker: normalizedWrapMarker,
+    runtimeOrder: rule.runtimeOrder,
     snippetIds: normalizedSnippetIds,
   }
 }

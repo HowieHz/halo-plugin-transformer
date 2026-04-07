@@ -1,6 +1,8 @@
 import {
   makeRuleEditorDraft,
   makeSnippetEditorDraft,
+  RUNTIME_ORDER_DEFAULT,
+  RUNTIME_ORDER_MAX,
   type CodeSnippetEditorDraft,
   type InjectionRuleEditorDraft,
   type MatchRuleSource,
@@ -57,6 +59,7 @@ export function parseRuleTransfer(raw: string): InjectionRuleEditorDraft {
       'match',
       'position',
       'wrapMarker',
+      'runtimeOrder',
       'matchRuleSource',
     ],
     '注入规则',
@@ -85,6 +88,16 @@ export function parseRuleTransfer(raw: string): InjectionRuleEditorDraft {
   if (typeof data.wrapMarker !== 'boolean') {
     throw new Error('导入失败：`wrapMarker` 必须是布尔值；仅支持 true 或 false')
   }
+  const runtimeOrder = data.runtimeOrder ?? RUNTIME_ORDER_DEFAULT
+  if (typeof runtimeOrder !== 'number' || !Number.isInteger(runtimeOrder)) {
+    throw new Error('导入失败：`runtimeOrder` 必须是整数')
+  }
+  if (runtimeOrder < 0) {
+    throw new Error('导入失败：`runtimeOrder` 不能小于 0')
+  }
+  if (runtimeOrder > RUNTIME_ORDER_MAX) {
+    throw new Error(`导入失败：\`runtimeOrder\` 不能大于 ${RUNTIME_ORDER_MAX}`)
+  }
   const matchRuleState = parseImportedMatchRuleSource(data.matchRuleSource)
   return makeRuleEditorDraft({
     enabled: data.enabled,
@@ -95,6 +108,7 @@ export function parseRuleTransfer(raw: string): InjectionRuleEditorDraft {
     matchRule: matchRuleState.matchRule,
     position: data.position,
     wrapMarker: data.wrapMarker,
+    runtimeOrder,
     matchRuleSource: matchRuleState.matchRuleSource,
   })
 }

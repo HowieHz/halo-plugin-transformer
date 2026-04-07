@@ -27,6 +27,9 @@ public class InjectionRuleValidator {
         }
         try {
             MatchRule.validateForWrite(rule.getMatchRule());
+            if (rule.getRuntimeOrder() < 0) {
+                return Mono.error(new InjectionRuleValidationException("runtimeOrder：不能小于 0"));
+            }
             if (InjectionRule.Position.REMOVE.equals(rule.getPosition())
                     && rule.getSnippetIds() != null
                     && !rule.getSnippetIds().isEmpty()) {

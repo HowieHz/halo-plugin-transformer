@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { makeRuleEditorDraft } from '@/types'
+import { makeRuleEditorDraft, RUNTIME_ORDER_MAX } from '@/types'
 import {
   buildRuleTransfer,
   parseRuleTransfer,
@@ -307,6 +307,37 @@ describe('parseRuleTransfer', () => {
 
     expect(() => parseRuleTransfer(raw)).toThrow(
       '导入失败：`enabled` 必须是布尔值；仅支持 true 或 false',
+    )
+  })
+
+  // why: 运行顺序会进入后端 int 字段；导入期必须先拦住越界值，避免前端保存时才暴露协议错误。
+  it('rejects runtimeOrder values above the backend integer range', () => {
+    const raw = JSON.stringify({
+      version: 1,
+      resourceType: 'rule',
+      data: {
+        enabled: true,
+        name: 'demo',
+        description: '',
+        mode: 'FOOTER',
+        match: '',
+        position: 'APPEND',
+        wrapMarker: true,
+        runtimeOrder: RUNTIME_ORDER_MAX + 1,
+        matchRuleSource: {
+          kind: 'RULE_TREE',
+          data: {
+            type: 'GROUP',
+            negate: false,
+            operator: 'AND',
+            children: [{ type: 'PATH', negate: false, matcher: 'ANT', value: '/**' }],
+          },
+        },
+      },
+    })
+
+    expect(() => parseRuleTransfer(raw)).toThrow(
+      `导入失败：\`runtimeOrder\` 不能大于 ${RUNTIME_ORDER_MAX}`,
     )
   })
 })

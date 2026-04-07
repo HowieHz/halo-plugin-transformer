@@ -130,6 +130,26 @@ class InjectionRuleManagerTest {
         assertEquals(List.of("rule-enabled"), rules.stream().map(InjectionRule::getId).toList());
     }
 
+    // why: 运行时顺序是同一执行阶段内的显式契约；不能再依赖底层 list 返回顺序，
+    // 否则多条规则命中同一位置时会出现难以解释的隐式 precedence。
+    @Test
+    void shouldSortActiveRulesByRuntimeOrderThenIdWithinMode() {
+        InjectionRule highZ = rule("rule-z", InjectionRule.Mode.SELECTOR, true, "main");
+        highZ.setRuntimeOrder(0);
+        InjectionRule highA = rule("rule-a", InjectionRule.Mode.SELECTOR, true, "main");
+        highA.setRuntimeOrder(0);
+        InjectionRule low = rule("rule-low", InjectionRule.Mode.SELECTOR, true, "main");
+        low.setRuntimeOrder(2147483645);
+        when(client.list(InjectionRule.class, null, null)).thenReturn(Flux.just(low, highZ, highA));
+
+        List<InjectionRule> rules = manager.listActiveByMode(InjectionRule.Mode.SELECTOR)
+                .collectList()
+                .block();
+
+        assertEquals(List.of("rule-a", "rule-z", "rule-low"),
+                rules.stream().map(InjectionRule::getId).toList());
+    }
+
     private InjectionRule rule(String id, InjectionRule.Mode mode, boolean enabled, String match) {
         InjectionRule rule = new InjectionRule();
         Metadata metadata = new Metadata();

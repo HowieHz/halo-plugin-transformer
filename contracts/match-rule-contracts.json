@@ -180,7 +180,7 @@
         "writeValidation": {
           "ok": false,
           "relativePath": "children[0].children",
-          "message": "仅条件组可使用 children"
+          "message": "不支持该字段；页面路径条件仅支持 \"type\"、\"negate\"、\"matcher\"、\"value\""
         }
       }
     },
@@ -303,7 +303,7 @@
         "writeValidation": {
           "ok": false,
           "relativePath": "children[0].operator",
-          "message": "仅条件组可使用 operator"
+          "message": "不支持该字段；页面路径条件仅支持 \"type\"、\"negate\"、\"matcher\"、\"value\""
         }
       }
     },

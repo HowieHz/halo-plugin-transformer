@@ -14,6 +14,7 @@ import EditorFooter from './EditorFooter.vue'
 import ExportJsonFallbackModal from './ExportJsonFallbackModal.vue'
 import FormField from './FormField.vue'
 import MatchRuleEditor from './MatchRuleEditor.vue'
+import RuleRuntimeOrderField from './RuleRuntimeOrderField.vue'
 import { sortSelectedFirst } from '@/views/composables/util.ts'
 import { updateSelectByWheel } from '@/views/composables/selectWheel.ts'
 import FieldUndoButton from './FieldUndoButton.vue'
@@ -96,6 +97,7 @@ watch(
         wrapMarker: currentRule.value.wrapMarker,
       },
       wrapMarker: currentRule.value.wrapMarker,
+      runtimeOrder: currentRule.value.runtimeOrder,
       matchRule: {
         matchRule: cloneMatchRule(currentRule.value.matchRule),
         matchRuleSource: cloneCurrentMatchRuleSource(),
@@ -213,6 +215,7 @@ function canUndo(
     | 'match'
     | 'position'
     | 'wrapMarker'
+    | 'runtimeOrder'
     | 'matchRule'
     | 'snippetIds',
 ) {
@@ -242,6 +245,7 @@ function undoField(
     | 'match'
     | 'position'
     | 'wrapMarker'
+    | 'runtimeOrder'
     | 'matchRule'
     | 'snippetIds',
 ) {
@@ -307,6 +311,7 @@ function resetField(
     | 'match'
     | 'position'
     | 'wrapMarker'
+    | 'runtimeOrder'
     | 'matchRule'
     | 'snippetIds',
 ) {
@@ -416,6 +421,23 @@ async function exportRule() {
               placeholder="说明此规则的用途"
               @change="updateField('description', ($event.target as HTMLInputElement).value)"
             />
+          </template>
+        </FormField>
+
+        <FormField label="运行顺序">
+          <template v-if="canUndo('runtimeOrder')" #actions>
+            <FieldUndoButton
+              @reset="resetField('runtimeOrder')"
+              @undo="undoField('runtimeOrder')"
+            />
+          </template>
+          <template #default="{ inputId, labelId }">
+            <div :id="inputId" :aria-labelledby="labelId">
+              <RuleRuntimeOrderField
+                :model-value="currentRule.runtimeOrder"
+                @update:model-value="updateField('runtimeOrder', $event)"
+              />
+            </div>
           </template>
         </FormField>
 

@@ -56,6 +56,7 @@ export interface InjectionRuleWritePayload {
   matchRule: MatchRule
   position: InjectionPosition
   wrapMarker: boolean
+  runtimeOrder: number
   snippetIds: string[]
 }
 
@@ -84,6 +85,11 @@ export interface ItemList<T> {
   totalPages: number
 }
 
+export interface RuntimeOrderStep {
+  value: number
+  label: string
+}
+
 export type ActiveTab = 'snippets' | 'rules'
 
 export const MODE_OPTIONS: { value: InjectionMode; label: string }[] = [
@@ -100,6 +106,21 @@ export const POSITION_OPTIONS: { value: InjectionPosition; label: string }[] = [
   { value: 'AFTER', label: '元素之后 (after)' },
   { value: 'REPLACE', label: '替换元素 (replace)' },
   { value: 'REMOVE', label: '移除元素 (remove)' },
+]
+
+/**
+ * why: 新建规则默认应落在最低优先级预设，而不是抢到既有规则前面；
+ * 这样只“新建了一条规则”不会悄悄改变同阶段旧规则的执行先后。
+ */
+export const RUNTIME_ORDER_DEFAULT = 2147483645
+export const RUNTIME_ORDER_MAX = 2147483647
+export const RUNTIME_ORDER_STEPS: RuntimeOrderStep[] = [
+  { value: 0, label: '最高' },
+  { value: 429496729, label: '高' },
+  { value: 858993458, label: '较高' },
+  { value: 1288490187, label: '普通' },
+  { value: 1717986916, label: '较低' },
+  { value: RUNTIME_ORDER_DEFAULT, label: '最低' },
 ]
 
 export const MATCH_RULE_GROUP_OPTIONS: { value: MatchRuleOperator; label: string }[] = [
@@ -190,6 +211,7 @@ export function makeRuleEditorDraft(
     matchRule,
     position: 'APPEND',
     wrapMarker: true,
+    runtimeOrder: RUNTIME_ORDER_DEFAULT,
     snippetIds: [],
     matchRuleSource: {
       kind: 'RULE_TREE',

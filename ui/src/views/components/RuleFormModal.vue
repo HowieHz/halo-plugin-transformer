@@ -19,6 +19,7 @@ import ItemPicker from './ItemPicker.vue'
 import FormField from './FormField.vue'
 import MatchRuleEditor from './MatchRuleEditor.vue'
 import ImportJsonSourceModal from './ImportJsonSourceModal.vue'
+import RuleRuntimeOrderField from './RuleRuntimeOrderField.vue'
 import { updateSelectByWheel } from '@/views/composables/selectWheel.ts'
 import { parseRuleTransfer } from '@/views/composables/transfer.ts'
 
@@ -154,6 +155,7 @@ const dirty = computed(() => {
       matchRule: rule.value.matchRule,
       position: rule.value.position,
       wrapMarker: rule.value.wrapMarker,
+      runtimeOrder: rule.value.runtimeOrder,
       matchRuleSource: rule.value.matchRuleSource,
       snippetIds: selectedSnippetIds.value,
     }) !==
@@ -166,6 +168,7 @@ const dirty = computed(() => {
       matchRule: initialRule.matchRule,
       position: initialRule.position,
       wrapMarker: initialRule.wrapMarker,
+      runtimeOrder: initialRule.runtimeOrder,
       matchRuleSource: initialRule.matchRuleSource,
       snippetIds: [],
     })
@@ -237,6 +240,12 @@ defineExpose({
           class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
           placeholder="说明此规则的用途"
         />
+      </FormField>
+
+      <FormField v-slot="{ inputId, labelId }" label="运行顺序">
+        <div :id="inputId" :aria-labelledby="labelId">
+          <RuleRuntimeOrderField v-model="rule.runtimeOrder" />
+        </div>
       </FormField>
 
       <FormField v-slot="{ inputId }" label="注入模式" required>

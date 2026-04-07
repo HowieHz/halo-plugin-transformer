@@ -21,6 +21,7 @@ interface RuleTransferData {
   match: string
   position: InjectionRuleEditorDraft['position']
   wrapMarker: boolean
+  runtimeOrder: number
   matchRuleSource: MatchRuleSource
 }
 
@@ -63,6 +64,7 @@ export function buildRuleTransfer(rule: InjectionRuleEditorDraft): RuleTransferE
       match: rule.match,
       position: rule.position,
       wrapMarker: rule.wrapMarker,
+      runtimeOrder: rule.runtimeOrder,
       matchRuleSource,
     },
   }
