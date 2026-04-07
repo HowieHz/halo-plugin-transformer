@@ -44,12 +44,15 @@ class CodeSnippetDeletionReconcilerTest {
     @Test
     void shouldDetachReferencingRulesBeforeRemovingSnippetFinalizer() {
         CodeSnippet deletingSnippet = deletingSnippet("snippet-a");
-        InjectionRule rule = rule("rule-a", Set.of("snippet-a", "snippet-b"));
+        InjectionRule listedRule = rule("rule-a", Set.of("snippet-a", "snippet-b"));
+        InjectionRule latestRule = rule("rule-a", Set.of("snippet-a", "snippet-b"));
+        latestRule.setDescription("latest description");
 
         when(client.fetch(CodeSnippet.class, "snippet-a"))
                 .thenReturn(Optional.of(deletingSnippet))
                 .thenReturn(Optional.of(deletingSnippet("snippet-a")));
-        when(client.list(eq(InjectionRule.class), any(), eq(null))).thenReturn(List.of(rule));
+        when(client.list(eq(InjectionRule.class), any(), eq(null))).thenReturn(List.of(listedRule));
+        when(client.fetch(InjectionRule.class, "rule-a")).thenReturn(Optional.of(latestRule));
 
         reconciler.reconcile(new Reconciler.Request("snippet-a"));
 
@@ -59,12 +62,14 @@ class CodeSnippetDeletionReconcilerTest {
 
         InjectionRule updatedRule = assertInstanceOf(InjectionRule.class, updatedResources.get(0));
         assertEquals(new LinkedHashSet<>(Set.of("snippet-b")), updatedRule.getSnippetIds());
+        assertEquals("latest description", updatedRule.getDescription());
 
         CodeSnippet finalizedSnippet = assertInstanceOf(CodeSnippet.class, updatedResources.get(1));
         assertTrue(finalizedSnippet.getMetadata().getFinalizers() == null
                 || !finalizedSnippet.getMetadata().getFinalizers()
                 .contains(CodeSnippetDeletionService.DELETION_FINALIZER));
         verify(ruleManager).invalidateAndWarmUpAsync();
+        verify(client).fetch(InjectionRule.class, "rule-a");
     }
 
     // why: 若资源已不存在，说明删除已经完成或被别处清理；协调器应直接退出，

@@ -74,18 +74,26 @@ public class CodeSnippetDeletionReconciler implements Reconciler<Reconciler.Requ
 
     private boolean detachSnippetFromReferencingRules(String snippetId) {
         boolean detachedAnyRule = false;
-        List<InjectionRule> referencingRules = client.list(
+        List<String> referencingRuleNames = client.list(
                 InjectionRule.class,
                 rule -> normalizeSnippetIds(rule.getSnippetIds()).contains(snippetId),
                 null
-        );
-        for (InjectionRule rule : referencingRules) {
-            LinkedHashSet<String> nextSnippetIds = normalizeSnippetIds(rule.getSnippetIds());
+        ).stream()
+                .map(rule -> rule.getMetadata() == null ? null : rule.getMetadata().getName())
+                .filter(name -> name != null && !name.isBlank())
+                .toList();
+        for (String ruleName : referencingRuleNames) {
+            var latestRuleOptional = client.fetch(InjectionRule.class, ruleName);
+            if (latestRuleOptional.isEmpty()) {
+                continue;
+            }
+            InjectionRule latestRule = latestRuleOptional.get();
+            LinkedHashSet<String> nextSnippetIds = normalizeSnippetIds(latestRule.getSnippetIds());
             if (!nextSnippetIds.remove(snippetId)) {
                 continue;
             }
-            rule.setSnippetIds(nextSnippetIds);
-            client.update(rule);
+            latestRule.setSnippetIds(nextSnippetIds);
+            client.update(latestRule);
             detachedAnyRule = true;
         }
         return detachedAnyRule;
