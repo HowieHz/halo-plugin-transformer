@@ -1,11 +1,7 @@
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue'
 import { RUNTIME_ORDER_MAX, RUNTIME_ORDER_STEPS } from '@/types'
-import {
-  clampRuntimeOrder,
-  findNearestRuntimeOrderStepIndex,
-  formatRuntimeOrder,
-} from '@/views/composables/runtimeOrder'
+import { clampRuntimeOrder, formatRuntimeOrder } from '@/views/composables/runtimeOrder'
 
 const props = defineProps<{
   modelValue: number
@@ -26,18 +22,12 @@ watch(
   { immediate: true },
 )
 
-const currentStepIndex = computed(() => {
-  return findNearestRuntimeOrderStepIndex(props.modelValue)
-})
-
-const currentPreset = computed(() => RUNTIME_ORDER_STEPS[currentStepIndex.value])
-
 const currentStepLabel = computed(() => {
   const exact = RUNTIME_ORDER_STEPS.find((step) => step.value === props.modelValue)
   if (exact) {
     return `${exact.label}（${formatRuntimeOrder(exact.value)}）`
   }
-  return `自定义 ${formatRuntimeOrder(props.modelValue)}，接近「${currentPreset.value.label}」档`
+  return `自定义 ${formatRuntimeOrder(props.modelValue)}`
 })
 
 function updateRuntimeOrder(value: number) {
@@ -50,6 +40,20 @@ function updateRuntimeOrderPreset(index: number) {
     return
   }
   updateRuntimeOrder(preset.value)
+}
+
+function stepPositionPercent(value: number) {
+  return `${(value / RUNTIME_ORDER_MAX) * 100}%`
+}
+
+function stepTransform(index: number) {
+  if (index === 0) {
+    return 'translateX(0)'
+  }
+  if (index === RUNTIME_ORDER_STEPS.length - 1) {
+    return 'translateX(-100%)'
+  }
+  return 'translateX(-50%)'
 }
 
 function handleManualInput(event: Event) {
@@ -102,24 +106,28 @@ function toggleEditMode() {
     <template v-else>
       <input
         :aria-valuetext="currentStepLabel"
-        :max="RUNTIME_ORDER_STEPS.length - 1"
+        :max="RUNTIME_ORDER_MAX"
         min="0"
         step="1"
-        :value="currentStepIndex"
+        :value="modelValue"
         class=":uno: w-full accent-primary"
         type="range"
-        @input="updateRuntimeOrderPreset(Number(($event.target as HTMLInputElement).value))"
+        @input="updateRuntimeOrder(Number(($event.target as HTMLInputElement).value))"
       />
-      <div class=":uno: flex justify-between text-[11px] text-gray-400">
+      <div class=":uno: relative h-4 text-[11px] text-gray-400">
         <button
           v-for="(step, index) in RUNTIME_ORDER_STEPS"
           :key="step.value"
+          :style="{
+            left: stepPositionPercent(step.value),
+            transform: stepTransform(index),
+          }"
           :class="
-            index === currentStepIndex
+            step.value === modelValue
               ? ':uno: text-primary'
               : ':uno: text-gray-400 hover:text-gray-600'
           "
-          class=":uno: bg-transparent p-0 text-[11px]"
+          class=":uno: absolute top-0 bg-transparent p-0 text-[11px]"
           type="button"
           @click="updateRuntimeOrderPreset(index)"
         >

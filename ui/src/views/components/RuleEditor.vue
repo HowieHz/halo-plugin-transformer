@@ -19,7 +19,6 @@ import { sortSelectedFirst } from '@/views/composables/util.ts'
 import { updateSelectByWheel } from '@/views/composables/selectWheel.ts'
 import FieldUndoButton from './FieldUndoButton.vue'
 import { useFieldUndo } from '@/views/composables/useFieldUndo.ts'
-import { CSS_SELECTOR_LABEL_TITLE } from '@/views/composables/cssSelectorHelp.ts'
 import {
   buildRuleTransfer,
   createTransferFileDraft,
@@ -465,12 +464,7 @@ async function exportRule() {
         </FormField>
 
         <template v-if="needsTarget">
-          <FormField
-            :invalid="!!matchFieldError"
-            label="CSS 选择器"
-            :label-title="CSS_SELECTOR_LABEL_TITLE"
-            required
-          >
+          <FormField :invalid="!!matchFieldError" label="CSS 选择器" required>
             <template v-if="canUndo('match')" #actions>
               <FieldUndoButton @reset="resetField('match')" @undo="undoField('match')" />
             </template>

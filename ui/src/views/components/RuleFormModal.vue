@@ -20,7 +20,6 @@ import FormField from './FormField.vue'
 import MatchRuleEditor from './MatchRuleEditor.vue'
 import ImportJsonSourceModal from './ImportJsonSourceModal.vue'
 import RuleRuntimeOrderField from './RuleRuntimeOrderField.vue'
-import { CSS_SELECTOR_LABEL_TITLE } from '@/views/composables/cssSelectorHelp.ts'
 import { updateSelectByWheel } from '@/views/composables/selectWheel.ts'
 import { parseRuleTransfer } from '@/views/composables/transfer.ts'
 
@@ -258,13 +257,7 @@ defineExpose({
       </FormField>
 
       <template v-if="needsTarget">
-        <FormField
-          v-slot="{ inputId }"
-          :invalid="!!matchFieldError"
-          label="CSS 选择器"
-          :label-title="CSS_SELECTOR_LABEL_TITLE"
-          required
-        >
+        <FormField v-slot="{ inputId }" :invalid="!!matchFieldError" label="CSS 选择器" required>
           <div class=":uno: space-y-1">
             <input
               :id="inputId"
