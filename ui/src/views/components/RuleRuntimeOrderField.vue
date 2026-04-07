@@ -63,11 +63,13 @@ function updateRuntimeOrder(value: number) {
 }
 
 function updateRuntimeOrderFromSlider(value: number) {
-  const normalized = clampRuntimeOrder(value)
-  sliderDraft.value = normalized
-  emit('update:modelValue', normalized)
+  sliderDraft.value = clampRuntimeOrder(value)
 }
 
+/**
+ * why: 滑条拖动会连续触发 input；如果每一步都向外提交，
+ * 字段级撤销就会退成很多个细碎小步，违背“一次拖拽 = 一次编辑”的语义。
+ */
 function commitRuntimeOrderFromSlider() {
   const snapped = snapRuntimeOrderToPreset(sliderDraft.value)
   sliderDraft.value = snapped
