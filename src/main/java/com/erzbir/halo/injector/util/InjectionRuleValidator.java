@@ -21,6 +21,16 @@ public class InjectionRuleValidator {
         if (rule == null) {
             return Mono.error(new InjectionRuleValidationException("请求体不能为空"));
         }
+        if (rule.getEnabled() == null) {
+            return Mono.error(new InjectionRuleValidationException("enabled：必须是布尔值；仅支持 true 或 false"));
+        }
+        if (rule.getMode() == null) {
+            return Mono.error(new InjectionRuleValidationException("mode：仅支持 \"HEAD\"、\"FOOTER\"、\"SELECTOR\""));
+        }
+        if (rule.getPosition() == null) {
+            return Mono.error(new InjectionRuleValidationException(
+                    "position：仅支持 \"APPEND\"、\"PREPEND\"、\"BEFORE\"、\"AFTER\"、\"REPLACE\"、\"REMOVE\""));
+        }
         if (InjectionRule.Mode.SELECTOR.equals(rule.getMode()) && !StringUtils.hasText(rule.getMatch())) {
             return Mono.error(new InjectionRuleValidationException("match：请填写匹配内容"));
         }

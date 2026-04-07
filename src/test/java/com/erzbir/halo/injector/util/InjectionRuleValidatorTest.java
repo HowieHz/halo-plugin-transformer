@@ -275,6 +275,51 @@ class InjectionRuleValidatorTest {
         assertEquals("runtimeOrder：不能小于 0", error.getReason());
     }
 
+    // why: `enabled` 会直接进入运行时布尔判断；若允许 null 落库，后续快照刷新和执行路径都可能因拆箱而炸掉。
+    @Test
+    void shouldRejectNullEnabled() {
+        InjectionRule rule = makeRule();
+        rule.setEnabled(null);
+
+        InjectionRuleValidationException error = assertThrows(
+                InjectionRuleValidationException.class,
+                () -> validator.validateForWrite(rule).block()
+        );
+
+        assertEquals("enabled：必须是布尔值；仅支持 true 或 false", error.getReason());
+    }
+
+    // why: 注入模式决定运行时路由到哪条执行链；null 模式不是“缺省值”，而是会污染持久化语义的坏数据。
+    @Test
+    void shouldRejectNullMode() {
+        InjectionRule rule = makeRule();
+        rule.setMode(null);
+
+        InjectionRuleValidationException error = assertThrows(
+                InjectionRuleValidationException.class,
+                () -> validator.validateForWrite(rule).block()
+        );
+
+        assertEquals("mode：仅支持 \"HEAD\"、\"FOOTER\"、\"SELECTOR\"", error.getReason());
+    }
+
+    // why: selector 注入最终会把 `position` 送进执行器；若允许 null 落库，运行时 switch 会直接失败。
+    @Test
+    void shouldRejectNullPosition() {
+        InjectionRule rule = makeRule();
+        rule.setPosition(null);
+
+        InjectionRuleValidationException error = assertThrows(
+                InjectionRuleValidationException.class,
+                () -> validator.validateForWrite(rule).block()
+        );
+
+        assertEquals(
+                "position：仅支持 \"APPEND\"、\"PREPEND\"、\"BEFORE\"、\"AFTER\"、\"REPLACE\"、\"REMOVE\"",
+                error.getReason()
+        );
+    }
+
     private InjectionRule makeRule() {
         InjectionRule rule = new InjectionRule();
         rule.setMatchRule(MatchRule.defaultRule());

@@ -62,4 +62,22 @@ class CodeSnippetValidatorTest {
                 error.getReason()
         );
     }
+
+    // why: `enabled` 会直接进入运行时布尔判断；允许 null 落库会把普通读路径变成潜在拆箱异常。
+    @Test
+    void shouldRejectNullEnabledDuringWriteValidation() {
+        CodeSnippet snippet = new CodeSnippet();
+        Metadata metadata = new Metadata();
+        metadata.setName("snippet-a");
+        snippet.setMetadata(metadata);
+        snippet.setEnabled(null);
+        snippet.setCode("<div>ok</div>");
+
+        CodeSnippetValidationException error = assertThrows(
+                CodeSnippetValidationException.class,
+                () -> validator.validateForWrite(snippet).block()
+        );
+
+        assertEquals("enabled：必须是布尔值；仅支持 true 或 false", error.getReason());
+    }
 }

@@ -14,6 +14,9 @@ public class CodeSnippetValidator {
         if (snippet == null) {
             return Mono.error(new CodeSnippetValidationException("请求体不能为空"));
         }
+        if (snippet.getEnabled() == null) {
+            return Mono.error(new CodeSnippetValidationException("enabled：必须是布尔值；仅支持 true 或 false"));
+        }
         if (!snippet.getUnknownFields().isEmpty()) {
             String field = snippet.getUnknownFields().iterator().next();
             return Mono.error(new CodeSnippetValidationException(
