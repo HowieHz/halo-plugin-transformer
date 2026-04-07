@@ -6,7 +6,8 @@ import com.erzbir.halo.injector.scheme.InjectionRule;
 import com.erzbir.halo.injector.scheme.ResourceOrder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import run.halo.app.extension.Scheme;
+import run.halo.app.extension.Extension;
+import run.halo.app.extension.GroupVersionKind;
 import run.halo.app.extension.SchemeManager;
 import run.halo.app.plugin.BasePlugin;
 
@@ -38,11 +39,17 @@ public class HaloInjectorPlugin extends BasePlugin {
     }
 
     private void unregisterScheme() {
-        Scheme codeSnippetScheme = schemeManager.get(CodeSnippet.class);
-        Scheme injectionRuleScheme = schemeManager.get(InjectionRule.class);
-        Scheme resourceOrderScheme = schemeManager.get(ResourceOrder.class);
-        schemeManager.unregister(codeSnippetScheme);
-        schemeManager.unregister(injectionRuleScheme);
-        schemeManager.unregister(resourceOrderScheme);
+        unregisterSchemeIfPresent(CodeSnippet.class);
+        unregisterSchemeIfPresent(InjectionRule.class);
+        unregisterSchemeIfPresent(ResourceOrder.class);
+    }
+
+    /**
+     * why: Halo may call stop() while rolling back a failed start();
+     * at that point later schemes might not have been registered yet, so cleanup must be idempotent.
+     */
+    private void unregisterSchemeIfPresent(Class<? extends Extension> extensionType) {
+        schemeManager.fetch(GroupVersionKind.fromExtension(extensionType))
+                .ifPresent(schemeManager::unregister);
     }
 }
