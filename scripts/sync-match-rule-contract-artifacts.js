@@ -67,7 +67,12 @@ function buildJsoncChecklistArtifact(metadata) {
 
 function verifyArtifacts(artifacts) {
   const staleArtifacts = artifacts
-    .filter((artifact) => !existsSync(artifact.path) || readFileSync(artifact.path, 'utf8') !== artifact.content)
+    .filter(
+      (artifact) =>
+        !existsSync(artifact.path) ||
+        normalizeLineEndings(readFileSync(artifact.path, 'utf8')) !==
+          normalizeLineEndings(artifact.content),
+    )
     .map((artifact) => path.relative(repoRoot, artifact.path))
 
   if (staleArtifacts.length === 0) {
@@ -102,6 +107,10 @@ function buildJsoncArtifact(value) {
 function writeText(targetPath, value) {
   mkdirSync(path.dirname(targetPath), { recursive: true })
   writeFileSync(targetPath, value, 'utf8')
+}
+
+function normalizeLineEndings(value) {
+  return value.replace(/\r\n/g, '\n')
 }
 
 function buildTsArtifact(data) {
