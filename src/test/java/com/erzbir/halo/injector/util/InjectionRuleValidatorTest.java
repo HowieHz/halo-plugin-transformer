@@ -65,7 +65,7 @@ class InjectionRuleValidatorTest {
                 () -> validator.validateForWrite(rule).block()
         );
 
-        assertEquals("matchRule.children[0].matcher：缺少必填字段 \"matcher\"；该字段可选值为 \"ANT\"、\"REGEX\"、\"EXACT\"", error.getReason());
+        assertEquals("matchRule.children[0].matcher：页面路径条件缺少必填字段 \"matcher\"；该字段可选值为 \"ANT\"、\"REGEX\"、\"EXACT\"", error.getReason());
     }
 
     // why: `negate` 也要求显式给出 true/false，避免后端把“省略字段”静默吞成 false。
@@ -82,7 +82,7 @@ class InjectionRuleValidatorTest {
                 () -> validator.validateForWrite(rule).block()
         );
 
-        assertEquals("matchRule.children[0].negate：缺少必填字段 \"negate\"；该字段可选值为 true、false", error.getReason());
+        assertEquals("matchRule.children[0].negate：缺少必填字段 \"negate\"；该字段可选值为 true 或 false", error.getReason());
     }
 
     // why: JSON 里的错键不能被静默吞掉，否则像 `matcher` 拼错这类问题会在保存时被悄悄写成默认行为。

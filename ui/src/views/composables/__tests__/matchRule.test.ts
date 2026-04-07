@@ -79,7 +79,7 @@ describe('matchRule editor state', () => {
     const result = parseMatchRuleDraft('{ "type": "GROUP", "operator": "AND", "children": [] }')
 
     expect(result.error?.path).toBe('$.negate')
-    expect(result.error?.message).toBe('缺少必填字段 "negate"；该字段可选值为 true、false')
+    expect(result.error?.message).toBe('缺少必填字段 "negate"；该字段可选值为 true 或 false')
   })
 
   // why: 枚举型必填字段缺失时，提示“该字段可选值”为语义更自然，也更方便用户直接补值。
@@ -87,7 +87,9 @@ describe('matchRule editor state', () => {
     const result = parseMatchRuleDraft('{ "type": "GROUP", "negate": false, "children": [] }')
 
     expect(result.error?.path).toBe('$.operator')
-    expect(result.error?.message).toBe('条件组缺少必填字段 "operator"；该字段可选值为 "AND"、"OR"')
+    expect(result.error?.message).toBe(
+      '条件组缺少必填字段 "operator"；该字段可选值为 "AND" 或 "OR"',
+    )
   })
 
   // why: 简单模式保存时必须只信当前规则树来源，不能被高级模式草稿心智反向污染。

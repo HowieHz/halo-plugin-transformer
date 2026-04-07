@@ -291,6 +291,48 @@ Halo 自带的代码注入更偏向全局场景；这个插件更适合：
 
 这样做的目的，是既让编辑体验更直接，也避免非法规则落库，最后在运行时只表现为“没有生效”。
 
+### Match-rule contract checklist
+
+为了避免“README 很长，但 contract fixture 很薄”，匹配规则现在额外拆成两层：
+
+- 共享 contract：
+    - 定义文件：`contracts/match-rule-contract-checklist.json`
+    - fixture 文件：`contracts/match-rule-contracts.json`
+    - 共享 metadata 源：`contracts/match-rule-contract-metadata.json`
+    - `match-rule` 的允许字段集合与相关错误文本模板，会从这份 metadata 同步生成到前后端 helper
+    - Java / TypeScript 会分别跑同一批 fixture，并额外校验：`shared_contract` 条目必须至少被一条 fixture 覆盖
+- 前端专属行为：
+    - 仍会写进 checklist，但不会强制要求后端也共享同一语义
+    - 这类行为主要由前端单测锁住，例如模式切换确认、JSON 行高亮、导入后退到 `JSON_DRAFT` 等
+
+当前 checklist 中，属于 **共享 contract** 的核心语义包括：
+
+- 写入期结构约束
+    - 根节点必须是 `GROUP`
+    - 每个节点都必须显式写出 `negate`
+    - `GROUP` 只能使用 `type`、`negate`、`operator`、`children`
+    - `GROUP` 必须带合法 `operator`
+    - `GROUP` 不能是空组
+    - 叶子节点不能携带 `operator` / `children`
+    - `PATH` / `TEMPLATE_ID` 只能使用各自允许字段
+    - `TEMPLATE_ID` 只支持 `REGEX`、`EXACT`
+    - 叶子节点 `value` 必须是非空字符串
+    - `REGEX` 必须能正常编译
+- 运行时路径预筛
+    - `AND` 下带路径条件时，模板条件只是附加收窄
+    - `OR` 混合路径分支与模板分支时，不能安全做路径预筛
+    - 否定模板条件不能安全做路径预筛
+    - 只有路径分支的 `OR` 仍可做路径预筛
+    - 只有模板分支的 `AND` 不能做路径预筛
+
+当前 checklist 中，属于 **前端专属行为** 的典型语义包括：
+
+- 简单模式会同时展示多个可定位错误
+- 高级模式会把 JSON 错误尽量映射到具体行
+- 坏掉的 JSON 切回简单模式时会被规则树覆盖
+- 性能提示必须基于当前 `matchRuleSource`
+- 导入时，对象形但字段错误的规则会退到 `JSON_DRAFT`；根节点不是对象时则直接拒绝
+
 ### JSON Schema
 
 - 仓库内提供了一份统一 schema：`ui/public/injector.schema.json`

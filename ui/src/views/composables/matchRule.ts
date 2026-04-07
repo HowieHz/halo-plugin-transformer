@@ -8,6 +8,14 @@ import {
   makeTemplateMatchRule,
   type MatchRuleEditorMode,
 } from '@/types'
+import {
+  allowedFieldsFor,
+  formatInvalidBooleanFieldMessage,
+  formatInvalidEnumFieldTypeMessage,
+  formatInvalidEnumFieldValueMessage,
+  formatMissingEnumFieldMessage,
+  formatUnsupportedFieldMessage,
+} from './matchRuleContract.generated'
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -40,9 +48,9 @@ interface MatchRuleValidationOptions {
   allowMissingRequiredKeys: boolean
 }
 
-const GROUP_ALLOWED_KEYS = ['type', 'negate', 'operator', 'children'] as const
-const PATH_ALLOWED_KEYS = ['type', 'negate', 'matcher', 'value'] as const
-const TEMPLATE_ALLOWED_KEYS = ['type', 'negate', 'matcher', 'value'] as const
+const GROUP_ALLOWED_KEYS = allowedFieldsFor('GROUP')
+const PATH_ALLOWED_KEYS = allowedFieldsFor('PATH')
+const TEMPLATE_ALLOWED_KEYS = allowedFieldsFor('TEMPLATE_ID')
 
 /**
  * why: 编辑器需要“可随意修改的草稿副本”，避免直接改动响应式源对象时把未保存状态提前污染到列表数据。
@@ -318,23 +326,20 @@ function validateMatchRuleInput(
 
   const type = input.type
   if (!hasOwnKey(input, 'type') && !options.allowMissingRequiredKeys) {
-    return invalid(
-      `${path}.type`,
-      '缺少必填字段 "type"；该字段可选值为 "GROUP"、"PATH"、"TEMPLATE_ID"',
-    )
+    return invalid(`${path}.type`, formatMissingEnumFieldMessage('type', 'TYPE'))
   }
   if (input.type !== undefined && typeof input.type !== 'string') {
-    return invalid(`${path}.type`, '必须是字符串；仅支持 "GROUP"、"PATH"、"TEMPLATE_ID"')
+    return invalid(`${path}.type`, formatInvalidEnumFieldTypeMessage('TYPE'))
   }
   if (type !== 'GROUP' && type !== 'PATH' && type !== 'TEMPLATE_ID') {
-    return invalid(`${path}.type`, '仅支持 "GROUP"、"PATH"、"TEMPLATE_ID"')
+    return invalid(`${path}.type`, formatInvalidEnumFieldValueMessage('TYPE'))
   }
 
   if (!hasOwnKey(input, 'negate') && !options.allowMissingRequiredKeys) {
-    return invalid(`${path}.negate`, '缺少必填字段 "negate"；该字段可选值为 true、false')
+    return invalid(`${path}.negate`, formatMissingEnumFieldMessage('negate', 'BOOLEAN'))
   }
   if (input.negate !== undefined && typeof input.negate !== 'boolean') {
-    return invalid(`${path}.negate`, '必须是布尔值；仅支持 true 或 false')
+    return invalid(`${path}.negate`, formatInvalidBooleanFieldMessage())
   }
 
   if (options.requireGroupRoot && type !== 'GROUP') {
@@ -344,25 +349,22 @@ function validateMatchRuleInput(
   if (type === 'GROUP') {
     const unknownKey = findUnknownKey(input, GROUP_ALLOWED_KEYS)
     if (unknownKey && !options.allowUnknownKeys) {
-      return invalid(
-        `${path}.${unknownKey}`,
-        '不支持该字段；条件组仅支持 "type"、"negate"、"operator"、"children"',
-      )
+      return invalid(`${path}.${unknownKey}`, formatUnsupportedFieldMessage('GROUP'))
     }
     if (!hasOwnKey(input, 'operator') && !options.allowMissingRequiredKeys) {
       return invalid(
         `${path}.operator`,
-        '条件组缺少必填字段 "operator"；该字段可选值为 "AND"、"OR"',
+        formatMissingEnumFieldMessage('operator', 'OPERATOR', '条件组'),
       )
     }
     if (!hasOwnKey(input, 'children') && !options.allowMissingRequiredKeys) {
       return invalid(`${path}.children`, '条件组缺少必填字段 "children"')
     }
     if (input.operator !== undefined && typeof input.operator !== 'string') {
-      return invalid(`${path}.operator`, '必须是字符串；仅支持 "AND" 或 "OR"')
+      return invalid(`${path}.operator`, formatInvalidEnumFieldTypeMessage('OPERATOR'))
     }
     if (input.operator !== undefined && input.operator !== 'AND' && input.operator !== 'OR') {
-      return invalid(`${path}.operator`, '仅支持 "AND" 或 "OR"')
+      return invalid(`${path}.operator`, formatInvalidEnumFieldValueMessage('OPERATOR'))
     }
     if (hasOwnKey(input, 'children') && !Array.isArray(input.children)) {
       return invalid(`${path}.children`, '必须是数组')
@@ -407,19 +409,14 @@ function validateMatchRuleInput(
   const allowedKeys = type === 'PATH' ? PATH_ALLOWED_KEYS : TEMPLATE_ALLOWED_KEYS
   const unknownKey = findUnknownKey(input, allowedKeys)
   if (unknownKey && !options.allowUnknownKeys) {
-    return invalid(
-      `${path}.${unknownKey}`,
-      type === 'PATH'
-        ? '不支持该字段；页面路径条件仅支持 "type"、"negate"、"matcher"、"value"'
-        : '不支持该字段；模板 ID 条件仅支持 "type"、"negate"、"matcher"、"value"',
-    )
+    return invalid(`${path}.${unknownKey}`, formatUnsupportedFieldMessage(type))
   }
   if (!hasOwnKey(input, 'matcher') && !options.allowMissingRequiredKeys) {
     return invalid(
       `${path}.matcher`,
       type === 'PATH'
-        ? '页面路径条件缺少必填字段 "matcher"；该字段可选值为 "ANT"、"REGEX"、"EXACT"'
-        : '模板 ID 条件缺少必填字段 "matcher"；该字段可选值为 "REGEX"、"EXACT"',
+        ? formatMissingEnumFieldMessage('matcher', 'PATH_MATCHER', '页面路径条件')
+        : formatMissingEnumFieldMessage('matcher', 'TEMPLATE_MATCHER', '模板 ID 条件'),
     )
   }
   if (!hasOwnKey(input, 'value') && !options.allowMissingRequiredKeys) {
@@ -440,7 +437,7 @@ function validateMatchRuleInput(
     const normalizedValue = typeof input.value === 'string' ? input.value.trim() : '/**'
 
     if (input.matcher !== undefined && typeof input.matcher !== 'string') {
-      return invalid(`${path}.matcher`, '必须是字符串；仅支持 "ANT"、"REGEX"、"EXACT"')
+      return invalid(`${path}.matcher`, formatInvalidEnumFieldTypeMessage('PATH_MATCHER'))
     }
     if (
       input.matcher !== undefined &&
@@ -449,7 +446,7 @@ function validateMatchRuleInput(
       input.matcher !== 'EXACT'
     ) {
       if (!options.allowIncompatibleMatcher) {
-        return invalid(`${path}.matcher`, '仅支持 "ANT"、"REGEX"、"EXACT"')
+        return invalid(`${path}.matcher`, formatInvalidEnumFieldValueMessage('PATH_MATCHER'))
       }
     }
     if (input.matcher === 'REGEX' && !options.allowInvalidRegex) {
@@ -469,11 +466,14 @@ function validateMatchRuleInput(
   const normalizedValue = typeof input.value === 'string' ? input.value.trim() : 'post'
 
   if (input.matcher !== undefined && typeof input.matcher !== 'string') {
-    return invalid(`${path}.matcher`, '必须是字符串；仅支持 "REGEX" 或 "EXACT"')
+    return invalid(`${path}.matcher`, formatInvalidEnumFieldTypeMessage('TEMPLATE_MATCHER'))
   }
   if (input.matcher !== undefined && input.matcher !== 'REGEX' && input.matcher !== 'EXACT') {
     if (!options.allowIncompatibleMatcher) {
-      return invalid(`${path}.matcher`, '模板 ID 仅支持 "REGEX" 或 "EXACT"')
+      return invalid(
+        `${path}.matcher`,
+        `模板 ID ${formatInvalidEnumFieldValueMessage('TEMPLATE_MATCHER')}`,
+      )
     }
   }
   if (input.matcher === 'REGEX' && !options.allowInvalidRegex) {

@@ -136,7 +136,8 @@ public class MatchRule {
         }
         if (!rule.getUnknownFields().isEmpty()) {
             String field = rule.getUnknownFields().iterator().next();
-            throw new IllegalArgumentException(path + "." + field + "：" + unknownFieldMessage(rule.getType()));
+            throw new IllegalArgumentException(path + "." + field + "："
+                    + MatchRuleContractMessages.formatUnsupportedFieldMessage(rule.getType()));
         }
         if (rule.getType() == null) {
             throw new IllegalArgumentException(path + ".type：不能为空");
@@ -145,10 +146,16 @@ public class MatchRule {
             throw new IllegalArgumentException(path + ".type：根节点必须是 GROUP");
         }
         if (!rule.isNegateDefined()) {
-            throw new IllegalArgumentException(path + ".negate：缺少必填字段 \"negate\"；该字段可选值为 true、false");
+            throw new IllegalArgumentException(path + ".negate："
+                    + MatchRuleContractMessages.formatMissingEnumFieldMessage(
+                    "negate",
+                    MatchRuleContractMessages.EnumName.BOOLEAN,
+                    ""
+            ));
         }
         if (rule.getNegate() == null) {
-            throw new IllegalArgumentException(path + ".negate：必须是布尔值；仅支持 true 或 false");
+            throw new IllegalArgumentException(path + ".negate："
+                    + MatchRuleContractMessages.formatInvalidBooleanFieldMessage());
         }
 
         switch (rule.getType()) {
@@ -160,20 +167,30 @@ public class MatchRule {
 
     private static void validateGroupRule(MatchRule rule, String path) {
         if (rule.isMatcherDefined()) {
-            throw new IllegalArgumentException(path + ".matcher：" + unknownFieldMessage(Type.GROUP));
+            throw new IllegalArgumentException(path + ".matcher："
+                    + MatchRuleContractMessages.formatUnsupportedFieldMessage(Type.GROUP));
         }
         if (rule.isValueDefined()) {
-            throw new IllegalArgumentException(path + ".value：" + unknownFieldMessage(Type.GROUP));
+            throw new IllegalArgumentException(path + ".value："
+                    + MatchRuleContractMessages.formatUnsupportedFieldMessage(Type.GROUP));
         }
         List<MatchRule> children = rule.getChildren();
         if (children == null || children.isEmpty()) {
             throw new IllegalArgumentException(path + ".children：不能有空组");
         }
         if (rule.getOperator() == null) {
-            throw new IllegalArgumentException(path + ".operator：缺少必填字段 \"operator\"；该字段可选值为 \"AND\"、\"OR\"");
+            throw new IllegalArgumentException(path + ".operator："
+                    + MatchRuleContractMessages.formatMissingEnumFieldMessage(
+                    "operator",
+                    MatchRuleContractMessages.EnumName.OPERATOR,
+                    "条件组"
+            ));
         }
         if (rule.getOperator() != Operator.AND && rule.getOperator() != Operator.OR) {
-            throw new IllegalArgumentException(path + ".operator：仅支持 \"AND\" 或 \"OR\"");
+            throw new IllegalArgumentException(path + ".operator："
+                    + MatchRuleContractMessages.formatInvalidEnumFieldValueMessage(
+                    MatchRuleContractMessages.EnumName.OPERATOR
+            ));
         }
         for (int index = 0; index < children.size(); index++) {
             validateForWrite(children.get(index), path + ".children[" + index + "]", false);
@@ -188,10 +205,18 @@ public class MatchRule {
             throw new IllegalArgumentException(path + ".children：仅条件组可使用 children");
         }
         if (rule.getMatcher() == null) {
-            throw new IllegalArgumentException(path + ".matcher：缺少必填字段 \"matcher\"；该字段可选值为 \"ANT\"、\"REGEX\"、\"EXACT\"");
+            throw new IllegalArgumentException(path + ".matcher："
+                    + MatchRuleContractMessages.formatMissingEnumFieldMessage(
+                    "matcher",
+                    MatchRuleContractMessages.EnumName.PATH_MATCHER,
+                    "页面路径条件"
+            ));
         }
         if (!rule.supportsPathMatcher(rule.getMatcher())) {
-            throw new IllegalArgumentException(path + ".matcher：路径规则仅支持 \"ANT\"、\"REGEX\"、\"EXACT\"");
+            throw new IllegalArgumentException(path + ".matcher："
+                    + MatchRuleContractMessages.formatInvalidEnumFieldValueMessage(
+                    MatchRuleContractMessages.EnumName.PATH_MATCHER
+            ));
         }
         if (!StringUtils.hasText(rule.getValue())) {
             throw new IllegalArgumentException(path + ".value：必须是非空字符串");
@@ -207,10 +232,18 @@ public class MatchRule {
             throw new IllegalArgumentException(path + ".children：仅条件组可使用 children");
         }
         if (rule.getMatcher() == null) {
-            throw new IllegalArgumentException(path + ".matcher：缺少必填字段 \"matcher\"；该字段可选值为 \"REGEX\"、\"EXACT\"");
+            throw new IllegalArgumentException(path + ".matcher："
+                    + MatchRuleContractMessages.formatMissingEnumFieldMessage(
+                    "matcher",
+                    MatchRuleContractMessages.EnumName.TEMPLATE_MATCHER,
+                    "模板 ID 条件"
+            ));
         }
         if (!rule.supportsTemplateMatcher(rule.getMatcher())) {
-            throw new IllegalArgumentException(path + ".matcher：模板 ID 仅支持 \"REGEX\" 或 \"EXACT\"");
+            throw new IllegalArgumentException(path + ".matcher：模板 ID "
+                    + MatchRuleContractMessages.formatInvalidEnumFieldValueMessage(
+                    MatchRuleContractMessages.EnumName.TEMPLATE_MATCHER
+            ));
         }
         if (!StringUtils.hasText(rule.getValue())) {
             throw new IllegalArgumentException(path + ".value：必须是非空字符串");
@@ -227,19 +260,6 @@ public class MatchRule {
         } catch (PatternSyntaxException e) {
             throw new IllegalArgumentException(path + "：正则表达式无效，" + e.getDescription(), e);
         }
-    }
-
-    private static String unknownFieldMessage(Type type) {
-        if (type == Type.GROUP) {
-            return "不支持该字段；条件组仅支持 \"type\"、\"negate\"、\"operator\"、\"children\"";
-        }
-        if (type == Type.PATH) {
-            return "不支持该字段；页面路径条件仅支持 \"type\"、\"negate\"、\"matcher\"、\"value\"";
-        }
-        if (type == Type.TEMPLATE_ID) {
-            return "不支持该字段；模板 ID 条件仅支持 \"type\"、\"negate\"、\"matcher\"、\"value\"";
-        }
-        return "不支持该字段";
     }
 
     /**
