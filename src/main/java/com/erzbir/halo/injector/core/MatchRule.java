@@ -199,10 +199,12 @@ public class MatchRule {
 
     private static void validatePathRule(MatchRule rule, String path) {
         if (rule.isOperatorDefined()) {
-            throw new IllegalArgumentException(path + ".operator：仅条件组可使用 operator");
+            throw new IllegalArgumentException(path + ".operator："
+                    + MatchRuleContractMessages.formatUnsupportedFieldMessage(Type.PATH));
         }
         if (rule.isChildrenDefined()) {
-            throw new IllegalArgumentException(path + ".children：仅条件组可使用 children");
+            throw new IllegalArgumentException(path + ".children："
+                    + MatchRuleContractMessages.formatUnsupportedFieldMessage(Type.PATH));
         }
         if (rule.getMatcher() == null) {
             throw new IllegalArgumentException(path + ".matcher："
@@ -226,10 +228,12 @@ public class MatchRule {
 
     private static void validateTemplateRule(MatchRule rule, String path) {
         if (rule.isOperatorDefined()) {
-            throw new IllegalArgumentException(path + ".operator：仅条件组可使用 operator");
+            throw new IllegalArgumentException(path + ".operator："
+                    + MatchRuleContractMessages.formatUnsupportedFieldMessage(Type.TEMPLATE_ID));
         }
         if (rule.isChildrenDefined()) {
-            throw new IllegalArgumentException(path + ".children：仅条件组可使用 children");
+            throw new IllegalArgumentException(path + ".children："
+                    + MatchRuleContractMessages.formatUnsupportedFieldMessage(Type.TEMPLATE_ID));
         }
         if (rule.getMatcher() == null) {
             throw new IllegalArgumentException(path + ".matcher："

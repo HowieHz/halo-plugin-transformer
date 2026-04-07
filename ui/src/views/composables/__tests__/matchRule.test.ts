@@ -92,6 +92,32 @@ describe('matchRule editor state', () => {
     )
   })
 
+  // why: 叶子节点误带条件组字段时，直接告诉用户“当前类型允许哪些字段”比“仅条件组可使用”更完整，
+  // 也能和后端写入期错误保持同一套 contract 风格。
+  it('reports unsupported leaf-only operator fields with allowed field guidance', () => {
+    const result = parseMatchRuleDraft(
+      '{ "type": "GROUP", "negate": false, "operator": "AND", "children": [{ "type": "PATH", "negate": false, "matcher": "ANT", "value": "/**", "operator": "AND" }] }',
+    )
+
+    expect(result.error?.path).toBe('$.children[0].operator')
+    expect(result.error?.message).toBe(
+      '不支持该字段；页面路径条件仅支持 "type"、"negate"、"matcher"、"value"',
+    )
+  })
+
+  // why: `children` 落在叶子节点上时同理也应回到“允许字段集合”提示，
+  // 避免前端和后端对同一个结构错误给出两种不同心智模型。
+  it('reports unsupported leaf-only children fields with allowed field guidance', () => {
+    const result = parseMatchRuleDraft(
+      '{ "type": "GROUP", "negate": false, "operator": "AND", "children": [{ "type": "TEMPLATE_ID", "negate": false, "matcher": "EXACT", "value": "post", "children": [] }] }',
+    )
+
+    expect(result.error?.path).toBe('$.children[0].children')
+    expect(result.error?.message).toBe(
+      '不支持该字段；模板 ID 条件仅支持 "type"、"negate"、"matcher"、"value"',
+    )
+  })
+
   // why: 简单模式保存时必须只信当前规则树来源，不能被高级模式草稿心智反向污染。
   it('resolves rule tree source when current source is simple', () => {
     const rule = makeRuleEditorDraft({

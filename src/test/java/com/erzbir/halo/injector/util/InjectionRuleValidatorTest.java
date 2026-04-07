@@ -145,7 +145,10 @@ class InjectionRuleValidatorTest {
                 () -> validator.validateForWrite(rule).block()
         );
 
-        assertEquals("matchRule.children[0].children：仅条件组可使用 children", error.getReason());
+        assertEquals(
+                "matchRule.children[0].children：不支持该字段；页面路径条件仅支持 \"type\"、\"negate\"、\"matcher\"、\"value\"",
+                error.getReason()
+        );
     }
 
     // why: 条件组即使带空字符串 value 也属于脏字段，后端要拒绝，避免“看似没值其实已写脏结构”。
@@ -199,7 +202,10 @@ class InjectionRuleValidatorTest {
                 () -> validator.validateForWrite(rule).block()
         );
 
-        assertEquals("matchRule.children[0].children：仅条件组可使用 children", error.getReason());
+        assertEquals(
+                "matchRule.children[0].children：不支持该字段；页面路径条件仅支持 \"type\"、\"negate\"、\"matcher\"、\"value\"",
+                error.getReason()
+        );
     }
 
     // why: 对愿意接受性能退化的用户，“路径 OR 模板”这类规则仍应允许保存，由配置页给出警告即可。

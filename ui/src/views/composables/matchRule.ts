@@ -401,10 +401,10 @@ function validateMatchRuleInput(
   }
 
   if (input.operator !== undefined) {
-    return invalid(`${path}.operator`, '仅条件组可使用 operator')
+    return invalid(`${path}.operator`, formatUnsupportedFieldMessage(type))
   }
   if (input.children !== undefined) {
-    return invalid(`${path}.children`, '仅条件组可使用 children')
+    return invalid(`${path}.children`, formatUnsupportedFieldMessage(type))
   }
   const allowedKeys = type === 'PATH' ? PATH_ALLOWED_KEYS : TEMPLATE_ALLOWED_KEYS
   const unknownKey = findUnknownKey(input, allowedKeys)
