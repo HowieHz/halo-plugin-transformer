@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { Toast, VButton } from '@halo-dev/components'
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import {
   type CodeSnippetReadModel,
   type InjectionRuleEditorDraft,
@@ -18,6 +18,7 @@ import BaseFormModal from './BaseFormModal.vue'
 import ItemPicker from './ItemPicker.vue'
 import FormField from './FormField.vue'
 import MatchRuleEditor from './MatchRuleEditor.vue'
+import ImportJsonSourceModal from './ImportJsonSourceModal.vue'
 import { updateSelectByWheel } from '@/views/composables/selectWheel.ts'
 import { parseRuleTransfer } from '@/views/composables/transfer.ts'
 
@@ -34,6 +35,7 @@ const emit = defineEmits<{
 const rule = ref<InjectionRuleEditorDraft>(makeRuleEditorDraft())
 const selectedSnippetIds = ref<string[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
+const importSourceVisible = ref(false)
 const initialRule = makeRuleEditorDraft()
 
 onMounted(reset)
@@ -64,25 +66,55 @@ function handleSubmit() {
   emit('submit', rule.value, selectedSnippetIds.value)
 }
 
-function openImportPicker() {
+function openImportSourceModal() {
+  importSourceVisible.value = true
+}
+
+function closeImportSourceModal() {
+  importSourceVisible.value = false
+}
+
+async function applyImportedRule(raw: string, sourceLabel: '剪贴板' | '文件') {
+  rule.value = parseRuleTransfer(raw)
+  selectedSnippetIds.value = []
+  const importedValidationError = resolveImportedRuleValidationError(rule.value)
+  if (importedValidationError) {
+    Toast.warning(
+      `已从${sourceLabel}导入注入规则 JSON，但当前内容仍有错误：${importedValidationError}`,
+    )
+  } else {
+    Toast.success(`已从${sourceLabel}导入注入规则 JSON`)
+  }
+}
+
+async function importFromClipboard() {
+  try {
+    const text = await navigator.clipboard.readText()
+    if (!text.trim()) {
+      Toast.warning('剪贴板里没有可导入的 JSON')
+      return
+    }
+    await applyImportedRule(text, '剪贴板')
+    importSourceVisible.value = false
+  } catch {
+    Toast.error('读取剪贴板失败，请检查浏览器权限后重试')
+  }
+}
+
+async function importFromFile() {
+  importSourceVisible.value = false
+  await nextTick()
   fileInput.value?.click()
 }
 
-async function handleImport(event: Event) {
+async function handleImportFile(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) {
     return
   }
   try {
-    rule.value = parseRuleTransfer(await file.text())
-    selectedSnippetIds.value = []
-    const importedValidationError = resolveImportedRuleValidationError(rule.value)
-    if (importedValidationError) {
-      Toast.warning(`已导入注入规则 JSON，但当前内容仍有错误：${importedValidationError}`)
-    } else {
-      Toast.success('已导入注入规则 JSON')
-    }
+    await applyImportedRule(await file.text(), '文件')
   } catch (error) {
     Toast.error(error instanceof Error ? error.message : '导入失败')
   } finally {
@@ -182,9 +214,9 @@ defineExpose({
           accept="application/json,.json"
           class=":uno: hidden"
           type="file"
-          @change="handleImport"
+          @change="handleImportFile"
         />
-        <VButton size="sm" type="secondary" @click="openImportPicker">导入 JSON</VButton>
+        <VButton size="sm" type="secondary" @click="openImportSourceModal">导入 JSON</VButton>
       </div>
     </template>
 
@@ -303,4 +335,12 @@ defineExpose({
       />
     </template>
   </BaseFormModal>
+
+  <ImportJsonSourceModal
+    v-if="importSourceVisible"
+    resource-label="注入规则"
+    @close="closeImportSourceModal"
+    @import-from-clipboard="importFromClipboard"
+    @import-from-file="importFromFile"
+  />
 </template>

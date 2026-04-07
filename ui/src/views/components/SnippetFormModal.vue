@@ -1,10 +1,11 @@
 <script lang="ts" setup>
 import { Toast, VButton } from '@halo-dev/components'
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import type { CodeSnippetEditorDraft } from '@/types'
 import { makeSnippetEditorDraft } from '@/types'
 import BaseFormModal from './BaseFormModal.vue'
 import FormField from './FormField.vue'
+import ImportJsonSourceModal from './ImportJsonSourceModal.vue'
 import { parseSnippetTransfer } from '@/views/composables/transfer'
 
 const props = defineProps<{
@@ -18,6 +19,7 @@ const emit = defineEmits<{
 
 const snippet = ref<CodeSnippetEditorDraft>(makeSnippetEditorDraft())
 const fileInput = ref<HTMLInputElement | null>(null)
+const importSourceVisible = ref(false)
 const initialSnippet = makeSnippetEditorDraft()
 const codeScrollTop = ref(0)
 
@@ -45,23 +47,51 @@ function syncCodeScroll(event: Event) {
   codeScrollTop.value = (event.target as HTMLTextAreaElement).scrollTop
 }
 
-function openImportPicker() {
+function openImportSourceModal() {
+  importSourceVisible.value = true
+}
+
+function closeImportSourceModal() {
+  importSourceVisible.value = false
+}
+
+async function applyImportedSnippet(raw: string, sourceLabel: '剪贴板' | '文件') {
+  snippet.value = parseSnippetTransfer(raw)
+  if (!snippet.value.code.trim()) {
+    Toast.warning(`已从${sourceLabel}导入代码块 JSON，但当前内容仍有错误：代码内容不能为空`)
+  } else {
+    Toast.success(`已从${sourceLabel}导入代码块 JSON`)
+  }
+}
+
+async function importFromClipboard() {
+  try {
+    const text = await navigator.clipboard.readText()
+    if (!text.trim()) {
+      Toast.warning('剪贴板里没有可导入的 JSON')
+      return
+    }
+    await applyImportedSnippet(text, '剪贴板')
+    importSourceVisible.value = false
+  } catch {
+    Toast.error('读取剪贴板失败，请检查浏览器权限后重试')
+  }
+}
+
+async function importFromFile() {
+  importSourceVisible.value = false
+  await nextTick()
   fileInput.value?.click()
 }
 
-async function handleImport(event: Event) {
+async function handleImportFile(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) {
     return
   }
   try {
-    snippet.value = parseSnippetTransfer(await file.text())
-    if (!snippet.value.code.trim()) {
-      Toast.warning('已导入代码块 JSON，但当前内容仍有错误：代码内容不能为空')
-    } else {
-      Toast.success('已导入代码块 JSON')
-    }
+    await applyImportedSnippet(await file.text(), '文件')
   } catch (error) {
     Toast.error(error instanceof Error ? error.message : '导入失败')
   } finally {
@@ -119,9 +149,9 @@ defineExpose({
           accept="application/json,.json"
           class=":uno: hidden"
           type="file"
-          @change="handleImport"
+          @change="handleImportFile"
         />
-        <VButton size="sm" type="secondary" @click="openImportPicker">导入 JSON</VButton>
+        <VButton size="sm" type="secondary" @click="openImportSourceModal">导入 JSON</VButton>
       </div>
     </template>
 
@@ -195,4 +225,12 @@ defineExpose({
       </FormField>
     </template>
   </BaseFormModal>
+
+  <ImportJsonSourceModal
+    v-if="importSourceVisible"
+    resource-label="代码块"
+    @close="closeImportSourceModal"
+    @import-from-clipboard="importFromClipboard"
+    @import-from-file="importFromFile"
+  />
 </template>
