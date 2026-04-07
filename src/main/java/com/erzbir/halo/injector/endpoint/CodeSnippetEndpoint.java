@@ -22,6 +22,7 @@ import run.halo.app.extension.ReactiveExtensionClient;
 import java.net.URI;
 import java.util.Objects;
 
+import static org.springframework.web.reactive.function.server.RequestPredicates.GET;
 import static org.springframework.web.reactive.function.server.RequestPredicates.DELETE;
 import static org.springframework.web.reactive.function.server.RequestPredicates.POST;
 import static org.springframework.web.reactive.function.server.RequestPredicates.PUT;
@@ -30,19 +31,45 @@ import static org.springframework.web.reactive.function.server.RouterFunctions.r
 @Component
 @RequiredArgsConstructor
 public class CodeSnippetEndpoint implements CustomEndpoint {
-    private static final String READ_API_VERSION = "injector.erzbir.com/v1alpha1";
+    private static final String CONSOLE_API_VERSION = "console.api.injector.erzbir.com/v1alpha1";
 
     private final ReactiveExtensionClient client;
     private final CodeSnippetValidator validator;
     private final CodeSnippetLifecycleService lifecycleService;
     private final InjectionRuleRuntimeStore ruleRuntimeStore;
+    private final ConsoleReadModelMapper readModelMapper;
 
     @Override
     public RouterFunction<ServerResponse> endpoint() {
-        return route(POST("/codeSnippets"), this::createSnippet)
+        return route(GET("/codeSnippets"), this::listSnippets)
+                .andRoute(GET("/codeSnippets/{name}"), this::getSnippet)
+                .andRoute(POST("/codeSnippets"), this::createSnippet)
                 .andRoute(PUT("/codeSnippets/{name}"), this::updateSnippet)
                 .andRoute(PUT("/codeSnippets/{name}/enabled"), this::updateSnippetEnabled)
                 .andRoute(DELETE("/codeSnippets/{name}"), this::deleteSnippet);
+    }
+
+    /**
+     * why: 控制台列表应读取显式 read model projection，而不是把存储实体直接暴露给 UI；
+     * 这样 `id` 等派生字段就收敛在响应层，不再反向污染持久化模型。
+     */
+    private Mono<ServerResponse> listSnippets(ServerRequest request) {
+        return client.list(CodeSnippet.class, null, null)
+                .collectList()
+                .map(readModelMapper::toSnippetList)
+                .flatMap(response -> ServerResponse.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(response));
+    }
+
+    private Mono<ServerResponse> getSnippet(ServerRequest request) {
+        String name = request.pathVariable("name");
+        return client.fetch(CodeSnippet.class, name)
+                .switchIfEmpty(Mono.error(new ServerWebInputException("未找到代码块")))
+                .map(readModelMapper::toReadModel)
+                .flatMap(response -> ServerResponse.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(response));
     }
 
     /**
@@ -56,10 +83,10 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
                 .flatMap(validator::validateForWrite)
                 .flatMap(client::create)
                 .doOnSuccess(created -> ruleRuntimeStore.invalidateAndWarmUpAsync())
-                .flatMap(created -> ServerResponse.created(URI.create("/apis/" + READ_API_VERSION + "/codeSnippets/"
+                .flatMap(created -> ServerResponse.created(URI.create("/apis/" + CONSOLE_API_VERSION + "/codeSnippets/"
                                 + created.getMetadata().getName()))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(created));
+                        .bodyValue(readModelMapper.toReadModel(created)));
     }
 
     /**
@@ -92,7 +119,7 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
                 .doOnSuccess(updated -> ruleRuntimeStore.invalidateAndWarmUpAsync())
                 .flatMap(updated -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(updated));
+                        .bodyValue(readModelMapper.toReadModel(updated)));
     }
 
     /**
@@ -104,6 +131,7 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
         return request.bodyToMono(EnabledPayload.class)
                 .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
                 .flatMap(payload -> updateSnippetEnabled(name, payload))
+                .map(readModelMapper::toReadModel)
                 .flatMap(updated -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(updated));
@@ -158,6 +186,6 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
 
     @Override
     public GroupVersion groupVersion() {
-        return GroupVersion.parseAPIVersion("console.api.injector.erzbir.com/v1alpha1");
+        return GroupVersion.parseAPIVersion(CONSOLE_API_VERSION);
     }
 }

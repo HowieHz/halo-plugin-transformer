@@ -14,7 +14,7 @@ import java.util.Set;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-@JsonIgnoreProperties(value = "id", allowGetters = true)
+@JsonIgnoreProperties("id")
 @GVK(kind = "CodeSnippet", group = "injector.erzbir.com",
         version = "v1alpha1", singular = "codeSnippet", plural = "codeSnippets")
 public class CodeSnippet extends AbstractExtension implements ICodeSnippet {

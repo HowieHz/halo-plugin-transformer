@@ -16,7 +16,7 @@ import java.util.Set;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-@JsonIgnoreProperties(value = "id", allowGetters = true)
+@JsonIgnoreProperties("id")
 @GVK(kind = "InjectionRule", group = "injector.erzbir.com", version = "v1alpha1",
         singular = "injectionRule", plural = "injectionRules")
 public class InjectionRule extends AbstractExtension implements IInjectionRule {

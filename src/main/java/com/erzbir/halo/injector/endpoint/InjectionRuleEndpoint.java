@@ -24,6 +24,7 @@ import java.net.URI;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 
+import static org.springframework.web.reactive.function.server.RequestPredicates.GET;
 import static org.springframework.web.reactive.function.server.RequestPredicates.DELETE;
 import static org.springframework.web.reactive.function.server.RequestPredicates.POST;
 import static org.springframework.web.reactive.function.server.RequestPredicates.PUT;
@@ -32,19 +33,45 @@ import static org.springframework.web.reactive.function.server.RouterFunctions.r
 @Component
 @RequiredArgsConstructor
 public class InjectionRuleEndpoint implements CustomEndpoint {
-    private static final String READ_API_VERSION = "injector.erzbir.com/v1alpha1";
+    private static final String CONSOLE_API_VERSION = "console.api.injector.erzbir.com/v1alpha1";
 
     private final ReactiveExtensionClient client;
     private final InjectionRuleValidator validator;
     private final InjectionRuleRuntimeStore ruleRuntimeStore;
     private final SnippetReferenceService snippetReferenceService;
+    private final ConsoleReadModelMapper readModelMapper;
 
     @Override
     public RouterFunction<ServerResponse> endpoint() {
-        return route(POST("/injectionRules"), this::createRule)
+        return route(GET("/injectionRules"), this::listRules)
+                .andRoute(GET("/injectionRules/{name}"), this::getRule)
+                .andRoute(POST("/injectionRules"), this::createRule)
                 .andRoute(PUT("/injectionRules/{name}"), this::updateRule)
                 .andRoute(PUT("/injectionRules/{name}/enabled"), this::updateRuleEnabled)
                 .andRoute(DELETE("/injectionRules/{name}"), this::deleteRule);
+    }
+
+    /**
+     * why: 控制台读规则时应消费 projection，而不是直接反序列化存储实体；
+     * 这样 UI 特有的 `id` 读字段就不会再回流到写模型。
+     */
+    private Mono<ServerResponse> listRules(ServerRequest request) {
+        return client.list(InjectionRule.class, null, null)
+                .collectList()
+                .map(readModelMapper::toRuleList)
+                .flatMap(response -> ServerResponse.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(response));
+    }
+
+    private Mono<ServerResponse> getRule(ServerRequest request) {
+        String name = request.pathVariable("name");
+        return client.fetch(InjectionRule.class, name)
+                .switchIfEmpty(Mono.error(new ServerWebInputException("未找到注入规则")))
+                .map(readModelMapper::toReadModel)
+                .flatMap(response -> ServerResponse.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(response));
     }
 
     /**
@@ -59,10 +86,10 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
                 .map(this::canonicalizeRuleForStorage)
                 .flatMap(client::create)
                 .doOnSuccess(created -> ruleRuntimeStore.invalidateAndWarmUpAsync())
-                .flatMap(created -> ServerResponse.created(URI.create("/apis/" + READ_API_VERSION + "/injectionRules/"
+                .flatMap(created -> ServerResponse.created(URI.create("/apis/" + CONSOLE_API_VERSION + "/injectionRules/"
                                 + created.getMetadata().getName()))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(created));
+                        .bodyValue(readModelMapper.toReadModel(created)));
     }
 
     /**
@@ -97,7 +124,7 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
                 .doOnSuccess(updated -> ruleRuntimeStore.invalidateAndWarmUpAsync())
                 .flatMap(updated -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(updated));
+                        .bodyValue(readModelMapper.toReadModel(updated)));
     }
 
     /**
@@ -109,6 +136,7 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
         return request.bodyToMono(EnabledPayload.class)
                 .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
                 .flatMap(payload -> updateRuleEnabled(name, payload))
+                .map(readModelMapper::toReadModel)
                 .flatMap(updated -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(updated));
@@ -196,7 +224,7 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
 
     @Override
     public GroupVersion groupVersion() {
-        return GroupVersion.parseAPIVersion("console.api.injector.erzbir.com/v1alpha1");
+        return GroupVersion.parseAPIVersion(CONSOLE_API_VERSION);
     }
 
     @lombok.Data

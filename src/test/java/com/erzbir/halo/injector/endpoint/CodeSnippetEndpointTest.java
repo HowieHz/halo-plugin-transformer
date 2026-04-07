@@ -31,7 +31,13 @@ class CodeSnippetEndpointTest {
         client = mock(ReactiveExtensionClient.class);
         validator = mock(CodeSnippetValidator.class);
         ruleRuntimeStore = mock(InjectionRuleRuntimeStore.class);
-        endpoint = new CodeSnippetEndpoint(client, validator, mock(CodeSnippetLifecycleService.class), ruleRuntimeStore);
+        endpoint = new CodeSnippetEndpoint(
+                client,
+                validator,
+                mock(CodeSnippetLifecycleService.class),
+                ruleRuntimeStore,
+                mock(ConsoleReadModelMapper.class)
+        );
     }
 
     // why: 代码块启停现在应有独立写口，只修改 enabled；

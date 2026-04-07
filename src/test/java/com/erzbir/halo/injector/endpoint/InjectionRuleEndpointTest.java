@@ -39,7 +39,13 @@ class InjectionRuleEndpointTest {
         validator = mock(InjectionRuleValidator.class);
         ruleRuntimeStore = mock(InjectionRuleRuntimeStore.class);
         snippetReferenceService = mock(SnippetReferenceService.class);
-        endpoint = new InjectionRuleEndpoint(client, validator, ruleRuntimeStore, snippetReferenceService);
+        endpoint = new InjectionRuleEndpoint(
+                client,
+                validator,
+                ruleRuntimeStore,
+                snippetReferenceService,
+                mock(ConsoleReadModelMapper.class)
+        );
     }
 
     // why: 规则启停必须只围绕已保存规则本体切换 enabled，
@@ -90,7 +96,8 @@ class InjectionRuleEndpointTest {
                 client,
                 new InjectionRuleValidator(),
                 ruleRuntimeStore,
-                snippetReferenceService
+                snippetReferenceService,
+                mock(ConsoleReadModelMapper.class)
         );
 
         InjectionRuleValidationException validationError = assertThrows(
@@ -116,7 +123,8 @@ class InjectionRuleEndpointTest {
                 client,
                 new InjectionRuleValidator(),
                 ruleRuntimeStore,
-                snippetReferenceService
+                snippetReferenceService,
+                mock(ConsoleReadModelMapper.class)
         );
 
         InjectionRule updated = endpointWithRealValidator.updateRuleEnabled("rule-a", enabledPayload(true, 12L)).block();

@@ -7,12 +7,11 @@ import type {
   ItemList,
 } from '@/types'
 
-const BASE = '/apis/injector.erzbir.com/v1alpha1'
 const CONSOLE_BASE = '/apis/console.api.injector.erzbir.com/v1alpha1'
-const SNIPPETS = `${BASE}/codeSnippets`
+const SNIPPETS = `${CONSOLE_BASE}/codeSnippets`
 const SNIPPETS_WRITE = `${CONSOLE_BASE}/codeSnippets`
 const SNIPPET_ORDER = `${CONSOLE_BASE}/snippet-order`
-const RULES = `${BASE}/injectionRules`
+const RULES = `${CONSOLE_BASE}/injectionRules`
 const RULES_WRITE = `${CONSOLE_BASE}/injectionRules`
 const RULE_ORDER = `${CONSOLE_BASE}/rule-order`
 

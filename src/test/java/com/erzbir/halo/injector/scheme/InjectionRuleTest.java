@@ -61,6 +61,20 @@ class InjectionRuleTest {
         assertFalse(json.contains("\"valid\""));
     }
 
+    // why: 控制台只读字段应由响应 projection 承担；
+    // 持久化实体自身不应继续把 `id` 暴露成对外 JSON 字段。
+    @Test
+    void shouldNotSerializeIdFromStoredEntity() throws Exception {
+        InjectionRule rule = new InjectionRule();
+        Metadata metadata = new Metadata();
+        metadata.setName("rule-a");
+        rule.setMetadata(metadata);
+
+        String json = objectMapper.writeValueAsString(rule);
+
+        assertFalse(json.contains("\"id\""));
+    }
+
     // why: 删除独立 ID 模式后，历史规则仍可能以旧值存在；
     // 读取期必须把它无损迁成 SELECTOR，并把旧 id 值改写成 #id 选择器，避免启动时直接炸。
     @Test
