@@ -314,6 +314,15 @@ Halo 自带的代码注入更偏向全局场景；这个插件更适合：
     - 仍会写进 checklist，但不会强制要求后端也共享同一语义
     - 这类行为主要由前端单测锁住，例如模式切换确认、JSON 行高亮、导入后退到 `JSON_DRAFT` 等
 
+仓库级 contract tooling 入口：
+
+- `pnpm generate:contracts`
+    - 从仓库根的 `contracts/match-rule-contract-metadata.json` 刷新所有 generated artifacts
+- `pnpm verify:contracts`
+    - 只校验 generated artifacts 是否与 metadata 一致；CI 与本地提交前检查应优先跑这一项
+- `./gradlew verifyMatchRuleContracts`
+    - 后端构建链路上的同义校验；避免只跑 Gradle 时跳过 contract 一致性检查
+
 当前 checklist 中，属于 **共享 contract** 的核心语义包括：
 
 - 写入期结构约束

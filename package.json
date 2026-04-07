@@ -1,0 +1,10 @@
+{
+  "name": "halo-plugin-injector",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "generate:contracts": "node scripts/sync-match-rule-contract-artifacts.mjs",
+    "verify:contracts": "node scripts/sync-match-rule-contract-artifacts.mjs --check"
+  }
+}

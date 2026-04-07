@@ -1,8 +1,8 @@
 {
   "type": "module",
   "scripts": {
-    "generate:contracts": "node ../scripts/sync-match-rule-contract-artifacts.mjs",
-    "build": "run-s generate:contracts build:compiled",
+    "verify:contracts": "pnpm --dir .. verify:contracts",
+    "build": "run-s verify:contracts build:compiled",
     "build:compiled": "run-p type-check \"build-only {@}\" --",
     "build-only": "rsbuild build",
     "dev": "rsbuild build --watch --env-mode=development",

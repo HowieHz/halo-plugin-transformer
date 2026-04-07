@@ -6,6 +6,8 @@ plugins {
 
 group 'com.erzbir.halo.injector'
 
+def nodeCommand = System.getProperty('os.name').toLowerCase().contains('windows') ? 'node.exe' : 'node'
+
 repositories {
     mavenCentral()
 }
@@ -35,15 +37,30 @@ tasks.withType(JavaCompile).configureEach {
     options.compilerArgs += "-parameters"
 }
 
+tasks.register('generateMatchRuleContracts', Exec) {
+    workingDir rootDir
+    commandLine nodeCommand, 'scripts/sync-match-rule-contract-artifacts.mjs'
+}
+
+tasks.register('verifyMatchRuleContracts', Exec) {
+    workingDir rootDir
+    commandLine nodeCommand, 'scripts/sync-match-rule-contract-artifacts.mjs', '--check'
+}
+
 tasks.register('processUiResources', Copy) {
     from project(':ui').layout.buildDirectory.dir('dist')
     into layout.buildDirectory.dir('resources/main/console')
     dependsOn project(':ui').tasks.named('assemble')
+    dependsOn tasks.named('verifyMatchRuleContracts')
     shouldRunAfter tasks.named('processResources')
 }
 
 tasks.named('classes') {
     dependsOn tasks.named('processUiResources')
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('verifyMatchRuleContracts')
 }
 
 tasks.named('generatePluginComponentsIdx') {
