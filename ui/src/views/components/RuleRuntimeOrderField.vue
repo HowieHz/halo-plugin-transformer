@@ -37,15 +37,19 @@ const displayedRuntimeOrder = computed(() => {
   return Number.isFinite(parsed) ? clampRuntimeOrder(parsed) : props.modelValue
 })
 
+const previewRuntimeOrder = computed(() =>
+  manualMode.value ? displayedRuntimeOrder.value : snapRuntimeOrderToPreset(sliderDraft.value),
+)
+
 const currentStepLabel = computed(() => {
-  const exact = RUNTIME_ORDER_STEPS.find((step) => step.value === displayedRuntimeOrder.value)
+  const exact = RUNTIME_ORDER_STEPS.find((step) => step.value === previewRuntimeOrder.value)
   if (exact) {
     return `${exact.label}（${formatRuntimeOrder(exact.value)}）`
   }
-  return `自定义 ${formatRuntimeOrder(displayedRuntimeOrder.value)}`
+  return `自定义 ${formatRuntimeOrder(previewRuntimeOrder.value)}`
 })
 
-const currentRangeHint = computed(() => describeRuntimeOrderRange(displayedRuntimeOrder.value))
+const currentRangeHint = computed(() => describeRuntimeOrderRange(previewRuntimeOrder.value))
 
 function updateRuntimeOrder(value: number) {
   emit('update:modelValue', clampRuntimeOrder(value))
@@ -154,7 +158,7 @@ function toggleEditMode() {
             transform: stepTransform(index),
           }"
           :class="
-            step.value === displayedRuntimeOrder
+            step.value === previewRuntimeOrder
               ? ':uno: text-primary'
               : ':uno: text-gray-400 hover:text-gray-600'
           "
