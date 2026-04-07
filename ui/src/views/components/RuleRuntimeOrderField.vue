@@ -67,20 +67,12 @@ function commitRuntimeOrderFromSlider() {
   emit('update:modelValue', snapped)
 }
 
-function updateRuntimeOrderPreset(index: number) {
-  const preset = RUNTIME_ORDER_STEPS[index]
-  if (!preset) {
-    return
-  }
-  updateRuntimeOrder(preset.value)
+function updateRuntimeOrderPresetValue(value: number) {
+  updateRuntimeOrder(value)
 }
 
 function stepPositionPercent(value: number) {
   return `${(value / RUNTIME_ORDER_MAX) * 100}%`
-}
-
-function stepTransform() {
-  return 'translateX(-50%)'
 }
 
 function handleManualInput(event: Event) {
@@ -132,33 +124,45 @@ function toggleEditMode() {
       />
     </template>
     <template v-else>
-      <input
-        :aria-valuetext="currentStepLabel"
-        :max="RUNTIME_ORDER_MAX"
-        min="0"
-        step="1"
-        :value="sliderDraft"
-        class="runtime-order-slider :uno: w-full bg-transparent"
-        type="range"
-        @input="updateRuntimeOrderFromSlider(Number(($event.target as HTMLInputElement).value))"
-        @change="commitRuntimeOrderFromSlider"
-      />
-      <div class=":uno: relative -mt-3 h-4 overflow-visible text-[11px] text-gray-400">
+      <div class="runtime-order-slider-shell">
+        <input
+          :aria-valuetext="currentStepLabel"
+          :max="RUNTIME_ORDER_MAX"
+          min="0"
+          step="1"
+          :value="sliderDraft"
+          class="runtime-order-input"
+          type="range"
+          @input="updateRuntimeOrderFromSlider(Number(($event.target as HTMLInputElement).value))"
+          @change="commitRuntimeOrderFromSlider"
+        />
+        <div aria-hidden="true" class="runtime-order-visual">
+          <div class="runtime-order-track" />
+          <div
+            :style="{
+              left: stepPositionPercent(previewRuntimeOrder),
+            }"
+            class="runtime-order-thumb"
+          />
+        </div>
+      </div>
+      <div
+        class="runtime-order-labels :uno: relative h-4 overflow-visible text-[11px] text-gray-400"
+      >
         <button
-          v-for="(step, index) in RUNTIME_ORDER_STEPS"
+          v-for="step in RUNTIME_ORDER_STEPS"
           :key="step.value"
           :style="{
             left: stepPositionPercent(step.value),
-            transform: stepTransform(),
           }"
           :class="
             step.value === previewRuntimeOrder
               ? ':uno: text-primary'
               : ':uno: text-gray-400 hover:text-gray-600'
           "
-          class=":uno: absolute top-0 whitespace-nowrap bg-transparent p-0 text-[11px]"
+          class="runtime-order-label :uno: absolute top-0 whitespace-nowrap bg-transparent p-0 text-[11px]"
           type="button"
-          @click="updateRuntimeOrderPreset(index)"
+          @click="updateRuntimeOrderPresetValue(step.value)"
         >
           {{ step.label }}
         </button>
@@ -170,34 +174,44 @@ function toggleEditMode() {
 </template>
 
 <style scoped>
-.runtime-order-slider {
-  appearance: none;
+.runtime-order-slider-shell {
+  --runtime-order-track-height: 0.25rem;
+  --runtime-order-thumb-size: 0.875rem;
+  position: relative;
   height: 1.5rem;
-  border: none;
-  outline: none;
-  box-shadow: none;
-  background: transparent;
 }
 
-.runtime-order-slider::-webkit-slider-runnable-track {
-  height: 0.25rem;
+.runtime-order-input {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.runtime-order-visual {
+  position: absolute;
+  inset: 0;
+}
+
+.runtime-order-track {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: var(--runtime-order-track-height);
+  transform: translateY(-50%);
   border-radius: 9999px;
-  border: none;
   background: rgb(209 213 219);
 }
 
-.runtime-order-slider::-moz-range-track {
-  height: 0.25rem;
-  border-radius: 9999px;
-  border: none;
-  background: rgb(209 213 219);
-}
-
-.runtime-order-slider::-webkit-slider-thumb {
-  appearance: none;
-  width: 0.875rem;
-  height: 0.875rem;
-  margin-top: -0.3125rem;
+.runtime-order-thumb {
+  position: absolute;
+  top: 50%;
+  width: var(--runtime-order-thumb-size);
+  height: var(--runtime-order-thumb-size);
+  transform: translate(-50%, -50%);
   border: 2px solid rgb(255 255 255);
   border-radius: 9999px;
   background: rgb(59 130 246);
@@ -207,25 +221,17 @@ function toggleEditMode() {
     box-shadow 120ms ease;
 }
 
-.runtime-order-slider::-moz-range-thumb {
-  width: 0.875rem;
-  height: 0.875rem;
-  border: 2px solid rgb(255 255 255);
-  border-radius: 9999px;
-  background: rgb(59 130 246);
-  box-shadow: 0 1px 3px rgb(15 23 42 / 0.24);
-  transition:
-    transform 120ms ease,
-    box-shadow 120ms ease;
-}
-
-.runtime-order-slider:active::-webkit-slider-thumb {
-  transform: scale(1.18);
+.runtime-order-input:active + .runtime-order-visual .runtime-order-thumb,
+.runtime-order-input:focus-visible + .runtime-order-visual .runtime-order-thumb {
+  transform: translate(-50%, -50%) scale(1.18);
   box-shadow: 0 2px 6px rgb(15 23 42 / 0.32);
 }
 
-.runtime-order-slider:active::-moz-range-thumb {
-  transform: scale(1.18);
-  box-shadow: 0 2px 6px rgb(15 23 42 / 0.32);
+.runtime-order-labels {
+  margin-top: -0.375rem;
+}
+
+.runtime-order-label {
+  transform: translateX(-50%);
 }
 </style>
