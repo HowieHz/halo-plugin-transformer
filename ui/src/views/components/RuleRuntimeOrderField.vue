@@ -141,74 +141,77 @@ function toggleEditMode() {
     </div>
 
     <template v-if="manualMode">
-      <input
-        :max="RUNTIME_ORDER_MAX"
-        min="0"
-        :value="manualDraft"
-        class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm font-mono focus:border-primary focus:outline-none"
-        type="number"
-        @input="handleManualInput"
-        @blur="commitManualDraft"
-        @keydown.enter.prevent="commitManualDraft"
-      />
-    </template>
-    <template v-else>
-      <div class="runtime-order-slider-shell">
+      <div class=":uno: space-y-2">
         <input
-          :aria-valuetext="currentStepLabel"
           :max="RUNTIME_ORDER_MAX"
           min="0"
-          step="1"
-          :value="sliderDraft"
-          class="runtime-order-input"
-          type="range"
-          @pointerdown="startSliderDrag"
-          @pointerup="stopSliderDrag"
-          @pointercancel="stopSliderDrag"
-          @blur="stopSliderDrag"
-          @input="updateRuntimeOrderFromSlider(Number(($event.target as HTMLInputElement).value))"
-          @change="handleSliderChange"
+          :value="manualDraft"
+          class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm font-mono focus:border-primary focus:outline-none"
+          type="number"
+          @input="handleManualInput"
+          @blur="commitManualDraft"
+          @keydown.enter.prevent="commitManualDraft"
         />
-        <div aria-hidden="true" class="runtime-order-visual">
-          <div class="runtime-order-track" />
-          <span
-            v-if="activeSnapStep"
-            :key="`${activeSnapStep.value}-drag-tick`"
-            :style="{ left: stepTrackPositionStyle(activeSnapStep.value) }"
-            class="runtime-order-tick"
-          />
-          <div
-            :style="{
-              left: stepTrackPositionStyle(previewRuntimeOrder),
-            }"
-            class="runtime-order-thumb"
-          />
-        </div>
-      </div>
-      <div
-        class="runtime-order-labels :uno: relative h-4 overflow-visible text-[11px] text-gray-400"
-      >
-        <button
-          v-for="step in RUNTIME_ORDER_STEPS"
-          :key="step.value"
-          :style="{
-            left: stepTrackPositionStyle(step.value),
-          }"
-          :class="
-            step.value === previewRuntimeOrder
-              ? ':uno: text-primary'
-              : ':uno: text-gray-400 hover:text-gray-600'
-          "
-          class="runtime-order-label :uno: absolute top-0 whitespace-nowrap bg-transparent p-0 text-[11px]"
-          type="button"
-          @click="updateRuntimeOrderPresetValue(step.value)"
-        >
-          {{ step.label }}
-        </button>
+        <p class=":uno: text-xs text-gray-500">{{ currentRangeHint }}</p>
       </div>
     </template>
-
-    <p v-if="manualMode" class=":uno: text-xs text-gray-500">{{ currentRangeHint }}</p>
+    <template v-else>
+      <div>
+        <div class="runtime-order-slider-shell">
+          <input
+            :aria-valuetext="currentStepLabel"
+            :max="RUNTIME_ORDER_MAX"
+            min="0"
+            step="1"
+            :value="sliderDraft"
+            class="runtime-order-input"
+            type="range"
+            @pointerdown="startSliderDrag"
+            @pointerup="stopSliderDrag"
+            @pointercancel="stopSliderDrag"
+            @blur="stopSliderDrag"
+            @input="updateRuntimeOrderFromSlider(Number(($event.target as HTMLInputElement).value))"
+            @change="handleSliderChange"
+          />
+          <div aria-hidden="true" class="runtime-order-visual">
+            <div class="runtime-order-track" />
+            <span
+              v-if="activeSnapStep"
+              :key="`${activeSnapStep.value}-drag-tick`"
+              :style="{ left: stepTrackPositionStyle(activeSnapStep.value) }"
+              class="runtime-order-tick"
+            />
+            <div
+              :style="{
+                left: stepTrackPositionStyle(previewRuntimeOrder),
+              }"
+              class="runtime-order-thumb"
+            />
+          </div>
+        </div>
+        <div
+          class="runtime-order-labels :uno: relative h-4 overflow-visible text-[11px] text-gray-400"
+        >
+          <button
+            v-for="step in RUNTIME_ORDER_STEPS"
+            :key="step.value"
+            :style="{
+              left: stepTrackPositionStyle(step.value),
+            }"
+            :class="
+              step.value === previewRuntimeOrder
+                ? ':uno: text-primary'
+                : ':uno: text-gray-400 hover:text-gray-600'
+            "
+            class="runtime-order-label :uno: absolute top-0 whitespace-nowrap bg-transparent p-0 text-[11px]"
+            type="button"
+            @click="updateRuntimeOrderPresetValue(step.value)"
+          >
+            {{ step.label }}
+          </button>
+        </div>
+      </div>
+    </template>
   </div>
 </template>
 
