@@ -31,6 +31,10 @@ export const snippetApi = {
     return axiosInstance.put<CodeSnippetReadModel>(`${SNIPPETS_WRITE}/${id}`, snippet)
   },
 
+  updateEnabled(id: string, enabled: boolean) {
+    return axiosInstance.put<CodeSnippetReadModel>(`${SNIPPETS_WRITE}/${id}/enabled`, { enabled })
+  },
+
   getOrder() {
     return axiosInstance.get<OrderMap>(SNIPPET_ORDER)
   },
@@ -55,6 +59,10 @@ export const ruleApi = {
 
   update(id: string, rule: InjectionRuleWritePayload) {
     return axiosInstance.put<InjectionRuleReadModel>(`${RULES_WRITE}/${id}`, rule)
+  },
+
+  updateEnabled(id: string, enabled: boolean) {
+    return axiosInstance.put<InjectionRuleReadModel>(`${RULES_WRITE}/${id}/enabled`, { enabled })
   },
 
   getOrder() {

@@ -44,6 +44,13 @@ function getErrorMessage(error: unknown, fallback: string) {
   )
 }
 
+function replaceItemInList<T extends { id: string }>(list: ItemList<T>, updated: T): ItemList<T> {
+  return {
+    ...list,
+    items: list.items.map((item) => (item.id === updated.id ? updated : item)),
+  }
+}
+
 export function useInjectorData() {
   const loading = ref(false)
   const creating = ref(false)
@@ -226,6 +233,28 @@ export function useInjectorData() {
     editDirty.value = false
   }
 
+  /**
+   * why: 启停接口现在只返回最新已保存资源；
+   * 这里仅把列表里的已保存快照替换掉，避免再用 `fetchAll()` 把右侧未保存草稿整体冲掉。
+   */
+  function applySavedSnippetSnapshot(snippet: CodeSnippetReadModel) {
+    snippetsResp.value = replaceItemInList(snippetsResp.value, snippet)
+    if (editSnippet.value?.id === snippet.id) {
+      editSnippet.value.enabled = snippet.enabled
+    }
+  }
+
+  /**
+   * why: 规则启停属于资源级动作，不应顺带重置当前编辑中的 matchRule / snippetIds 草稿；
+   * 这里只同步最新的已保存启停状态，其余编辑态原样保留。
+   */
+  function applySavedRuleSnapshot(rule: InjectionRuleReadModel) {
+    rulesResp.value = replaceItemInList(rulesResp.value, rule)
+    if (editRule.value?.id === rule.id) {
+      editRule.value.enabled = rule.enabled
+    }
+  }
+
   watch(selectedSnippetId, hydrateSelectedSnippetDraft)
   watch(selectedRuleId, hydrateSelectedRuleDraft)
 
@@ -344,25 +373,13 @@ export function useInjectorData() {
   async function toggleSnippetEnabled() {
     if (!editSnippet.value) return
     const nextEnabled = !editSnippet.value.enabled
-    const savedSnippet = snippets.value.find((snippet) => snippet.id === editSnippet.value?.id)
-    if (!savedSnippet) return
-    if (nextEnabled && snippetEditorError.value) {
-      Toast.error(`当前代码块有错误，暂时无法启用：${snippetEditorError.value}`)
-      return
-    }
+    const previousEnabled = editSnippet.value.enabled
     try {
-      editSnippet.value.enabled = nextEnabled
-      const sourceSnippet = nextEnabled ? editSnippet.value : savedSnippet
-      await snippetApi.update(
-        sourceSnippet.id,
-        buildSnippetWritePayload({
-          ...hydrateSnippetEditorDraft(sourceSnippet),
-          enabled: nextEnabled,
-        }),
-      )
-      await fetchAll()
+      const response = await snippetApi.updateEnabled(editSnippet.value.id, nextEnabled)
+      applySavedSnippetSnapshot(response.data)
+      Toast.success(nextEnabled ? '代码块已启用' : '代码块已停用')
     } catch (error) {
-      editSnippet.value.enabled = !nextEnabled
+      editSnippet.value.enabled = previousEnabled
       Toast.error(getErrorMessage(error, nextEnabled ? '启用失败' : '停用失败'))
     }
   }
@@ -370,35 +387,13 @@ export function useInjectorData() {
   async function toggleRuleEnabled() {
     if (!editRule.value) return
     const nextEnabled = !editRule.value.enabled
-    const savedRule = rules.value.find((rule) => rule.id === editRule.value?.id)
-    if (!savedRule) return
-    if (nextEnabled) {
-      const validationError = validateRuleDraft(editRule.value)
-      if (validationError) {
-        Toast.error(`当前规则有错误，暂时无法启用：${validationError}`)
-        return
-      }
-    }
+    const previousEnabled = editRule.value.enabled
     try {
-      editRule.value.enabled = nextEnabled
-      const sourceRule = nextEnabled
-        ? editRule.value
-        : hydrateRuleEditorDraft({ ...savedRule, enabled: nextEnabled })
-      const payload = buildRuleWritePayload(
-        sourceRule,
-        nextEnabled
-          ? buildRuleSnippetIdsForWrite(editRule.value, editRuleSnippetIds.value)
-          : buildRuleSnippetIdsForWrite(sourceRule, [...(savedRule.snippetIds ?? [])]),
-      )
-      if (!payload) {
-        Toast.error('当前规则有错误，暂时无法启用：匹配规则有误，请先修正后再操作')
-        editRule.value.enabled = !nextEnabled
-        return
-      }
-      await ruleApi.update(editRule.value.id, payload)
-      await fetchAll()
+      const response = await ruleApi.updateEnabled(editRule.value.id, nextEnabled)
+      applySavedRuleSnapshot(response.data)
+      Toast.success(nextEnabled ? '规则已启用' : '规则已停用')
     } catch (error) {
-      editRule.value.enabled = !nextEnabled
+      editRule.value.enabled = previousEnabled
       Toast.error(getErrorMessage(error, nextEnabled ? '启用失败' : '停用失败'))
     }
   }

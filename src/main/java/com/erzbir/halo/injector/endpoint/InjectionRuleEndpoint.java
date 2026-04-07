@@ -41,6 +41,7 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
     public RouterFunction<ServerResponse> endpoint() {
         return route(POST("/injectionRules"), this::createRule)
                 .andRoute(PUT("/injectionRules/{name}"), this::updateRule)
+                .andRoute(PUT("/injectionRules/{name}/enabled"), this::updateRuleEnabled)
                 .andRoute(DELETE("/injectionRules/{name}"), this::deleteRule);
     }
 
@@ -81,9 +82,23 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
                     return tuple;
                 })
                 .flatMap(tuple -> validator.validateForWrite(tuple.getT2())
-                        .then(normalizeAndValidateAddedSnippetReferences(tuple.getT1(), tuple.getT2())))
+                        .flatMap(ignored -> normalizeAndValidateAddedSnippetReferences(tuple.getT1(), tuple.getT2())))
                 .flatMap(client::update)
                 .doOnSuccess(updated -> ruleManager.invalidateAndWarmUpAsync())
+                .flatMap(updated -> ServerResponse.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(updated));
+    }
+
+    /**
+     * why: 启停是资源级动作，不该复用整份规则 update；
+     * 否则前端当前草稿会被误当成一次完整保存，语义会和“保存”混在一起。
+     */
+    private Mono<ServerResponse> updateRuleEnabled(ServerRequest request) {
+        String name = request.pathVariable("name");
+        return request.bodyToMono(EnabledPayload.class)
+                .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
+                .flatMap(payload -> updateRuleEnabled(name, payload.enabled))
                 .flatMap(updated -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(updated));
@@ -100,6 +115,31 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
                 .flatMap(client::delete)
                 .doOnSuccess(ignored -> ruleManager.invalidateAndWarmUpAsync())
                 .then(ServerResponse.noContent().build());
+    }
+
+    /**
+     * why: 规则启用时必须基于已保存规则重新做完整可运行校验；
+     * 这样即使前端当前有未保存草稿，启停语义也始终只围绕已持久化资源展开。
+     */
+    Mono<InjectionRule> updateRuleEnabled(String name, Boolean enabled) {
+        if (enabled == null) {
+            return Mono.error(new ServerWebInputException("enabled 不能为空"));
+        }
+        if (!StringUtils.hasText(name)) {
+            return Mono.error(new ServerWebInputException("未找到要更新的规则"));
+        }
+        return client.fetch(InjectionRule.class, name)
+                .switchIfEmpty(Mono.error(new ServerWebInputException("未找到要更新的规则")))
+                .flatMap(rule -> {
+                    rule.setEnabled(enabled);
+                    if (!enabled) {
+                        return Mono.just(rule);
+                    }
+                    return validator.validateForWrite(rule)
+                            .flatMap(ignored -> normalizeAndValidateSnippetReferences(rule));
+                })
+                .flatMap(client::update)
+                .doOnSuccess(updated -> ruleManager.invalidateAndWarmUpAsync());
     }
 
     /**
@@ -131,5 +171,10 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
     @Override
     public GroupVersion groupVersion() {
         return GroupVersion.parseAPIVersion("console.api.injector.erzbir.com/v1alpha1");
+    }
+
+    @lombok.Data
+    static final class EnabledPayload {
+        private Boolean enabled;
     }
 }

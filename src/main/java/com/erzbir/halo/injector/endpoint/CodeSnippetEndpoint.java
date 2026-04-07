@@ -8,6 +8,7 @@ import com.erzbir.halo.injector.util.CodeSnippetValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -39,6 +40,7 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
     public RouterFunction<ServerResponse> endpoint() {
         return route(POST("/codeSnippets"), this::createSnippet)
                 .andRoute(PUT("/codeSnippets/{name}"), this::updateSnippet)
+                .andRoute(PUT("/codeSnippets/{name}/enabled"), this::updateSnippetEnabled)
                 .andRoute(DELETE("/codeSnippets/{name}"), this::deleteSnippet);
     }
 
@@ -86,6 +88,20 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
     }
 
     /**
+     * why: 启停只应修改 `enabled` 本身，不能顺手带上整份编辑草稿；
+     * 因此这里提供独立写口，显式表达“仅切换启停状态”的语义。
+     */
+    private Mono<ServerResponse> updateSnippetEnabled(ServerRequest request) {
+        String name = request.pathVariable("name");
+        return request.bodyToMono(EnabledPayload.class)
+                .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
+                .flatMap(payload -> updateSnippetEnabled(name, payload.enabled))
+                .flatMap(updated -> ServerResponse.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(updated));
+    }
+
+    /**
      * why: 唯一真源已经转到规则侧，删除代码块时必须先摘掉规则里的 `snippetIds`，
      * 保证读模型、运行时和控制台都不会再看到悬挂引用。
      */
@@ -96,6 +112,32 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
                 .flatMap(snippetReferenceService::deleteSnippetAndDetachRules)
                 .doOnSuccess(ignored -> ruleManager.invalidateAndWarmUpAsync())
                 .then(ServerResponse.noContent().build());
+    }
+
+    /**
+     * why: 当用户只是切换启停时，后端必须基于已保存资源本体处理，
+     * 不能让前端未保存草稿混进来，避免“启用偷偷保存 / 停用偷偷丢稿”。
+     */
+    Mono<CodeSnippet> updateSnippetEnabled(String name, Boolean enabled) {
+        if (enabled == null) {
+            return Mono.error(new ServerWebInputException("enabled 不能为空"));
+        }
+        if (!StringUtils.hasText(name)) {
+            return Mono.error(new ServerWebInputException("未找到要更新的代码块"));
+        }
+        return client.fetch(CodeSnippet.class, name)
+                .switchIfEmpty(Mono.error(new ServerWebInputException("未找到要更新的代码块")))
+                .flatMap(snippet -> {
+                    snippet.setEnabled(enabled);
+                    return enabled ? validator.validateForWrite(snippet) : Mono.just(snippet);
+                })
+                .flatMap(client::update)
+                .doOnSuccess(updated -> ruleManager.invalidateAndWarmUpAsync());
+    }
+
+    @lombok.Data
+    static final class EnabledPayload {
+        private Boolean enabled;
     }
 
     @Override

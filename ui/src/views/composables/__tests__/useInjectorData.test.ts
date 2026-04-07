@@ -15,6 +15,7 @@ const { toast, dialog, snippetApi, ruleApi } = vi.hoisted(() => ({
     list: vi.fn(),
     add: vi.fn(),
     update: vi.fn(),
+    updateEnabled: vi.fn(),
     getOrder: vi.fn(),
     updateOrder: vi.fn(),
     delete: vi.fn(),
@@ -23,6 +24,7 @@ const { toast, dialog, snippetApi, ruleApi } = vi.hoisted(() => ({
     list: vi.fn(),
     add: vi.fn(),
     update: vi.fn(),
+    updateEnabled: vi.fn(),
     getOrder: vi.fn(),
     updateOrder: vi.fn(),
     delete: vi.fn(),
@@ -60,12 +62,13 @@ describe('useInjectorData', () => {
     vi.clearAllMocks()
   })
 
-  // why: 用户只是想停用规则时，不应因为当前右侧存在未保存的坏草稿而被拦住；停用应基于已保存规则快照完成。
-  it('disables invalid draft rules by using the persisted rule snapshot', async () => {
+  // why: 启停现在应走独立写口，并只改已保存规则的 enabled；
+  // 当前右侧的未保存草稿既不该被顺手保存，也不该被整页重载冲掉。
+  it('toggles rule enabled without saving or discarding other draft fields', async () => {
     const savedRule = makeRuleEditorDraft({
       id: 'rule-a',
       metadata: { name: 'rule-a' },
-      enabled: true,
+      enabled: false,
       mode: 'FOOTER',
       match: '',
       snippetIds: [],
@@ -89,7 +92,7 @@ describe('useInjectorData', () => {
     snippetApi.getOrder.mockResolvedValue({ data: {} })
     ruleApi.list.mockResolvedValue({ data: listOf([savedRule]) })
     ruleApi.getOrder.mockResolvedValue({ data: {} })
-    ruleApi.update.mockResolvedValue({ data: { ...savedRule, enabled: false } })
+    ruleApi.updateEnabled.mockResolvedValue({ data: { ...savedRule, enabled: true } })
 
     const store = useInjectorData()
     await store.fetchAll()
@@ -100,29 +103,35 @@ describe('useInjectorData', () => {
       ...store.editRule.value!,
       mode: 'ID',
       match: '',
+      name: 'draft name',
     }
+    store.editDirty.value = true
 
     await store.toggleRuleEnabled()
 
-    expect(ruleApi.update).toHaveBeenCalledTimes(1)
-    const [, payload] = ruleApi.update.mock.calls[0]
-    expect(payload.enabled).toBe(false)
-    expect(payload.mode).toBe('FOOTER')
+    expect(ruleApi.updateEnabled).toHaveBeenCalledTimes(1)
+    expect(ruleApi.update).not.toHaveBeenCalled()
+    expect(ruleApi.list).toHaveBeenCalledTimes(1)
+    expect(store.editRule.value?.enabled).toBe(true)
+    expect(store.editRule.value?.mode).toBe('ID')
+    expect(store.editRule.value?.name).toBe('draft name')
+    expect(store.editDirty.value).toBe(true)
     expect(toast.error).not.toHaveBeenCalled()
   })
 
-  // why: 停用代码块同理也不应被空代码草稿拦住；应直接基于已保存代码块完成停用。
-  it('disables invalid draft snippets by using the persisted snippet snapshot', async () => {
+  // why: 代码块启停也应只切 enabled 本身；
+  // 其它未保存编辑必须继续留在右侧，而不是被 fetchAll 覆盖掉。
+  it('toggles snippet enabled without saving or discarding other draft fields', async () => {
     const savedSnippet = makeSnippetEditorDraft({
       id: 'snippet-a',
       metadata: { name: 'snippet-a' },
-      enabled: true,
+      enabled: false,
       code: '<div>ok</div>',
     })
 
     snippetApi.list.mockResolvedValue({ data: listOf([savedSnippet]) })
     snippetApi.getOrder.mockResolvedValue({ data: {} })
-    snippetApi.update.mockResolvedValue({ data: { ...savedSnippet, enabled: false } })
+    snippetApi.updateEnabled.mockResolvedValue({ data: { ...savedSnippet, enabled: true } })
     ruleApi.list.mockResolvedValue({ data: listOf([]) })
     ruleApi.getOrder.mockResolvedValue({ data: {} })
 
@@ -134,14 +143,19 @@ describe('useInjectorData', () => {
     store.editSnippet.value = {
       ...store.editSnippet.value!,
       code: '',
+      name: 'draft snippet',
     }
+    store.editDirty.value = true
 
     await store.toggleSnippetEnabled()
 
-    expect(snippetApi.update).toHaveBeenCalledTimes(1)
-    const [, payload] = snippetApi.update.mock.calls[0]
-    expect(payload.enabled).toBe(false)
-    expect(payload.code).toBe('<div>ok</div>')
+    expect(snippetApi.updateEnabled).toHaveBeenCalledTimes(1)
+    expect(snippetApi.update).not.toHaveBeenCalled()
+    expect(snippetApi.list).toHaveBeenCalledTimes(1)
+    expect(store.editSnippet.value?.enabled).toBe(true)
+    expect(store.editSnippet.value?.code).toBe('')
+    expect(store.editSnippet.value?.name).toBe('draft snippet')
+    expect(store.editDirty.value).toBe(true)
     expect(toast.error).not.toHaveBeenCalled()
   })
 
