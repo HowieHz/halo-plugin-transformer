@@ -2,41 +2,73 @@
 // Source: contracts/match-rule-contract-metadata.json
 
 export const MATCH_RULE_NODE_SPECS = {
-  GROUP: {
-    label: '条件组',
-    allowedFields: ['type', 'negate', 'operator', 'children'],
+  "GROUP": {
+    "label": "条件组",
+    "allowedFields": [
+      "type",
+      "negate",
+      "operator",
+      "children"
+    ]
   },
-  PATH: {
-    label: '页面路径条件',
-    allowedFields: ['type', 'negate', 'matcher', 'value'],
+  "PATH": {
+    "label": "页面路径条件",
+    "allowedFields": [
+      "type",
+      "negate",
+      "matcher",
+      "value"
+    ]
   },
-  TEMPLATE_ID: {
-    label: '模板 ID 条件',
-    allowedFields: ['type', 'negate', 'matcher', 'value'],
-  },
+  "TEMPLATE_ID": {
+    "label": "模板 ID 条件",
+    "allowedFields": [
+      "type",
+      "negate",
+      "matcher",
+      "value"
+    ]
+  }
 } as const
 
 export const MATCH_RULE_ENUM_SPECS = {
-  TYPE: {
-    values: ['GROUP', 'PATH', 'TEMPLATE_ID'],
-    joinStyle: 'list',
+  "TYPE": {
+    "values": [
+      "GROUP",
+      "PATH",
+      "TEMPLATE_ID"
+    ],
+    "joinStyle": "list"
   },
-  BOOLEAN: {
-    values: ['true', 'false'],
-    joinStyle: 'or',
+  "BOOLEAN": {
+    "values": [
+      "true",
+      "false"
+    ],
+    "joinStyle": "or"
   },
-  OPERATOR: {
-    values: ['AND', 'OR'],
-    joinStyle: 'or',
+  "OPERATOR": {
+    "values": [
+      "AND",
+      "OR"
+    ],
+    "joinStyle": "or"
   },
-  PATH_MATCHER: {
-    values: ['ANT', 'REGEX', 'EXACT'],
-    joinStyle: 'list',
+  "PATH_MATCHER": {
+    "values": [
+      "ANT",
+      "REGEX",
+      "EXACT"
+    ],
+    "joinStyle": "list"
   },
-  TEMPLATE_MATCHER: {
-    values: ['REGEX', 'EXACT'],
-    joinStyle: 'or',
-  },
+  "TEMPLATE_MATCHER": {
+    "values": [
+      "REGEX",
+      "EXACT"
+    ],
+    "joinStyle": "or"
+  }
 } as const
 
 export type MatchRuleContractNodeType = keyof typeof MATCH_RULE_NODE_SPECS
@@ -54,10 +86,11 @@ export function formatAllowedFields(nodeType: MatchRuleContractNodeType) {
   return formatQuotedValues(allowedFieldsFor(nodeType))
 }
 
-export function formatQuotedValues(values: readonly string[], joinStyle: 'list' | 'or' = 'list') {
-  const quoted = values.map((value) =>
-    value === 'true' || value === 'false' ? value : `"${value}"`,
-  )
+export function formatQuotedValues(
+  values: readonly string[],
+  joinStyle: 'list' | 'or' = 'list',
+) {
+  const quoted = values.map((value) => (value === 'true' || value === 'false' ? value : `"${value}"`))
   if (quoted.length <= 1) {
     return quoted[0] ?? ''
   }

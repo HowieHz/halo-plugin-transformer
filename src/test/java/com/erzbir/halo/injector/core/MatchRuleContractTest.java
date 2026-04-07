@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class MatchRuleContractTest {
     private static final Path CONTRACT_FIXTURE = locateContractFixture();
-    private static final Path CHECKLIST_FIXTURE = locateFixture("match-rule-contract-checklist.json");
+    private static final Path CHECKLIST_FIXTURE = locateFixture("match-rule-contract-checklist.generated.jsonc");
     private static final Path METADATA_FIXTURE = locateFixture("match-rule-contract-metadata.json");
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -182,10 +182,16 @@ class MatchRuleContractTest {
 
     private JsonNode loadJson(Path path) {
         try {
-            return objectMapper.readTree(Files.readString(path, StandardCharsets.UTF_8));
+            return objectMapper.readTree(stripJsoncHeader(Files.readString(path, StandardCharsets.UTF_8)));
         } catch (IOException e) {
             throw new IllegalStateException("Failed to load JSON fixture: " + path, e);
         }
+    }
+
+    private String stripJsoncHeader(String content) {
+        return content.lines()
+                .filter(line -> !line.stripLeading().startsWith("//"))
+                .collect(java.util.stream.Collectors.joining("\n"));
     }
 
     private static Stream<JsonNode> streamObjectNodes(JsonNode arrayNode) {

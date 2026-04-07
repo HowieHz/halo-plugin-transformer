@@ -53,7 +53,7 @@ interface MatchRuleContractMetadata {
 
 const contractSuite = loadJsonFile<MatchRuleContractSuite>('match-rule-contracts.json')
 const checklistSuite = loadJsonFile<MatchRuleContractChecklistSuite>(
-  'match-rule-contract-checklist.json',
+  'match-rule-contract-checklist.generated.jsonc',
 )
 const metadata = loadJsonFile<MatchRuleContractMetadata>('match-rule-contract-metadata.json')
 
@@ -116,7 +116,7 @@ describe('matchRule contract fixtures', () => {
 })
 
 function loadJsonFile<T>(fileName: string): T {
-  return JSON.parse(readFileSync(locateContractFixture(fileName), 'utf8')) as T
+  return JSON.parse(stripJsoncHeader(readFileSync(locateContractFixture(fileName), 'utf8'))) as T
 }
 
 function resolveWriteValidation(contractCase: MatchRuleContractCase, rootPath: string) {
@@ -168,4 +168,11 @@ function tryReadFixture(candidate: string): boolean {
   } catch {
     return false
   }
+}
+
+function stripJsoncHeader(content: string) {
+  return content
+    .split('\n')
+    .filter((line) => !line.trimStart().startsWith('//'))
+    .join('\n')
 }

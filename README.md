@@ -303,7 +303,7 @@ Halo 自带的代码注入更偏向全局场景；这个插件更适合：
 为了避免“README 很长，但 contract fixture 很薄”，匹配规则现在额外拆成两层：
 
 - 共享 contract：
-    - 定义文件：`contracts/match-rule-contract-checklist.json`
+    - 定义文件：`contracts/match-rule-contract-checklist.generated.jsonc`
     - fixture 文件：`contracts/match-rule-contracts.json`
     - 共享 metadata 源：`contracts/match-rule-contract-metadata.json`
     - `match-rule` 的允许字段集合与相关错误文本模板，会从这份 metadata 同步生成到前后端 helper
