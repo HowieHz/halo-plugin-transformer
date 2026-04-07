@@ -2,7 +2,7 @@ package com.erzbir.halo.injector.endpoint;
 
 import com.erzbir.halo.injector.manager.InjectionRuleManager;
 import com.erzbir.halo.injector.scheme.CodeSnippet;
-import com.erzbir.halo.injector.service.SnippetReferenceService;
+import com.erzbir.halo.injector.service.CodeSnippetDeletionService;
 import com.erzbir.halo.injector.util.CodeSnippetValidationException;
 import com.erzbir.halo.injector.util.CodeSnippetValidator;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,7 +32,7 @@ class CodeSnippetEndpointTest {
         client = mock(ReactiveExtensionClient.class);
         validator = mock(CodeSnippetValidator.class);
         ruleManager = mock(InjectionRuleManager.class);
-        endpoint = new CodeSnippetEndpoint(client, validator, mock(SnippetReferenceService.class), ruleManager);
+        endpoint = new CodeSnippetEndpoint(client, validator, mock(CodeSnippetDeletionService.class), ruleManager);
     }
 
     // why: 代码块启停现在应有独立写口，只修改 enabled；

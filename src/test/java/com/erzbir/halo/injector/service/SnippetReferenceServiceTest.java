@@ -1,26 +1,21 @@
 package com.erzbir.halo.injector.service;
 
 import com.erzbir.halo.injector.scheme.CodeSnippet;
-import com.erzbir.halo.injector.scheme.InjectionRule;
 import com.erzbir.halo.injector.util.InjectionRuleValidationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class SnippetReferenceServiceTest {
@@ -105,54 +100,20 @@ class SnippetReferenceServiceTest {
         assertEquals("snippetIds：代码块 snippet-b 当前无法关联", error.getReason());
     }
 
-    // why: 删除代码块后必须从所有规则真源里摘掉它，确保不会残留失效 snippetId。
+    // why: deleting 中的代码块已经进入最终删除流程，不应再允许被新规则引用。
     @Test
-    void shouldDetachDeletedSnippetFromRules() {
+    void shouldRejectDeletingSnippetReference() {
         CodeSnippet deletingSnippet = snippet("snippet-a");
-        InjectionRule linkedRule = rule("rule-a");
-        linkedRule.setSnippetIds(new LinkedHashSet<>(Set.of("snippet-a", "snippet-b")));
+        deletingSnippet.getMetadata().setDeletionTimestamp(java.time.Instant.now());
 
-        when(client.list(eq(InjectionRule.class), isNull(), isNull())).thenReturn(Flux.just(linkedRule));
-        when(client.fetch(InjectionRule.class, "rule-a")).thenReturn(Mono.just(rule("rule-a",
-                Set.of("snippet-a", "snippet-b"))));
-        when(client.update(any(InjectionRule.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
-        when(client.delete(any(CodeSnippet.class))).thenReturn(Mono.just(deletingSnippet));
+        when(client.list(eq(CodeSnippet.class), isNull(), isNull())).thenReturn(Flux.just(deletingSnippet));
 
-        assertDoesNotThrow(() -> service.deleteSnippetAndDetachRules(deletingSnippet).block());
-
-        verify(client).update(Mockito.argThat((InjectionRule updatedRule) ->
-                "rule-a".equals(updatedRule.getId())
-                        && updatedRule.getSnippetIds().equals(new LinkedHashSet<>(Set.of("snippet-b")))));
-        verify(client).delete(deletingSnippet);
-    }
-
-    // why: 回滚现在依赖最小字段快照，而不是深拷贝整条规则；
-    // delete 失败后仍必须按规则名重新取回当前规则，并把 snippetIds 恢复到删除前状态。
-    @Test
-    void shouldRollbackSnippetIdsFromMinimalSnapshots() {
-        CodeSnippet deletingSnippet = snippet("snippet-a");
-        InjectionRule linkedRule = rule("rule-a", Set.of("snippet-a", "snippet-b"));
-        RuntimeException deleteFailure = new RuntimeException("delete failed");
-
-        when(client.list(eq(InjectionRule.class), isNull(), isNull())).thenReturn(Flux.just(linkedRule));
-        when(client.fetch(InjectionRule.class, "rule-a"))
-                .thenReturn(Mono.just(rule("rule-a", Set.of("snippet-a", "snippet-b"))))
-                .thenReturn(Mono.just(rule("rule-a", Set.of("snippet-b"))));
-        when(client.update(any(InjectionRule.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
-        when(client.delete(any(CodeSnippet.class))).thenReturn(Mono.error(deleteFailure));
-
-        RuntimeException error = assertThrows(
-                RuntimeException.class,
-                () -> service.deleteSnippetAndDetachRules(deletingSnippet).block()
+        InjectionRuleValidationException error = assertThrows(
+                InjectionRuleValidationException.class,
+                () -> service.normalizeAndValidateSnippetIds(Set.of("snippet-a")).block()
         );
 
-        assertEquals(deleteFailure, error);
-        verify(client, Mockito.times(2)).fetch(InjectionRule.class, "rule-a");
-        verify(client, Mockito.times(2)).update(any(InjectionRule.class));
-        verify(client).update(Mockito.argThat((InjectionRule updatedRule) ->
-                updatedRule.getSnippetIds().equals(new LinkedHashSet<>(Set.of("snippet-b")))));
-        verify(client).update(Mockito.argThat((InjectionRule restoredRule) ->
-                restoredRule.getSnippetIds().equals(new LinkedHashSet<>(Set.of("snippet-a", "snippet-b")))));
+        assertEquals("snippetIds：代码块 snippet-a 当前无法关联", error.getReason());
     }
 
     private CodeSnippet snippet(String id) {
@@ -162,19 +123,5 @@ class SnippetReferenceServiceTest {
         snippet.setMetadata(metadata);
         snippet.setCode("<div>ok</div>");
         return snippet;
-    }
-
-    private InjectionRule rule(String id) {
-        InjectionRule rule = new InjectionRule();
-        Metadata metadata = new Metadata();
-        metadata.setName(id);
-        rule.setMetadata(metadata);
-        return rule;
-    }
-
-    private InjectionRule rule(String id, Set<String> snippetIds) {
-        InjectionRule rule = rule(id);
-        rule.setSnippetIds(new LinkedHashSet<>(snippetIds));
-        return rule;
     }
 }

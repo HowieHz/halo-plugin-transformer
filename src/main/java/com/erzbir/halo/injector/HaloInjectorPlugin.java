@@ -9,7 +9,10 @@ import org.springframework.stereotype.Component;
 import run.halo.app.extension.Extension;
 import run.halo.app.extension.GroupVersionKind;
 import run.halo.app.extension.SchemeManager;
+import run.halo.app.extension.controller.Controller;
 import run.halo.app.plugin.BasePlugin;
+
+import java.util.List;
 
 /**
  * @author Erzbir
@@ -20,15 +23,18 @@ import run.halo.app.plugin.BasePlugin;
 public class HaloInjectorPlugin extends BasePlugin {
     private final SchemeManager schemeManager;
     private final InjectionRuleManager injectionRuleManager;
+    private final List<Controller> controllers;
 
     @Override
     public void start() {
         registerScheme();
+        startControllers();
         injectionRuleManager.warmUpCacheAsync();
     }
 
     @Override
     public void stop() {
+        stopControllers();
         unregisterScheme();
     }
 
@@ -42,6 +48,22 @@ public class HaloInjectorPlugin extends BasePlugin {
         unregisterSchemeIfPresent(CodeSnippet.class);
         unregisterSchemeIfPresent(InjectionRule.class);
         unregisterSchemeIfPresent(ResourceOrder.class);
+    }
+
+    /**
+     * why: Halo controller 负责把 deleting 资源收敛到最终一致状态；
+     * 插件启动时必须显式拉起这些后台协调器，避免 finalizer 卡住却无人处理。
+     */
+    private void startControllers() {
+        controllers.forEach(Controller::start);
+    }
+
+    /**
+     * why: 停插件时要先停掉后台协调器，再卸载 scheme；
+     * 否则 controller 线程仍可能在使用已卸载的扩展类型。
+     */
+    private void stopControllers() {
+        controllers.forEach(Controller::dispose);
     }
 
     /**

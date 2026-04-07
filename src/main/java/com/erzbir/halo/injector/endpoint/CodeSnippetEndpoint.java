@@ -2,7 +2,7 @@ package com.erzbir.halo.injector.endpoint;
 
 import com.erzbir.halo.injector.manager.InjectionRuleManager;
 import com.erzbir.halo.injector.scheme.CodeSnippet;
-import com.erzbir.halo.injector.service.SnippetReferenceService;
+import com.erzbir.halo.injector.service.CodeSnippetDeletionService;
 import com.erzbir.halo.injector.util.CodeSnippetValidationException;
 import com.erzbir.halo.injector.util.CodeSnippetValidator;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +33,7 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
 
     private final ReactiveExtensionClient client;
     private final CodeSnippetValidator validator;
-    private final SnippetReferenceService snippetReferenceService;
+    private final CodeSnippetDeletionService deletionService;
     private final InjectionRuleManager ruleManager;
 
     @Override
@@ -51,6 +51,7 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
     private Mono<ServerResponse> createSnippet(ServerRequest request) {
         return request.bodyToMono(CodeSnippet.class)
                 .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
+                .map(deletionService::prepareForWrite)
                 .flatMap(validator::validateForWrite)
                 .flatMap(client::create)
                 .doOnSuccess(created -> ruleManager.invalidateAndWarmUpAsync())
@@ -77,7 +78,7 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
                             || !Objects.equals(snippet.getMetadata().getName(), name)) {
                         throw new CodeSnippetValidationException("metadata.name 与路径参数不一致");
                     }
-                    return snippet;
+                    return deletionService.prepareForWrite(snippet);
                 })
                 .flatMap(validator::validateForWrite)
                 .flatMap(client::update)
@@ -102,14 +103,14 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
     }
 
     /**
-     * why: 唯一真源已经转到规则侧，删除代码块时必须先摘掉规则里的 `snippetIds`，
-     * 保证读模型、运行时和控制台都不会再看到悬挂引用。
+     * why: 删除代码块改为走 Halo finalizer 生命周期；
+     * endpoint 只负责把资源送入 deleting 状态，后续摘引用与最终删除由后台 reconciler 完成。
      */
     private Mono<ServerResponse> deleteSnippet(ServerRequest request) {
         String name = request.pathVariable("name");
         return client.fetch(CodeSnippet.class, name)
                 .switchIfEmpty(Mono.error(new ServerWebInputException("未找到要删除的代码块")))
-                .flatMap(snippetReferenceService::deleteSnippetAndDetachRules)
+                .flatMap(deletionService::requestDeletion)
                 .doOnSuccess(ignored -> ruleManager.invalidateAndWarmUpAsync())
                 .then(ServerResponse.noContent().build());
     }

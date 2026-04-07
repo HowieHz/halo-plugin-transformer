@@ -8,7 +8,9 @@ import org.junit.jupiter.api.Test;
 import run.halo.app.extension.GroupVersionKind;
 import run.halo.app.extension.Scheme;
 import run.halo.app.extension.SchemeManager;
+import run.halo.app.extension.controller.Controller;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -24,6 +26,7 @@ class HaloInjectorPluginTest {
     void shouldIgnoreMissingSchemesWhenStoppingAfterPartialStart() {
         SchemeManager schemeManager = mock(SchemeManager.class);
         InjectionRuleManager ruleManager = mock(InjectionRuleManager.class);
+        Controller controller = mock(Controller.class);
         Scheme codeSnippetScheme = Scheme.buildFromType(CodeSnippet.class);
         Scheme injectionRuleScheme = Scheme.buildFromType(InjectionRule.class);
 
@@ -34,8 +37,9 @@ class HaloInjectorPluginTest {
         when(schemeManager.fetch(GroupVersionKind.fromExtension(ResourceOrder.class)))
                 .thenReturn(Optional.empty());
 
-        new HaloInjectorPlugin(schemeManager, ruleManager).stop();
+        new HaloInjectorPlugin(schemeManager, ruleManager, List.of(controller)).stop();
 
+        verify(controller).dispose();
         verify(schemeManager).unregister(codeSnippetScheme);
         verify(schemeManager).unregister(injectionRuleScheme);
         verify(schemeManager, times(2)).unregister(any(Scheme.class));
