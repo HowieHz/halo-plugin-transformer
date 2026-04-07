@@ -151,7 +151,7 @@ defineExpose({
           type="file"
           @change="handleImportFile"
         />
-        <VButton size="sm" type="secondary" @click="openImportSourceModal">导入 JSON</VButton>
+        <VButton size="sm" type="secondary" @click="openImportSourceModal">导入</VButton>
       </div>
     </template>
 

@@ -30,11 +30,10 @@ function emitAction(action: ImportJsonSourceAction) {
 </script>
 
 <template>
-  <VModal title="导入 JSON" :width="520" @close="emit('close')">
+  <VModal title="导入" :width="520" @close="emit('close')">
     <div class=":uno: space-y-3">
       <p class=":uno: text-sm leading-6 text-gray-700">
-        选择 {{ resourceLabel }} JSON 的导入来源。你可以直接读取当前剪贴板，或从本地 `.json`
-        文件导入。
+        你可以直接读取当前剪贴板，或从本地 .json 文件导入。
       </p>
     </div>
 
