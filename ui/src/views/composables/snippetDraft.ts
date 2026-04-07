@@ -5,7 +5,17 @@ import type { CodeSnippetEditorDraft, CodeSnippetReadModel, CodeSnippetWritePayl
  */
 export function hydrateSnippetEditorDraft(snippet: CodeSnippetReadModel): CodeSnippetEditorDraft {
   return {
-    ...snippet,
+    apiVersion: snippet.apiVersion,
+    kind: snippet.kind,
+    metadata: {
+      name: snippet.metadata.name,
+      version: snippet.metadata.version ?? null,
+    },
+    id: snippet.id,
+    name: snippet.name,
+    code: snippet.code,
+    description: snippet.description,
+    enabled: snippet.enabled,
   }
 }
 

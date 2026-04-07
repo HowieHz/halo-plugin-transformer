@@ -1,11 +1,9 @@
 package com.erzbir.halo.injector.endpoint;
 
-import run.halo.app.extension.Metadata;
-
 public record CodeSnippetReadModel(
         String apiVersion,
         String kind,
-        Metadata metadata,
+        ConsoleResourceMetadata metadata,
         String id,
         String name,
         String code,

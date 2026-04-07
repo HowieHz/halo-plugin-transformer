@@ -13,8 +13,22 @@ import { normalizeMatchRule, resolveRuleMatchRule, makeRuleTreeSource } from './
 export function hydrateRuleEditorDraft(rule: InjectionRuleReadModel): InjectionRuleEditorDraft {
   const matchRule = normalizeMatchRule(rule.matchRule)
   return {
-    ...rule,
+    apiVersion: rule.apiVersion,
+    kind: rule.kind,
+    metadata: {
+      name: rule.metadata.name,
+      version: rule.metadata.version ?? null,
+    },
+    id: rule.id,
+    name: rule.name,
+    description: rule.description,
+    enabled: rule.enabled,
+    mode: rule.mode,
+    match: rule.match,
     runtimeOrder: Number.isInteger(rule.runtimeOrder) ? rule.runtimeOrder : RUNTIME_ORDER_DEFAULT,
+    position: rule.position,
+    wrapMarker: rule.wrapMarker,
+    snippetIds: [...(rule.snippetIds ?? [])],
     matchRule,
     matchRuleSource: makeRuleTreeSource(matchRule),
   }

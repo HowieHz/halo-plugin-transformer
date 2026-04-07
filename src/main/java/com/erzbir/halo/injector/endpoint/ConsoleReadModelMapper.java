@@ -3,10 +3,8 @@ package com.erzbir.halo.injector.endpoint;
 import com.erzbir.halo.injector.scheme.CodeSnippet;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import org.springframework.stereotype.Component;
-import run.halo.app.extension.Metadata;
 import run.halo.app.extension.MetadataOperator;
 
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 
@@ -22,7 +20,7 @@ public class ConsoleReadModelMapper {
         return new CodeSnippetReadModel(
                 API_VERSION,
                 "CodeSnippet",
-                copyMetadata(snippet.getMetadata()),
+                toConsoleMetadata(snippet.getMetadata()),
                 snippet.getMetadata() == null ? "" : snippet.getMetadata().getName(),
                 snippet.getName(),
                 snippet.getCode(),
@@ -35,7 +33,7 @@ public class ConsoleReadModelMapper {
         return new InjectionRuleReadModel(
                 API_VERSION,
                 "InjectionRule",
-                copyMetadata(rule.getMetadata()),
+                toConsoleMetadata(rule.getMetadata()),
                 rule.getMetadata() == null ? "" : rule.getMetadata().getName(),
                 rule.getName(),
                 rule.getDescription(),
@@ -58,19 +56,10 @@ public class ConsoleReadModelMapper {
         return ConsoleItemList.of(rules.stream().map(this::toReadModel).toList());
     }
 
-    private Metadata copyMetadata(MetadataOperator metadata) {
+    private ConsoleResourceMetadata toConsoleMetadata(MetadataOperator metadata) {
         if (metadata == null) {
             return null;
         }
-        Metadata copied = new Metadata();
-        copied.setName(metadata.getName());
-        copied.setGenerateName(metadata.getGenerateName());
-        copied.setVersion(metadata.getVersion());
-        copied.setCreationTimestamp(metadata.getCreationTimestamp());
-        copied.setDeletionTimestamp(metadata.getDeletionTimestamp());
-        copied.setLabels(metadata.getLabels() == null ? null : new LinkedHashMap<>(metadata.getLabels()));
-        copied.setAnnotations(metadata.getAnnotations() == null ? null : new LinkedHashMap<>(metadata.getAnnotations()));
-        copied.setFinalizers(metadata.getFinalizers() == null ? null : new LinkedHashSet<>(metadata.getFinalizers()));
-        return copied;
+        return new ConsoleResourceMetadata(metadata.getName(), metadata.getVersion());
     }
 }

@@ -76,7 +76,7 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
     options.snippetsResp.value = replaceItemInList(options.snippetsResp.value, snippet)
     if (editSnippet.value?.id === snippet.id) {
       editSnippet.value.enabled = snippet.enabled
-      editSnippet.value.metadata = mergeSavedMetadata(editSnippet.value, snippet)
+      editSnippet.value.metadata = mergeSavedMetadata(editSnippet.value.metadata, snippet.metadata)
     }
   }
 
@@ -88,7 +88,7 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
     options.rulesResp.value = replaceItemInList(options.rulesResp.value, rule)
     if (editRule.value?.id === rule.id) {
       editRule.value.enabled = rule.enabled
-      editRule.value.metadata = mergeSavedMetadata(editRule.value, rule)
+      editRule.value.metadata = mergeSavedMetadata(editRule.value.metadata, rule.metadata)
     }
   }
 

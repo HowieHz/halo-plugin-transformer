@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it } from 'vitest'
-import { makeRuleEditorDraft } from '@/types'
+import { makeRuleEditorDraft, type InjectionRuleReadModel } from '@/types'
 import {
   buildMatchRuleEditorSourceForMode,
   getDomRulePerformanceWarning,
@@ -14,10 +14,22 @@ import { hydrateRuleEditorDraft } from '../ruleDraft'
 describe('matchRule editor state', () => {
   // why: 刷新页面应回到已保存内容；不应再恢复本地未保存草稿或编辑模式。
   it('hydrates editor from saved rule only', () => {
-    const savedRule = makeRuleEditorDraft({
+    const savedRule: InjectionRuleReadModel = {
+      apiVersion: 'injector.erzbir.com/v1alpha1',
+      kind: 'InjectionRule',
+      metadata: { name: 'rule-a', version: 1 },
       id: 'rule-a',
-      metadata: { name: 'rule-a', generateName: 'InjectionRule-' },
-    })
+      name: 'Rule A',
+      description: '',
+      enabled: true,
+      mode: 'FOOTER',
+      match: '',
+      matchRule: makeRuleEditorDraft().matchRule,
+      position: 'APPEND',
+      wrapMarker: true,
+      runtimeOrder: 2147483645,
+      snippetIds: [],
+    }
 
     const hydrated = hydrateRuleEditorDraft(savedRule)
 

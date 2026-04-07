@@ -1,4 +1,13 @@
-import type { Metadata } from '@halo-dev/api-client'
+export interface ResourceWriteMetadata {
+  name?: string
+  generateName?: string
+  version?: number | null
+}
+
+export interface ResourceReadMetadata {
+  name: string
+  version?: number | null
+}
 
 /**
  * why: 写接口只应承载后端真正接受的持久化字段；
@@ -7,15 +16,22 @@ import type { Metadata } from '@halo-dev/api-client'
 export interface CodeSnippetWritePayload {
   apiVersion: 'injector.erzbir.com/v1alpha1'
   kind: 'CodeSnippet'
-  metadata: Metadata
+  metadata: ResourceWriteMetadata
   name: string
   code: string
   description: string
   enabled: boolean
 }
 
-export interface CodeSnippetReadModel extends CodeSnippetWritePayload {
+export interface CodeSnippetReadModel {
+  apiVersion: 'injector.erzbir.com/v1alpha1'
+  kind: 'CodeSnippet'
+  metadata: ResourceReadMetadata
   id: string
+  name: string
+  code: string
+  description: string
+  enabled: boolean
 }
 
 export interface CodeSnippetEditorDraft extends CodeSnippetWritePayload {
@@ -47,7 +63,7 @@ export interface MatchRuleSource {
 export interface InjectionRuleWritePayload {
   apiVersion: 'injector.erzbir.com/v1alpha1'
   kind: 'InjectionRule'
-  metadata: Metadata
+  metadata: ResourceWriteMetadata
   name: string
   description: string
   enabled: boolean
@@ -60,8 +76,21 @@ export interface InjectionRuleWritePayload {
   snippetIds: string[]
 }
 
-export interface InjectionRuleReadModel extends InjectionRuleWritePayload {
+export interface InjectionRuleReadModel {
+  apiVersion: 'injector.erzbir.com/v1alpha1'
+  kind: 'InjectionRule'
+  metadata: ResourceReadMetadata
   id: string
+  name: string
+  description: string
+  enabled: boolean
+  mode: InjectionMode
+  match: string
+  matchRule: MatchRule
+  position: InjectionPosition
+  wrapMarker: boolean
+  runtimeOrder: number
+  snippetIds: string[]
 }
 
 export interface InjectionRuleEditorState {

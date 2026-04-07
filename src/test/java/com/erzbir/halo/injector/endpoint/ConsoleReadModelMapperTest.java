@@ -31,7 +31,7 @@ class ConsoleReadModelMapperTest {
 
         assertEquals("snippet-a", readModel.id());
         assertEquals("Snippet A", readModel.name());
-        assertEquals(3L, readModel.metadata().getVersion());
+        assertEquals(3L, readModel.metadata().version());
     }
 
     // why: 规则 read model 也必须由同一 projection 统一生成，
@@ -54,6 +54,7 @@ class ConsoleReadModelMapperTest {
 
         assertEquals("rule-a", readModel.id());
         assertEquals("Rule A", readModel.name());
+        assertEquals(5L, readModel.metadata().version());
         assertEquals(42, readModel.runtimeOrder());
         assertEquals(Set.of("snippet-a"), readModel.snippetIds());
     }

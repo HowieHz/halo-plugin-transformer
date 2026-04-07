@@ -1,6 +1,5 @@
 import type { AxiosError } from 'axios'
-import type { Metadata } from '@halo-dev/api-client'
-import type { ItemList } from '@/types'
+import type { ItemList, ResourceReadMetadata, ResourceWriteMetadata } from '@/types'
 
 export type ReorderPlacement = 'before' | 'after'
 
@@ -42,10 +41,18 @@ export function replaceItemInList<T extends { id: string }>(
   }
 }
 
-export function mergeSavedMetadata<T extends { metadata: Metadata }>(draft: T, saved: T): Metadata {
+/**
+ * why: 启停接口返回的是“最新已保存快照”；编辑器这里只应同步资源标识与版本，
+ * 不能把 read-model 里的其它 metadata 字段整包并回草稿，否则读写边界会再次变宽。
+ */
+export function mergeSavedMetadata(
+  draft: ResourceWriteMetadata,
+  saved: ResourceReadMetadata,
+): ResourceWriteMetadata {
   return {
-    ...draft.metadata,
-    ...saved.metadata,
+    ...draft,
+    name: saved.name,
+    version: saved.version ?? null,
   }
 }
 
