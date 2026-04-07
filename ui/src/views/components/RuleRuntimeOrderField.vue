@@ -1,7 +1,11 @@
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue'
 import { RUNTIME_ORDER_MAX, RUNTIME_ORDER_STEPS } from '@/types'
-import { clampRuntimeOrder, formatRuntimeOrder } from '@/views/composables/runtimeOrder'
+import {
+  clampRuntimeOrder,
+  formatRuntimeOrder,
+  snapRuntimeOrderToPreset,
+} from '@/views/composables/runtimeOrder'
 
 const props = defineProps<{
   modelValue: number
@@ -32,6 +36,10 @@ const currentStepLabel = computed(() => {
 
 function updateRuntimeOrder(value: number) {
   emit('update:modelValue', clampRuntimeOrder(value))
+}
+
+function updateRuntimeOrderFromSlider(value: number) {
+  emit('update:modelValue', snapRuntimeOrderToPreset(value))
 }
 
 function updateRuntimeOrderPreset(index: number) {
@@ -112,7 +120,7 @@ function toggleEditMode() {
         :value="modelValue"
         class=":uno: w-full accent-primary"
         type="range"
-        @input="updateRuntimeOrder(Number(($event.target as HTMLInputElement).value))"
+        @input="updateRuntimeOrderFromSlider(Number(($event.target as HTMLInputElement).value))"
       />
       <div class=":uno: relative h-4 text-[11px] text-gray-400">
         <button
