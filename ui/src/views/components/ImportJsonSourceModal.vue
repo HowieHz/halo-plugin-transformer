@@ -1,9 +1,6 @@
 <script lang="ts" setup>
 import { VButton, VModal, VSpace } from '@halo-dev/components'
-import {
-  IMPORT_JSON_SOURCE_ACTIONS,
-  type ImportJsonSourceAction,
-} from './importJsonSource'
+import { IMPORT_JSON_SOURCE_ACTIONS, type ImportJsonSourceAction } from './importJsonSource'
 
 defineProps<{
   resourceLabel: string
