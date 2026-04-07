@@ -39,12 +39,12 @@ tasks.withType(JavaCompile).configureEach {
 
 tasks.register('generateMatchRuleContracts', Exec) {
     workingDir rootDir
-    commandLine nodeCommand, 'scripts/sync-match-rule-contract-artifacts.mjs'
+    commandLine nodeCommand, 'scripts/sync-match-rule-contract-artifacts.js'
 }
 
 tasks.register('verifyMatchRuleContracts', Exec) {
     workingDir rootDir
-    commandLine nodeCommand, 'scripts/sync-match-rule-contract-artifacts.mjs', '--check'
+    commandLine nodeCommand, 'scripts/sync-match-rule-contract-artifacts.js', '--check'
 }
 
 tasks.register('processUiResources', Copy) {
