@@ -127,6 +127,6 @@ function toggleEditMode() {
       </div>
     </template>
 
-    <p class=":uno: text-xs text-gray-500">当前：{{ currentStepLabel }}</p>
+    <p v-if="manualMode" class=":uno: text-xs text-gray-500">当前：{{ currentStepLabel }}</p>
   </div>
 </template>
