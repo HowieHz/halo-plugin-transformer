@@ -358,7 +358,7 @@ Halo 自带的代码注入更偏向全局场景；这个插件更适合：
 - 当前 `version = 1` 时支持：
     - `resourceType = "snippet"`
     - `resourceType = "rule"`
-- 如果你手动编写导入 JSON，也可以带上 `$schema`；导出 JSON 也会自动附带这一项
+- 如果你手动编写导入内容，也可以带上 `$schema`；导出内容也会自动附带这一项
 
 ### 运行时性能
 
