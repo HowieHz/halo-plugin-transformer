@@ -99,4 +99,22 @@ class InjectionRuleTest {
         assertTrue(json.contains("\"match\":\"#main-content\""));
         assertFalse(json.contains("\"mode\":\"ID\""));
     }
+
+    // why: `id` 是控制台读模型字段，不应再被反序列化进存储实体；
+    // 这样新旧客户端混用时，也不会再因为把 `id` 写回而触发严格校验报错。
+    @Test
+    void shouldTreatIdAsReadOnlyResponseField() throws Exception {
+        InjectionRule rule = objectMapper.readValue("""
+                {
+                  "metadata": {
+                    "name": "rule-a"
+                  },
+                  "id": "rule-a",
+                  "mode": "FOOTER"
+                }
+                """, InjectionRule.class);
+
+        assertEquals("rule-a", rule.getId());
+        assertTrue(rule.isValid());
+    }
 }

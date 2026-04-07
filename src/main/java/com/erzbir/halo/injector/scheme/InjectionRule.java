@@ -3,6 +3,7 @@ package com.erzbir.halo.injector.scheme;
 import com.erzbir.halo.injector.core.IInjectionRule;
 import com.erzbir.halo.injector.core.MatchRule;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -15,6 +16,7 @@ import java.util.Set;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
+@JsonIgnoreProperties(value = "id", allowGetters = true)
 @GVK(kind = "InjectionRule", group = "injector.erzbir.com", version = "v1alpha1",
         singular = "injectionRule", plural = "injectionRules")
 public class InjectionRule extends AbstractExtension implements IInjectionRule {

@@ -3,6 +3,7 @@ package com.erzbir.halo.injector.scheme;
 import com.erzbir.halo.injector.core.ICodeSnippet;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import run.halo.app.extension.AbstractExtension;
@@ -13,6 +14,7 @@ import java.util.Set;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
+@JsonIgnoreProperties(value = "id", allowGetters = true)
 @GVK(kind = "CodeSnippet", group = "injector.erzbir.com",
         version = "v1alpha1", singular = "codeSnippet", plural = "codeSnippets")
 public class CodeSnippet extends AbstractExtension implements ICodeSnippet {
