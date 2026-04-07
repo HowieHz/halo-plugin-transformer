@@ -16,6 +16,7 @@ import java.util.Optional;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -40,8 +41,10 @@ class HaloInjectorPluginTest {
         new HaloInjectorPlugin(schemeManager, ruleManager, List.of(controller)).stop();
 
         verify(controller).dispose();
+        verify(ruleManager).stopWatching();
         verify(schemeManager).unregister(codeSnippetScheme);
         verify(schemeManager).unregister(injectionRuleScheme);
         verify(schemeManager, times(2)).unregister(any(Scheme.class));
+        verifyNoMoreInteractions(ruleManager);
     }
 }

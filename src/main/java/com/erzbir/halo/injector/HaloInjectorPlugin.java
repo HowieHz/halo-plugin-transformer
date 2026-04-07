@@ -29,11 +29,12 @@ public class HaloInjectorPlugin extends BasePlugin {
     public void start() {
         registerScheme();
         startControllers();
-        injectionRuleManager.warmUpCacheAsync();
+        injectionRuleManager.startWatching();
     }
 
     @Override
     public void stop() {
+        injectionRuleManager.stopWatching();
         stopControllers();
         unregisterScheme();
     }

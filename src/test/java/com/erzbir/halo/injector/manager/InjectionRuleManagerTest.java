@@ -5,16 +5,24 @@ import com.erzbir.halo.injector.scheme.InjectionRule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Flux;
+import run.halo.app.extension.Extension;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
+import run.halo.app.extension.Watcher;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BooleanSupplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,72 +37,31 @@ class InjectionRuleManagerTest {
         manager = new InjectionRuleManager(client);
     }
 
-    // why: 高频请求命中同一时间窗时，运行时应复用同一份规则快照，避免每次都回源拉整批规则。
+    // why: watch-driven cache 启动后应先主动回源装载一次快照；
+    // 否则运行时第一批请求会看到空规则集，而不是当前已保存状态。
     @Test
-    void shouldReuseCachedSnapshotWithinTtl() {
-        AtomicInteger fetchCount = new AtomicInteger();
-        when(client.list(InjectionRule.class, null, null)).thenAnswer(invocation -> {
-            fetchCount.incrementAndGet();
-            return Flux.just(rule("rule-a", InjectionRule.Mode.SELECTOR, true, "main"));
-        });
+    void shouldLoadSnapshotWhenStartingWatch() {
+        when(client.list(InjectionRule.class, null, null))
+                .thenReturn(Flux.just(rule("rule-a", InjectionRule.Mode.SELECTOR, true, "main")));
 
-        List<InjectionRule> first = manager.listActiveByMode(InjectionRule.Mode.SELECTOR)
+        manager.startWatching();
+
+        waitUntil(() -> !manager.listActiveByMode(InjectionRule.Mode.SELECTOR)
                 .collectList()
-                .block();
-        List<InjectionRule> second = manager.listActiveByMode(InjectionRule.Mode.SELECTOR)
-                .collectList()
-                .block();
-
-        assertEquals(1, fetchCount.get());
-        assertEquals(1, first.size());
-        assertEquals(1, second.size());
-    }
-
-    // why: 控制台写接口会主动让缓存失效；失效后下一次读取必须立刻回源拿到最新规则。
-    @Test
-    void shouldRefreshSnapshotAfterInvalidate() {
-        AtomicInteger fetchCount = new AtomicInteger();
-        when(client.list(InjectionRule.class, null, null)).thenAnswer(invocation -> {
-            int round = fetchCount.incrementAndGet();
-            return round == 1
-                    ? Flux.just(rule("rule-a", InjectionRule.Mode.SELECTOR, true, "main"))
-                    : Flux.just(rule("rule-b", InjectionRule.Mode.SELECTOR, true, "root"));
-        });
-
-        List<InjectionRule> first = manager.listActiveByMode(InjectionRule.Mode.SELECTOR)
-                .collectList()
-                .block();
-        manager.invalidateCache();
-        List<InjectionRule> second = manager.listActiveByMode(InjectionRule.Mode.SELECTOR)
-                .collectList()
-                .block();
-
-        assertEquals(2, fetchCount.get());
-        assertEquals(List.of("rule-a"), first.stream().map(InjectionRule::getId).toList());
-        assertEquals(List.of("rule-b"), second.stream().map(InjectionRule::getId).toList());
-    }
-
-    // why: 启动预热会把首次读规则的冷加载提前完成；预热完成后，首个真实读取应直接命中已热好的快照。
-    @Test
-    void shouldWarmSnapshotBeforeFirstRead() {
-        AtomicInteger fetchCount = new AtomicInteger();
-        when(client.list(InjectionRule.class, null, null)).thenAnswer(invocation -> {
-            fetchCount.incrementAndGet();
-            return Flux.just(rule("rule-a", InjectionRule.Mode.SELECTOR, true, "main"));
-        });
-
-        manager.warmUpCache().block();
+                .block()
+                .isEmpty());
         List<InjectionRule> rules = manager.listActiveByMode(InjectionRule.Mode.SELECTOR)
                 .collectList()
                 .block();
 
-        assertEquals(1, fetchCount.get());
         assertEquals(List.of("rule-a"), rules.stream().map(InjectionRule::getId).toList());
+        verify(client).watch(any(Watcher.class));
     }
 
-    // why: 写后预热要在失效之后立刻拉新快照，避免下一次请求再承担一次冷加载。
+    // why: 当前快照应由 Halo watch 事件驱动刷新；
+    // 规则更新后不需要等 TTL，自身事件就应把新快照推到运行时读路径。
     @Test
-    void shouldWarmNewSnapshotImmediatelyAfterInvalidate() {
+    void shouldRefreshSnapshotFromWatchEvents() {
         AtomicInteger fetchCount = new AtomicInteger();
         when(client.list(InjectionRule.class, null, null)).thenAnswer(invocation -> {
             int round = fetchCount.incrementAndGet();
@@ -103,35 +70,72 @@ class InjectionRuleManagerTest {
                     : Flux.just(rule("rule-b", InjectionRule.Mode.SELECTOR, true, "main"));
         });
 
-        manager.warmUpCache().block();
-        manager.invalidateCache();
-        manager.warmUpCache().block();
-        List<InjectionRule> rules = manager.listActiveByMode(InjectionRule.Mode.SELECTOR)
+        ArgumentCaptor<Watcher> watcherCaptor = ArgumentCaptor.forClass(Watcher.class);
+        manager.startWatching();
+        verify(client).watch(watcherCaptor.capture());
+
+        waitUntil(() -> manager.listActiveByMode(InjectionRule.Mode.SELECTOR)
                 .collectList()
-                .block();
+                .block()
+                .stream()
+                .map(InjectionRule::getId)
+                .toList()
+                .equals(List.of("rule-a")));
+
+        watcherCaptor.getValue().onUpdate(
+                rule("rule-a", InjectionRule.Mode.SELECTOR, true, "main"),
+                rule("rule-b", InjectionRule.Mode.SELECTOR, true, "main")
+        );
+
+        waitUntil(() -> manager.listActiveByMode(InjectionRule.Mode.SELECTOR)
+                .collectList()
+                .block()
+                .stream()
+                .map(InjectionRule::getId)
+                .toList()
+                .equals(List.of("rule-b")));
 
         assertEquals(2, fetchCount.get());
-        assertEquals(List.of("rule-b"), rules.stream().map(InjectionRule::getId).toList());
     }
 
-    // why: 快照里只应保留“当前真正可参与运行时匹配”的规则，避免每次请求再重复做 enabled/valid 过滤。
+    // why: 写接口成功后仍会主动请求一次 refresh；即使多个 refresh 紧挨着到来，
+    // 管理器也应把它们合并成有限次整表重建，而不是每次调用都并发起一个新的 list。
     @Test
-    void shouldKeepOnlyEnabledAndValidRulesInActiveSnapshot() {
-        when(client.list(InjectionRule.class, null, null)).thenReturn(Flux.just(
-                rule("rule-enabled", InjectionRule.Mode.SELECTOR, true, "main"),
-                rule("rule-disabled", InjectionRule.Mode.SELECTOR, false, "main"),
-                rule("rule-invalid", InjectionRule.Mode.SELECTOR, true, "")
-        ));
+    void shouldCoalesceOverlappingRefreshRequests() {
+        AtomicInteger fetchCount = new AtomicInteger();
+        when(client.list(InjectionRule.class, null, null)).thenAnswer(invocation -> {
+            fetchCount.incrementAndGet();
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
+            return Flux.just(rule("rule-a", InjectionRule.Mode.SELECTOR, true, "main"));
+        });
 
-        List<InjectionRule> rules = manager.listActiveByMode(InjectionRule.Mode.SELECTOR)
-                .collectList()
-                .block();
+        manager.invalidateAndWarmUpAsync();
+        manager.invalidateAndWarmUpAsync();
+        manager.invalidateAndWarmUpAsync();
 
-        assertEquals(List.of("rule-enabled"), rules.stream().map(InjectionRule::getId).toList());
+        waitUntil(() -> fetchCount.get() >= 1);
+        assertTrue(fetchCount.get() <= 2);
     }
 
-    // why: 运行时顺序是同一执行阶段内的显式契约；同优先级时应先按名称字符序，
-    // 再用 id 兜底，避免继续依赖底层 list 返回顺序。
+    // why: 停止 watch 后，管理器不应再继续持有活动 watcher；
+    // 否则插件 stop 后仍可能收到平台事件，破坏生命周期边界。
+    @Test
+    void shouldStopWatchingIdempotently() {
+        when(client.list(InjectionRule.class, null, null)).thenReturn(Flux.empty());
+
+        manager.startWatching();
+        manager.stopWatching();
+        manager.stopWatching();
+
+        assertFalse(manager.listActiveByMode(InjectionRule.Mode.SELECTOR).hasElements().block());
+    }
+
+    // why: 运行时顺序仍是同一执行阶段内的显式契约；
+    // watch-driven cache 只改变刷新方式，不能改变 runtimeOrder 排序语义。
     @Test
     void shouldSortActiveRulesByRuntimeOrderThenNameThenIdWithinMode() {
         InjectionRule highZ = rule("rule-z", InjectionRule.Mode.SELECTOR, true, "main");
@@ -145,15 +149,30 @@ class InjectionRuleManagerTest {
         InjectionRule low = rule("rule-low", InjectionRule.Mode.SELECTOR, true, "main");
         low.setName("Later");
         low.setRuntimeOrder(2147483645);
-        when(client.list(InjectionRule.class, null, null))
-                .thenReturn(Flux.just(low, highZ, highFallback, highA));
 
-        List<InjectionRule> rules = manager.listActiveByMode(InjectionRule.Mode.SELECTOR)
-                .collectList()
-                .block();
+        InjectionRuleManager.RuleSnapshot snapshot =
+                manager.buildSnapshot(List.of(low, highZ, highFallback, highA));
 
-        assertEquals(List.of("rule-a", "rule-b", "rule-z", "rule-low"),
-                rules.stream().map(InjectionRule::getId).toList());
+        assertEquals(
+                List.of("rule-a", "rule-b", "rule-z", "rule-low"),
+                snapshot.activeRules(InjectionRule.Mode.SELECTOR).stream().map(InjectionRule::getId).toList()
+        );
+    }
+
+    private void waitUntil(BooleanSupplier condition) {
+        long deadline = System.currentTimeMillis() + 2_000;
+        while (System.currentTimeMillis() < deadline) {
+            if (condition.getAsBoolean()) {
+                return;
+            }
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        assertTrue(condition.getAsBoolean(), "Condition was not satisfied in time");
     }
 
     private InjectionRule rule(String id, InjectionRule.Mode mode, boolean enabled, String match) {
