@@ -26,15 +26,15 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class InjectionRuleManagerTest {
+class InjectionRuleRuntimeStoreTest {
     @Mock
     private ReactiveExtensionClient client;
 
-    private InjectionRuleManager manager;
+    private InjectionRuleRuntimeStore manager;
 
     @BeforeEach
     void setUp() {
-        manager = new InjectionRuleManager(client, 10, 40);
+        manager = new InjectionRuleRuntimeStore(client, 10, 40);
     }
 
     // why: watch-driven cache 启动后应先主动回源装载一次快照；
@@ -232,7 +232,7 @@ class InjectionRuleManagerTest {
         low.setName("Later");
         low.setRuntimeOrder(2147483645);
 
-        InjectionRuleManager.RuleSnapshot snapshot =
+        InjectionRuleRuntimeStore.RuleSnapshot snapshot =
                 manager.buildSnapshot(List.of(low, highZ, highFallback, highA));
 
         assertEquals(

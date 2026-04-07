@@ -1,6 +1,6 @@
 package com.erzbir.halo.injector.endpoint;
 
-import com.erzbir.halo.injector.manager.InjectionRuleManager;
+import com.erzbir.halo.injector.manager.InjectionRuleRuntimeStore;
 import com.erzbir.halo.injector.scheme.CodeSnippet;
 import com.erzbir.halo.injector.service.CodeSnippetLifecycleService;
 import com.erzbir.halo.injector.util.CodeSnippetValidationException;
@@ -35,7 +35,7 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
     private final ReactiveExtensionClient client;
     private final CodeSnippetValidator validator;
     private final CodeSnippetLifecycleService lifecycleService;
-    private final InjectionRuleManager ruleManager;
+    private final InjectionRuleRuntimeStore ruleRuntimeStore;
 
     @Override
     public RouterFunction<ServerResponse> endpoint() {
@@ -55,7 +55,7 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
                 .map(lifecycleService::prepareForPersist)
                 .flatMap(validator::validateForWrite)
                 .flatMap(client::create)
-                .doOnSuccess(created -> ruleManager.invalidateAndWarmUpAsync())
+                .doOnSuccess(created -> ruleRuntimeStore.invalidateAndWarmUpAsync())
                 .flatMap(created -> ServerResponse.created(URI.create("/apis/" + READ_API_VERSION + "/codeSnippets/"
                                 + created.getMetadata().getName()))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -89,7 +89,7 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
                 })
                 .flatMap(validator::validateForWrite)
                 .flatMap(client::update)
-                .doOnSuccess(updated -> ruleManager.invalidateAndWarmUpAsync())
+                .doOnSuccess(updated -> ruleRuntimeStore.invalidateAndWarmUpAsync())
                 .flatMap(updated -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(updated));
@@ -118,7 +118,7 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
         return client.fetch(CodeSnippet.class, name)
                 .switchIfEmpty(Mono.error(new ServerWebInputException("未找到要删除的代码块")))
                 .flatMap(lifecycleService::markForDeletion)
-                .doOnSuccess(ignored -> ruleManager.invalidateAndWarmUpAsync())
+                .doOnSuccess(ignored -> ruleRuntimeStore.invalidateAndWarmUpAsync())
                 .then(ServerResponse.noContent().build());
     }
 
@@ -147,7 +147,7 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
                     return enabled ? validator.validateForWrite(snippet) : Mono.just(snippet);
                 })
                 .flatMap(client::update)
-                .doOnSuccess(updated -> ruleManager.invalidateAndWarmUpAsync());
+                .doOnSuccess(updated -> ruleRuntimeStore.invalidateAndWarmUpAsync());
     }
 
     @lombok.Data

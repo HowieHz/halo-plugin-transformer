@@ -1,6 +1,6 @@
 package com.erzbir.halo.injector;
 
-import com.erzbir.halo.injector.manager.InjectionRuleManager;
+import com.erzbir.halo.injector.manager.InjectionRuleRuntimeStore;
 import com.erzbir.halo.injector.scheme.CodeSnippet;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import com.erzbir.halo.injector.scheme.ResourceOrder;
@@ -22,19 +22,19 @@ import java.util.List;
 @Component
 public class HaloInjectorPlugin extends BasePlugin {
     private final SchemeManager schemeManager;
-    private final InjectionRuleManager injectionRuleManager;
+    private final InjectionRuleRuntimeStore injectionRuleRuntimeStore;
     private final List<Controller> controllers;
 
     @Override
     public void start() {
         registerScheme();
         startControllers();
-        injectionRuleManager.startWatching();
+        injectionRuleRuntimeStore.startWatching();
     }
 
     @Override
     public void stop() {
-        injectionRuleManager.stopWatching();
+        injectionRuleRuntimeStore.stopWatching();
         stopControllers();
         unregisterScheme();
     }

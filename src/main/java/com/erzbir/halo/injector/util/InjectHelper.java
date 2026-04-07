@@ -1,7 +1,7 @@
 package com.erzbir.halo.injector.util;
 
 import com.erzbir.halo.injector.manager.CodeSnippetManager;
-import com.erzbir.halo.injector.manager.InjectionRuleManager;
+import com.erzbir.halo.injector.manager.InjectionRuleRuntimeStore;
 import com.erzbir.halo.injector.scheme.CodeSnippet;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import com.erzbir.halo.injector.core.MatchRule;
@@ -33,13 +33,13 @@ import java.util.regex.PatternSyntaxException;
 @Slf4j
 @RequiredArgsConstructor
 public class InjectHelper {
-    protected final InjectionRuleManager ruleManager;
+    protected final InjectionRuleRuntimeStore ruleRuntimeStore;
     protected final CodeSnippetManager snippetManager;
     protected final RouteMatcher routeMatcher = createRouteMatcher();
     protected final Map<String, RegexPatternHolder> regexPatternCache = new ConcurrentHashMap<>();
 
     public Flux<InjectionRule> getRulesByMode(InjectionRule.Mode mode) {
-        return ruleManager.listActiveByMode(mode);
+        return ruleRuntimeStore.listActiveByMode(mode);
     }
 
     public Flux<InjectionRule> getMatchedRules(String targetPath,

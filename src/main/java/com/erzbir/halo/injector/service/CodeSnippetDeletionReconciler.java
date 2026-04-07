@@ -1,6 +1,6 @@
 package com.erzbir.halo.injector.service;
 
-import com.erzbir.halo.injector.manager.InjectionRuleManager;
+import com.erzbir.halo.injector.manager.InjectionRuleRuntimeStore;
 import com.erzbir.halo.injector.scheme.CodeSnippet;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +23,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class CodeSnippetDeletionReconciler implements Reconciler<Reconciler.Request> {
     private final ExtensionClient client;
-    private final InjectionRuleManager ruleManager;
+    private final InjectionRuleRuntimeStore ruleRuntimeStore;
 
     /**
      * why: 一旦代码块进入 Halo deleting 状态，就要由单一后端协调器负责摘掉所有规则引用，
@@ -42,7 +42,7 @@ public class CodeSnippetDeletionReconciler implements Reconciler<Reconciler.Requ
 
         boolean detachedAnyRule = detachSnippetFromReferencingRules(snippet.getMetadata().getName());
         if (detachedAnyRule) {
-            ruleManager.invalidateAndWarmUpAsync();
+            ruleRuntimeStore.invalidateAndWarmUpAsync();
         }
 
         var latestSnippetOptional = client.fetch(CodeSnippet.class, request.name());

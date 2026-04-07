@@ -24,7 +24,7 @@ import java.util.concurrent.Executors;
 
 @Slf4j
 @Component
-public class InjectionRuleManager {
+public class InjectionRuleRuntimeStore {
     private static final GroupVersionKind RULE_GVK = GroupVersionKind.fromExtension(InjectionRule.class);
     private static final long WATCH_RECONNECT_BASE_DELAY_MILLIS = 1_000L;
     private static final long WATCH_RECONNECT_MAX_DELAY_MILLIS = 30_000L;
@@ -52,7 +52,7 @@ public class InjectionRuleManager {
      * 若不显式标记，Spring 会把它当成“多构造器 bean”并退回去找无参构造，最终导致插件启动失败。
      */
     @Autowired
-    public InjectionRuleManager(ReactiveExtensionClient client) {
+    public InjectionRuleRuntimeStore(ReactiveExtensionClient client) {
         this(client, WATCH_RECONNECT_BASE_DELAY_MILLIS, WATCH_RECONNECT_MAX_DELAY_MILLIS);
     }
 
@@ -60,8 +60,8 @@ public class InjectionRuleManager {
      * why: 测试需要把退避窗口缩短到毫秒级，才能稳定覆盖重连与 refresh retry 语义；
      * 因此保留一个包级构造器注入测试参数，但不暴露给 Spring 作为候选主构造器。
      */
-    InjectionRuleManager(ReactiveExtensionClient client, long watchReconnectBaseDelayMillis,
-                         long watchReconnectMaxDelayMillis) {
+    InjectionRuleRuntimeStore(ReactiveExtensionClient client, long watchReconnectBaseDelayMillis,
+                              long watchReconnectMaxDelayMillis) {
         this.client = client;
         this.watchReconnectBaseDelayMillis = watchReconnectBaseDelayMillis;
         this.watchReconnectMaxDelayMillis = watchReconnectMaxDelayMillis;

@@ -1,7 +1,7 @@
 package com.erzbir.halo.injector.util;
 
 import com.erzbir.halo.injector.manager.CodeSnippetManager;
-import com.erzbir.halo.injector.manager.InjectionRuleManager;
+import com.erzbir.halo.injector.manager.InjectionRuleRuntimeStore;
 import com.erzbir.halo.injector.scheme.CodeSnippet;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import com.erzbir.halo.injector.core.MatchRule;
@@ -24,7 +24,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class InjectHelperTest {
     @Mock
-    private InjectionRuleManager ruleManager;
+    private InjectionRuleRuntimeStore ruleRuntimeStore;
 
     @Mock
     private CodeSnippetManager snippetManager;
@@ -33,7 +33,7 @@ class InjectHelperTest {
 
     @BeforeEach
     void setUp() {
-        injectHelper = new InjectHelper(ruleManager, snippetManager);
+        injectHelper = new InjectHelper(ruleRuntimeStore, snippetManager);
     }
 
     // why: 基础命中链路必须同时满足路径和模板 ID，保证组合条件按 AND 正常工作。
@@ -42,7 +42,7 @@ class InjectHelperTest {
         InjectionRule rule = createRule(group(MatchRule.Operator.AND,
                 MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
                 MatchRule.templateRule(MatchRule.Matcher.EXACT, "post")));
-        when(ruleManager.listActiveByMode(InjectionRule.Mode.SELECTOR)).thenReturn(Flux.just(rule));
+        when(ruleRuntimeStore.listActiveByMode(InjectionRule.Mode.SELECTOR)).thenReturn(Flux.just(rule));
 
         List<InjectionRule> rules = injectHelper
                 .getMatchedRules("/posts/demo", "post", InjectionRule.Mode.SELECTOR)
@@ -58,7 +58,7 @@ class InjectHelperTest {
         InjectionRule rule = createRule(group(MatchRule.Operator.AND,
                 MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
                 MatchRule.templateRule(MatchRule.Matcher.EXACT, "post")));
-        when(ruleManager.listActiveByMode(InjectionRule.Mode.SELECTOR)).thenReturn(Flux.just(rule));
+        when(ruleRuntimeStore.listActiveByMode(InjectionRule.Mode.SELECTOR)).thenReturn(Flux.just(rule));
 
         List<InjectionRule> rules = injectHelper
                 .getMatchedRules("/posts/demo", "page", InjectionRule.Mode.SELECTOR)
@@ -74,7 +74,7 @@ class InjectHelperTest {
         InjectionRule rule = createRule(group(MatchRule.Operator.AND,
                 MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
                 MatchRule.templateRule(MatchRule.Matcher.EXACT, "post")));
-        when(ruleManager.listActiveByMode(InjectionRule.Mode.SELECTOR)).thenReturn(Flux.just(rule));
+        when(ruleRuntimeStore.listActiveByMode(InjectionRule.Mode.SELECTOR)).thenReturn(Flux.just(rule));
 
         List<InjectionRule> rules = injectHelper
                 .getPathMatchedRules("/posts/demo", InjectionRule.Mode.SELECTOR)
@@ -90,7 +90,7 @@ class InjectHelperTest {
         InjectionRule rule = createRule(group(MatchRule.Operator.AND,
                 MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
                 MatchRule.templateRule(MatchRule.Matcher.EXACT, "post")));
-        when(ruleManager.listActiveByMode(InjectionRule.Mode.SELECTOR)).thenReturn(Flux.just(rule));
+        when(ruleRuntimeStore.listActiveByMode(InjectionRule.Mode.SELECTOR)).thenReturn(Flux.just(rule));
 
         List<InjectionRule> rules = injectHelper
                 .getPathMatchedRules("/archives/demo", InjectionRule.Mode.SELECTOR)
@@ -124,7 +124,7 @@ class InjectHelperTest {
         setMatchRuleDirectly(rule, group(MatchRule.Operator.OR,
                 MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
                 MatchRule.templateRule(MatchRule.Matcher.EXACT, "post")));
-        when(ruleManager.listActiveByMode(InjectionRule.Mode.SELECTOR)).thenReturn(Flux.just(rule));
+        when(ruleRuntimeStore.listActiveByMode(InjectionRule.Mode.SELECTOR)).thenReturn(Flux.just(rule));
 
         Boolean shouldProcess = injectHelper
                 .hasDomProcessCandidate("/archives/demo", InjectionRule.Mode.SELECTOR)
@@ -136,10 +136,10 @@ class InjectHelperTest {
     // why: 同一 regex 在运行期应复用已编译结果，避免每次请求重复 Pattern.compile 带来额外开销。
     @Test
     void shouldCompileSameRegexOnlyOnceAtRuntime() {
-        CountingInjectHelper helper = new CountingInjectHelper(ruleManager, snippetManager);
+        CountingInjectHelper helper = new CountingInjectHelper(ruleRuntimeStore, snippetManager);
         InjectionRule rule = createRule(group(MatchRule.Operator.AND,
                 MatchRule.pathRule(MatchRule.Matcher.REGEX, "^/posts/\\d+$")));
-        when(ruleManager.listActiveByMode(InjectionRule.Mode.SELECTOR)).thenReturn(Flux.just(rule));
+        when(ruleRuntimeStore.listActiveByMode(InjectionRule.Mode.SELECTOR)).thenReturn(Flux.just(rule));
 
         List<InjectionRule> first = helper
                 .getMatchedRules("/posts/1", InjectionRule.Mode.SELECTOR)
@@ -158,13 +158,13 @@ class InjectHelperTest {
     // why: 历史脏数据里的非法 regex 也要缓存失败结果，避免请求期反复抛异常和重复编译。
     @Test
     void shouldCacheInvalidRegexFailureToAvoidRepeatedCompile() {
-        CountingInjectHelper helper = new CountingInjectHelper(ruleManager, snippetManager);
+        CountingInjectHelper helper = new CountingInjectHelper(ruleRuntimeStore, snippetManager);
         InjectionRule rule = new InjectionRule();
         rule.setEnabled(true);
         rule.setMode(InjectionRule.Mode.FOOTER);
         setMatchRuleDirectly(rule, group(MatchRule.Operator.AND,
                 MatchRule.pathRule(MatchRule.Matcher.REGEX, "[")));
-        when(ruleManager.listActiveByMode(InjectionRule.Mode.FOOTER)).thenReturn(Flux.just(rule));
+        when(ruleRuntimeStore.listActiveByMode(InjectionRule.Mode.FOOTER)).thenReturn(Flux.just(rule));
 
         List<InjectionRule> first = helper
                 .getMatchedRules("/posts/1", InjectionRule.Mode.FOOTER)
@@ -209,13 +209,13 @@ class InjectHelperTest {
     // why: 同一次完整匹配里，多条 PATH/ANT 条件共享同一个当前路径；应只 parseRoute 一次，再在整棵规则树里复用。
     @Test
     void shouldParseCurrentPathOnlyOnceDuringSingleMatchEvaluation() {
-        CountingInjectHelper helper = new CountingInjectHelper(ruleManager, snippetManager);
+        CountingInjectHelper helper = new CountingInjectHelper(ruleRuntimeStore, snippetManager);
         InjectionRule rule = createRule(group(MatchRule.Operator.AND,
                 MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
                 group(MatchRule.Operator.OR,
                         MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/demo"),
                         MatchRule.pathRule(MatchRule.Matcher.ANT, "/archives/**"))));
-        when(ruleManager.listActiveByMode(InjectionRule.Mode.SELECTOR)).thenReturn(Flux.just(rule));
+        when(ruleRuntimeStore.listActiveByMode(InjectionRule.Mode.SELECTOR)).thenReturn(Flux.just(rule));
 
         List<InjectionRule> matched = helper
                 .getMatchedRules("/posts/demo", "post", InjectionRule.Mode.SELECTOR)
@@ -268,8 +268,8 @@ class InjectHelperTest {
         private final AtomicInteger compileCount = new AtomicInteger();
         private final AtomicInteger routeParseCount = new AtomicInteger();
 
-        CountingInjectHelper(InjectionRuleManager ruleManager, CodeSnippetManager snippetManager) {
-            super(ruleManager, snippetManager);
+        CountingInjectHelper(InjectionRuleRuntimeStore ruleRuntimeStore, CodeSnippetManager snippetManager) {
+            super(ruleRuntimeStore, snippetManager);
         }
 
         @Override

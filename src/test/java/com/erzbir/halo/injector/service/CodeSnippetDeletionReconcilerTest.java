@@ -1,12 +1,12 @@
 package com.erzbir.halo.injector.service;
 
-import com.erzbir.halo.injector.manager.InjectionRuleManager;
+import com.erzbir.halo.injector.manager.InjectionRuleRuntimeStore;
 import com.erzbir.halo.injector.scheme.CodeSnippet;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import run.halo.app.extension.ExtensionClient;
 import run.halo.app.extension.Extension;
+import run.halo.app.extension.ExtensionClient;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.controller.Reconciler;
 
@@ -29,14 +29,14 @@ import static org.mockito.Mockito.when;
 
 class CodeSnippetDeletionReconcilerTest {
     private ExtensionClient client;
-    private InjectionRuleManager ruleManager;
+    private InjectionRuleRuntimeStore ruleRuntimeStore;
     private CodeSnippetDeletionReconciler reconciler;
 
     @BeforeEach
     void setUp() {
         client = mock(ExtensionClient.class);
-        ruleManager = mock(InjectionRuleManager.class);
-        reconciler = new CodeSnippetDeletionReconciler(client, ruleManager);
+        ruleRuntimeStore = mock(InjectionRuleRuntimeStore.class);
+        reconciler = new CodeSnippetDeletionReconciler(client, ruleRuntimeStore);
     }
 
     // why: finalizer 协调器的核心职责，就是在 Halo 标记 deleting 后先摘掉规则真源里的引用，
@@ -68,7 +68,7 @@ class CodeSnippetDeletionReconcilerTest {
         assertTrue(finalizedSnippet.getMetadata().getFinalizers() == null
                 || !finalizedSnippet.getMetadata().getFinalizers()
                 .contains(CodeSnippetLifecycleService.DELETION_FINALIZER));
-        verify(ruleManager).invalidateAndWarmUpAsync();
+        verify(ruleRuntimeStore).invalidateAndWarmUpAsync();
         verify(client).fetch(InjectionRule.class, "rule-a");
     }
 

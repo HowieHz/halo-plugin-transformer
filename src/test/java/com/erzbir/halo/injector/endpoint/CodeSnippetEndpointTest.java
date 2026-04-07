@@ -1,6 +1,6 @@
 package com.erzbir.halo.injector.endpoint;
 
-import com.erzbir.halo.injector.manager.InjectionRuleManager;
+import com.erzbir.halo.injector.manager.InjectionRuleRuntimeStore;
 import com.erzbir.halo.injector.scheme.CodeSnippet;
 import com.erzbir.halo.injector.service.CodeSnippetLifecycleService;
 import com.erzbir.halo.injector.util.CodeSnippetValidationException;
@@ -15,8 +15,6 @@ import run.halo.app.extension.ReactiveExtensionClient;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -25,15 +23,15 @@ import static org.mockito.Mockito.when;
 class CodeSnippetEndpointTest {
     private ReactiveExtensionClient client;
     private CodeSnippetValidator validator;
-    private InjectionRuleManager ruleManager;
+    private InjectionRuleRuntimeStore ruleRuntimeStore;
     private CodeSnippetEndpoint endpoint;
 
     @BeforeEach
     void setUp() {
         client = mock(ReactiveExtensionClient.class);
         validator = mock(CodeSnippetValidator.class);
-        ruleManager = mock(InjectionRuleManager.class);
-        endpoint = new CodeSnippetEndpoint(client, validator, mock(CodeSnippetLifecycleService.class), ruleManager);
+        ruleRuntimeStore = mock(InjectionRuleRuntimeStore.class);
+        endpoint = new CodeSnippetEndpoint(client, validator, mock(CodeSnippetLifecycleService.class), ruleRuntimeStore);
     }
 
     // why: 代码块启停现在应有独立写口，只修改 enabled；
@@ -51,7 +49,7 @@ class CodeSnippetEndpointTest {
 
         assertEquals(true, updated.isEnabled());
         verify(client).update(any(CodeSnippet.class));
-        verify(ruleManager).invalidateAndWarmUpAsync();
+        verify(ruleRuntimeStore).invalidateAndWarmUpAsync();
     }
 
     // why: 停用只是把资源移出运行时，不该被历史坏内容再次卡住；因此停用路径不再复跑写入校验。

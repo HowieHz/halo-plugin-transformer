@@ -1,7 +1,7 @@
 package com.erzbir.halo.injector.endpoint;
 
 import com.erzbir.halo.injector.core.MatchRule;
-import com.erzbir.halo.injector.manager.InjectionRuleManager;
+import com.erzbir.halo.injector.manager.InjectionRuleRuntimeStore;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import com.erzbir.halo.injector.service.SnippetReferenceService;
 import com.erzbir.halo.injector.util.InjectionRuleValidationException;
@@ -29,7 +29,7 @@ import static org.mockito.Mockito.when;
 class InjectionRuleEndpointTest {
     private ReactiveExtensionClient client;
     private InjectionRuleValidator validator;
-    private InjectionRuleManager ruleManager;
+    private InjectionRuleRuntimeStore ruleRuntimeStore;
     private SnippetReferenceService snippetReferenceService;
     private InjectionRuleEndpoint endpoint;
 
@@ -37,9 +37,9 @@ class InjectionRuleEndpointTest {
     void setUp() {
         client = mock(ReactiveExtensionClient.class);
         validator = mock(InjectionRuleValidator.class);
-        ruleManager = mock(InjectionRuleManager.class);
+        ruleRuntimeStore = mock(InjectionRuleRuntimeStore.class);
         snippetReferenceService = mock(SnippetReferenceService.class);
-        endpoint = new InjectionRuleEndpoint(client, validator, ruleManager, snippetReferenceService);
+        endpoint = new InjectionRuleEndpoint(client, validator, ruleRuntimeStore, snippetReferenceService);
     }
 
     // why: 规则启停必须只围绕已保存规则本体切换 enabled，
@@ -58,7 +58,7 @@ class InjectionRuleEndpointTest {
 
         assertEquals(true, updated.isEnabled());
         verify(client).update(any(InjectionRule.class));
-        verify(ruleManager).invalidateAndWarmUpAsync();
+        verify(ruleRuntimeStore).invalidateAndWarmUpAsync();
     }
 
     // why: 停用只需要把规则移出运行时；
@@ -89,7 +89,7 @@ class InjectionRuleEndpointTest {
         InjectionRuleEndpoint endpointWithRealValidator = new InjectionRuleEndpoint(
                 client,
                 new InjectionRuleValidator(),
-                ruleManager,
+                ruleRuntimeStore,
                 snippetReferenceService
         );
 
@@ -115,7 +115,7 @@ class InjectionRuleEndpointTest {
         InjectionRuleEndpoint endpointWithRealValidator = new InjectionRuleEndpoint(
                 client,
                 new InjectionRuleValidator(),
-                ruleManager,
+                ruleRuntimeStore,
                 snippetReferenceService
         );
 

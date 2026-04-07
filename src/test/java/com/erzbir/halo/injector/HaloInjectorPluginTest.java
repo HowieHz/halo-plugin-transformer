@@ -1,6 +1,6 @@
 package com.erzbir.halo.injector;
 
-import com.erzbir.halo.injector.manager.InjectionRuleManager;
+import com.erzbir.halo.injector.manager.InjectionRuleRuntimeStore;
 import com.erzbir.halo.injector.scheme.CodeSnippet;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import com.erzbir.halo.injector.scheme.ResourceOrder;
@@ -16,8 +16,8 @@ import java.util.Optional;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 class HaloInjectorPluginTest {
@@ -26,7 +26,7 @@ class HaloInjectorPluginTest {
     @Test
     void shouldIgnoreMissingSchemesWhenStoppingAfterPartialStart() {
         SchemeManager schemeManager = mock(SchemeManager.class);
-        InjectionRuleManager ruleManager = mock(InjectionRuleManager.class);
+        InjectionRuleRuntimeStore ruleRuntimeStore = mock(InjectionRuleRuntimeStore.class);
         Controller controller = mock(Controller.class);
         Scheme codeSnippetScheme = Scheme.buildFromType(CodeSnippet.class);
         Scheme injectionRuleScheme = Scheme.buildFromType(InjectionRule.class);
@@ -38,13 +38,13 @@ class HaloInjectorPluginTest {
         when(schemeManager.fetch(GroupVersionKind.fromExtension(ResourceOrder.class)))
                 .thenReturn(Optional.empty());
 
-        new HaloInjectorPlugin(schemeManager, ruleManager, List.of(controller)).stop();
+        new HaloInjectorPlugin(schemeManager, ruleRuntimeStore, List.of(controller)).stop();
 
         verify(controller).dispose();
-        verify(ruleManager).stopWatching();
+        verify(ruleRuntimeStore).stopWatching();
         verify(schemeManager).unregister(codeSnippetScheme);
         verify(schemeManager).unregister(injectionRuleScheme);
         verify(schemeManager, times(2)).unregister(any(Scheme.class));
-        verifyNoMoreInteractions(ruleManager);
+        verifyNoMoreInteractions(ruleRuntimeStore);
     }
 }

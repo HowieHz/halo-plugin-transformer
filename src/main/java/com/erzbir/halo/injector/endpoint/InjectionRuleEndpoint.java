@@ -1,7 +1,7 @@
 package com.erzbir.halo.injector.endpoint;
 
 import com.erzbir.halo.injector.core.MatchRule;
-import com.erzbir.halo.injector.manager.InjectionRuleManager;
+import com.erzbir.halo.injector.manager.InjectionRuleRuntimeStore;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import com.erzbir.halo.injector.service.SnippetReferenceService;
 import com.erzbir.halo.injector.util.InjectionRuleValidationException;
@@ -36,7 +36,7 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
 
     private final ReactiveExtensionClient client;
     private final InjectionRuleValidator validator;
-    private final InjectionRuleManager ruleManager;
+    private final InjectionRuleRuntimeStore ruleRuntimeStore;
     private final SnippetReferenceService snippetReferenceService;
 
     @Override
@@ -58,7 +58,7 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
                 .flatMap(this::normalizeAndValidateSnippetReferences)
                 .map(this::canonicalizeRuleForStorage)
                 .flatMap(client::create)
-                .doOnSuccess(created -> ruleManager.invalidateAndWarmUpAsync())
+                .doOnSuccess(created -> ruleRuntimeStore.invalidateAndWarmUpAsync())
                 .flatMap(created -> ServerResponse.created(URI.create("/apis/" + READ_API_VERSION + "/injectionRules/"
                                 + created.getMetadata().getName()))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -94,7 +94,7 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
                         .flatMap(ignored -> normalizeAndValidateAddedSnippetReferences(tuple.getT1(), tuple.getT2())))
                 .map(this::canonicalizeRuleForStorage)
                 .flatMap(client::update)
-                .doOnSuccess(updated -> ruleManager.invalidateAndWarmUpAsync())
+                .doOnSuccess(updated -> ruleRuntimeStore.invalidateAndWarmUpAsync())
                 .flatMap(updated -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(updated));
@@ -123,7 +123,7 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
         return client.fetch(InjectionRule.class, name)
                 .switchIfEmpty(Mono.error(new ServerWebInputException("未找到要删除的规则")))
                 .flatMap(client::delete)
-                .doOnSuccess(ignored -> ruleManager.invalidateAndWarmUpAsync())
+                .doOnSuccess(ignored -> ruleRuntimeStore.invalidateAndWarmUpAsync())
                 .then(ServerResponse.noContent().build());
     }
 
@@ -156,7 +156,7 @@ public class InjectionRuleEndpoint implements CustomEndpoint {
                             .flatMap(ignored -> normalizeAndValidateSnippetReferences(rule));
                 })
                 .flatMap(client::update)
-                .doOnSuccess(updated -> ruleManager.invalidateAndWarmUpAsync());
+                .doOnSuccess(updated -> ruleRuntimeStore.invalidateAndWarmUpAsync());
     }
 
     /**

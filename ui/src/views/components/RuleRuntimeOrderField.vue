@@ -9,6 +9,9 @@ import {
 } from '@/views/composables/runtimeOrder'
 
 const RUNTIME_ORDER_HORIZONTAL_INSET_PX = 16
+const sliderShellStyle = {
+  '--runtime-order-horizontal-inset': `${RUNTIME_ORDER_HORIZONTAL_INSET_PX}px`,
+}
 
 const props = defineProps<{
   modelValue: number
@@ -153,7 +156,7 @@ function toggleEditMode() {
     </template>
     <template v-else>
       <div>
-        <div class="runtime-order-slider-shell">
+        <div :style="sliderShellStyle" class="runtime-order-slider-shell">
           <input
             :aria-valuetext="currentStepLabel"
             :max="RUNTIME_ORDER_MAX"
@@ -210,7 +213,6 @@ function toggleEditMode() {
 .runtime-order-slider-shell {
   --runtime-order-track-height: 0.25rem;
   --runtime-order-thumb-size: 0.875rem;
-  --runtime-order-horizontal-inset: 16px;
   position: relative;
   height: 1.5rem;
 }
