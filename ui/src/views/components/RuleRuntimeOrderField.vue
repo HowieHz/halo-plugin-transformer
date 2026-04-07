@@ -8,6 +8,8 @@ import {
   snapRuntimeOrderToPreset,
 } from '@/views/composables/runtimeOrder'
 
+const RUNTIME_ORDER_HORIZONTAL_INSET_PX = 8
+
 const props = defineProps<{
   modelValue: number
 }>()
@@ -76,8 +78,10 @@ function updateRuntimeOrderPresetValue(value: number) {
   updateRuntimeOrder(value)
 }
 
-function stepPositionPercent(value: number) {
-  return `${(value / RUNTIME_ORDER_MAX) * 100}%`
+function stepTrackPositionStyle(value: number) {
+  return `calc(${RUNTIME_ORDER_HORIZONTAL_INSET_PX}px + (100% - ${
+    RUNTIME_ORDER_HORIZONTAL_INSET_PX * 2
+  }px) * ${value / RUNTIME_ORDER_MAX})`
 }
 
 function handleManualInput(event: Event) {
@@ -144,7 +148,7 @@ function toggleEditMode() {
           <div class="runtime-order-track" />
           <div
             :style="{
-              left: stepPositionPercent(previewRuntimeOrder),
+              left: stepTrackPositionStyle(previewRuntimeOrder),
             }"
             class="runtime-order-thumb"
           />
@@ -157,7 +161,7 @@ function toggleEditMode() {
           v-for="step in RUNTIME_ORDER_STEPS"
           :key="step.value"
           :style="{
-            left: stepPositionPercent(step.value),
+            left: stepTrackPositionStyle(step.value),
           }"
           :class="
             step.value === previewRuntimeOrder
@@ -181,6 +185,7 @@ function toggleEditMode() {
 .runtime-order-slider-shell {
   --runtime-order-track-height: 0.25rem;
   --runtime-order-thumb-size: 0.875rem;
+  --runtime-order-horizontal-inset: 8px;
   position: relative;
   height: 1.5rem;
 }
@@ -202,8 +207,8 @@ function toggleEditMode() {
 .runtime-order-track {
   position: absolute;
   top: 50%;
-  left: 0;
-  right: 0;
+  left: var(--runtime-order-horizontal-inset);
+  right: var(--runtime-order-horizontal-inset);
   height: var(--runtime-order-track-height);
   transform: translateY(-50%);
   border-radius: 9999px;
