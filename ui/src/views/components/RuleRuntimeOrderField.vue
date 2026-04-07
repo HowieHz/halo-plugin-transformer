@@ -138,7 +138,7 @@ function toggleEditMode() {
               ? ':uno: text-primary'
               : ':uno: text-gray-400 hover:text-gray-600'
           "
-          class=":uno: absolute top-0 bg-transparent p-0 text-[11px]"
+          class=":uno: absolute top-0 whitespace-nowrap bg-transparent p-0 text-[11px]"
           type="button"
           @click="updateRuntimeOrderPreset(index)"
         >
