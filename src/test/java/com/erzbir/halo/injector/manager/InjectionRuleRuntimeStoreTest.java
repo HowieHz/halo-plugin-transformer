@@ -133,6 +133,24 @@ class InjectionRuleRuntimeStoreTest {
         assertEquals(1, fetchCount.get());
     }
 
+    // why: 运行时若跳过了一条已启用规则，诊断里必须带上稳定的原因码与说明；
+    // 否则控制台外部写入的坏数据只会表现成“悄悄不生效”，排查成本太高。
+    @Test
+    void shouldExposeReasonedDiagnosticsForSkippedEnabledRules() {
+        InjectionRule selectorRule = rule("rule-a", InjectionRule.Mode.SELECTOR, true, "");
+
+        manager.buildSnapshot(List.of(selectorRule));
+
+        assertEquals(
+                List.of(new InjectionRuleRuntimeStore.SkippedEnabledRule(
+                        "rule-a",
+                        "blank_selector_match",
+                        "CSS 选择器模式要求非空 match"
+                )),
+                manager.skippedEnabledRules()
+        );
+    }
+
     // why: watch 不是永不掉线的“神链路”；一旦底层 watch 被释放，管理器应自动按退避策略重连，
     // 而不是让运行时快照永久停留在一条已经失效的订阅上。
     @Test

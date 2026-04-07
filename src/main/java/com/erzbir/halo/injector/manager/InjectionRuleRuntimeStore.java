@@ -36,7 +36,7 @@ public class InjectionRuleRuntimeStore {
     private final long watchReconnectBaseDelayMillis;
     private final long watchReconnectMaxDelayMillis;
     private volatile RuleSnapshot cachedSnapshot = RuleSnapshot.empty();
-    private volatile List<String> lastSkippedEnabledRuleIds = List.of();
+    private volatile List<SkippedEnabledRule> lastSkippedEnabledRules = List.of();
     private volatile boolean refreshRequested;
     private volatile boolean refreshRunning;
     private volatile boolean watching;
@@ -149,7 +149,7 @@ public class InjectionRuleRuntimeStore {
         List<InjectionRule> allRules = List.copyOf(rules);
         Map<InjectionRule.Mode, List<InjectionRule>> rulesByMode =
                 new EnumMap<>(InjectionRule.Mode.class);
-        List<String> skippedEnabledRuleIds = new ArrayList<>();
+        List<SkippedEnabledRule> skippedEnabledRules = new ArrayList<>();
         for (InjectionRule.Mode mode : InjectionRule.Mode.values()) {
             rulesByMode.put(mode, new ArrayList<>());
         }
@@ -160,8 +160,13 @@ public class InjectionRuleRuntimeStore {
             if (!rule.isEnabled()) {
                 continue;
             }
-            if (rule.getMode() == null || !rule.isValid()) {
-                skippedEnabledRuleIds.add(describeRule(rule));
+            RuntimeSkipReason skipReason = resolveRuntimeSkipReason(rule);
+            if (skipReason != null) {
+                skippedEnabledRules.add(new SkippedEnabledRule(
+                        describeRule(rule),
+                        skipReason.code(),
+                        skipReason.detail()
+                ));
                 continue;
             }
             rulesByMode.get(rule.getMode()).add(rule);
@@ -172,7 +177,7 @@ public class InjectionRuleRuntimeStore {
             entry.getValue().sort(runtimeOrderComparator());
             immutableByMode.put(entry.getKey(), List.copyOf(entry.getValue()));
         }
-        logSkippedEnabledRules(skippedEnabledRuleIds);
+        logSkippedEnabledRules(skippedEnabledRules);
         return new RuleSnapshot(allRules, immutableByMode);
     }
 
@@ -237,23 +242,44 @@ public class InjectionRuleRuntimeStore {
         return -1;
     }
 
-    private void logSkippedEnabledRules(List<String> skippedEnabledRuleIds) {
-        List<String> currentSkippedRuleIds = List.copyOf(skippedEnabledRuleIds);
-        List<String> previousSkippedRuleIds = lastSkippedEnabledRuleIds;
-        if (previousSkippedRuleIds.equals(currentSkippedRuleIds)) {
+    List<SkippedEnabledRule> skippedEnabledRules() {
+        return lastSkippedEnabledRules;
+    }
+
+    private RuntimeSkipReason resolveRuntimeSkipReason(InjectionRule rule) {
+        if (rule.getMode() == null) {
+            return RuntimeSkipReason.MISSING_MODE;
+        }
+        if (InjectionRule.Mode.SELECTOR.equals(rule.getMode())
+                && (rule.getMatch() == null || rule.getMatch().isBlank())) {
+            return RuntimeSkipReason.BLANK_SELECTOR_MATCH;
+        }
+        if (rule.getMatchRule() == null) {
+            return RuntimeSkipReason.MISSING_MATCH_RULE;
+        }
+        if (!rule.getMatchRule().isValid()) {
+            return RuntimeSkipReason.INVALID_MATCH_RULE;
+        }
+        return null;
+    }
+
+    private void logSkippedEnabledRules(List<SkippedEnabledRule> skippedEnabledRules) {
+        List<SkippedEnabledRule> currentSkippedRules = List.copyOf(skippedEnabledRules);
+        List<SkippedEnabledRule> previousSkippedRules = lastSkippedEnabledRules;
+        if (previousSkippedRules.equals(currentSkippedRules)) {
             return;
         }
-        lastSkippedEnabledRuleIds = currentSkippedRuleIds;
-        if (currentSkippedRuleIds.isEmpty()) {
-            if (!previousSkippedRuleIds.isEmpty()) {
+        lastSkippedEnabledRules = currentSkippedRules;
+        if (currentSkippedRules.isEmpty()) {
+            if (!previousSkippedRules.isEmpty()) {
                 log.info("All previously skipped enabled InjectionRule resources are back in the runtime snapshot");
             }
             return;
         }
         log.warn(
                 "Skipped {} enabled InjectionRule resource(s) from the runtime snapshot because they are invalid or incomplete: {}",
-                currentSkippedRuleIds.size(),
-                currentSkippedRuleIds
+                currentSkippedRules.size(),
+                currentSkippedRules
         );
     }
 
@@ -557,5 +583,31 @@ public class InjectionRuleRuntimeStore {
         ADD,
         UPDATE,
         DELETE
+    }
+
+    record SkippedEnabledRule(String ruleId, String reasonCode, String reasonDetail) {
+    }
+
+    private enum RuntimeSkipReason {
+        MISSING_MODE("missing_mode", "运行时需要明确的执行阶段"),
+        BLANK_SELECTOR_MATCH("blank_selector_match", "CSS 选择器模式要求非空 match"),
+        MISSING_MATCH_RULE("missing_match_rule", "缺少 matchRule"),
+        INVALID_MATCH_RULE("invalid_match_rule", "matchRule 不满足运行时结构约束");
+
+        private final String code;
+        private final String detail;
+
+        RuntimeSkipReason(String code, String detail) {
+            this.code = code;
+            this.detail = detail;
+        }
+
+        String code() {
+            return code;
+        }
+
+        String detail() {
+            return detail;
+        }
     }
 }
