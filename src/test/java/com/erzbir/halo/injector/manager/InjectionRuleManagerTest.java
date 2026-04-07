@@ -130,23 +130,29 @@ class InjectionRuleManagerTest {
         assertEquals(List.of("rule-enabled"), rules.stream().map(InjectionRule::getId).toList());
     }
 
-    // why: 运行时顺序是同一执行阶段内的显式契约；不能再依赖底层 list 返回顺序，
-    // 否则多条规则命中同一位置时会出现难以解释的隐式 precedence。
+    // why: 运行时顺序是同一执行阶段内的显式契约；同优先级时应先按名称字符序，
+    // 再用 id 兜底，避免继续依赖底层 list 返回顺序。
     @Test
-    void shouldSortActiveRulesByRuntimeOrderThenIdWithinMode() {
+    void shouldSortActiveRulesByRuntimeOrderThenNameThenIdWithinMode() {
         InjectionRule highZ = rule("rule-z", InjectionRule.Mode.SELECTOR, true, "main");
+        highZ.setName("Zulu");
         highZ.setRuntimeOrder(0);
         InjectionRule highA = rule("rule-a", InjectionRule.Mode.SELECTOR, true, "main");
+        highA.setName("Alpha");
         highA.setRuntimeOrder(0);
+        InjectionRule highFallback = rule("rule-b", InjectionRule.Mode.SELECTOR, true, "main");
+        highFallback.setRuntimeOrder(0);
         InjectionRule low = rule("rule-low", InjectionRule.Mode.SELECTOR, true, "main");
+        low.setName("Later");
         low.setRuntimeOrder(2147483645);
-        when(client.list(InjectionRule.class, null, null)).thenReturn(Flux.just(low, highZ, highA));
+        when(client.list(InjectionRule.class, null, null))
+                .thenReturn(Flux.just(low, highZ, highFallback, highA));
 
         List<InjectionRule> rules = manager.listActiveByMode(InjectionRule.Mode.SELECTOR)
                 .collectList()
                 .block();
 
-        assertEquals(List.of("rule-a", "rule-z", "rule-low"),
+        assertEquals(List.of("rule-a", "rule-b", "rule-z", "rule-low"),
                 rules.stream().map(InjectionRule::getId).toList());
     }
 

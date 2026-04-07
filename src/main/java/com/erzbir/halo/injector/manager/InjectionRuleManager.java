@@ -129,11 +129,13 @@ public class InjectionRuleManager {
 
     /**
      * why: 控制台左侧 `rule-order` 只是展示顺序；运行时只承诺同一执行阶段内按显式
-     * `runtimeOrder` 升序执行，并用稳定资源 id 兜底，避免继续依赖底层 list 返回顺序。
+     * `runtimeOrder` 升序执行；同值时先按规则名称字符序，再用稳定资源 id 兜底，
+     * 避免继续依赖底层 list 返回顺序，同时让执行顺序更贴近用户看到的规则名称。
      */
     private Comparator<InjectionRule> runtimeOrderComparator() {
         return Comparator
                 .comparingInt(InjectionRule::getRuntimeOrder)
+                .thenComparing(InjectionRule::getName, String.CASE_INSENSITIVE_ORDER)
                 .thenComparing(InjectionRule::getId, String.CASE_INSENSITIVE_ORDER);
     }
 
