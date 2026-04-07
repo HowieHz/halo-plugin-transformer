@@ -87,6 +87,29 @@ class CodeSnippetEndpointTest {
         verify(client, never()).update(any(CodeSnippet.class));
     }
 
+    // why: 启停应能顺带修复历史前端只读字段污染；
+    // 旧资源里遗留的 `id` 不该再把“重新启用代码块”卡死。
+    @Test
+    void shouldIgnoreLegacyClientOnlyFieldsWhenEnablingSnippet() {
+        CodeSnippetEndpoint legacyAwareEndpoint = new CodeSnippetEndpoint(
+                client,
+                new CodeSnippetValidator(),
+                new CodeSnippetDeletionService(client),
+                ruleManager
+        );
+        CodeSnippet snippet = snippet("snippet-a", "<div>ok</div>", false);
+        snippet.getMetadata().setVersion(8L);
+        snippet.recordUnknownField("id", "snippet-a");
+        when(client.fetch(CodeSnippet.class, "snippet-a")).thenReturn(Mono.just(snippet));
+        when(client.update(any(CodeSnippet.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+
+        CodeSnippet updated = legacyAwareEndpoint.updateSnippetEnabled("snippet-a", enabledPayload(true, 8L)).block();
+
+        assertEquals(true, updated.isEnabled());
+        assertEquals(false, updated.getUnknownFields().contains("id"));
+        verify(client).update(any(CodeSnippet.class));
+    }
+
     // why: 启停虽然只改 enabled，但仍是写操作；旧版本请求必须被拒绝，不能静默覆盖较新的已保存状态。
     @Test
     void shouldRejectTogglingSnippetEnabledWithStaleVersion() {

@@ -13,6 +13,7 @@ import java.util.Set;
 @Component
 public class CodeSnippetDeletionService {
     static final String DELETION_FINALIZER = "injector.erzbir.com/code-snippet-reference-cleanup";
+    private static final Set<String> LEGACY_CLIENT_ONLY_FIELDS = Set.of("id");
 
     private final ReactiveExtensionClient client;
 
@@ -22,10 +23,12 @@ public class CodeSnippetDeletionService {
 
     /**
      * why: 删除清理依赖 Halo finalizer 才能把“先标记删除，再异步摘引用，最后真正删除”
-     * 收敛成平台原生生命周期；因此代码块在创建/更新落库前就要补齐 finalizer。
+     * 收敛成平台原生生命周期；因此代码块在创建/更新落库前就要补齐 finalizer，
+     * 并顺手清掉历史前端只读字段，避免旧脏数据卡住后续启停/保存。
      */
     public CodeSnippet prepareForWrite(CodeSnippet snippet) {
         ensureMetadata(snippet);
+        stripLegacyClientOnlyFields(snippet);
         addDeletionFinalizer(snippet);
         return snippet;
     }
@@ -74,5 +77,12 @@ public class CodeSnippetDeletionService {
         if (snippet.getMetadata() == null) {
             snippet.setMetadata(new Metadata());
         }
+    }
+
+    static void stripLegacyClientOnlyFields(CodeSnippet snippet) {
+        if (snippet == null || snippet.getUnknownFields().isEmpty()) {
+            return;
+        }
+        snippet.getUnknownFields().removeAll(LEGACY_CLIENT_ONLY_FIELDS);
     }
 }

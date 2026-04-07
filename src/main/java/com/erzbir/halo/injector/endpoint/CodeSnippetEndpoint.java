@@ -142,6 +142,7 @@ public class CodeSnippetEndpoint implements CustomEndpoint {
                             payload.metadata,
                             "代码块"
                     );
+                    deletionService.prepareForWrite(snippet);
                     snippet.setEnabled(enabled);
                     return enabled ? validator.validateForWrite(snippet) : Mono.just(snippet);
                 })
