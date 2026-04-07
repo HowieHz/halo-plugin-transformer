@@ -182,8 +182,8 @@ describe('matchRule editor state', () => {
   // why: 空组或空值这类“当前还不合法”的编辑中间态，应优先显示校验错误，不该再叠加性能提示干扰判断。
   it('hides dom performance warning when match rule is currently invalid', () => {
     const rule = makeRuleEditorDraft({
-      mode: 'ID',
-      match: 'main-content',
+      mode: 'SELECTOR',
+      match: '#main-content',
       matchRule: {
         type: 'GROUP',
         negate: false,
@@ -199,8 +199,8 @@ describe('matchRule editor state', () => {
   // 不能继续读取旧的合法规则树，否则用户会看到基于过期状态生成的错误提示。
   it('hides dom performance warning when json draft is invalid even if last rule tree was valid', () => {
     const rule = makeRuleEditorDraft({
-      mode: 'ID',
-      match: 'main-content',
+      mode: 'SELECTOR',
+      match: '#main-content',
       matchRule: {
         type: 'GROUP',
         negate: false,

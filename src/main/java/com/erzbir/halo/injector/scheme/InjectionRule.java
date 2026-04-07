@@ -62,8 +62,7 @@ public class InjectionRule extends AbstractExtension implements IInjectionRule {
      */
     @JsonIgnore
     public boolean isValid() {
-        boolean targetValid = !Mode.ID.equals(getMode()) && !Mode.SELECTOR.equals(getMode())
-                || !getMatch().isBlank();
+        boolean targetValid = !Mode.SELECTOR.equals(getMode()) || !getMatch().isBlank();
         return targetValid && matchRule != null && matchRule.isValid();
     }
 }

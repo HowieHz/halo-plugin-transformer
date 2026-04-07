@@ -101,7 +101,7 @@ describe('useInjectorData', () => {
 
     store.editRule.value = {
       ...store.editRule.value!,
-      mode: 'ID',
+      mode: 'SELECTOR',
       match: '',
       name: 'draft name',
     }
@@ -113,7 +113,7 @@ describe('useInjectorData', () => {
     expect(ruleApi.update).not.toHaveBeenCalled()
     expect(ruleApi.list).toHaveBeenCalledTimes(1)
     expect(store.editRule.value?.enabled).toBe(true)
-    expect(store.editRule.value?.mode).toBe('ID')
+    expect(store.editRule.value?.mode).toBe('SELECTOR')
     expect(store.editRule.value?.name).toBe('draft name')
     expect(store.editDirty.value).toBe(true)
     expect(toast.error).not.toHaveBeenCalled()

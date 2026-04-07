@@ -21,8 +21,7 @@ public class InjectionRuleValidator {
         if (rule == null) {
             return Mono.error(new InjectionRuleValidationException("请求体不能为空"));
         }
-        if ((InjectionRule.Mode.ID.equals(rule.getMode()) || InjectionRule.Mode.SELECTOR.equals(rule.getMode()))
-                && !StringUtils.hasText(rule.getMatch())) {
+        if (InjectionRule.Mode.SELECTOR.equals(rule.getMode()) && !StringUtils.hasText(rule.getMatch())) {
             return Mono.error(new InjectionRuleValidationException("match：请填写匹配内容"));
         }
         try {

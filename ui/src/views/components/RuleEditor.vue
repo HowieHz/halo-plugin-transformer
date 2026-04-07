@@ -19,6 +19,7 @@ import { sortSelectedFirst } from '@/views/composables/util.ts'
 import { updateSelectByWheel } from '@/views/composables/selectWheel.ts'
 import FieldUndoButton from './FieldUndoButton.vue'
 import { useFieldUndo } from '@/views/composables/useFieldUndo.ts'
+import { CSS_SELECTOR_LABEL_TITLE } from '@/views/composables/cssSelectorHelp.ts'
 import {
   buildRuleTransfer,
   createTransferFileDraft,
@@ -48,9 +49,7 @@ const pendingRule = ref<InjectionRuleEditorDraft | null>(null)
 const currentRule = computed(() => pendingRule.value ?? props.rule)
 const exportFallback = ref<TransferFileDraft | null>(null)
 
-const needsTarget = computed(
-  () => currentRule.value?.mode === 'ID' || currentRule.value?.mode === 'SELECTOR',
-)
+const needsTarget = computed(() => currentRule.value?.mode === 'SELECTOR')
 const needsSnippets = computed(() => currentRule.value?.position !== 'REMOVE')
 const needsWrapMarker = computed(() => currentRule.value?.position !== 'REMOVE')
 const matchDraft = ref('')
@@ -468,7 +467,8 @@ async function exportRule() {
         <template v-if="needsTarget">
           <FormField
             :invalid="!!matchFieldError"
-            :label="currentRule.mode === 'SELECTOR' ? 'CSS 选择器' : '元素 ID'"
+            label="CSS 选择器"
+            :label-title="CSS_SELECTOR_LABEL_TITLE"
             required
           >
             <template v-if="canUndo('match')" #actions>
@@ -479,9 +479,7 @@ async function exportRule() {
                 <input
                   :id="inputId"
                   :aria-invalid="!!matchFieldError"
-                  :placeholder="
-                    currentRule.mode === 'SELECTOR' ? 'div[class=content]' : 'main-content'
-                  "
+                  placeholder="例如：#main-content、.post-card、div[data-role=banner]"
                   :value="matchDraft"
                   :class="
                     matchFieldError

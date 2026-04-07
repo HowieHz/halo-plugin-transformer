@@ -93,7 +93,7 @@
         },
         "mode": {
           "type": "string",
-          "enum": ["HEAD", "FOOTER", "ID", "SELECTOR"]
+          "enum": ["HEAD", "FOOTER", "SELECTOR"]
         },
         "match": {
           "type": "string"

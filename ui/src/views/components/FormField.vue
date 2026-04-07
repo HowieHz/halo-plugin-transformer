@@ -3,6 +3,7 @@ import { computed, useId } from 'vue'
 
 const props = defineProps<{
   label?: string
+  labelTitle?: string
   required?: boolean
   invalid?: boolean
 }>()
@@ -22,6 +23,7 @@ const labelId = computed(() => `field-label-${fieldId}`)
         v-if="label"
         :for="inputId"
         :id="labelId"
+        :title="labelTitle"
         :class="props.invalid ? ':uno: text-red-600' : ':uno: text-gray-600'"
         class=":uno: text-xs font-medium"
       >

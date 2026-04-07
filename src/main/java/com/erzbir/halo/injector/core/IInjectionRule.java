@@ -24,7 +24,7 @@ public interface IInjectionRule {
     boolean getWrapMarker();
 
     enum Mode {
-        HEAD, FOOTER, ID, SELECTOR
+        HEAD, FOOTER, SELECTOR
 
     }
 

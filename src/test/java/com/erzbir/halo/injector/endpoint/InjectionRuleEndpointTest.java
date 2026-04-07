@@ -77,7 +77,7 @@ class InjectionRuleEndpointTest {
     @Test
     void shouldRejectEnablingInvalidPersistedRule() {
         InjectionRule rule = rule("rule-a", false);
-        rule.setMode(InjectionRule.Mode.ID);
+        rule.setMode(InjectionRule.Mode.SELECTOR);
         rule.setMatch("");
         when(client.fetch(InjectionRule.class, "rule-a")).thenReturn(Mono.just(rule));
         InjectionRuleEndpoint endpointWithRealValidator = new InjectionRuleEndpoint(

@@ -20,6 +20,7 @@ import FormField from './FormField.vue'
 import MatchRuleEditor from './MatchRuleEditor.vue'
 import ImportJsonSourceModal from './ImportJsonSourceModal.vue'
 import RuleRuntimeOrderField from './RuleRuntimeOrderField.vue'
+import { CSS_SELECTOR_LABEL_TITLE } from '@/views/composables/cssSelectorHelp.ts'
 import { updateSelectByWheel } from '@/views/composables/selectWheel.ts'
 import { parseRuleTransfer } from '@/views/composables/transfer.ts'
 
@@ -46,7 +47,7 @@ function reset() {
   selectedSnippetIds.value = []
 }
 
-const needsTarget = computed(() => rule.value.mode === 'ID' || rule.value.mode === 'SELECTOR')
+const needsTarget = computed(() => rule.value.mode === 'SELECTOR')
 const needsSnippets = computed(() => rule.value.position !== 'REMOVE')
 const needsWrapMarker = computed(() => rule.value.position !== 'REMOVE')
 const matchFieldError = computed(() => {
@@ -124,10 +125,7 @@ async function handleImportFile(event: Event) {
 }
 
 function resolveImportedRuleValidationError(importedRule: InjectionRuleEditorDraft) {
-  if (
-    (importedRule.mode === 'SELECTOR' || importedRule.mode === 'ID') &&
-    !importedRule.match.trim()
-  ) {
+  if (importedRule.mode === 'SELECTOR' && !importedRule.match.trim()) {
     return '请填写匹配内容'
   }
   const result = resolveRuleMatchRule(importedRule)
@@ -263,7 +261,8 @@ defineExpose({
         <FormField
           v-slot="{ inputId }"
           :invalid="!!matchFieldError"
-          :label="rule.mode === 'SELECTOR' ? 'CSS 选择器' : '元素 ID'"
+          label="CSS 选择器"
+          :label-title="CSS_SELECTOR_LABEL_TITLE"
           required
         >
           <div class=":uno: space-y-1">
@@ -271,7 +270,7 @@ defineExpose({
               :id="inputId"
               v-model="rule.match"
               :aria-invalid="!!matchFieldError"
-              :placeholder="rule.mode === 'SELECTOR' ? 'div[class=content]' : 'main-content'"
+              placeholder="例如：#main-content、.post-card、div[data-role=banner]"
               :class="
                 matchFieldError
                   ? ':uno: border-red-300 bg-red-50/40 focus:border-red-500'

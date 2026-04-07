@@ -1,6 +1,5 @@
 package com.erzbir.halo.injector.filter;
 
-import com.erzbir.halo.injector.core.ElementIDInjector;
 import com.erzbir.halo.injector.core.HTMLInjector;
 import com.erzbir.halo.injector.core.SelectorInjector;
 import com.erzbir.halo.injector.scheme.InjectionRule;
@@ -44,7 +43,6 @@ import static org.springframework.security.web.server.util.matcher.ServerWebExch
 public class InjectorWebFilter implements AdditionalWebFilter {
     private final InjectHelper injectHelper;
     private final SelectorInjector selectorInjector;
-    private final ElementIDInjector elementIDInjector;
     private final ServerWebExchangeMatcher pathMatcher = createPathMatcher();
 
     @Override
@@ -72,10 +70,7 @@ public class InjectorWebFilter implements AdditionalWebFilter {
      * 规则若能先按路径缩小范围，就只命中少量页面；规则若不能缩小范围，就会退化成所有 HTML 页面都先缓冲。
      */
     private Mono<Boolean> hasMatchingRules(String path) {
-        return Mono.zip(
-                        injectHelper.hasDomProcessCandidate(path, InjectionRule.Mode.SELECTOR),
-                        injectHelper.hasDomProcessCandidate(path, InjectionRule.Mode.ID)
-                ).map(tuple -> tuple.getT1() || tuple.getT2())
+        return injectHelper.hasDomProcessCandidate(path, InjectionRule.Mode.SELECTOR)
                 .defaultIfEmpty(false);
     }
 
@@ -115,7 +110,7 @@ public class InjectorWebFilter implements AdditionalWebFilter {
     }
 
     /**
-     * why: 先按既有顺序收集 SELECTOR 与 ID 两类 DOM 规则，
+     * why: 先收集当前请求命中的 DOM 规则，
      * 再在同一份 Document 上顺序执行，避免每命中一条规则就重复 Jsoup.parse / doc.html。
      */
     private Mono<List<InjectionRule>> collectRules(String path, String templateId, InjectionRule.Mode mode) {
@@ -124,37 +119,25 @@ public class InjectorWebFilter implements AdditionalWebFilter {
     }
 
     private Mono<List<DomInjectionPlan>> collectDomInjectionPlans(String path, String templateId) {
-        return Mono.zip(
-                        collectRules(path, templateId, InjectionRule.Mode.SELECTOR),
-                        collectRules(path, templateId, InjectionRule.Mode.ID)
-                )
-                .flatMap(tuple -> {
-                    List<InjectionRule> selectorRules = tuple.getT1();
-                    List<InjectionRule> idRules = tuple.getT2();
-                    List<InjectionRule> allRules = new java.util.ArrayList<>(selectorRules.size() + idRules.size());
-                    allRules.addAll(selectorRules);
-                    allRules.addAll(idRules);
-                    if (allRules.isEmpty()) {
+        return collectRules(path, templateId, InjectionRule.Mode.SELECTOR)
+                .flatMap(selectorRules -> {
+                    if (selectorRules.isEmpty()) {
                         return Mono.just(List.of());
                     }
-                    return injectHelper.resolveRuleCodes(allRules)
-                            .map(resolvedCodes -> toDomInjectionPlans(selectorRules, idRules, resolvedCodes));
+                    return injectHelper.resolveRuleCodes(selectorRules)
+                            .map(resolvedCodes -> toDomInjectionPlans(selectorRules, resolvedCodes));
                 });
     }
 
     private List<DomInjectionPlan> toDomInjectionPlans(List<InjectionRule> selectorRules,
-                                                       List<InjectionRule> idRules,
                                                        List<InjectHelper.ResolvedRuleCode> resolvedCodes) {
         Map<String, String> codeByRuleId = new LinkedHashMap<>();
         for (InjectHelper.ResolvedRuleCode resolvedCode : resolvedCodes) {
             codeByRuleId.put(resolvedCode.rule().getId(), resolvedCode.code());
         }
-        List<DomInjectionPlan> plans = new java.util.ArrayList<>(selectorRules.size() + idRules.size());
+        List<DomInjectionPlan> plans = new java.util.ArrayList<>(selectorRules.size());
         for (InjectionRule rule : selectorRules) {
             plans.add(new DomInjectionPlan(selectorInjector, rule, codeByRuleId.getOrDefault(rule.getId(), "")));
-        }
-        for (InjectionRule rule : idRules) {
-            plans.add(new DomInjectionPlan(elementIDInjector, rule, codeByRuleId.getOrDefault(rule.getId(), "")));
         }
         return plans;
     }

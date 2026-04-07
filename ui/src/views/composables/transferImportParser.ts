@@ -73,7 +73,7 @@ export function parseRuleTransfer(raw: string): InjectionRuleEditorDraft {
   if (typeof data.description !== 'string') {
     throw new Error('导入失败：`description` 必须是字符串')
   }
-  validateEnumField('mode', data.mode, ['HEAD', 'FOOTER', 'ID', 'SELECTOR'])
+  validateEnumField('mode', data.mode, ['HEAD', 'FOOTER', 'SELECTOR'])
   if (typeof data.match !== 'string') {
     throw new Error('导入失败：`match` 必须是字符串')
   }

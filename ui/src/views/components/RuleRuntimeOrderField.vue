@@ -75,7 +75,8 @@ function toggleEditMode() {
   <div class=":uno: space-y-2">
     <div class=":uno: flex items-center justify-between gap-3">
       <p class=":uno: text-xs leading-5 text-gray-500">
-        只影响同一种注入模式下的规则顺序。数字越小，越先执行；数字相同时，先按规则名称排序，再按规则 ID 排序。
+        只影响同一种注入模式下的规则顺序。数字越小，越先执行；数字相同时，先按规则名称排序，再按规则
+        ID 排序。
       </p>
       <button
         class=":uno: shrink-0 bg-transparent p-0 text-xs text-gray-400 hover:text-gray-600"

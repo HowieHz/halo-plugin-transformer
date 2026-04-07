@@ -246,7 +246,7 @@ describe('parseRuleTransfer', () => {
     })
 
     expect(() => parseRuleTransfer(raw)).toThrow(
-      '导入失败：`mode` 必须是字符串；仅支持 "HEAD"、"FOOTER"、"ID"、"SELECTOR"',
+      '导入失败：`mode` 必须是字符串；仅支持 "HEAD"、"FOOTER"、"SELECTOR"',
     )
   })
 
@@ -276,7 +276,7 @@ describe('parseRuleTransfer', () => {
     })
 
     expect(() => parseRuleTransfer(raw)).toThrow(
-      '导入失败：`mode` 仅支持 "HEAD"、"FOOTER"、"ID"、"SELECTOR"',
+      '导入失败：`mode` 仅支持 "HEAD"、"FOOTER"、"SELECTOR"',
     )
   })
 

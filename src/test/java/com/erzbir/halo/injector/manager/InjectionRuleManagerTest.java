@@ -58,14 +58,14 @@ class InjectionRuleManagerTest {
             int round = fetchCount.incrementAndGet();
             return round == 1
                     ? Flux.just(rule("rule-a", InjectionRule.Mode.SELECTOR, true, "main"))
-                    : Flux.just(rule("rule-b", InjectionRule.Mode.ID, true, "root"));
+                    : Flux.just(rule("rule-b", InjectionRule.Mode.SELECTOR, true, "root"));
         });
 
         List<InjectionRule> first = manager.listActiveByMode(InjectionRule.Mode.SELECTOR)
                 .collectList()
                 .block();
         manager.invalidateCache();
-        List<InjectionRule> second = manager.listActiveByMode(InjectionRule.Mode.ID)
+        List<InjectionRule> second = manager.listActiveByMode(InjectionRule.Mode.SELECTOR)
                 .collectList()
                 .block();
 
@@ -120,7 +120,7 @@ class InjectionRuleManagerTest {
         when(client.list(InjectionRule.class, null, null)).thenReturn(Flux.just(
                 rule("rule-enabled", InjectionRule.Mode.SELECTOR, true, "main"),
                 rule("rule-disabled", InjectionRule.Mode.SELECTOR, false, "main"),
-                rule("rule-invalid", InjectionRule.Mode.ID, true, "")
+                rule("rule-invalid", InjectionRule.Mode.SELECTOR, true, "")
         ));
 
         List<InjectionRule> rules = manager.listActiveByMode(InjectionRule.Mode.SELECTOR)

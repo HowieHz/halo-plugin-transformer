@@ -165,7 +165,7 @@ export function useInjectorData() {
    * 后端仍会复核，但这里要尽量把错误定位成用户能直接修的提示。
    */
   function validateRuleDraft(rule: InjectionRuleEditorDraft): string | null {
-    if ((rule.mode === 'SELECTOR' || rule.mode === 'ID') && !rule.match.trim()) {
+    if (rule.mode === 'SELECTOR' && !rule.match.trim()) {
       return '请填写匹配内容'
     }
     const result = resolveRuleMatchRule(rule)

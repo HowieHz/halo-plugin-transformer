@@ -22,7 +22,7 @@ export interface CodeSnippetEditorDraft extends CodeSnippetWritePayload {
   id: string
 }
 
-export type InjectionMode = 'HEAD' | 'FOOTER' | 'ID' | 'SELECTOR'
+export type InjectionMode = 'HEAD' | 'FOOTER' | 'SELECTOR'
 export type InjectionPosition = 'APPEND' | 'PREPEND' | 'BEFORE' | 'AFTER' | 'REPLACE' | 'REMOVE'
 export type MatchRuleType = 'GROUP' | 'PATH' | 'TEMPLATE_ID'
 export type MatchRuleOperator = 'AND' | 'OR'
@@ -95,7 +95,6 @@ export type ActiveTab = 'snippets' | 'rules'
 export const MODE_OPTIONS: { value: InjectionMode; label: string }[] = [
   { value: 'HEAD', label: '<head>' },
   { value: 'FOOTER', label: '<footer>' },
-  { value: 'ID', label: '元素 ID' },
   { value: 'SELECTOR', label: 'CSS 选择器' },
 ]
 
