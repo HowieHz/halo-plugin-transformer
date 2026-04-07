@@ -59,7 +59,7 @@ export function describeRuntimeOrderRange(value: number) {
     const lower = RUNTIME_ORDER_STEPS[index]
     const upper = RUNTIME_ORDER_STEPS[index + 1]
     if (normalized > lower.value && normalized < upper.value) {
-      return `当前介于：${lower.label} 与 ${upper.label} 之间`
+      return `当前范围：${lower.label} ～ ${upper.label}`
     }
   }
 

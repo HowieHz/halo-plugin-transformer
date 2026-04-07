@@ -37,7 +37,7 @@ describe('runtimeOrder', () => {
   it('describes the current runtime order range without exposing raw integers', () => {
     expect(describeRuntimeOrderRange(RUNTIME_ORDER_STEPS[0].value)).toBe('当前档位：最高')
     expect(describeRuntimeOrderRange(RUNTIME_ORDER_STEPS[2].value + 100_000_000)).toBe(
-      '当前介于：较高 与 普通 之间',
+      '当前范围：较高 ～ 普通',
     )
   })
 })
