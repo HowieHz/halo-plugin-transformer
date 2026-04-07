@@ -14,23 +14,45 @@ import run.halo.app.extension.Watcher;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.concurrent.Executors;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
 public class InjectionRuleManager {
     private static final GroupVersionKind RULE_GVK = GroupVersionKind.fromExtension(InjectionRule.class);
+    private static final long WATCH_RECONNECT_BASE_DELAY_MILLIS = 1_000L;
+    private static final long WATCH_RECONNECT_MAX_DELAY_MILLIS = 30_000L;
 
     private final ReactiveExtensionClient client;
     private final Object refreshMonitor = new Object();
+    private final Object watchMonitor = new Object();
+    private final long watchReconnectBaseDelayMillis;
+    private final long watchReconnectMaxDelayMillis;
     private volatile RuleSnapshot cachedSnapshot = RuleSnapshot.empty();
     private volatile boolean refreshRequested;
     private volatile boolean refreshRunning;
+    private volatile boolean watching;
     private volatile RuleWatcher watcher;
+    private volatile ScheduledExecutorService watchSupervisor;
+    private volatile ScheduledFuture<?> reconnectTask;
+    private volatile ScheduledFuture<?> refreshRetryTask;
+    private volatile int reconnectFailureCount;
+    private volatile int refreshFailureCount;
 
     public InjectionRuleManager(ReactiveExtensionClient client) {
+        this(client, WATCH_RECONNECT_BASE_DELAY_MILLIS, WATCH_RECONNECT_MAX_DELAY_MILLIS);
+    }
+
+    InjectionRuleManager(ReactiveExtensionClient client, long watchReconnectBaseDelayMillis,
+                         long watchReconnectMaxDelayMillis) {
         this.client = client;
+        this.watchReconnectBaseDelayMillis = watchReconnectBaseDelayMillis;
+        this.watchReconnectMaxDelayMillis = watchReconnectMaxDelayMillis;
     }
 
     /**
@@ -44,30 +66,45 @@ public class InjectionRuleManager {
     /**
      * why: InjectionRule 自身就是 Halo extension 资源；让 Halo watch 驱动缓存刷新，
      * 比“请求命中 TTL 再自己回源”更贴近平台原生能力，也能更快反映控制台外部改动。
+     * 同时保留自动重连和退避重试，避免把缓存一致性完全押在单条 watch 链路上。
      */
     public void startWatching() {
-        synchronized (refreshMonitor) {
-            if (watcher != null && !watcher.isDisposed()) {
+        synchronized (watchMonitor) {
+            if (watching) {
                 return;
             }
-            watcher = new RuleWatcher();
-            client.watch(watcher);
+            watching = true;
+            ensureWatchSupervisorLocked();
+            cancelReconnectTaskLocked();
+            cancelRefreshRetryTaskLocked();
+            reconnectFailureCount = 0;
+            refreshFailureCount = 0;
         }
-        refreshSnapshot()
-                .subscribeOn(Schedulers.boundedElastic())
-                .subscribe(
-                        snapshot -> log.debug("Loaded initial rule snapshot with {} total rules", snapshot.allRules().size()),
-                        error -> log.warn("Failed to load initial rule snapshot", error)
-                );
+        connectWatch("startup");
     }
 
     public void stopWatching() {
-        synchronized (refreshMonitor) {
-            if (watcher == null) {
+        RuleWatcher currentWatcher;
+        ScheduledExecutorService currentSupervisor;
+        synchronized (watchMonitor) {
+            if (!watching && watcher == null && watchSupervisor == null) {
                 return;
             }
-            watcher.dispose();
+            watching = false;
+            cancelReconnectTaskLocked();
+            cancelRefreshRetryTaskLocked();
+            reconnectFailureCount = 0;
+            refreshFailureCount = 0;
+            currentWatcher = watcher;
             watcher = null;
+            currentSupervisor = watchSupervisor;
+            watchSupervisor = null;
+        }
+        if (currentWatcher != null) {
+            currentWatcher.disposeFromManager();
+        }
+        if (currentSupervisor != null) {
+            currentSupervisor.shutdownNow();
         }
     }
 
@@ -94,9 +131,7 @@ public class InjectionRuleManager {
         return client.list(InjectionRule.class, null, null)
                 .collectList()
                 .map(this::buildSnapshot)
-                .doOnNext(snapshot -> cachedSnapshot = snapshot)
-                .doOnError(error -> log.error("Failed to refresh InjectionRule snapshot", error))
-                .onErrorResume(error -> Mono.just(cachedSnapshot));
+                .doOnNext(snapshot -> cachedSnapshot = snapshot);
     }
 
     RuleSnapshot buildSnapshot(List<InjectionRule> rules) {
@@ -152,9 +187,188 @@ public class InjectionRuleManager {
                     }
                 })
                 .subscribe(
-                        snapshot -> log.debug("Refreshed rule snapshot with {} total rules", snapshot.allRules().size()),
-                        error -> log.warn("Failed to refresh rule snapshot from watch event", error)
+                        snapshot -> {
+                            int recoveredFailures = resetRefreshFailureCount();
+                            if (recoveredFailures > 0) {
+                                log.info("Recovered InjectionRule snapshot refresh after {} failed attempt(s)",
+                                        recoveredFailures);
+                            }
+                            log.debug("Refreshed rule snapshot with {} total rules", snapshot.allRules().size());
+                        },
+                        error -> {
+                            int failureCount = incrementRefreshFailureCount();
+                            long delayMillis = computeBackoffDelayMillis(failureCount);
+                            log.warn(
+                                    "Failed to refresh InjectionRule snapshot; retrying in {} ms (attempt {})",
+                                    delayMillis,
+                                    failureCount,
+                                    error
+                            );
+                            scheduleRefreshRetry(delayMillis);
+                        }
                 );
+    }
+
+    private void connectWatch(String reason) {
+        synchronized (watchMonitor) {
+            if (!watching || (watcher != null && !watcher.isDisposed())) {
+                return;
+            }
+        }
+
+        RuleWatcher nextWatcher = new RuleWatcher();
+        try {
+            client.watch(nextWatcher);
+        } catch (RuntimeException error) {
+            scheduleWatchReconnect(reason, error);
+            return;
+        }
+
+        int recoveredFailures;
+        synchronized (watchMonitor) {
+            if (!watching) {
+                nextWatcher.disposeFromManager();
+                return;
+            }
+            watcher = nextWatcher;
+            cancelReconnectTaskLocked();
+            recoveredFailures = reconnectFailureCount;
+            reconnectFailureCount = 0;
+        }
+        if (recoveredFailures > 0) {
+            log.info("Recovered InjectionRule watch after {} failed reconnect attempt(s)", recoveredFailures);
+        } else {
+            log.info("Started InjectionRule watch");
+        }
+        requestRefreshAsync();
+    }
+
+    private void scheduleWatchReconnect(String reason, RuntimeException error) {
+        int failureCount;
+        long delayMillis;
+        synchronized (watchMonitor) {
+            if (!watching) {
+                return;
+            }
+            failureCount = ++reconnectFailureCount;
+            delayMillis = computeBackoffDelayMillis(failureCount);
+        }
+        log.warn(
+                "Failed to connect InjectionRule watch during {}; retrying in {} ms (attempt {})",
+                reason,
+                delayMillis,
+                failureCount,
+                error
+        );
+        scheduleReconnectTask(delayMillis);
+    }
+
+    private void handleUnexpectedWatchDispose(RuleWatcher disconnectedWatcher) {
+        int failureCount;
+        long delayMillis;
+        synchronized (watchMonitor) {
+            if (watcher != disconnectedWatcher) {
+                return;
+            }
+            watcher = null;
+            if (!watching || disconnectedWatcher.wasDisposedByManager()) {
+                return;
+            }
+            failureCount = ++reconnectFailureCount;
+            delayMillis = computeBackoffDelayMillis(failureCount);
+        }
+        log.warn("InjectionRule watch disconnected; retrying in {} ms (attempt {})", delayMillis, failureCount);
+        scheduleReconnectTask(delayMillis);
+    }
+
+    private void scheduleReconnectTask(long delayMillis) {
+        synchronized (watchMonitor) {
+            if (!watching) {
+                return;
+            }
+            if (reconnectTask != null && !reconnectTask.isDone()) {
+                return;
+            }
+            ScheduledExecutorService supervisor = ensureWatchSupervisorLocked();
+            reconnectTask = supervisor.schedule(() -> {
+                synchronized (watchMonitor) {
+                    reconnectTask = null;
+                }
+                connectWatch("reconnect");
+            }, delayMillis, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    private void scheduleRefreshRetry(long delayMillis) {
+        synchronized (watchMonitor) {
+            if (!watching) {
+                return;
+            }
+            if (refreshRetryTask != null && !refreshRetryTask.isDone()) {
+                return;
+            }
+            ScheduledExecutorService supervisor = ensureWatchSupervisorLocked();
+            refreshRetryTask = supervisor.schedule(() -> {
+                synchronized (watchMonitor) {
+                    refreshRetryTask = null;
+                }
+                requestRefreshAsync();
+            }, delayMillis, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    private int incrementRefreshFailureCount() {
+        synchronized (watchMonitor) {
+            return ++refreshFailureCount;
+        }
+    }
+
+    private int resetRefreshFailureCount() {
+        synchronized (watchMonitor) {
+            cancelRefreshRetryTaskLocked();
+            int failureCount = refreshFailureCount;
+            refreshFailureCount = 0;
+            return failureCount;
+        }
+    }
+
+    private long computeBackoffDelayMillis(int failureCount) {
+        long delayMillis = watchReconnectBaseDelayMillis;
+        for (int attempt = 1; attempt < failureCount; attempt++) {
+            if (delayMillis >= watchReconnectMaxDelayMillis) {
+                return watchReconnectMaxDelayMillis;
+            }
+            delayMillis = Math.min(delayMillis * 2, watchReconnectMaxDelayMillis);
+        }
+        return delayMillis;
+    }
+
+    private ScheduledExecutorService ensureWatchSupervisorLocked() {
+        if (watchSupervisor != null && !watchSupervisor.isShutdown()) {
+            return watchSupervisor;
+        }
+        watchSupervisor = Executors.newSingleThreadScheduledExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "injection-rule-watch-supervisor");
+            thread.setDaemon(true);
+            return thread;
+        });
+        return watchSupervisor;
+    }
+
+    private void cancelReconnectTaskLocked() {
+        if (reconnectTask == null) {
+            return;
+        }
+        reconnectTask.cancel(false);
+        reconnectTask = null;
+    }
+
+    private void cancelRefreshRetryTaskLocked() {
+        if (refreshRetryTask == null) {
+            return;
+        }
+        refreshRetryTask.cancel(false);
+        refreshRetryTask = null;
     }
 
     record RuleSnapshot(List<InjectionRule> allRules, Map<InjectionRule.Mode, List<InjectionRule>> rulesByMode) {
@@ -174,6 +388,7 @@ public class InjectionRuleManager {
 
     private final class RuleWatcher implements Watcher {
         private volatile boolean disposed;
+        private volatile boolean disposedByManager;
         private Runnable disposeHook;
 
         @Override
@@ -198,15 +413,28 @@ public class InjectionRuleManager {
 
         @Override
         public void dispose() {
+            if (disposed) {
+                return;
+            }
             disposed = true;
             if (disposeHook != null) {
                 disposeHook.run();
             }
+            handleUnexpectedWatchDispose(this);
         }
 
         @Override
         public boolean isDisposed() {
             return disposed;
+        }
+
+        void disposeFromManager() {
+            disposedByManager = true;
+            dispose();
+        }
+
+        boolean wasDisposedByManager() {
+            return disposedByManager;
         }
 
         private void handleRuleEvent(Extension extension) {

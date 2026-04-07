@@ -34,7 +34,7 @@ class InjectionRuleManagerTest {
 
     @BeforeEach
     void setUp() {
-        manager = new InjectionRuleManager(client);
+        manager = new InjectionRuleManager(client, 10, 40);
     }
 
     // why: watch-driven cache 启动后应先主动回源装载一次快照；
@@ -96,6 +96,53 @@ class InjectionRuleManagerTest {
                 .equals(List.of("rule-b")));
 
         assertEquals(2, fetchCount.get());
+    }
+
+    // why: watch 不是永不掉线的“神链路”；一旦底层 watch 被释放，管理器应自动按退避策略重连，
+    // 而不是让运行时快照永久停留在一条已经失效的订阅上。
+    @Test
+    void shouldReconnectWatchAfterUnexpectedDispose() {
+        when(client.list(InjectionRule.class, null, null))
+                .thenReturn(Flux.just(rule("rule-a", InjectionRule.Mode.SELECTOR, true, "main")));
+        AtomicInteger watchCount = new AtomicInteger();
+        org.mockito.Mockito.doAnswer(invocation -> {
+            watchCount.incrementAndGet();
+            return null;
+        }).when(client).watch(any(Watcher.class));
+
+        ArgumentCaptor<Watcher> watcherCaptor = ArgumentCaptor.forClass(Watcher.class);
+        manager.startWatching();
+        verify(client).watch(watcherCaptor.capture());
+
+        Watcher initialWatcher = watcherCaptor.getValue();
+        initialWatcher.dispose();
+
+        waitUntil(() -> watchCount.get() >= 2);
+    }
+
+    // why: 自愈不能只靠 watch 事件；如果启动时那次全量加载短暂失败，又迟迟没有后续事件，
+    // 管理器也应按退避策略自行补一次刷新，把缓存从空状态拉回已保存快照。
+    @Test
+    void shouldRetrySnapshotRefreshAfterInitialFailure() {
+        AtomicInteger fetchCount = new AtomicInteger();
+        when(client.list(InjectionRule.class, null, null)).thenAnswer(invocation -> {
+            int round = fetchCount.incrementAndGet();
+            return round == 1
+                    ? Flux.error(new IllegalStateException("temporary failure"))
+                    : Flux.just(rule("rule-a", InjectionRule.Mode.SELECTOR, true, "main"));
+        });
+
+        manager.startWatching();
+
+        waitUntil(() -> manager.listActiveByMode(InjectionRule.Mode.SELECTOR)
+                .collectList()
+                .block()
+                .stream()
+                .map(InjectionRule::getId)
+                .toList()
+                .equals(List.of("rule-a")));
+
+        assertTrue(fetchCount.get() >= 2);
     }
 
     // why: 写接口成功后仍会主动请求一次 refresh；即使多个 refresh 紧挨着到来，
