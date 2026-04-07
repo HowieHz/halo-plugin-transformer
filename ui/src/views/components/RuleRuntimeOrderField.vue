@@ -265,7 +265,7 @@ function toggleEditMode() {
   position: absolute;
   top: calc(50% + 0.375rem);
   width: 1px;
-  height: 0.25rem;
+  height: 0.375rem;
   transform: translateX(-50%);
   border-radius: 9999px;
   background: rgb(156 163 175 / 0.9);
