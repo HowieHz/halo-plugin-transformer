@@ -89,6 +89,11 @@ function stopSliderDrag() {
   isDraggingSlider.value = false
 }
 
+function handleSliderChange() {
+  commitRuntimeOrderFromSlider()
+  stopSliderDrag()
+}
+
 function stepTrackPositionStyle(value: number) {
   return `calc(${RUNTIME_ORDER_HORIZONTAL_INSET_PX}px + (100% - ${
     RUNTIME_ORDER_HORIZONTAL_INSET_PX * 2
@@ -158,10 +163,7 @@ function toggleEditMode() {
           @pointercancel="stopSliderDrag"
           @blur="stopSliderDrag"
           @input="updateRuntimeOrderFromSlider(Number(($event.target as HTMLInputElement).value))"
-          @change="
-            commitRuntimeOrderFromSlider()
-            stopSliderDrag()
-          "
+          @change="handleSliderChange"
         />
         <div aria-hidden="true" class="runtime-order-visual">
           <div class="runtime-order-track" />
