@@ -78,7 +78,7 @@ function toggleEditMode() {
         仅影响同一执行阶段内的规则先后；数值越小越先执行，同值按规则 ID 字母序执行。
       </p>
       <button
-        class=":uno: shrink-0 text-xs text-primary hover:text-primary-600"
+        class=":uno: shrink-0 bg-transparent p-0 text-xs text-gray-400 hover:text-gray-600"
         type="button"
         @click="toggleEditMode"
       >
