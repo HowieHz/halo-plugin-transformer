@@ -113,6 +113,8 @@ class SnippetReferenceServiceTest {
         linkedRule.setSnippetIds(new LinkedHashSet<>(Set.of("snippet-a", "snippet-b")));
 
         when(client.list(eq(InjectionRule.class), isNull(), isNull())).thenReturn(Flux.just(linkedRule));
+        when(client.fetch(InjectionRule.class, "rule-a")).thenReturn(Mono.just(rule("rule-a",
+                Set.of("snippet-a", "snippet-b"))));
         when(client.update(any(InjectionRule.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
         when(client.delete(any(CodeSnippet.class))).thenReturn(Mono.just(deletingSnippet));
 
@@ -122,6 +124,35 @@ class SnippetReferenceServiceTest {
                 "rule-a".equals(updatedRule.getId())
                         && updatedRule.getSnippetIds().equals(new LinkedHashSet<>(Set.of("snippet-b")))));
         verify(client).delete(deletingSnippet);
+    }
+
+    // why: 回滚现在依赖最小字段快照，而不是深拷贝整条规则；
+    // delete 失败后仍必须按规则名重新取回当前规则，并把 snippetIds 恢复到删除前状态。
+    @Test
+    void shouldRollbackSnippetIdsFromMinimalSnapshots() {
+        CodeSnippet deletingSnippet = snippet("snippet-a");
+        InjectionRule linkedRule = rule("rule-a", Set.of("snippet-a", "snippet-b"));
+        RuntimeException deleteFailure = new RuntimeException("delete failed");
+
+        when(client.list(eq(InjectionRule.class), isNull(), isNull())).thenReturn(Flux.just(linkedRule));
+        when(client.fetch(InjectionRule.class, "rule-a"))
+                .thenReturn(Mono.just(rule("rule-a", Set.of("snippet-a", "snippet-b"))))
+                .thenReturn(Mono.just(rule("rule-a", Set.of("snippet-b"))));
+        when(client.update(any(InjectionRule.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+        when(client.delete(any(CodeSnippet.class))).thenReturn(Mono.error(deleteFailure));
+
+        RuntimeException error = assertThrows(
+                RuntimeException.class,
+                () -> service.deleteSnippetAndDetachRules(deletingSnippet).block()
+        );
+
+        assertEquals(deleteFailure, error);
+        verify(client, Mockito.times(2)).fetch(InjectionRule.class, "rule-a");
+        verify(client, Mockito.times(2)).update(any(InjectionRule.class));
+        verify(client).update(Mockito.argThat((InjectionRule updatedRule) ->
+                updatedRule.getSnippetIds().equals(new LinkedHashSet<>(Set.of("snippet-b")))));
+        verify(client).update(Mockito.argThat((InjectionRule restoredRule) ->
+                restoredRule.getSnippetIds().equals(new LinkedHashSet<>(Set.of("snippet-a", "snippet-b")))));
     }
 
     private CodeSnippet snippet(String id) {
@@ -138,6 +169,12 @@ class SnippetReferenceServiceTest {
         Metadata metadata = new Metadata();
         metadata.setName(id);
         rule.setMetadata(metadata);
+        return rule;
+    }
+
+    private InjectionRule rule(String id, Set<String> snippetIds) {
+        InjectionRule rule = rule(id);
+        rule.setSnippetIds(new LinkedHashSet<>(snippetIds));
         return rule;
     }
 }

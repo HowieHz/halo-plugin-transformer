@@ -4,8 +4,6 @@ import com.erzbir.halo.injector.scheme.CodeSnippet;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import com.erzbir.halo.injector.util.CodeSnippetValidationException;
 import com.erzbir.halo.injector.util.InjectionRuleValidationException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
@@ -21,7 +19,6 @@ import java.util.stream.Collectors;
 @Component
 public class SnippetReferenceService {
     private final ReactiveExtensionClient client;
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public SnippetReferenceService(ReactiveExtensionClient client) {
         this.client = client;
@@ -72,31 +69,36 @@ public class SnippetReferenceService {
     public Mono<Void> deleteSnippetAndDetachRules(CodeSnippet snippet) {
         String snippetId = requireSnippetId(snippet);
         return loadRulesReferencingSnippet(snippetId)
-                .flatMap(originalRules -> detachSnippetFromRules(snippetId, originalRules)
+                .flatMap(ruleSnapshots -> detachSnippetFromRules(snippetId, ruleSnapshots)
                         .then(client.delete(snippet))
                         .then()
-                        .onErrorResume(error -> rollbackRules(originalRules)
+                        .onErrorResume(error -> rollbackRules(ruleSnapshots)
                                 .then(Mono.error(error))));
     }
 
-    private Mono<List<InjectionRule>> loadRulesReferencingSnippet(String snippetId) {
+    /**
+     * why: 删除补偿真正需要的只是“哪条规则曾引用它”和“原始 snippetIds 是什么”；
+     * 显式快照最小字段比深拷贝整条规则更直白，也不会绕开应用统一序列化配置。
+     */
+    private Mono<List<RuleSnippetReferenceSnapshot>> loadRulesReferencingSnippet(String snippetId) {
         return client.list(InjectionRule.class, null, null)
                 .filter(rule -> normalizeIds(rule.getSnippetIds()).contains(snippetId))
-                .map(rule -> copy(rule, InjectionRule.class))
+                .map(this::snapshotRuleSnippetReferences)
                 .collectList();
     }
 
-    private Mono<Void> detachSnippetFromRules(String snippetId, List<InjectionRule> originalRules) {
-        return Flux.fromIterable(originalRules)
-                .concatMap(rule -> {
-                    InjectionRule updatedRule = copy(rule, InjectionRule.class);
-                    LinkedHashSet<String> snippetIds = normalizeIds(updatedRule.getSnippetIds());
+    private Mono<Void> detachSnippetFromRules(String snippetId,
+                                              List<RuleSnippetReferenceSnapshot> ruleSnapshots) {
+        return Flux.fromIterable(ruleSnapshots)
+                .concatMap(ruleSnapshot -> fetchRule(ruleSnapshot.ruleName())
+                        .flatMap(rule -> {
+                    LinkedHashSet<String> snippetIds = normalizeIds(rule.getSnippetIds());
                     if (!snippetIds.remove(snippetId)) {
                         return Mono.empty();
                     }
-                    updatedRule.setSnippetIds(snippetIds);
-                    return client.update(updatedRule).then();
-                })
+                    rule.setSnippetIds(snippetIds);
+                    return client.update(rule).then();
+                }))
                 .then();
     }
 
@@ -104,11 +106,15 @@ public class SnippetReferenceService {
      * why: 代码块删除属于多写场景；若删前摘引用或最终删除中途失败，
      * 要按删除前快照回滚规则，避免把“删除失败”做成“引用已部分丢失”的半成功状态。
      */
-    private Mono<Void> rollbackRules(List<InjectionRule> originalRules) {
-        return Flux.fromIterable(originalRules)
-                .concatMap(rule -> client.update(copy(rule, InjectionRule.class))
+    private Mono<Void> rollbackRules(List<RuleSnippetReferenceSnapshot> ruleSnapshots) {
+        return Flux.fromIterable(ruleSnapshots)
+                .concatMap(ruleSnapshot -> fetchRule(ruleSnapshot.ruleName())
+                        .flatMap(rule -> {
+                            rule.setSnippetIds(new LinkedHashSet<>(ruleSnapshot.snippetIds()));
+                            return client.update(rule);
+                        })
                         .onErrorResume(error -> {
-                            log.warn("Failed to rollback rule [{}]", rule.getId(), error);
+                            log.warn("Failed to rollback rule [{}]", ruleSnapshot.ruleName(), error);
                             return Mono.empty();
                         }))
                 .then();
@@ -143,14 +149,24 @@ public class SnippetReferenceService {
         return normalized;
     }
 
-    private InjectionRule copy(InjectionRule rule, Class<InjectionRule> type) {
-        try {
-            return objectMapper.readerFor(type)
-                    .without(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-                    .readValue(objectMapper.writeValueAsBytes(rule));
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Failed to copy " + type.getSimpleName(), e);
+    private RuleSnippetReferenceSnapshot snapshotRuleSnippetReferences(InjectionRule rule) {
+        return new RuleSnippetReferenceSnapshot(
+                requireRuleName(rule),
+                normalizeIds(rule.getSnippetIds())
+        );
+    }
+
+    private Mono<InjectionRule> fetchRule(String ruleName) {
+        return client.fetch(InjectionRule.class, ruleName)
+                .switchIfEmpty(Mono.error(new IllegalStateException("未找到要更新的规则：" + ruleName)));
+    }
+
+    private String requireRuleName(InjectionRule rule) {
+        if (rule == null || rule.getMetadata() == null || rule.getMetadata().getName() == null
+                || rule.getMetadata().getName().isBlank()) {
+            throw new InjectionRuleValidationException("metadata.name 不能为空");
         }
+        return rule.getMetadata().getName();
     }
 
     private String requireSnippetId(CodeSnippet snippet) {
@@ -159,5 +175,8 @@ public class SnippetReferenceService {
             throw new CodeSnippetValidationException("metadata.name 不能为空");
         }
         return snippet.getMetadata().getName();
+    }
+
+    private record RuleSnippetReferenceSnapshot(String ruleName, LinkedHashSet<String> snippetIds) {
     }
 }
