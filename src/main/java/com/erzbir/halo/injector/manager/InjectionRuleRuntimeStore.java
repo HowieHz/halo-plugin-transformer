@@ -15,8 +15,11 @@ import run.halo.app.extension.Watcher;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -146,23 +149,27 @@ public class InjectionRuleRuntimeStore {
     }
 
     RuleSnapshot buildSnapshot(List<InjectionRule> rules) {
-        List<InjectionRule> allRules = List.copyOf(rules);
+        Map<String, InjectionRule> rulesById = new LinkedHashMap<>();
         Map<InjectionRule.Mode, List<InjectionRule>> rulesByMode =
                 new EnumMap<>(InjectionRule.Mode.class);
-        List<SkippedEnabledRule> skippedEnabledRules = new ArrayList<>();
+        Map<String, SkippedEnabledRule> skippedEnabledRulesById = new LinkedHashMap<>();
         for (InjectionRule.Mode mode : InjectionRule.Mode.values()) {
             rulesByMode.put(mode, new ArrayList<>());
         }
-        for (InjectionRule rule : allRules) {
+        for (InjectionRule rule : rules) {
             if (rule == null) {
                 continue;
+            }
+            String ruleId = describeRuleId(rule);
+            RuntimeSkipReason skipReason = resolveRuntimeSkipReason(rule);
+            if (ruleId != null) {
+                rulesById.put(ruleId, rule);
             }
             if (!rule.isEnabled()) {
                 continue;
             }
-            RuntimeSkipReason skipReason = resolveRuntimeSkipReason(rule);
             if (skipReason != null) {
-                skippedEnabledRules.add(new SkippedEnabledRule(
+                skippedEnabledRulesById.put(describeRule(rule), new SkippedEnabledRule(
                         describeRule(rule),
                         skipReason.code(),
                         skipReason.detail()
@@ -177,8 +184,13 @@ public class InjectionRuleRuntimeStore {
             entry.getValue().sort(runtimeOrderComparator());
             immutableByMode.put(entry.getKey(), List.copyOf(entry.getValue()));
         }
-        logSkippedEnabledRules(skippedEnabledRules);
-        return new RuleSnapshot(allRules, immutableByMode);
+        RuleSnapshot snapshot = new RuleSnapshot(
+                new LinkedHashMap<>(rulesById),
+                immutableByMode,
+                new LinkedHashMap<>(skippedEnabledRulesById)
+        );
+        logSkippedEnabledRules(snapshot.skippedEnabledRules());
+        return snapshot;
     }
 
     /**
@@ -209,18 +221,7 @@ public class InjectionRuleRuntimeStore {
             return;
         }
         synchronized (snapshotMonitor) {
-            List<InjectionRule> nextRules = new ArrayList<>(cachedSnapshot.allRules());
-            int existingIndex = indexOfRule(nextRules, ruleId);
-            if (eventType == RuleEventType.DELETE) {
-                if (existingIndex >= 0) {
-                    nextRules.remove(existingIndex);
-                }
-            } else if (existingIndex >= 0) {
-                nextRules.set(existingIndex, rule);
-            } else {
-                nextRules.add(rule);
-            }
-            cachedSnapshot = buildSnapshot(nextRules);
+            cachedSnapshot = applyIncrementalSnapshotEvent(cachedSnapshot, eventType, ruleId, rule);
         }
     }
 
@@ -232,14 +233,67 @@ public class InjectionRuleRuntimeStore {
         }
     }
 
-    private int indexOfRule(List<InjectionRule> rules, String ruleId) {
-        for (int index = 0; index < rules.size(); index++) {
-            String currentRuleId = describeRuleId(rules.get(index));
-            if (ruleId.equals(currentRuleId)) {
-                return index;
+    private RuleSnapshot applyIncrementalSnapshotEvent(RuleSnapshot currentSnapshot, RuleEventType eventType,
+                                                       String ruleId, InjectionRule rule) {
+        Map<String, InjectionRule> nextRulesById = new LinkedHashMap<>(currentSnapshot.rulesById());
+        Map<InjectionRule.Mode, List<InjectionRule>> nextRulesByMode =
+                copyRulesByMode(currentSnapshot.rulesByMode());
+        Map<String, SkippedEnabledRule> nextSkippedEnabledRulesById =
+                new LinkedHashMap<>(currentSnapshot.skippedEnabledRulesById());
+        Set<InjectionRule.Mode> affectedModes = new LinkedHashSet<>();
+
+        InjectionRule previousRule = nextRulesById.get(ruleId);
+        InjectionRule.Mode previousActiveMode = activeMode(previousRule);
+        if (previousActiveMode != null) {
+            affectedModes.add(previousActiveMode);
+        }
+        nextSkippedEnabledRulesById.remove(ruleId);
+
+        if (eventType == RuleEventType.DELETE) {
+            nextRulesById.remove(ruleId);
+        } else {
+            nextRulesById.put(ruleId, rule);
+            RuntimeSkipReason nextSkipReason = resolveRuntimeSkipReason(rule);
+            if (rule.isEnabled() && nextSkipReason != null) {
+                nextSkippedEnabledRulesById.put(ruleId, new SkippedEnabledRule(
+                        ruleId,
+                        nextSkipReason.code(),
+                        nextSkipReason.detail()
+                ));
+            }
+            InjectionRule.Mode nextActiveMode = activeMode(rule);
+            if (nextActiveMode != null) {
+                affectedModes.add(nextActiveMode);
             }
         }
-        return -1;
+
+        for (InjectionRule.Mode mode : affectedModes) {
+            nextRulesByMode.put(mode, rebuildActiveRulesForMode(nextRulesById.values(), mode));
+        }
+
+        RuleSnapshot snapshot = new RuleSnapshot(nextRulesById, nextRulesByMode, nextSkippedEnabledRulesById);
+        logSkippedEnabledRules(snapshot.skippedEnabledRules());
+        return snapshot;
+    }
+
+    private Map<InjectionRule.Mode, List<InjectionRule>> copyRulesByMode(
+            Map<InjectionRule.Mode, List<InjectionRule>> sourceRulesByMode) {
+        Map<InjectionRule.Mode, List<InjectionRule>> copied = new EnumMap<>(InjectionRule.Mode.class);
+        for (InjectionRule.Mode mode : InjectionRule.Mode.values()) {
+            copied.put(mode, new ArrayList<>(sourceRulesByMode.getOrDefault(mode, List.of())));
+        }
+        return copied;
+    }
+
+    private List<InjectionRule> rebuildActiveRulesForMode(Iterable<InjectionRule> rules, InjectionRule.Mode mode) {
+        List<InjectionRule> activeRules = new ArrayList<>();
+        for (InjectionRule rule : rules) {
+            if (activeMode(rule) == mode) {
+                activeRules.add(rule);
+            }
+        }
+        activeRules.sort(runtimeOrderComparator());
+        return List.copyOf(activeRules);
     }
 
     List<SkippedEnabledRule> skippedEnabledRules() {
@@ -247,6 +301,12 @@ public class InjectionRuleRuntimeStore {
     }
 
     private RuntimeSkipReason resolveRuntimeSkipReason(InjectionRule rule) {
+        if (rule == null) {
+            return RuntimeSkipReason.MISSING_RESOURCE_NAME;
+        }
+        if (describeRuleId(rule) == null) {
+            return RuntimeSkipReason.MISSING_RESOURCE_NAME;
+        }
         if (rule.getMode() == null) {
             return RuntimeSkipReason.MISSING_MODE;
         }
@@ -261,6 +321,13 @@ public class InjectionRuleRuntimeStore {
             return RuntimeSkipReason.INVALID_MATCH_RULE;
         }
         return null;
+    }
+
+    private InjectionRule.Mode activeMode(InjectionRule rule) {
+        if (rule == null || !rule.isEnabled()) {
+            return null;
+        }
+        return resolveRuntimeSkipReason(rule) == null ? rule.getMode() : null;
     }
 
     private void logSkippedEnabledRules(List<SkippedEnabledRule> skippedEnabledRules) {
@@ -498,18 +565,28 @@ public class InjectionRuleRuntimeStore {
         refreshRetryTask = null;
     }
 
-    record RuleSnapshot(List<InjectionRule> allRules, Map<InjectionRule.Mode, List<InjectionRule>> rulesByMode) {
+    record RuleSnapshot(Map<String, InjectionRule> rulesById,
+                        Map<InjectionRule.Mode, List<InjectionRule>> rulesByMode,
+                        Map<String, SkippedEnabledRule> skippedEnabledRulesById) {
         static RuleSnapshot empty() {
             Map<InjectionRule.Mode, List<InjectionRule>> emptyByMode =
                     new EnumMap<>(InjectionRule.Mode.class);
             for (InjectionRule.Mode mode : InjectionRule.Mode.values()) {
                 emptyByMode.put(mode, List.of());
             }
-            return new RuleSnapshot(List.of(), emptyByMode);
+            return new RuleSnapshot(new LinkedHashMap<>(), emptyByMode, new LinkedHashMap<>());
+        }
+
+        List<InjectionRule> allRules() {
+            return List.copyOf(rulesById.values());
         }
 
         List<InjectionRule> activeRules(InjectionRule.Mode mode) {
             return rulesByMode.getOrDefault(mode, List.of());
+        }
+
+        List<SkippedEnabledRule> skippedEnabledRules() {
+            return List.copyOf(skippedEnabledRulesById.values());
         }
     }
 
@@ -589,6 +666,7 @@ public class InjectionRuleRuntimeStore {
     }
 
     private enum RuntimeSkipReason {
+        MISSING_RESOURCE_NAME("missing_resource_name", "缺少 metadata.name，无法建立稳定运行时主键"),
         MISSING_MODE("missing_mode", "运行时需要明确的执行阶段"),
         BLANK_SELECTOR_MATCH("blank_selector_match", "CSS 选择器模式要求非空 match"),
         MISSING_MATCH_RULE("missing_match_rule", "缺少 matchRule"),
