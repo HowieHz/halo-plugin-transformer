@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { RUNTIME_ORDER_MAX, RUNTIME_ORDER_STEPS } from '@/types'
 import {
   clampRuntimeOrder,
+  findRuntimeOrderSnapStep,
   describeRuntimeOrderRange,
   formatRuntimeOrder,
   snapRuntimeOrderToPreset,
@@ -53,6 +54,9 @@ const currentStepLabel = computed(() => {
 })
 
 const currentRangeHint = computed(() => describeRuntimeOrderRange(previewRuntimeOrder.value))
+const activeSnapStep = computed(() =>
+  isDraggingSlider.value ? findRuntimeOrderSnapStep(sliderDraft.value) : null,
+)
 const runtimeOrderHelpText = computed(() =>
   manualMode.value
     ? '数字越小，越先执行；数字相同时，先按规则名称排序，再按规则 ID 排序。'
@@ -167,14 +171,12 @@ function toggleEditMode() {
         />
         <div aria-hidden="true" class="runtime-order-visual">
           <div class="runtime-order-track" />
-          <div v-if="isDraggingSlider" class="runtime-order-tick-row">
-            <span
-              v-for="step in RUNTIME_ORDER_STEPS"
-              :key="`${step.value}-drag-tick`"
-              :style="{ left: stepTrackPositionStyle(step.value) }"
-              class="runtime-order-tick"
-            />
-          </div>
+          <span
+            v-if="activeSnapStep"
+            :key="`${activeSnapStep.value}-drag-tick`"
+            :style="{ left: stepTrackPositionStyle(activeSnapStep.value) }"
+            class="runtime-order-tick"
+          />
           <div
             :style="{
               left: stepTrackPositionStyle(previewRuntimeOrder),
@@ -257,11 +259,6 @@ function toggleEditMode() {
   transition:
     transform 120ms ease,
     box-shadow 120ms ease;
-}
-
-.runtime-order-tick-row {
-  position: absolute;
-  inset: 0;
 }
 
 .runtime-order-tick {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   clampRuntimeOrder,
+  findRuntimeOrderSnapStep,
   describeRuntimeOrderRange,
   formatRuntimeOrder,
   snapRuntimeOrderToPreset,
@@ -31,6 +32,16 @@ describe('runtimeOrder', () => {
     expect(snapRuntimeOrderToPreset(RUNTIME_ORDER_STEPS[2].value + 100_000_000)).toBe(
       RUNTIME_ORDER_STEPS[2].value + 100_000_000,
     )
+  })
+
+  // why: 拖动时显示的灰色刻度必须和真正松手后的吸附结果共用同一阈值，
+  // 否则界面会出现“看起来会吸附，但实际没吸”或反过来的错位反馈。
+  it('exposes the same preset only when the slider is inside snap range', () => {
+    expect(findRuntimeOrderSnapStep(10)?.value).toBe(RUNTIME_ORDER_STEPS[0].value)
+    expect(findRuntimeOrderSnapStep(RUNTIME_ORDER_STEPS[2].value + 20_000_000)?.value).toBe(
+      RUNTIME_ORDER_STEPS[2].value,
+    )
+    expect(findRuntimeOrderSnapStep(RUNTIME_ORDER_STEPS[2].value + 100_000_000)).toBeNull()
   })
 
   // why: 界面提示应解释当前所处优先级区间，而不是把难读的大整数直接回显给用户。

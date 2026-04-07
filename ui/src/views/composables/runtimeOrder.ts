@@ -2,6 +2,24 @@ import { RUNTIME_ORDER_MAX, RUNTIME_ORDER_STEPS } from '@/types'
 
 const PRESET_SNAP_RATIO = 0.08
 
+function getPresetSnapDistance(index: number) {
+  const step = RUNTIME_ORDER_STEPS[index]
+  if (!step) {
+    return 0
+  }
+
+  const previous = RUNTIME_ORDER_STEPS[index - 1]
+  const next = RUNTIME_ORDER_STEPS[index + 1]
+  const nearestGap = Math.min(
+    previous ? step.value - previous.value : Number.POSITIVE_INFINITY,
+    next ? next.value - step.value : Number.POSITIVE_INFINITY,
+  )
+
+  return Number.isFinite(nearestGap) && nearestGap > 0
+    ? Math.max(1, Math.round(nearestGap * PRESET_SNAP_RATIO))
+    : 0
+}
+
 /**
  * why: 运行顺序最终会写进后端 `int` 字段；
  * 前端所有入口都应共用同一套非负、上限封顶的归一化规则，避免滑条/手输/导入各自漂移。
@@ -25,23 +43,28 @@ export function snapRuntimeOrderToPreset(value: number) {
   const normalized = clampRuntimeOrder(value)
 
   for (const [index, step] of RUNTIME_ORDER_STEPS.entries()) {
-    const previous = RUNTIME_ORDER_STEPS[index - 1]
-    const next = RUNTIME_ORDER_STEPS[index + 1]
-    const nearestGap = Math.min(
-      previous ? step.value - previous.value : Number.POSITIVE_INFINITY,
-      next ? next.value - step.value : Number.POSITIVE_INFINITY,
-    )
-    const snapDistance =
-      Number.isFinite(nearestGap) && nearestGap > 0
-        ? Math.max(1, Math.round(nearestGap * PRESET_SNAP_RATIO))
-        : 0
-
-    if (Math.abs(normalized - step.value) <= snapDistance) {
+    if (Math.abs(normalized - step.value) <= getPresetSnapDistance(index)) {
       return step.value
     }
   }
 
   return normalized
+}
+
+/**
+ * why: 滑条拖动时的辅助视觉应与真正的吸附阈值严格一致；
+ * 这样“看见刻度”就等于“松手会吸过去”，不会出现提示和结果打架。
+ */
+export function findRuntimeOrderSnapStep(value: number) {
+  const normalized = clampRuntimeOrder(value)
+
+  for (const [index, step] of RUNTIME_ORDER_STEPS.entries()) {
+    if (Math.abs(normalized - step.value) <= getPresetSnapDistance(index)) {
+      return step
+    }
+  }
+
+  return null
 }
 
 /**
