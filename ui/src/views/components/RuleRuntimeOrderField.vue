@@ -278,7 +278,7 @@ function toggleEditMode() {
 }
 
 .runtime-order-labels {
-  margin-top: -0.1875rem;
+  margin-top: -0.375rem;
 }
 
 .runtime-order-label {
