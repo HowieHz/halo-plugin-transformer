@@ -1,5 +1,6 @@
 import { computed, ref, watch } from 'vue'
 import type { AxiosError } from 'axios'
+import type { Metadata } from '@halo-dev/api-client'
 import { Dialog, Toast } from '@halo-dev/components'
 import { ruleApi, snippetApi, type OrderMap } from '@/apis'
 import type {
@@ -48,6 +49,13 @@ function replaceItemInList<T extends { id: string }>(list: ItemList<T>, updated:
   return {
     ...list,
     items: list.items.map((item) => (item.id === updated.id ? updated : item)),
+  }
+}
+
+function mergeSavedMetadata<T extends { metadata: Metadata }>(draft: T, saved: T): Metadata {
+  return {
+    ...draft.metadata,
+    ...saved.metadata,
   }
 }
 
@@ -253,6 +261,7 @@ export function useInjectorData() {
     snippetsResp.value = replaceItemInList(snippetsResp.value, snippet)
     if (editSnippet.value?.id === snippet.id) {
       editSnippet.value.enabled = snippet.enabled
+      editSnippet.value.metadata = mergeSavedMetadata(editSnippet.value, snippet)
     }
   }
 
@@ -264,6 +273,7 @@ export function useInjectorData() {
     rulesResp.value = replaceItemInList(rulesResp.value, rule)
     if (editRule.value?.id === rule.id) {
       editRule.value.enabled = rule.enabled
+      editRule.value.metadata = mergeSavedMetadata(editRule.value, rule)
     }
   }
 

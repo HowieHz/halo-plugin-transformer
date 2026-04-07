@@ -67,7 +67,7 @@ describe('useInjectorData', () => {
   it('toggles rule enabled without saving or discarding other draft fields', async () => {
     const savedRule = makeRuleEditorDraft({
       id: 'rule-a',
-      metadata: { name: 'rule-a' },
+      metadata: { name: 'rule-a', version: 1 },
       enabled: false,
       mode: 'FOOTER',
       match: '',
@@ -92,7 +92,13 @@ describe('useInjectorData', () => {
     snippetApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } })
     ruleApi.list.mockResolvedValue({ data: listOf([savedRule]) })
     ruleApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } })
-    ruleApi.updateEnabled.mockResolvedValue({ data: { ...savedRule, enabled: true } })
+    ruleApi.updateEnabled.mockResolvedValue({
+      data: {
+        ...savedRule,
+        enabled: true,
+        metadata: { ...savedRule.metadata, version: 2 },
+      },
+    })
 
     const store = useInjectorData()
     await store.fetchAll()
@@ -115,6 +121,7 @@ describe('useInjectorData', () => {
     expect(store.editRule.value?.enabled).toBe(true)
     expect(store.editRule.value?.mode).toBe('SELECTOR')
     expect(store.editRule.value?.name).toBe('draft name')
+    expect(store.editRule.value?.metadata.version).toBe(2)
     expect(store.editDirty.value).toBe(true)
     expect(toast.error).not.toHaveBeenCalled()
   })
@@ -124,14 +131,20 @@ describe('useInjectorData', () => {
   it('toggles snippet enabled without saving or discarding other draft fields', async () => {
     const savedSnippet = makeSnippetEditorDraft({
       id: 'snippet-a',
-      metadata: { name: 'snippet-a' },
+      metadata: { name: 'snippet-a', version: 1 },
       enabled: false,
       code: '<div>ok</div>',
     })
 
     snippetApi.list.mockResolvedValue({ data: listOf([savedSnippet]) })
     snippetApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } })
-    snippetApi.updateEnabled.mockResolvedValue({ data: { ...savedSnippet, enabled: true } })
+    snippetApi.updateEnabled.mockResolvedValue({
+      data: {
+        ...savedSnippet,
+        enabled: true,
+        metadata: { ...savedSnippet.metadata, version: 2 },
+      },
+    })
     ruleApi.list.mockResolvedValue({ data: listOf([]) })
     ruleApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } })
 
@@ -155,6 +168,7 @@ describe('useInjectorData', () => {
     expect(store.editSnippet.value?.enabled).toBe(true)
     expect(store.editSnippet.value?.code).toBe('')
     expect(store.editSnippet.value?.name).toBe('draft snippet')
+    expect(store.editSnippet.value?.metadata.version).toBe(2)
     expect(store.editDirty.value).toBe(true)
     expect(toast.error).not.toHaveBeenCalled()
   })
