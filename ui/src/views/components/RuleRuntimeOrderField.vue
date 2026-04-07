@@ -173,7 +173,7 @@ function toggleEditMode() {
       </div>
     </template>
 
-    <p class=":uno: text-xs text-gray-500">{{ currentRangeHint }}</p>
+    <p v-if="manualMode" class=":uno: text-xs text-gray-500">{{ currentRangeHint }}</p>
   </div>
 </template>
 
