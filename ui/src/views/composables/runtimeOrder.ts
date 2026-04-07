@@ -52,22 +52,6 @@ export function snapRuntimeOrderToPreset(value: number) {
 }
 
 /**
- * why: 滑条拖动时的辅助视觉应与真正的吸附阈值严格一致；
- * 这样“看见刻度”就等于“松手会吸过去”，不会出现提示和结果打架。
- */
-export function findRuntimeOrderSnapStep(value: number) {
-  const normalized = clampRuntimeOrder(value)
-
-  for (const [index, step] of RUNTIME_ORDER_STEPS.entries()) {
-    if (Math.abs(normalized - step.value) <= getPresetSnapDistance(index)) {
-      return step
-    }
-  }
-
-  return null
-}
-
-/**
  * why: 视觉提示应该帮助用户理解“当前处在哪个优先级区间”，
  * 而不是再把大整数原样抛回界面，增加理解成本。
  */
