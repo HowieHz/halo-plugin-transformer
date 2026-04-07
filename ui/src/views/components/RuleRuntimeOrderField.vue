@@ -18,6 +18,7 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: number): void
 }>()
 
+const isDraggingSlider = ref(false)
 const manualMode = ref(false)
 const manualDraft = ref(String(props.modelValue))
 const sliderDraft = ref(props.modelValue)
@@ -80,6 +81,14 @@ function updateRuntimeOrderPresetValue(value: number) {
   updateRuntimeOrder(value)
 }
 
+function startSliderDrag() {
+  isDraggingSlider.value = true
+}
+
+function stopSliderDrag() {
+  isDraggingSlider.value = false
+}
+
 function stepTrackPositionStyle(value: number) {
   return `calc(${RUNTIME_ORDER_HORIZONTAL_INSET_PX}px + (100% - ${
     RUNTIME_ORDER_HORIZONTAL_INSET_PX * 2
@@ -101,6 +110,7 @@ function commitManualDraft() {
 
 function toggleEditMode() {
   manualMode.value = !manualMode.value
+  isDraggingSlider.value = false
   manualDraft.value = String(props.modelValue)
   sliderDraft.value = props.modelValue
 }
@@ -143,11 +153,26 @@ function toggleEditMode() {
           :value="sliderDraft"
           class="runtime-order-input"
           type="range"
+          @pointerdown="startSliderDrag"
+          @pointerup="stopSliderDrag"
+          @pointercancel="stopSliderDrag"
+          @blur="stopSliderDrag"
           @input="updateRuntimeOrderFromSlider(Number(($event.target as HTMLInputElement).value))"
-          @change="commitRuntimeOrderFromSlider"
+          @change="
+            commitRuntimeOrderFromSlider()
+            stopSliderDrag()
+          "
         />
         <div aria-hidden="true" class="runtime-order-visual">
           <div class="runtime-order-track" />
+          <div v-if="isDraggingSlider" class="runtime-order-tick-row">
+            <span
+              v-for="step in RUNTIME_ORDER_STEPS"
+              :key="`${step.value}-drag-tick`"
+              :style="{ left: stepTrackPositionStyle(step.value) }"
+              class="runtime-order-tick"
+            />
+          </div>
           <div
             :style="{
               left: stepTrackPositionStyle(previewRuntimeOrder),
@@ -187,7 +212,7 @@ function toggleEditMode() {
 .runtime-order-slider-shell {
   --runtime-order-track-height: 0.25rem;
   --runtime-order-thumb-size: 0.875rem;
-  --runtime-order-horizontal-inset: 8px;
+  --runtime-order-horizontal-inset: 16px;
   position: relative;
   height: 1.5rem;
 }
@@ -230,6 +255,21 @@ function toggleEditMode() {
   transition:
     transform 120ms ease,
     box-shadow 120ms ease;
+}
+
+.runtime-order-tick-row {
+  position: absolute;
+  inset: 0;
+}
+
+.runtime-order-tick {
+  position: absolute;
+  top: calc(50% + 0.375rem);
+  width: 1px;
+  height: 0.25rem;
+  transform: translateX(-50%);
+  border-radius: 9999px;
+  background: rgb(156 163 175 / 0.9);
 }
 
 .runtime-order-input:active + .runtime-order-visual .runtime-order-thumb,
