@@ -190,6 +190,7 @@ function toggleEditMode() {
           </div>
         </div>
         <div
+          :class="{ 'runtime-order-labels-dragging': isDraggingSlider }"
           class="runtime-order-labels :uno: relative h-4 overflow-visible text-[11px] text-gray-400"
         >
           <button
@@ -284,7 +285,12 @@ function toggleEditMode() {
   margin-top: -0.375rem;
 }
 
+.runtime-order-labels-dragging {
+  pointer-events: none;
+}
+
 .runtime-order-label {
+  user-select: none;
   transform: translateX(-50%);
 }
 </style>
