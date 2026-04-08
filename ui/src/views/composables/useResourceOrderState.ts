@@ -3,7 +3,7 @@ import { Toast } from '@halo-dev/components'
 import type { PersistedOrderState, OrderMap } from '@/apis'
 import type { ItemList } from '@/types'
 import { buildExplicitOrderMap, sortByOrderMap } from './util'
-import { getErrorMessage, reorderItems, type ReorderPlacement } from './injectorShared'
+import { getErrorMessage, type ReorderPlacement } from './injectorShared'
 
 interface OrderApi {
   getOrder: () => Promise<{ data: PersistedOrderState }>
@@ -43,7 +43,10 @@ export function useResourceOrderState<T extends { id: string }>(
     applyOrderSnapshot(response.data)
   }
 
-  async function restoreOrdersAfterFailedSave(previousOrders: OrderMap, previousVersion: number | null) {
+  async function restoreOrdersAfterFailedSave(
+    previousOrders: OrderMap,
+    previousVersion: number | null,
+  ) {
     try {
       await reloadOrders()
     } catch {
@@ -119,4 +122,28 @@ export function useResourceOrderState<T extends { id: string }>(
     saveOrderMap,
     reorder,
   }
+}
+
+function reorderItems<T extends { id: string }>(
+  items: T[],
+  sourceId: string,
+  targetId: string,
+  placement: ReorderPlacement,
+) {
+  if (sourceId === targetId) {
+    return null
+  }
+
+  const ordered = [...items]
+  const sourceIndex = ordered.findIndex((item) => item.id === sourceId)
+  const targetIndex = ordered.findIndex((item) => item.id === targetId)
+  if (sourceIndex < 0 || targetIndex < 0) {
+    return null
+  }
+
+  const [moving] = ordered.splice(sourceIndex, 1)
+  const nextTargetIndex = ordered.findIndex((item) => item.id === targetId)
+  const insertIndex = placement === 'before' ? nextTargetIndex : nextTargetIndex + 1
+  ordered.splice(insertIndex, 0, moving)
+  return ordered
 }

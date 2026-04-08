@@ -8,7 +8,7 @@ import type {
 } from '@/types'
 import { hydrateRuleEditorDraft } from './ruleDraft'
 import { hydrateSnippetEditorDraft } from './snippetDraft'
-import { mergeSavedMetadata, replaceItemInList } from './injectorShared'
+import { mergeSavedMetadata } from './injectorShared'
 
 interface UseEditorSelectionStateOptions {
   snippetsResp: Ref<ItemList<CodeSnippetReadModel>>
@@ -127,5 +127,12 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
     toggleSnippetInRuleEditor,
     discardSnippetEdit,
     discardRuleEdit,
+  }
+}
+
+function replaceItemInList<T extends { id: string }>(list: ItemList<T>, updated: T): ItemList<T> {
+  return {
+    ...list,
+    items: list.items.map((item) => (item.id === updated.id ? updated : item)),
   }
 }
