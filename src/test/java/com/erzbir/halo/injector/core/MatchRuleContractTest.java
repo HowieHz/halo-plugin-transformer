@@ -23,9 +23,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class MatchRuleContractTest {
-    private static final Path CONTRACT_FIXTURE = locateContractFixture();
-    private static final Path CHECKLIST_FIXTURE = locateFixture("match-rule-contract-checklist.generated.jsonc");
-    private static final Path METADATA_FIXTURE = locateFixture("match-rule-contract-metadata.json");
+    private static final Path CASES_FIXTURE = locateFixture("contract.cases.jsonc");
+    private static final Path SPEC_FIXTURE = locateFixture("contract.spec.jsonc");
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -73,9 +72,9 @@ class MatchRuleContractTest {
     // 这里要求每个 shared contract 至少有一条 fixture 覆盖，避免文档加了语义但双端契约测试没跟上。
     @Test
     void shouldCoverEverySharedChecklistItemWithFixtureCases() {
-        JsonNode checklist = loadJson(CHECKLIST_FIXTURE);
-        Set<String> knownIds = streamTextValues(checklist.path("items"), "id");
-        Set<String> sharedIds = streamObjectNodes(checklist.path("items"))
+        JsonNode spec = loadJson(SPEC_FIXTURE);
+        Set<String> knownIds = streamTextValues(spec.path("checklist"), "id");
+        Set<String> sharedIds = streamObjectNodes(spec.path("checklist"))
                 .filter(item -> "shared_contract".equals(item.path("layer").asText()))
                 .map(item -> item.path("id").asText())
                 .collect(java.util.stream.Collectors.toSet());
@@ -91,44 +90,42 @@ class MatchRuleContractTest {
                 .collect(java.util.stream.Collectors.toSet()));
     }
 
-    // why: 允许字段集合和错误文本模板改成由共享 metadata 生成后，
-    // 这里直接反查 metadata 文件，防止以后只改了源定义却忘了同步生成 Java helper。
+    // why: 允许字段集合和错误文本模板改成由共享 spec 生成后，
+    // 这里直接反查 spec 文件，防止以后只改了源定义却忘了同步生成 Java helper。
     @Test
     void shouldKeepGeneratedJavaMetadataInSync() {
-        JsonNode metadata = loadJson(METADATA_FIXTURE);
-        JsonNode checklist = loadJson(CHECKLIST_FIXTURE);
+        JsonNode spec = loadJson(SPEC_FIXTURE);
 
-        assertEquals(metadata.path("checklist"), checklist.path("items"));
         assertEquals(
-                textList(metadata.at("/nodeTypes/GROUP/allowedFields")),
+                textList(spec.at("/nodeTypes/GROUP/allowedFields")),
                 MatchRuleContractMessages.allowedFieldsFor(MatchRule.Type.GROUP)
         );
         assertEquals(
-                textList(metadata.at("/nodeTypes/PATH/allowedFields")),
+                textList(spec.at("/nodeTypes/PATH/allowedFields")),
                 MatchRuleContractMessages.allowedFieldsFor(MatchRule.Type.PATH)
         );
         assertEquals(
-                textList(metadata.at("/nodeTypes/TEMPLATE_ID/allowedFields")),
+                textList(spec.at("/nodeTypes/TEMPLATE_ID/allowedFields")),
                 MatchRuleContractMessages.allowedFieldsFor(MatchRule.Type.TEMPLATE_ID)
         );
         assertEquals(
-                textList(metadata.at("/enumValues/TYPE/values")),
+                textList(spec.at("/enumValues/TYPE/values")),
                 MatchRuleContractMessages.enumValuesFor(MatchRuleContractMessages.EnumName.TYPE)
         );
         assertEquals(
-                textList(metadata.at("/enumValues/BOOLEAN/values")),
+                textList(spec.at("/enumValues/BOOLEAN/values")),
                 MatchRuleContractMessages.enumValuesFor(MatchRuleContractMessages.EnumName.BOOLEAN)
         );
         assertEquals(
-                textList(metadata.at("/enumValues/OPERATOR/values")),
+                textList(spec.at("/enumValues/OPERATOR/values")),
                 MatchRuleContractMessages.enumValuesFor(MatchRuleContractMessages.EnumName.OPERATOR)
         );
         assertEquals(
-                textList(metadata.at("/enumValues/PATH_MATCHER/values")),
+                textList(spec.at("/enumValues/PATH_MATCHER/values")),
                 MatchRuleContractMessages.enumValuesFor(MatchRuleContractMessages.EnumName.PATH_MATCHER)
         );
         assertEquals(
-                textList(metadata.at("/enumValues/TEMPLATE_MATCHER/values")),
+                textList(spec.at("/enumValues/TEMPLATE_MATCHER/values")),
                 MatchRuleContractMessages.enumValuesFor(MatchRuleContractMessages.EnumName.TEMPLATE_MATCHER)
         );
     }
@@ -149,7 +146,7 @@ class MatchRuleContractTest {
 
     private ContractSuite loadContractSuite() {
         try {
-            String json = Files.readString(CONTRACT_FIXTURE, StandardCharsets.UTF_8);
+            String json = normalizeJsonc(Files.readString(CASES_FIXTURE, StandardCharsets.UTF_8));
             return objectMapper.readValue(json, ContractSuite.class);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to load match-rule contract fixtures", e);
@@ -164,34 +161,134 @@ class MatchRuleContractTest {
         }
     }
 
-    private static Path locateContractFixture() {
-        return locateFixture("match-rule-contracts.json");
-    }
-
     private static Path locateFixture(String fileName) {
         Path current = Path.of("").toAbsolutePath();
         while (current != null) {
-            Path candidate = current.resolve("contracts").resolve(fileName);
+            Path candidate = current.resolve("specs").resolve("match-rule").resolve(fileName);
             if (Files.exists(candidate)) {
                 return candidate;
             }
             current = current.getParent();
         }
-        throw new IllegalStateException("Cannot find contracts/" + fileName);
+        throw new IllegalStateException("Cannot find specs/match-rule/" + fileName);
     }
 
     private JsonNode loadJson(Path path) {
         try {
-            return objectMapper.readTree(stripJsoncHeader(Files.readString(path, StandardCharsets.UTF_8)));
+            return objectMapper.readTree(normalizeJsonc(Files.readString(path, StandardCharsets.UTF_8)));
         } catch (IOException e) {
             throw new IllegalStateException("Failed to load JSON fixture: " + path, e);
         }
     }
 
-    private String stripJsoncHeader(String content) {
-        return content.lines()
-                .filter(line -> !line.stripLeading().startsWith("//"))
-                .collect(java.util.stream.Collectors.joining("\n"));
+    private String normalizeJsonc(String content) {
+        return stripTrailingCommas(stripJsonComments(content));
+    }
+
+    private String stripJsonComments(String content) {
+        StringBuilder result = new StringBuilder();
+        boolean inString = false;
+        boolean escaped = false;
+        boolean inLineComment = false;
+        boolean inBlockComment = false;
+
+        for (int index = 0; index < content.length(); index++) {
+            char current = content.charAt(index);
+            char next = index + 1 < content.length() ? content.charAt(index + 1) : '\0';
+
+            if (inLineComment) {
+                if (current == '\n') {
+                    inLineComment = false;
+                    result.append(current);
+                }
+                continue;
+            }
+
+            if (inBlockComment) {
+                if (current == '*' && next == '/') {
+                    inBlockComment = false;
+                    index++;
+                }
+                continue;
+            }
+
+            if (inString) {
+                result.append(current);
+                if (escaped) {
+                    escaped = false;
+                } else if (current == '\\') {
+                    escaped = true;
+                } else if (current == '"') {
+                    inString = false;
+                }
+                continue;
+            }
+
+            if (current == '/' && next == '/') {
+                inLineComment = true;
+                index++;
+                continue;
+            }
+
+            if (current == '/' && next == '*') {
+                inBlockComment = true;
+                index++;
+                continue;
+            }
+
+            if (current == '"') {
+                inString = true;
+            }
+
+            result.append(current);
+        }
+
+        return result.toString();
+    }
+
+    private String stripTrailingCommas(String content) {
+        StringBuilder result = new StringBuilder();
+        boolean inString = false;
+        boolean escaped = false;
+
+        for (int index = 0; index < content.length(); index++) {
+            char current = content.charAt(index);
+
+            if (inString) {
+                result.append(current);
+                if (escaped) {
+                    escaped = false;
+                } else if (current == '\\') {
+                    escaped = true;
+                } else if (current == '"') {
+                    inString = false;
+                }
+                continue;
+            }
+
+            if (current == '"') {
+                inString = true;
+                result.append(current);
+                continue;
+            }
+
+            if (current == ',') {
+                int lookahead = index + 1;
+                while (lookahead < content.length() && Character.isWhitespace(content.charAt(lookahead))) {
+                    lookahead++;
+                }
+                if (lookahead < content.length()) {
+                    char trailingTarget = content.charAt(lookahead);
+                    if (trailingTarget == '}' || trailingTarget == ']') {
+                        continue;
+                    }
+                }
+            }
+
+            result.append(current);
+        }
+
+        return result.toString();
     }
 
     private static Stream<JsonNode> streamObjectNodes(JsonNode arrayNode) {

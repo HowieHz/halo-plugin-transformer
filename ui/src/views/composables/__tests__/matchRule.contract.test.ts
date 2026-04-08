@@ -39,23 +39,15 @@ interface MatchRuleContractChecklistItem {
   summary: string
 }
 
-interface MatchRuleContractChecklistSuite {
-  version: number
-  items: MatchRuleContractChecklistItem[]
-}
-
-interface MatchRuleContractMetadata {
+interface MatchRuleContractSpec {
   version: number
   nodeTypes: typeof MATCH_RULE_NODE_SPECS
   enumValues: typeof MATCH_RULE_ENUM_SPECS
   checklist: MatchRuleContractChecklistItem[]
 }
 
-const contractSuite = loadJsonFile<MatchRuleContractSuite>('match-rule-contracts.json')
-const checklistSuite = loadJsonFile<MatchRuleContractChecklistSuite>(
-  'match-rule-contract-checklist.generated.jsonc',
-)
-const metadata = loadJsonFile<MatchRuleContractMetadata>('match-rule-contract-metadata.json')
+const contractSuite = loadJsonFile<MatchRuleContractSuite>('contract.cases.jsonc')
+const spec = loadJsonFile<MatchRuleContractSpec>('contract.spec.jsonc')
 
 describe('matchRule contract fixtures', () => {
   // why: 规则树在前后端各维护一份实现；这里复用共享样例，强制锁住 TS 端对同一批输入的严格写入语义。
@@ -92,11 +84,9 @@ describe('matchRule contract fixtures', () => {
   // why: README 里列出来的共享 match-rule 语义，必须在 checklist 里落成可追踪项，
   // 并至少有一条 contract fixture 覆盖；否则文档一长，测试很容易漏补。
   it('covers every shared-contract checklist item with at least one fixture case', () => {
-    const knownChecklistIds = new Set(checklistSuite.items.map((item) => item.id))
+    const knownChecklistIds = new Set(spec.checklist.map((item) => item.id))
     const sharedChecklistIds = new Set(
-      checklistSuite.items
-        .filter((item) => item.layer === 'shared_contract')
-        .map((item) => item.id),
+      spec.checklist.filter((item) => item.layer === 'shared_contract').map((item) => item.id),
     )
     const coveredIds = new Set(
       contractSuite.cases.flatMap((contractCase) => contractCase.covers ?? []),
@@ -106,17 +96,20 @@ describe('matchRule contract fixtures', () => {
     expect([...sharedChecklistIds].filter((id) => !coveredIds.has(id))).toEqual([])
   })
 
-  // why: 允许字段集合与错误文本模板已经改成由共享 metadata 生成；
-  // 这里直接对照源 metadata，防止以后只改了 metadata 却忘了同步生成前端 helper。
+  // why: 允许字段集合与错误文本模板已经改成由共享 spec 生成；
+  // 这里直接对照源 spec，防止以后只改了源定义却忘了同步生成前端 helper。
   it('keeps generated frontend match-rule metadata in sync', () => {
-    expect(MATCH_RULE_NODE_SPECS).toEqual(metadata.nodeTypes)
-    expect(MATCH_RULE_ENUM_SPECS).toEqual(metadata.enumValues)
-    expect(checklistSuite.items).toEqual(metadata.checklist)
+    expect(MATCH_RULE_NODE_SPECS).toEqual(spec.nodeTypes)
+    expect(MATCH_RULE_ENUM_SPECS).toEqual(spec.enumValues)
   })
 })
 
 function loadJsonFile<T>(fileName: string): T {
-  return JSON.parse(stripJsoncHeader(readFileSync(locateContractFixture(fileName), 'utf8'))) as T
+  return JSON.parse(normalizeJsonc(readFileSync(locateMatchRuleSpecFile(fileName), 'utf8'))) as T
+}
+
+function normalizeJsonc(content: string) {
+  return stripTrailingCommas(stripJsonComments(content))
 }
 
 function resolveWriteValidation(contractCase: MatchRuleContractCase, rootPath: string) {
@@ -145,18 +138,18 @@ function formatRuntimePath(rootPath: string, relativePath?: string) {
   return `${rootPath}.${relativePath}`
 }
 
-function locateContractFixture(fileName: string): string {
+function locateMatchRuleSpecFile(fileName: string): string {
   let current = path.dirname(fileURLToPath(import.meta.url))
 
   while (true) {
-    const candidate = path.join(current, 'contracts', fileName)
+    const candidate = path.join(current, 'specs', 'match-rule', fileName)
     if (tryReadFixture(candidate)) {
       return candidate
     }
 
     const parent = path.dirname(current)
     if (parent === current) {
-      throw new Error(`Cannot find contracts/${fileName}`)
+      throw new Error(`Cannot find specs/match-rule/${fileName}`)
     }
     current = parent
   }
@@ -170,9 +163,105 @@ function tryReadFixture(candidate: string): boolean {
   }
 }
 
-function stripJsoncHeader(content: string) {
-  return content
-    .split('\n')
-    .filter((line) => !line.trimStart().startsWith('//'))
-    .join('\n')
+function stripJsonComments(content: string) {
+  let result = ''
+  let inString = false
+  let isEscaped = false
+  let inLineComment = false
+  let inBlockComment = false
+
+  for (let index = 0; index < content.length; index += 1) {
+    const char = content[index]
+    const next = content[index + 1]
+
+    if (inLineComment) {
+      if (char === '\n') {
+        inLineComment = false
+        result += char
+      }
+      continue
+    }
+
+    if (inBlockComment) {
+      if (char === '*' && next === '/') {
+        inBlockComment = false
+        index += 1
+      }
+      continue
+    }
+
+    if (inString) {
+      result += char
+      if (isEscaped) {
+        isEscaped = false
+      } else if (char === '\\') {
+        isEscaped = true
+      } else if (char === '"') {
+        inString = false
+      }
+      continue
+    }
+
+    if (char === '/' && next === '/') {
+      inLineComment = true
+      index += 1
+      continue
+    }
+
+    if (char === '/' && next === '*') {
+      inBlockComment = true
+      index += 1
+      continue
+    }
+
+    if (char === '"') {
+      inString = true
+    }
+
+    result += char
+  }
+
+  return result
+}
+
+function stripTrailingCommas(content: string) {
+  let result = ''
+  let inString = false
+  let isEscaped = false
+
+  for (let index = 0; index < content.length; index += 1) {
+    const char = content[index]
+
+    if (inString) {
+      result += char
+      if (isEscaped) {
+        isEscaped = false
+      } else if (char === '\\') {
+        isEscaped = true
+      } else if (char === '"') {
+        inString = false
+      }
+      continue
+    }
+
+    if (char === '"') {
+      inString = true
+      result += char
+      continue
+    }
+
+    if (char === ',') {
+      let lookahead = index + 1
+      while (lookahead < content.length && /\s/.test(content[lookahead])) {
+        lookahead += 1
+      }
+      if (content[lookahead] === '}' || content[lookahead] === ']') {
+        continue
+      }
+    }
+
+    result += char
+  }
+
+  return result
 }

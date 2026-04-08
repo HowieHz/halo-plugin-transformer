@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Erzbir/halo-plugin-injector/main/ui/public/generated/match-rule.schema.json",
+  "title": "Halo Plugin Injector Match Rule",
+  "description": "Generated schema for Halo Plugin Injector match-rule trees and transfer sources.",
+  "$defs": {
+    "matchRuleSource": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "data"
+          ],
+          "properties": {
+            "kind": {
+              "const": "RULE_TREE"
+            },
+            "data": {
+              "$ref": "#/$defs/matchRuleGroup"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "data"
+          ],
+          "properties": {
+            "kind": {
+              "const": "JSON_DRAFT"
+            },
+            "data": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "matchRuleNode": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/matchRuleGroup"
+        },
+        {
+          "$ref": "#/$defs/matchRulePath"
+        },
+        {
+          "$ref": "#/$defs/matchRuleTemplateId"
+        }
+      ]
+    },
+    "matchRuleGroup": {
+      "type": "object",
+      "required": [
+        "type",
+        "negate",
+        "operator",
+        "children"
+      ],
+      "properties": {
+        "type": {
+          "const": "GROUP"
+        },
+        "negate": {
+          "type": "boolean"
+        },
+        "operator": {
+          "type": "string",
+          "enum": [
+            "AND",
+            "OR"
+          ]
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/matchRuleNode"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "matchRulePath": {
+      "type": "object",
+      "required": [
+        "type",
+        "negate",
+        "matcher",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "const": "PATH"
+        },
+        "negate": {
+          "type": "boolean"
+        },
+        "matcher": {
+          "type": "string",
+          "enum": [
+            "ANT",
+            "REGEX",
+            "EXACT"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "matchRuleTemplateId": {
+      "type": "object",
+      "required": [
+        "type",
+        "negate",
+        "matcher",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "const": "TEMPLATE_ID"
+        },
+        "negate": {
+          "type": "boolean"
+        },
+        "matcher": {
+          "type": "string",
+          "enum": [
+            "REGEX",
+            "EXACT"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

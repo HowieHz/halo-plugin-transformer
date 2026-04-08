@@ -4,7 +4,11 @@
   "title": "Halo Plugin Injector Transfer",
   "description": "JSON import/export schema for Halo Plugin Injector resources.",
   "type": "object",
-  "required": ["version", "resourceType", "data"],
+  "required": [
+    "version",
+    "resourceType",
+    "data"
+  ],
   "properties": {
     "$schema": {
       "type": "string"
@@ -14,7 +18,10 @@
     },
     "resourceType": {
       "type": "string",
-      "enum": ["snippet", "rule"]
+      "enum": [
+        "snippet",
+        "rule"
+      ]
     },
     "data": true
   },
@@ -52,7 +59,12 @@
   "$defs": {
     "snippetDataV1": {
       "type": "object",
-      "required": ["enabled", "name", "description", "code"],
+      "required": [
+        "enabled",
+        "name",
+        "description",
+        "code"
+      ],
       "properties": {
         "enabled": {
           "type": "boolean"
@@ -93,126 +105,31 @@
         },
         "mode": {
           "type": "string",
-          "enum": ["HEAD", "FOOTER", "SELECTOR"]
+          "enum": [
+            "HEAD",
+            "FOOTER",
+            "SELECTOR"
+          ]
         },
         "match": {
           "type": "string"
         },
         "position": {
           "type": "string",
-          "enum": ["APPEND", "PREPEND", "BEFORE", "AFTER", "REPLACE", "REMOVE"]
+          "enum": [
+            "APPEND",
+            "PREPEND",
+            "BEFORE",
+            "AFTER",
+            "REPLACE",
+            "REMOVE"
+          ]
         },
         "wrapMarker": {
           "type": "boolean"
         },
         "matchRuleSource": {
-          "$ref": "#/$defs/matchRuleSource"
-        }
-      },
-      "additionalProperties": false
-    },
-    "matchRuleSource": {
-      "oneOf": [
-        {
-          "type": "object",
-          "required": ["kind", "data"],
-          "properties": {
-            "kind": {
-              "const": "RULE_TREE"
-            },
-            "data": {
-              "$ref": "#/$defs/matchRuleGroup"
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": ["kind", "data"],
-          "properties": {
-            "kind": {
-              "const": "JSON_DRAFT"
-            },
-            "data": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
-    },
-    "matchRuleNode": {
-      "oneOf": [
-        {
-          "$ref": "#/$defs/matchRuleGroup"
-        },
-        {
-          "$ref": "#/$defs/matchRulePath"
-        },
-        {
-          "$ref": "#/$defs/matchRuleTemplateId"
-        }
-      ]
-    },
-    "matchRuleGroup": {
-      "type": "object",
-      "required": ["type", "negate", "operator", "children"],
-      "properties": {
-        "type": {
-          "const": "GROUP"
-        },
-        "negate": {
-          "type": "boolean"
-        },
-        "operator": {
-          "type": "string",
-          "enum": ["AND", "OR"]
-        },
-        "children": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/matchRuleNode"
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    "matchRulePath": {
-      "type": "object",
-      "required": ["type", "negate", "matcher", "value"],
-      "properties": {
-        "type": {
-          "const": "PATH"
-        },
-        "negate": {
-          "type": "boolean"
-        },
-        "matcher": {
-          "type": "string",
-          "enum": ["ANT", "REGEX", "EXACT"]
-        },
-        "value": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
-    "matchRuleTemplateId": {
-      "type": "object",
-      "required": ["type", "negate", "matcher", "value"],
-      "properties": {
-        "type": {
-          "const": "TEMPLATE_ID"
-        },
-        "negate": {
-          "type": "boolean"
-        },
-        "matcher": {
-          "type": "string",
-          "enum": ["REGEX", "EXACT"]
-        },
-        "value": {
-          "type": "string"
+          "$ref": "./generated/match-rule.schema.json#/$defs/matchRuleSource"
         }
       },
       "additionalProperties": false

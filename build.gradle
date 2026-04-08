@@ -37,21 +37,21 @@ tasks.withType(JavaCompile).configureEach {
     options.compilerArgs += "-parameters"
 }
 
-tasks.register('generateMatchRuleContracts', Exec) {
+tasks.register('generateMatchRuleSpecArtifacts', Exec) {
     workingDir rootDir
-    commandLine nodeCommand, 'scripts/sync-match-rule-contract-artifacts.js'
+    commandLine nodeCommand, 'scripts/sync-match-rule-spec-artifacts.js'
 }
 
-tasks.register('verifyMatchRuleContracts', Exec) {
+tasks.register('verifyMatchRuleSpecArtifacts', Exec) {
     workingDir rootDir
-    commandLine nodeCommand, 'scripts/sync-match-rule-contract-artifacts.js', '--check'
+    commandLine nodeCommand, 'scripts/sync-match-rule-spec-artifacts.js', '--check'
 }
 
 tasks.register('processUiResources', Copy) {
     from project(':ui').layout.buildDirectory.dir('dist')
     into layout.buildDirectory.dir('resources/main/console')
     dependsOn project(':ui').tasks.named('assemble')
-    dependsOn tasks.named('verifyMatchRuleContracts')
+    dependsOn tasks.named('verifyMatchRuleSpecArtifacts')
     shouldRunAfter tasks.named('processResources')
 }
 
@@ -60,7 +60,7 @@ tasks.named('classes') {
 }
 
 tasks.named('check') {
-    dependsOn tasks.named('verifyMatchRuleContracts')
+    dependsOn tasks.named('verifyMatchRuleSpecArtifacts')
 }
 
 tasks.named('generatePluginComponentsIdx') {

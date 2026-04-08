@@ -308,23 +308,22 @@ Halo 自带的代码注入更偏向全局场景；这个插件更适合：
 为了避免“README 很长，但 contract fixture 很薄”，匹配规则现在额外拆成两层：
 
 - 共享 contract：
-    - 定义文件：`contracts/match-rule-contract-checklist.generated.jsonc`
-    - fixture 文件：`contracts/match-rule-contracts.json`
-    - 共享 metadata 源：`contracts/match-rule-contract-metadata.json`
-    - `match-rule` 的允许字段集合与相关错误文本模板，会从这份 metadata 同步生成到前后端 helper
+    - 规范源：`specs/match-rule/contract.spec.jsonc`
+    - case 源：`specs/match-rule/contract.cases.jsonc`
+    - `match-rule` 的允许字段集合、相关错误文本模板与 schema，都从这份 spec 同步生成到前后端 helper 和导入导出 schema
     - Java / TypeScript 会分别跑同一批 fixture，并额外校验：`shared_contract` 条目必须至少被一条 fixture 覆盖
 - 前端专属行为：
-    - 仍会写进 checklist，但不会强制要求后端也共享同一语义
+    - 仍会写进 spec.checklist，但不会强制要求后端也共享同一语义
     - 这类行为主要由前端单测锁住，例如模式切换确认、JSON 行高亮、导入后退到 `JSON_DRAFT` 等
 
 仓库级 contract tooling 入口：
 
-- `pnpm generate:contracts`
-    - 从仓库根的 `contracts/match-rule-contract-metadata.json` 刷新所有 generated artifacts
-- `pnpm verify:contracts`
-    - 只校验 generated artifacts 是否与 metadata 一致；CI 与本地提交前检查应优先跑这一项
-- `./gradlew verifyMatchRuleContracts`
-    - 后端构建链路上的同义校验；避免只跑 Gradle 时跳过 contract 一致性检查
+- `pnpm generate:spec-artifacts`
+    - 从仓库根的 `specs/match-rule/contract.spec.jsonc` 刷新所有 generated artifacts
+- `pnpm verify:spec-artifacts`
+    - 只校验 generated artifacts 是否与 spec 一致；CI 与本地提交前检查应优先跑这一项
+- `./gradlew verifyMatchRuleSpecArtifacts`
+    - 后端构建链路上的同义校验；避免只跑 Gradle 时跳过 spec 一致性检查
 
 当前 checklist 中，属于 **共享 contract** 的核心语义包括：
 
@@ -357,6 +356,12 @@ Halo 自带的代码注入更偏向全局场景；这个插件更适合：
 ### JSON Schema
 
 - 仓库内提供了一份统一 schema：`ui/public/injector.schema.json`
+- 这份 schema 现在只负责 transfer envelope：
+    - 顶层的 `version`
+    - `resourceType`
+    - `data` 外壳
+- `match-rule` 领域结构会从 `specs/match-rule/contract.spec.jsonc` 生成到 `ui/public/generated/match-rule.schema.json`
+- `ui/public/injector.schema.json` 会通过 `$ref` 引用这份生成的 `match-rule` schema，而不是再在 envelope 里手写一遍规则树结构
 - 它会根据顶层的 `version` 和 `resourceType`，自动切换到对应的数据结构
 - 当前 `version = 1` 时支持：
     - `resourceType = "snippet"`
