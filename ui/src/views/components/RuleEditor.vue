@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { VButton } from '@halo-dev/components'
 import type { CodeSnippetReadModel, InjectionRuleEditorDraft, MatchRuleSource } from '@/types'
 import { MODE_OPTIONS, POSITION_OPTIONS } from '@/types'
 import {
@@ -39,6 +40,7 @@ const emit = defineEmits<{
   (e: 'save'): void
   (e: 'delete'): void
   (e: 'toggle-enabled'): void
+  (e: 'toggle-bulk-mode'): void
   (e: 'replace-snippet-ids', snippetIds: string[]): void
   (e: 'toggle-snippet', snippetId: string): void
   (e: 'field-change'): void
@@ -431,11 +433,16 @@ onBeforeUnmount(() => {
         :id-text="currentRule?.id"
         :show-export="!!currentRule"
         :show-actions="!!currentRule"
+        :show-default-actions="true"
         :title="currentRule ? '编辑规则' : '注入规则'"
         @delete="emit('delete')"
         @export="exportRule"
         @toggle-enabled="emit('toggle-enabled')"
-      />
+      >
+        <template #actions>
+          <VButton size="sm" @click="emit('toggle-bulk-mode')">批量操作</VButton>
+        </template>
+      </EditorToolbar>
     </div>
 
     <DragAutoScrollOverlay

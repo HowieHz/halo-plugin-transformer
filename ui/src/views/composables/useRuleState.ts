@@ -10,6 +10,7 @@ import { uniqueStrings } from './util'
 interface UseRuleStateOptions {
   creating: Ref<boolean>
   savingEditor: Ref<boolean>
+  processingBulk: Ref<boolean>
   rules: ComputedRef<InjectionRuleReadModel[]>
   editRule: Ref<InjectionRuleEditorDraft | null>
   editRuleSnippetIds: Ref<string[]>
@@ -94,6 +95,68 @@ export function useRuleState(options: UseRuleStateOptions) {
     }
   }
 
+  async function importRules(
+    rules: InjectionRuleEditorDraft[],
+    enabled: boolean,
+  ): Promise<string[]> {
+    if (!rules.length) {
+      return []
+    }
+
+    options.processingBulk.value = true
+    const createdIds: string[] = []
+    const failures: string[] = []
+
+    try {
+      for (const rule of rules) {
+        const error = validateRuleDraft(rule)
+        if (error) {
+          failures.push(error)
+          continue
+        }
+
+        try {
+          const payload = buildRuleWritePayload(
+            {
+              ...rule,
+              enabled,
+            },
+            resolvePersistedSnippetIdsForRule(rule, []),
+          )
+          if (!payload) {
+            failures.push('匹配规则有误，请先修正后再保存')
+            continue
+          }
+          const response = await ruleApi.add(payload)
+          createdIds.push(response.data.id)
+        } catch (error) {
+          failures.push(getErrorMessage(error, '创建失败'))
+        }
+      }
+
+      if (createdIds.length > 0) {
+        await options.refreshRuleList()
+        const orderedItems = appendCreatedResourcesInOrder(options.rules.value, createdIds)
+        const orderResult = await options.saveRuleOrderMap(orderedItems)
+        if (orderResult !== true) {
+          failures.push(`顺序保存失败：${orderResult}`)
+        }
+      }
+
+      if (createdIds.length > 0 && failures.length === 0) {
+        Toast.success(`已导入 ${createdIds.length} 个注入规则`)
+      } else if (createdIds.length > 0) {
+        Toast.warning(`已导入 ${createdIds.length} 个注入规则，另有 ${failures.length} 项失败`)
+      } else {
+        Toast.error(failures[0] ?? '导入失败')
+      }
+
+      return createdIds
+    } finally {
+      options.processingBulk.value = false
+    }
+  }
+
   async function saveRule() {
     if (!options.editRule.value) return false
     const error = ruleEditorError.value
@@ -143,6 +206,43 @@ export function useRuleState(options: UseRuleStateOptions) {
     }
   }
 
+  async function setRulesEnabled(ids: string[], enabled: boolean) {
+    const targetRules = options.rules.value.filter((rule) => ids.includes(rule.id))
+    if (!targetRules.length) {
+      Toast.warning('请先选择注入规则')
+      return
+    }
+
+    options.processingBulk.value = true
+    let successCount = 0
+    try {
+      for (const rule of targetRules) {
+        try {
+          await ruleApi.updateEnabled(rule.id, enabled, rule.metadata.version)
+          successCount += 1
+        } catch {
+          continue
+        }
+      }
+
+      await options.refreshRuleList()
+
+      if (successCount === targetRules.length) {
+        Toast.success(`已${enabled ? '启用' : '禁用'} ${successCount} 个注入规则`)
+      } else if (successCount > 0) {
+        Toast.warning(
+          `已${enabled ? '启用' : '禁用'} ${successCount} 个注入规则，另有 ${
+            targetRules.length - successCount
+          } 个失败`,
+        )
+      } else {
+        Toast.error(`${enabled ? '启用' : '禁用'}失败`)
+      }
+    } finally {
+      options.processingBulk.value = false
+    }
+  }
+
   function confirmDeleteRule() {
     if (!options.editRule.value) return
     const id = options.editRule.value.id
@@ -171,11 +271,76 @@ export function useRuleState(options: UseRuleStateOptions) {
     })
   }
 
+  function confirmDeleteRules(ids: string[]) {
+    const targetRules = options.rules.value.filter((rule) => ids.includes(rule.id))
+    if (!targetRules.length) {
+      Toast.warning('请先选择注入规则')
+      return
+    }
+
+    Dialog.warning({
+      title: '批量删除注入规则',
+      description: `确认删除已选择的 ${targetRules.length} 个注入规则？删除后无法恢复。`,
+      confirmType: 'danger',
+      async onConfirm() {
+        options.processingBulk.value = true
+        let successCount = 0
+        try {
+          for (const rule of targetRules) {
+            try {
+              await ruleApi.delete(rule.id)
+              successCount += 1
+            } catch {
+              continue
+            }
+          }
+
+          if (targetRules.some((rule) => rule.id === options.selectedRuleId.value)) {
+            options.selectedRuleId.value = null
+            options.editRule.value = null
+            options.editRuleSnippetIds.value = []
+            options.editDirty.value = false
+          }
+
+          await options.refreshRuleList()
+          const orderResult = await options.saveRuleOrderMap(options.rules.value)
+
+          if (successCount === targetRules.length && orderResult === true) {
+            Toast.success(`已删除 ${successCount} 个注入规则`)
+          } else if (successCount > 0) {
+            const suffix = orderResult === true ? '' : `；顺序保存失败：${orderResult}`
+            Toast.warning(
+              `已删除 ${successCount} 个注入规则，另有 ${
+                targetRules.length - successCount
+              } 个失败${suffix}`,
+            )
+          } else {
+            Toast.error('删除失败')
+          }
+        } finally {
+          options.processingBulk.value = false
+        }
+      },
+    })
+  }
+
   return {
     ruleEditorError,
     addRule,
+    importRules,
     saveRule,
     toggleRuleEnabled,
+    setRulesEnabled,
     confirmDeleteRule,
+    confirmDeleteRules,
   }
+}
+
+function appendCreatedResourcesInOrder<T extends { id: string }>(items: T[], createdIds: string[]) {
+  const createdIdSet = new Set(createdIds)
+  const untouchedItems = items.filter((item) => !createdIdSet.has(item.id))
+  const createdItems = createdIds
+    .map((id) => items.find((item) => item.id === id))
+    .filter((item): item is T => !!item)
+  return [...untouchedItems, ...createdItems]
 }

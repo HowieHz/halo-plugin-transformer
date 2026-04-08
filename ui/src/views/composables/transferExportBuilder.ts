@@ -6,14 +6,14 @@ import {
 import { makeJsonDraftSource, makeRuleTreeSource, parseMatchRuleDraft } from './matchRule'
 import { TRANSFER_SCHEMA_URL, type TransferEnvelope } from './transferEnvelope'
 
-interface SnippetTransferData {
+export interface SnippetTransferData {
   enabled: boolean
   name: string
   description: string
   code: string
 }
 
-interface RuleTransferData {
+export interface RuleTransferData {
   enabled: boolean
   name: string
   description: string
@@ -27,6 +27,14 @@ interface RuleTransferData {
 
 export type SnippetTransferEnvelope = TransferEnvelope<'snippet', SnippetTransferData>
 export type RuleTransferEnvelope = TransferEnvelope<'rule', RuleTransferData>
+export type SnippetBatchTransferEnvelope = TransferEnvelope<
+  'snippet-batch',
+  { items: SnippetTransferData[] }
+>
+export type RuleBatchTransferEnvelope = TransferEnvelope<
+  'rule-batch',
+  { items: RuleTransferData[] }
+>
 
 /**
  * why: 导入导出只面向用户可编辑内容；像 id、排序、metadata、关联关系这类系统字段
@@ -37,12 +45,7 @@ export function buildSnippetTransfer(snippet: CodeSnippetEditorDraft): SnippetTr
     $schema: TRANSFER_SCHEMA_URL,
     version: 1,
     resourceType: 'snippet',
-    data: {
-      enabled: snippet.enabled,
-      name: snippet.name,
-      description: snippet.description,
-      code: snippet.code,
-    },
+    data: buildSnippetTransferData(snippet),
   }
 }
 
@@ -51,21 +54,44 @@ export function buildSnippetTransfer(snippet: CodeSnippetEditorDraft): SnippetTr
  * 对可成功解析的 `JSON_DRAFT`，这里会收敛成规范的 `RULE_TREE`，只有仍然无效的 JSON 草稿才继续按 `JSON_DRAFT` 导出。
  */
 export function buildRuleTransfer(rule: InjectionRuleEditorDraft): RuleTransferEnvelope {
-  const matchRuleSource = buildRuleTransferMatchRuleSource(rule)
   return {
     $schema: TRANSFER_SCHEMA_URL,
     version: 1,
     resourceType: 'rule',
+    data: buildRuleTransferData(rule),
+  }
+}
+
+/**
+ * why: 批量导出不应重新发明另一套 item 结构；
+ * 这里直接复用单资源 transfer data，确保单个导出与批量导出共享同一条契约。
+ */
+export function buildSnippetBatchTransfer(
+  snippets: CodeSnippetEditorDraft[],
+): SnippetBatchTransferEnvelope {
+  return {
+    $schema: TRANSFER_SCHEMA_URL,
+    version: 1,
+    resourceType: 'snippet-batch',
     data: {
-      enabled: rule.enabled,
-      name: rule.name,
-      description: rule.description,
-      mode: rule.mode,
-      match: rule.match,
-      position: rule.position,
-      wrapMarker: rule.wrapMarker,
-      runtimeOrder: rule.runtimeOrder,
-      matchRuleSource,
+      items: snippets.map(buildSnippetTransferData),
+    },
+  }
+}
+
+/**
+ * why: 规则批量导出要和单条规则导出保持完全同构；
+ * 这样导入校验、schema 与未来迁移都只维护一套规则 item 语义。
+ */
+export function buildRuleBatchTransfer(
+  rules: InjectionRuleEditorDraft[],
+): RuleBatchTransferEnvelope {
+  return {
+    $schema: TRANSFER_SCHEMA_URL,
+    version: 1,
+    resourceType: 'rule-batch',
+    data: {
+      items: rules.map(buildRuleTransferData),
     },
   }
 }
@@ -76,7 +102,11 @@ export interface TransferFileDraft {
 }
 
 export function createTransferFileDraft(
-  payload: SnippetTransferEnvelope | RuleTransferEnvelope,
+  payload:
+    | SnippetTransferEnvelope
+    | RuleTransferEnvelope
+    | SnippetBatchTransferEnvelope
+    | RuleBatchTransferEnvelope,
   name: string,
 ): TransferFileDraft {
   const fileName = `${sanitizeFileName(name)}.json`
@@ -84,6 +114,30 @@ export function createTransferFileDraft(
   return {
     fileName,
     content,
+  }
+}
+
+function buildSnippetTransferData(snippet: CodeSnippetEditorDraft): SnippetTransferData {
+  return {
+    enabled: snippet.enabled,
+    name: snippet.name,
+    description: snippet.description,
+    code: snippet.code,
+  }
+}
+
+function buildRuleTransferData(rule: InjectionRuleEditorDraft): RuleTransferData {
+  const matchRuleSource = buildRuleTransferMatchRuleSource(rule)
+  return {
+    enabled: rule.enabled,
+    name: rule.name,
+    description: rule.description,
+    mode: rule.mode,
+    match: rule.match,
+    position: rule.position,
+    wrapMarker: rule.wrapMarker,
+    runtimeOrder: rule.runtimeOrder,
+    matchRuleSource,
   }
 }
 

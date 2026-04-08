@@ -1,13 +1,19 @@
 <script lang="ts" setup>
 import { VButton, VSpace } from '@halo-dev/components'
 
-defineProps<{
-  title: string
-  idText?: string
-  enabled?: boolean
-  showActions?: boolean
-  showExport?: boolean
-}>()
+withDefaults(
+  defineProps<{
+    title: string
+    idText?: string
+    enabled?: boolean
+    showActions?: boolean
+    showDefaultActions?: boolean
+    showExport?: boolean
+  }>(),
+  {
+    showDefaultActions: true,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'export'): void
@@ -26,9 +32,10 @@ const emit = defineEmits<{
         ID: {{ idText }}
       </span>
     </div>
-    <VSpace v-if="showActions">
+    <VSpace v-if="showActions || !!$slots.actions">
+      <slot name="actions" />
       <VButton
-        v-if="showExport"
+        v-if="showActions && showDefaultActions !== false && showExport"
         aria-label="导出当前内容"
         size="sm"
         title="导出当前内容"
@@ -37,6 +44,7 @@ const emit = defineEmits<{
         导出
       </VButton>
       <VButton
+        v-if="showActions && showDefaultActions !== false"
         :aria-label="enabled ? '禁用当前内容' : '启用当前内容'"
         :aria-pressed="enabled"
         :title="enabled ? '当前已启用，点击后禁用' : '当前已停用，点击后启用'"
@@ -46,6 +54,7 @@ const emit = defineEmits<{
         {{ enabled ? '禁用' : '启用' }}
       </VButton>
       <VButton
+        v-if="showActions && showDefaultActions !== false"
         aria-label="删除当前内容"
         size="sm"
         title="删除当前内容"

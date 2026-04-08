@@ -3,6 +3,7 @@ import { nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router'
 import {
   IconPlug,
+  Toast,
   VButton,
   VCard,
   VLoading,
@@ -15,6 +16,17 @@ import type { ActiveTab } from '@/types'
 import { useInjectorData } from './composables/useInjectorData.ts'
 import { rulePreview } from './composables/util.ts'
 import { matchRuleSummary } from './composables/matchRule.ts'
+import { hydrateRuleEditorDraft } from './composables/ruleDraft'
+import { hydrateSnippetEditorDraft } from './composables/snippetDraft'
+import { useBulkSelectionState } from './composables/useBulkSelectionState'
+import {
+  buildRuleBatchTransfer,
+  buildSnippetBatchTransfer,
+  createTransferFileDraft,
+  parseRuleBatchTransfer,
+  parseSnippetBatchTransfer,
+  type TransferFileDraft,
+} from './composables/transfer'
 
 import ResourceList from './components/ResourceList.vue'
 import DragAutoScrollOverlay from './components/DragAutoScrollOverlay.vue'
@@ -23,6 +35,12 @@ import RuleEditor from './components/RuleEditor.vue'
 import RelationPanel from './components/RelationPanel.vue'
 import SnippetFormModal from './components/SnippetFormModal.vue'
 import RuleFormModal from './components/RuleFormModal.vue'
+import ImportJsonSourceModal from './components/ImportJsonSourceModal.vue'
+import ExportJsonFallbackModal from './components/ExportJsonFallbackModal.vue'
+import BulkOperationPanel from './components/BulkOperationPanel.vue'
+import BulkModeSidePanel from './components/BulkModeSidePanel.vue'
+import BulkImportOptionsModal from './components/BulkImportOptionsModal.vue'
+import BulkImportResultModal from './components/BulkImportResultModal.vue'
 import type { CodeSnippetEditorDraft, InjectionRuleEditorDraft } from '@/types'
 import { useDragAutoScroll } from './composables/useDragAutoScroll'
 
@@ -33,6 +51,17 @@ const router = useRouter()
 const showSnippetModal = ref(false)
 const showRuleModal = ref(false)
 const syncingQuery = ref(false)
+const queryStateHydrated = ref(false)
+const bulkImportSourceVisible = ref(false)
+const bulkImportOptionsVisible = ref(false)
+const bulkImportResult = ref<null | { count: number; tab: ActiveTab }>(null)
+const bulkExportFallback = ref<TransferFileDraft | null>(null)
+const bulkImportFileInput = ref<HTMLInputElement | null>(null)
+const pendingBulkImport = ref<
+  | { tab: 'snippets'; items: CodeSnippetEditorDraft[] }
+  | { tab: 'rules'; items: InjectionRuleEditorDraft[] }
+  | null
+>(null)
 const snippetFormRef = ref<{
   reset: () => void
   hasUnsavedChanges: () => boolean
@@ -57,6 +86,7 @@ const {
   loading,
   creating,
   savingEditor,
+  processingBulk,
   snippets,
   rules,
   selectedSnippetId,
@@ -71,19 +101,31 @@ const {
   snippetsInRule,
   fetchAll,
   addSnippet,
+  importSnippets,
   saveSnippet,
   toggleSnippetEnabled,
+  setSnippetsEnabled,
   confirmDeleteSnippet,
+  confirmDeleteSnippets,
   discardSnippetEdit,
   reorderSnippet,
   addRule,
+  importRules,
   saveRule,
   toggleRuleEnabled,
+  setRulesEnabled,
   confirmDeleteRule,
+  confirmDeleteRules,
   discardRuleEdit,
   toggleSnippetInRuleEditor,
   reorderRule,
 } = useInjectorData()
+
+const bulkSelectionState = useBulkSelectionState({
+  activeTab,
+  snippets,
+  rules,
+})
 
 onMounted(fetchAll)
 
@@ -115,11 +157,19 @@ function normalizeAction(action: unknown): 'create' | null {
   return action === 'create' ? 'create' : null
 }
 
+function normalizeViewMode(mode: unknown): 'bulk' | null {
+  return mode === 'bulk' ? 'bulk' : null
+}
+
 function currentSelectedId(tab: ActiveTab) {
+  if (bulkSelectionState.isBulkMode.value) {
+    return null
+  }
   return tab === 'snippets' ? selectedSnippetId.value : selectedRuleId.value
 }
 
 function currentAction(tab: ActiveTab) {
+  if (bulkSelectionState.isBulkMode.value) return null
   if (tab === 'snippets' && showSnippetModal.value) return 'create'
   if (tab === 'rules' && showRuleModal.value) return 'create'
   return null
@@ -129,10 +179,21 @@ function applyQueryState() {
   const nextTab = normalizeTab(route.query.tab)
   const nextId = typeof route.query.id === 'string' ? route.query.id : null
   const nextAction = normalizeAction(route.query.action)
+  const nextMode = normalizeViewMode(route.query.mode)
 
   activeTab.value = nextTab
-  showSnippetModal.value = nextTab === 'snippets' && nextAction === 'create'
-  showRuleModal.value = nextTab === 'rules' && nextAction === 'create'
+  showSnippetModal.value = nextMode !== 'bulk' && nextTab === 'snippets' && nextAction === 'create'
+  showRuleModal.value = nextMode !== 'bulk' && nextTab === 'rules' && nextAction === 'create'
+
+  if (nextMode === 'bulk') {
+    bulkSelectionState.enterBulkMode()
+    selectedSnippetId.value = null
+    selectedRuleId.value = null
+    queryStateHydrated.value = true
+    return
+  }
+
+  bulkSelectionState.exitBulkMode()
 
   if (nextAction === 'create') {
     if (nextTab === 'snippets') {
@@ -140,6 +201,7 @@ function applyQueryState() {
     } else {
       selectedRuleId.value = null
     }
+    queryStateHydrated.value = true
     return
   }
 
@@ -148,17 +210,25 @@ function applyQueryState() {
   } else {
     selectedRuleId.value = nextId
   }
+  queryStateHydrated.value = true
 }
 
 function syncQueryState() {
   const tab = activeTab.value
   const id = currentSelectedId(tab)
   const action = currentAction(tab)
+  const mode = bulkSelectionState.isBulkMode.value ? 'bulk' : null
   const currentTab = normalizeTab(route.query.tab)
   const currentId = typeof route.query.id === 'string' ? route.query.id : null
   const currentActionValue = normalizeAction(route.query.action)
+  const currentMode = normalizeViewMode(route.query.mode)
 
-  if (currentTab === tab && currentId === id && currentActionValue === action) {
+  if (
+    currentTab === tab &&
+    currentId === id &&
+    currentActionValue === action &&
+    currentMode === mode
+  ) {
     return
   }
 
@@ -169,8 +239,14 @@ function syncQueryState() {
 
   if (action) {
     nextQuery.action = action
+    delete nextQuery.mode
+    delete nextQuery.id
+  } else if (mode === 'bulk') {
+    nextQuery.mode = 'bulk'
+    delete nextQuery.action
     delete nextQuery.id
   } else {
+    delete nextQuery.mode
     delete nextQuery.action
     if (id) {
       nextQuery.id = id
@@ -205,6 +281,7 @@ function validateSelection() {
 
 function openCreateModal(tab: ActiveTab) {
   activeTab.value = tab
+  bulkSelectionState.exitBulkMode()
   if (tab === 'snippets') {
     selectedSnippetId.value = null
     showSnippetModal.value = true
@@ -391,19 +468,198 @@ function handleOpenCreateModal(tab: ActiveTab) {
   })
 }
 
+function enterBulkMode() {
+  requestEditorLeave(() => {
+    showSnippetModal.value = false
+    showRuleModal.value = false
+    if (activeTab.value === 'snippets') {
+      selectedSnippetId.value = null
+    } else {
+      selectedRuleId.value = null
+    }
+    bulkSelectionState.enterBulkMode()
+  })
+}
+
+function exitBulkMode() {
+  bulkSelectionState.exitBulkMode()
+}
+
+function handleBulkItemToggle(id: string) {
+  bulkSelectionState.toggleCurrentBulkItem(id)
+}
+
+function handleBulkToggleAll() {
+  bulkSelectionState.toggleCurrentBulkSelectAll()
+}
+
+function openBulkImportSourceModal() {
+  bulkImportSourceVisible.value = true
+}
+
+function closeBulkImportFlow() {
+  bulkImportSourceVisible.value = false
+  bulkImportOptionsVisible.value = false
+  bulkImportResult.value = null
+  pendingBulkImport.value = null
+}
+
+async function handleBulkImportFromClipboard() {
+  let text = ''
+  try {
+    text = await navigator.clipboard.readText()
+  } catch {
+    Toast.error('读取剪贴板失败，请检查浏览器权限后重试')
+    return
+  }
+
+  if (!text.trim()) {
+    Toast.warning('剪贴板里没有可导入的 JSON')
+    return
+  }
+
+  try {
+    applyBulkImportSource(text)
+  } catch (error) {
+    Toast.error(error instanceof Error ? error.message : '导入失败')
+  }
+}
+
+async function handleBulkImportFromFile() {
+  bulkImportSourceVisible.value = false
+  await nextTick()
+  bulkImportFileInput.value?.click()
+}
+
+async function handleBulkImportFileChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) {
+    return
+  }
+
+  try {
+    applyBulkImportSource(await file.text())
+  } catch (error) {
+    Toast.error(error instanceof Error ? error.message : '导入失败')
+  } finally {
+    input.value = ''
+  }
+}
+
+function applyBulkImportSource(raw: string) {
+  pendingBulkImport.value =
+    activeTab.value === 'snippets'
+      ? { tab: 'snippets', items: parseSnippetBatchTransfer(raw) }
+      : { tab: 'rules', items: parseRuleBatchTransfer(raw) }
+  bulkImportSourceVisible.value = false
+  bulkImportOptionsVisible.value = true
+}
+
+async function submitBulkImport(enabled: boolean) {
+  if (!pendingBulkImport.value) {
+    return
+  }
+
+  const importedIds =
+    pendingBulkImport.value.tab === 'snippets'
+      ? await importSnippets(pendingBulkImport.value.items, enabled)
+      : await importRules(pendingBulkImport.value.items, enabled)
+
+  bulkImportOptionsVisible.value = false
+
+  if (importedIds.length > 0) {
+    if (pendingBulkImport.value.tab === activeTab.value) {
+      bulkSelectionState.appendCurrentBulkSelection(importedIds)
+    }
+    bulkImportResult.value = {
+      count: importedIds.length,
+      tab: pendingBulkImport.value.tab,
+    }
+  } else {
+    pendingBulkImport.value = null
+  }
+}
+
+function continueBulkImport() {
+  bulkImportResult.value = null
+  pendingBulkImport.value = null
+  bulkImportSourceVisible.value = true
+}
+
+function handleBulkExport() {
+  if (activeTab.value === 'snippets') {
+    const selectedItems = snippets.value.filter((item) =>
+      bulkSelectionState.currentBulkIds.value.includes(item.id),
+    )
+    if (!selectedItems.length) {
+      return
+    }
+    bulkExportFallback.value = createTransferFileDraft(
+      buildSnippetBatchTransfer(selectedItems.map(hydrateSnippetEditorDraft)),
+      'injector-snippets-batch',
+    )
+    return
+  }
+
+  const selectedItems = rules.value.filter((item) =>
+    bulkSelectionState.currentBulkIds.value.includes(item.id),
+  )
+  if (!selectedItems.length) {
+    return
+  }
+  bulkExportFallback.value = createTransferFileDraft(
+    buildRuleBatchTransfer(selectedItems.map(hydrateRuleEditorDraft)),
+    'injector-rules-batch',
+  )
+}
+
+function handleBulkEnable() {
+  if (activeTab.value === 'snippets') {
+    void setSnippetsEnabled(bulkSelectionState.currentBulkIds.value, true)
+    return
+  }
+  void setRulesEnabled(bulkSelectionState.currentBulkIds.value, true)
+}
+
+function handleBulkDisable() {
+  if (activeTab.value === 'snippets') {
+    void setSnippetsEnabled(bulkSelectionState.currentBulkIds.value, false)
+    return
+  }
+  void setRulesEnabled(bulkSelectionState.currentBulkIds.value, false)
+}
+
+function handleBulkDelete() {
+  if (activeTab.value === 'snippets') {
+    confirmDeleteSnippets(bulkSelectionState.currentBulkIds.value)
+    return
+  }
+  confirmDeleteRules(bulkSelectionState.currentBulkIds.value)
+}
+
 watch(
-  () => [route.query.tab, route.query.id, route.query.action],
+  () => [route.query.tab, route.query.id, route.query.action, route.query.mode],
   () => {
-    if (syncingQuery.value) return
     applyQueryState()
   },
   { immediate: true },
 )
 
-watch([activeTab, selectedSnippetId, selectedRuleId, showSnippetModal, showRuleModal], () => {
-  if (syncingQuery.value) return
-  syncQueryState()
-})
+watch(
+  [
+    activeTab,
+    selectedSnippetId,
+    selectedRuleId,
+    showSnippetModal,
+    showRuleModal,
+    bulkSelectionState.viewMode,
+  ],
+  () => {
+    if (!queryStateHydrated.value || syncingQuery.value) return
+    syncQueryState()
+  },
+)
 
 watch([snippets, rules], () => {
   validateSelection()
@@ -417,6 +673,10 @@ watch([activeTab, loading], async () => {
 async function handleAddSnippet(...args: Parameters<typeof addSnippet>) {
   const id = await addSnippet(...args)
   if (id) {
+    if (bulkSelectionState.isBulkMode.value) {
+      bulkSelectionState.appendCurrentBulkSelection([id])
+      return
+    }
     postCreatePrompt.value = { tab: 'snippets', id }
   }
 }
@@ -424,6 +684,10 @@ async function handleAddSnippet(...args: Parameters<typeof addSnippet>) {
 async function handleAddRule(...args: Parameters<typeof addRule>) {
   const id = await addRule(...args)
   if (id) {
+    if (bulkSelectionState.isBulkMode.value) {
+      bulkSelectionState.appendCurrentBulkSelection([id])
+      return
+    }
     postCreatePrompt.value = { tab: 'rules', id }
   }
 }
@@ -449,6 +713,34 @@ function jumpToSnippet(id: string) {
 
 <template>
   <div id="injector-view">
+    <ExportJsonFallbackModal
+      v-if="bulkExportFallback"
+      :content="bulkExportFallback.content"
+      :file-name="bulkExportFallback.fileName"
+      @close="bulkExportFallback = null"
+    />
+    <ImportJsonSourceModal
+      v-if="bulkImportSourceVisible"
+      :resource-label="activeTab === 'snippets' ? '批量代码块' : '批量注入规则'"
+      @close="closeBulkImportFlow"
+      @import-from-clipboard="handleBulkImportFromClipboard"
+      @import-from-file="handleBulkImportFromFile"
+    />
+    <BulkImportOptionsModal
+      v-if="bulkImportOptionsVisible && pendingBulkImport"
+      :item-count="pendingBulkImport.items.length"
+      :resource-label="pendingBulkImport.tab === 'snippets' ? '代码块' : '注入规则'"
+      :submitting="processingBulk"
+      @close="closeBulkImportFlow"
+      @submit="submitBulkImport"
+    />
+    <BulkImportResultModal
+      v-if="bulkImportResult"
+      :imported-count="bulkImportResult.count"
+      :resource-label="bulkImportResult.tab === 'snippets' ? '代码块' : '注入规则'"
+      @close="closeBulkImportFlow"
+      @continue="continueBulkImport"
+    />
     <SnippetFormModal
       v-if="showSnippetModal"
       ref="snippetFormRef"
@@ -523,6 +815,14 @@ function jumpToSnippet(id: string) {
     </VPageHeader>
 
     <div class=":uno: m-0 md:m-4">
+      <input
+        ref="bulkImportFileInput"
+        accept="application/json,.json"
+        class=":uno: hidden"
+        type="file"
+        @change="handleBulkImportFileChange"
+      />
+
       <VCard :body-class="['injector-view-card-body']" style="height: calc(100vh - 5.5rem)">
         <div class=":uno: h-full flex divide-x divide-gray-100">
           <div
@@ -567,9 +867,11 @@ function jumpToSnippet(id: string) {
             <ResourceList
               v-else-if="activeTab === 'snippets'"
               ref="resourceListRef"
+              :bulk-mode="bulkSelectionState.isBulkMode.value"
+              :bulk-selected-ids="bulkSelectionState.bulkSnippetIds.value"
               :items="snippets"
               list-label="代码块列表"
-              :reorderable="true"
+              :reorderable="!bulkSelectionState.isBulkMode.value"
               :selected-id="selectedSnippetId"
               :stretch="true"
               empty-text="暂无代码块"
@@ -578,14 +880,18 @@ function jumpToSnippet(id: string) {
               @scroll-container="leftPaneAutoScroll.handleContainerScroll"
               @create="handleOpenCreateModal('snippets')"
               @select="handleSnippetSelect"
+              @toggle-bulk-all="handleBulkToggleAll"
+              @toggle-bulk-item="handleBulkItemToggle"
             />
 
             <ResourceList
               v-else
               ref="resourceListRef"
+              :bulk-mode="bulkSelectionState.isBulkMode.value"
+              :bulk-selected-ids="bulkSelectionState.bulkRuleIds.value"
               :items="rules"
               list-label="注入规则列表"
-              :reorderable="true"
+              :reorderable="!bulkSelectionState.isBulkMode.value"
               :selected-id="selectedRuleId"
               :stretch="true"
               empty-text="暂无注入规则"
@@ -594,6 +900,8 @@ function jumpToSnippet(id: string) {
               @scroll-container="leftPaneAutoScroll.handleContainerScroll"
               @create="handleOpenCreateModal('rules')"
               @select="handleRuleSelect"
+              @toggle-bulk-all="handleBulkToggleAll"
+              @toggle-bulk-item="handleBulkItemToggle"
             >
               <template #meta="{ item: r }">
                 <span class=":uno: text-xs text-gray-500">{{ rulePreview(r) }}</span>
@@ -606,7 +914,10 @@ function jumpToSnippet(id: string) {
               </template>
             </ResourceList>
 
-            <div class=":uno: h-12 flex items-center justify-center border-t bg-white shrink-0">
+            <div
+              v-if="!bulkSelectionState.isBulkMode.value"
+              class=":uno: h-12 flex items-center justify-center border-t bg-white shrink-0"
+            >
               <VButton size="sm" type="secondary" @click="handleOpenCreateModal(activeTab)">
                 {{ activeTab === 'snippets' ? '新建代码块' : '新建注入规则' }}
               </VButton>
@@ -614,14 +925,27 @@ function jumpToSnippet(id: string) {
           </div>
 
           <div class=":uno: main h-full flex-none flex flex-col overflow-hidden">
+            <BulkOperationPanel
+              v-if="bulkSelectionState.isBulkMode.value"
+              :processing="processingBulk"
+              :selected-count="bulkSelectionState.currentBulkSelectionCount.value"
+              :tab="activeTab"
+              @delete="handleBulkDelete"
+              @disable="handleBulkDisable"
+              @enable="handleBulkEnable"
+              @exit="exitBulkMode"
+              @export="handleBulkExport"
+              @import="openBulkImportSourceModal"
+            />
             <SnippetEditor
-              v-if="activeTab === 'snippets'"
+              v-else-if="activeTab === 'snippets'"
               :dirty="editDirty"
               :saving="savingEditor"
               :snippet="editSnippet"
               @delete="confirmDeleteSnippet"
               @save="saveSnippet"
               @field-change="editDirty = true"
+              @toggle-bulk-mode="enterBulkMode"
               @toggle-enabled="toggleSnippetEnabled"
               @update:snippet="editSnippet = $event"
             />
@@ -636,6 +960,7 @@ function jumpToSnippet(id: string) {
               @save="saveRule"
               @field-change="editDirty = true"
               @replace-snippet-ids="editRuleSnippetIds = $event"
+              @toggle-bulk-mode="enterBulkMode"
               @toggle-enabled="toggleRuleEnabled"
               @toggle-snippet="toggleSnippetInRuleEditor"
               @update:rule="editRule = $event"
@@ -643,7 +968,13 @@ function jumpToSnippet(id: string) {
           </div>
 
           <div class=":uno: aside h-full flex-none flex flex-col overflow-hidden">
+            <BulkModeSidePanel
+              v-if="bulkSelectionState.isBulkMode.value"
+              :selected-count="bulkSelectionState.currentBulkSelectionCount.value"
+              :tab="activeTab"
+            />
             <RelationPanel
+              v-else
               :mode="activeTab"
               :rules-using-snippet="rulesUsingSnippet"
               :selected-rule-id="selectedRuleId"

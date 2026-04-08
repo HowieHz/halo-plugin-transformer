@@ -11,6 +11,8 @@ type ReorderPlacement = 'before' | 'after'
 const props = defineProps<{
   items: T[]
   selectedId?: string | null
+  bulkMode?: boolean
+  bulkSelectedIds?: string[]
   emptyText?: string
   stretch?: boolean
   reorderable?: boolean
@@ -20,6 +22,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'select', id: string): void
   (e: 'create'): void
+  (e: 'toggle-bulk-item', id: string): void
+  (e: 'toggle-bulk-all'): void
   (e: 'reorder', payload: { sourceId: string; targetId: string; placement: ReorderPlacement }): void
   (e: 'drag-state-change', active: boolean): void
   (e: 'scroll-container'): void
@@ -136,6 +140,10 @@ function commitPendingDrop(placement: ReorderPlacement | null, targetId: string 
 }
 
 function handleSelect(id: string) {
+  if (props.bulkMode) {
+    emit('toggle-bulk-item', id)
+    return
+  }
   emit('select', id)
 }
 
@@ -162,12 +170,25 @@ function handleReorderButtonKeydown(event: KeyboardEvent, index: number) {
     placement: event.key === 'ArrowUp' ? 'before' : 'after',
   })
 }
+
+function isBulkSelected(id: string) {
+  return props.bulkSelectedIds?.includes(id) ?? false
+}
+
+function handleCheckboxClick(event: Event, id: string) {
+  event.stopPropagation()
+  emit('toggle-bulk-item', id)
+}
+
+function handleToggleBulkAll() {
+  emit('toggle-bulk-all')
+}
 </script>
 
 <template>
   <div
     ref="scrollContainer"
-    :class="stretch ? ':uno: min-h-0 flex-1 overflow-y-auto' : ''"
+    :class="props.stretch ? ':uno: min-h-0 flex-1 overflow-y-auto' : ''"
     class=":uno: relative"
     @dragover="handleContainerDragOver"
     @drop="handleContainerDrop"
@@ -181,17 +202,37 @@ function handleReorderButtonKeydown(event: KeyboardEvent, index: number) {
       role="listbox"
     >
       <li
-        v-if="!items.length"
+        v-if="props.bulkMode && props.items.length"
+        class=":uno: sticky top-0 z-1 border-b border-gray-100 bg-white px-4 py-2"
+      >
+        <label class=":uno: flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+          <input
+            :checked="
+              props.items.length > 0 && props.items.every((item) => isBulkSelected(item.id))
+            "
+            :indeterminate.prop="
+              !!props.bulkSelectedIds?.length &&
+              !props.items.every((item) => isBulkSelected(item.id))
+            "
+            type="checkbox"
+            @change="handleToggleBulkAll"
+          />
+          <span>全选</span>
+        </label>
+      </li>
+
+      <li
+        v-if="!props.items.length"
         class=":uno: flex flex-col items-center justify-center gap-3 py-10 px-4"
       >
-        <span class=":uno: text-sm text-gray-500">{{ emptyText ?? '暂无数据' }}</span>
+        <span class=":uno: text-sm text-gray-500">{{ props.emptyText ?? '暂无数据' }}</span>
         <slot name="empty-action"></slot>
       </li>
 
       <li
-        v-for="(item, index) in items"
+        v-for="(item, index) in props.items"
         :key="item.id"
-        :aria-selected="selectedId !== undefined && selectedId === item.id"
+        :aria-selected="props.selectedId !== undefined && props.selectedId === item.id"
         :class="draggingId === item.id ? ':uno: opacity-60' : ''"
         class=":uno: relative cursor-pointer group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
         role="option"
@@ -202,7 +243,7 @@ function handleReorderButtonKeydown(event: KeyboardEvent, index: number) {
         @keydown="handleItemKeydown($event, item.id)"
       >
         <div
-          v-if="selectedId !== undefined && selectedId === item.id"
+          v-if="props.selectedId !== undefined && props.selectedId === item.id"
           class=":uno: bg-secondary absolute inset-y-0 left-0 w-0.5"
         />
         <div
@@ -214,39 +255,53 @@ function handleReorderButtonKeydown(event: KeyboardEvent, index: number) {
           class=":uno: pointer-events-none absolute left-4 right-4 bottom-0 h-0.5 rounded-full bg-primary"
         />
 
-        <div class=":uno: flex flex-col px-4 py-2.5 gap-1 hover:bg-gray-50">
-          <div class=":uno: flex items-center justify-between gap-2">
-            <span class=":uno: flex-1 min-w-0 text-sm text-gray-900 font-medium truncate">
-              {{ item.name || item.id }}
-            </span>
-            <div class=":uno: flex items-center gap-1">
-              <button
-                v-if="reorderable && items.length > 1"
-                :aria-label="`拖动排序：${item.name || item.id}`"
-                aria-keyshortcuts="ArrowUp ArrowDown"
-                class=":uno: inline-flex h-5 w-5 shrink-0 cursor-grab active:cursor-grabbing items-center justify-center rounded text-sm leading-none tracking-[-0.2em] text-gray-400 transition hover:text-gray-600"
-                draggable="true"
-                title="按住拖动排序；聚焦后可用上下方向键调整顺序"
-                @click.stop
-                @dragend="clearDragState"
-                @dragstart.stop="handleDragStart($event, item.id)"
-                @keydown.stop="handleReorderButtonKeydown($event, index)"
-                @mousedown.stop
-              >
-                ⋮⋮
-              </button>
-              <slot :index="index" :item="item" name="actions" />
-              <StatusDot :enabled="item.enabled" />
+        <div class=":uno: flex gap-3 px-4 py-2.5 hover:bg-gray-50">
+          <label
+            v-if="props.bulkMode"
+            class=":uno: mt-0.5 flex shrink-0 cursor-pointer items-start"
+            @click.stop
+          >
+            <input
+              :checked="isBulkSelected(item.id)"
+              type="checkbox"
+              @change="handleCheckboxClick($event, item.id)"
+            />
+          </label>
+
+          <div class=":uno: min-w-0 flex flex-1 flex-col gap-1">
+            <div class=":uno: flex items-center justify-between gap-2">
+              <span class=":uno: flex-1 min-w-0 text-sm text-gray-900 font-medium truncate">
+                {{ item.name || item.id }}
+              </span>
+              <div class=":uno: flex items-center gap-1">
+                <button
+                  v-if="props.reorderable && !props.bulkMode && props.items.length > 1"
+                  :aria-label="`拖动排序：${item.name || item.id}`"
+                  aria-keyshortcuts="ArrowUp ArrowDown"
+                  class=":uno: inline-flex h-5 w-5 shrink-0 cursor-grab active:cursor-grabbing items-center justify-center rounded text-sm leading-none tracking-[-0.2em] text-gray-400 transition hover:text-gray-600"
+                  draggable="true"
+                  title="按住拖动排序；聚焦后可用上下方向键调整顺序"
+                  @click.stop
+                  @dragend="clearDragState"
+                  @dragstart.stop="handleDragStart($event, item.id)"
+                  @keydown.stop="handleReorderButtonKeydown($event, index)"
+                  @mousedown.stop
+                >
+                  ⋮⋮
+                </button>
+                <slot :index="index" :item="item" name="actions" />
+                <StatusDot :enabled="item.enabled" />
+              </div>
             </div>
+
+            <p v-if="item.description" class=":uno: text-xs text-gray-500 line-clamp-1">
+              {{ item.description }}
+            </p>
+
+            <slot :item="item" name="meta" />
+
+            <slot :item="item" name="hint" />
           </div>
-
-          <p v-if="item.description" class=":uno: text-xs text-gray-500 line-clamp-1">
-            {{ item.description }}
-          </p>
-
-          <slot :item="item" name="meta" />
-
-          <slot :item="item" name="hint" />
         </div>
       </li>
     </ul>

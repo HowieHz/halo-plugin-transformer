@@ -7,6 +7,7 @@ import FormField from './FormField.vue'
 import FieldUndoButton from './FieldUndoButton.vue'
 import { useFieldUndo } from '@/views/composables/useFieldUndo'
 import { computed, ref, watch } from 'vue'
+import { VButton } from '@halo-dev/components'
 import {
   buildSnippetTransfer,
   createTransferFileDraft,
@@ -23,6 +24,7 @@ const emit = defineEmits<{
   (e: 'save'): void
   (e: 'delete'): void
   (e: 'toggle-enabled'): void
+  (e: 'toggle-bulk-mode'): void
   (e: 'field-change'): void
   (e: 'update:snippet', snippet: CodeSnippetEditorDraft): void
 }>()
@@ -152,11 +154,16 @@ async function exportSnippet() {
       :id-text="snippet?.id"
       :show-export="!!snippet"
       :show-actions="!!snippet"
+      :show-default-actions="true"
       :title="snippet ? '编辑代码块' : '代码块'"
       @delete="emit('delete')"
       @export="exportSnippet"
       @toggle-enabled="emit('toggle-enabled')"
-    />
+    >
+      <template #actions>
+        <VButton size="sm" @click="emit('toggle-bulk-mode')">批量操作</VButton>
+      </template>
+    </EditorToolbar>
 
     <div v-if="!snippet" class=":uno: flex flex-1 items-center justify-center">
       <span class=":uno: text-sm text-gray-500">从左侧选择代码块进行编辑</span>

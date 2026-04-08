@@ -1,4 +1,6 @@
-export type TransferResourceType = 'snippet' | 'rule'
+export type SingleTransferResourceType = 'snippet' | 'rule'
+export type BatchTransferResourceType = 'snippet-batch' | 'rule-batch'
+export type TransferResourceType = SingleTransferResourceType | BatchTransferResourceType
 
 export const TRANSFER_SCHEMA_URL =
   'https://raw.githubusercontent.com/Erzbir/halo-plugin-injector/main/ui/public/injector.schema.json'
@@ -30,16 +32,25 @@ export function parseTransferEnvelope<
     throw new Error('导入失败：暂不支持这个导出版本')
   }
   if (parsed.resourceType !== expectedType) {
-    throw new Error(
-      expectedType === 'snippet'
-        ? '导入失败：当前只能导入代码块 JSON'
-        : '导入失败：当前只能导入注入规则 JSON',
-    )
+    throw new Error(resolveTransferTypeMismatchMessage(expectedType))
   }
   if (!('data' in parsed) || !isPlainObject(parsed.data)) {
     throw new Error('导入失败：缺少 `data` 对象')
   }
   return parsed as T
+}
+
+function resolveTransferTypeMismatchMessage(expectedType: TransferResourceType) {
+  switch (expectedType) {
+    case 'snippet':
+      return '导入失败：当前只能导入代码块 JSON'
+    case 'rule':
+      return '导入失败：当前只能导入注入规则 JSON'
+    case 'snippet-batch':
+      return '导入失败：当前只能导入批量代码块 JSON'
+    case 'rule-batch':
+      return '导入失败：当前只能导入批量注入规则 JSON'
+  }
 }
 
 export function validateEnumField(

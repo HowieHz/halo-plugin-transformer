@@ -541,7 +541,7 @@ function buildTransferEnvelopeSchema() {
       },
       resourceType: {
         type: "string",
-        enum: ["snippet", "rule"],
+        enum: ["snippet", "rule", "snippet-batch", "rule-batch"],
       },
       data: true,
     },
@@ -575,11 +575,38 @@ function buildTransferEnvelopeSchema() {
           },
         },
       },
+      {
+        title: "Snippet Batch Transfer v1",
+        properties: {
+          version: {
+            const: 1,
+          },
+          resourceType: {
+            const: "snippet-batch",
+          },
+          data: {
+            $ref: "#/$defs/snippetBatchDataV1",
+          },
+        },
+      },
+      {
+        title: "Rule Batch Transfer v1",
+        properties: {
+          version: {
+            const: 1,
+          },
+          resourceType: {
+            const: "rule-batch",
+          },
+          data: {
+            $ref: "#/$defs/ruleBatchDataV1",
+          },
+        },
+      },
     ],
     $defs: {
       snippetDataV1: {
         type: "object",
-        required: ["enabled", "name", "description", "code"],
         properties: {
           enabled: {
             type: "boolean",
@@ -592,6 +619,20 @@ function buildTransferEnvelopeSchema() {
           },
           code: {
             type: "string",
+          },
+        },
+        additionalProperties: false,
+      },
+      snippetBatchDataV1: {
+        type: "object",
+        required: ["items"],
+        properties: {
+          items: {
+            type: "array",
+            minItems: 1,
+            items: {
+              $ref: "#/$defs/snippetDataV1",
+            },
           },
         },
         additionalProperties: false,
@@ -632,8 +673,27 @@ function buildTransferEnvelopeSchema() {
           wrapMarker: {
             type: "boolean",
           },
+          runtimeOrder: {
+            type: "integer",
+            minimum: 0,
+            maximum: 2147483647,
+          },
           matchRuleSource: {
             $ref: "./generated/match-rule.schema.json#/$defs/matchRuleSource",
+          },
+        },
+        additionalProperties: false,
+      },
+      ruleBatchDataV1: {
+        type: "object",
+        required: ["items"],
+        properties: {
+          items: {
+            type: "array",
+            minItems: 1,
+            items: {
+              $ref: "#/$defs/ruleDataV1",
+            },
           },
         },
         additionalProperties: false,

@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { makeRuleEditorDraft, RUNTIME_ORDER_MAX } from '@/types'
+import { makeRuleEditorDraft, makeSnippetEditorDraft, RUNTIME_ORDER_MAX } from '@/types'
 import {
+  buildRuleBatchTransfer,
   buildRuleTransfer,
+  buildSnippetBatchTransfer,
+  parseRuleBatchTransfer,
   parseRuleTransfer,
+  parseSnippetBatchTransfer,
   parseSnippetTransfer,
   TRANSFER_SCHEMA_URL,
 } from '../transfer'
@@ -462,5 +466,102 @@ describe('buildRuleTransfer', () => {
       kind: 'JSON_DRAFT',
       data: '{ "type": "GROUP", "negate": false, "operator": "AND", "children": [',
     })
+  })
+})
+
+describe('batch transfer', () => {
+  // why: 批量 envelope 需要和单条 envelope 明确区分 resourceType，避免批量导入误吃单条 JSON。
+  it('exports snippet batches with explicit batch resource type', () => {
+    const payload = buildSnippetBatchTransfer([
+      makeSnippetEditorDraft({ name: 'alpha', code: '<div>a</div>' }),
+      makeSnippetEditorDraft({ name: 'beta', code: '<div>b</div>' }),
+    ])
+
+    expect(payload).toMatchObject({
+      $schema: TRANSFER_SCHEMA_URL,
+      version: 1,
+      resourceType: 'snippet-batch',
+      data: {
+        items: [
+          { name: 'alpha', code: '<div>a</div>' },
+          { name: 'beta', code: '<div>b</div>' },
+        ],
+      },
+    })
+  })
+
+  // why: 批量规则导入也应复用单条规则的宽容恢复能力，而不是因为放进数组就改成更脆弱的解析路径。
+  it('parses rule batches with the same match-rule fallback behavior', () => {
+    const raw = JSON.stringify({
+      version: 1,
+      resourceType: 'rule-batch',
+      data: {
+        items: [
+          {
+            enabled: true,
+            name: 'demo',
+            description: '',
+            mode: 'FOOTER',
+            match: '',
+            position: 'APPEND',
+            wrapMarker: true,
+            runtimeOrder: 0,
+            matchRuleSource: {
+              kind: 'RULE_TREE',
+              data: {
+                negate: false,
+                operator: 'AND',
+                children: [{ matcher: 'ANT', value: '/**' }],
+              },
+            },
+          },
+        ],
+      },
+    })
+
+    const rules = parseRuleBatchTransfer(raw)
+
+    expect(rules).toHaveLength(1)
+    expect(rules[0].matchRuleSource).toMatchObject({ kind: 'JSON_DRAFT' })
+  })
+
+  // why: 批量导入报错必须指出第几项坏了；否则一大包 JSON 失败时用户没有办法定位。
+  it('reports the failed batch item index', () => {
+    const raw = JSON.stringify({
+      version: 1,
+      resourceType: 'snippet-batch',
+      data: {
+        items: [
+          {
+            enabled: true,
+            name: 'ok',
+            description: '',
+            code: '<div></div>',
+          },
+          {
+            enabled: 'bad',
+            name: 'broken',
+            description: '',
+            code: '<div></div>',
+          },
+        ],
+      },
+    })
+
+    expect(() => parseSnippetBatchTransfer(raw)).toThrow(
+      '导入失败：第 2 项：`enabled` 必须是布尔值；仅支持 true 或 false',
+    )
+  })
+
+  // why: 批量规则导出应继续保留 runtimeOrder，确保单条 / 批量两个出口的协议字段保持一致。
+  it('exports runtimeOrder in rule batches', () => {
+    const payload = buildRuleBatchTransfer([
+      makeRuleEditorDraft({
+        name: 'demo',
+        runtimeOrder: 42,
+      }),
+    ])
+
+    expect(payload.data.items[0].runtimeOrder).toBe(42)
   })
 })

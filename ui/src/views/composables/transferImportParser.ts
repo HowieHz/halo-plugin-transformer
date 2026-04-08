@@ -20,11 +20,36 @@ import {
   parseTransferEnvelope,
   validateEnumField,
 } from './transferEnvelope'
-import type { RuleTransferEnvelope, SnippetTransferEnvelope } from './transferExportBuilder'
+import type {
+  RuleBatchTransferEnvelope,
+  RuleTransferData,
+  RuleTransferEnvelope,
+  SnippetBatchTransferEnvelope,
+  SnippetTransferData,
+  SnippetTransferEnvelope,
+} from './transferExportBuilder'
 
 export function parseSnippetTransfer(raw: string): CodeSnippetEditorDraft {
   const envelope = parseTransferEnvelope<SnippetTransferEnvelope>(raw, 'snippet')
-  const data = envelope.data
+  return parseSnippetTransferData(envelope.data)
+}
+
+export function parseSnippetBatchTransfer(raw: string): CodeSnippetEditorDraft[] {
+  const envelope = parseTransferEnvelope<SnippetBatchTransferEnvelope>(raw, 'snippet-batch')
+  return parseTransferItemList(envelope.data, '批量代码块', parseSnippetTransferData)
+}
+
+export function parseRuleTransfer(raw: string): InjectionRuleEditorDraft {
+  const envelope = parseTransferEnvelope<RuleTransferEnvelope>(raw, 'rule')
+  return parseRuleTransferData(envelope.data)
+}
+
+export function parseRuleBatchTransfer(raw: string): InjectionRuleEditorDraft[] {
+  const envelope = parseTransferEnvelope<RuleBatchTransferEnvelope>(raw, 'rule-batch')
+  return parseTransferItemList(envelope.data, '批量注入规则', parseRuleTransferData)
+}
+
+function parseSnippetTransferData(data: SnippetTransferData): CodeSnippetEditorDraft {
   ensureAllowedFields(data, ['enabled', 'name', 'description', 'code'], '代码块')
   if (data.enabled !== undefined && typeof data.enabled !== 'boolean') {
     throw new Error('导入失败：`enabled` 必须是布尔值；仅支持 true 或 false')
@@ -46,9 +71,7 @@ export function parseSnippetTransfer(raw: string): CodeSnippetEditorDraft {
   })
 }
 
-export function parseRuleTransfer(raw: string): InjectionRuleEditorDraft {
-  const envelope = parseTransferEnvelope<RuleTransferEnvelope>(raw, 'rule')
-  const data = envelope.data
+function parseRuleTransferData(data: RuleTransferData): InjectionRuleEditorDraft {
   ensureAllowedFields(
     data,
     [
@@ -111,6 +134,38 @@ export function parseRuleTransfer(raw: string): InjectionRuleEditorDraft {
     runtimeOrder,
     matchRuleSource: matchRuleState.matchRuleSource,
   })
+}
+
+function parseTransferItemList<TData, TResult>(
+  data: unknown,
+  resourceLabel: string,
+  parseItem: (item: TData) => TResult,
+): TResult[] {
+  if (!isPlainObject(data)) {
+    throw new Error(`导入失败：${resourceLabel}的 \`data\` 必须是对象`)
+  }
+  ensureAllowedFields(data, ['items'], resourceLabel)
+  if (!Array.isArray(data.items)) {
+    throw new Error(`导入失败：${resourceLabel}的 \`items\` 必须是数组`)
+  }
+  if (data.items.length === 0) {
+    throw new Error(`导入失败：${resourceLabel}至少需要 1 项`)
+  }
+  return data.items.map((item, index) => {
+    if (!isPlainObject(item)) {
+      throw new Error(`导入失败：第 ${index + 1} 项必须是对象`)
+    }
+    try {
+      return parseItem(item as TData)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '导入失败'
+      throw new Error(`导入失败：第 ${index + 1} 项：${stripImportFailurePrefix(message)}`)
+    }
+  })
+}
+
+function stripImportFailurePrefix(message: string) {
+  return message.replace(/^导入失败：/, '')
 }
 
 function parseImportedMatchRuleSource(source: unknown): {

@@ -8,6 +8,7 @@ import { getErrorMessage } from './injectorShared'
 interface UseSnippetStateOptions {
   creating: Ref<boolean>
   savingEditor: Ref<boolean>
+  processingBulk: Ref<boolean>
   snippets: ComputedRef<CodeSnippetReadModel[]>
   editSnippet: Ref<CodeSnippetEditorDraft | null>
   editDirty: Ref<boolean>
@@ -22,16 +23,14 @@ interface UseSnippetStateOptions {
  * 这样总控层只负责组合，而不会继续同时理解“代码块怎么保存”和“规则怎么保存”两套细节。
  */
 export function useSnippetState(options: UseSnippetStateOptions) {
-  const snippetEditorError = computed(() => {
-    if (!options.editSnippet.value?.code.trim()) {
-      return '代码内容不能为空'
-    }
-    return null
-  })
+  const snippetEditorError = computed(() =>
+    options.editSnippet.value ? validateSnippetDraft(options.editSnippet.value) : null,
+  )
 
   async function addSnippet(snippet: CodeSnippetEditorDraft): Promise<string | null> {
-    if (!snippet.code.trim()) {
-      Toast.error('代码内容不能为空')
+    const validationError = validateSnippetDraft(snippet)
+    if (validationError) {
+      Toast.error(validationError)
       return null
     }
     options.creating.value = true
@@ -52,6 +51,62 @@ export function useSnippetState(options: UseSnippetStateOptions) {
       return null
     } finally {
       options.creating.value = false
+    }
+  }
+
+  async function importSnippets(
+    snippets: CodeSnippetEditorDraft[],
+    enabled: boolean,
+  ): Promise<string[]> {
+    if (!snippets.length) {
+      return []
+    }
+
+    options.processingBulk.value = true
+    const createdIds: string[] = []
+    const failures: string[] = []
+
+    try {
+      for (const snippet of snippets) {
+        const validationError = validateSnippetDraft(snippet)
+        if (validationError) {
+          failures.push(validationError)
+          continue
+        }
+
+        try {
+          const response = await snippetApi.add(
+            buildSnippetWritePayload({
+              ...snippet,
+              enabled,
+            }),
+          )
+          createdIds.push(response.data.id)
+        } catch (error) {
+          failures.push(getErrorMessage(error, '创建失败'))
+        }
+      }
+
+      if (createdIds.length > 0) {
+        await options.refreshSnippetList()
+        const orderedItems = appendCreatedResourcesInOrder(options.snippets.value, createdIds)
+        const orderResult = await options.saveSnippetOrderMap(orderedItems)
+        if (orderResult !== true) {
+          failures.push(`顺序保存失败：${orderResult}`)
+        }
+      }
+
+      if (createdIds.length > 0 && failures.length === 0) {
+        Toast.success(`已导入 ${createdIds.length} 个代码块`)
+      } else if (createdIds.length > 0) {
+        Toast.warning(`已导入 ${createdIds.length} 个代码块，另有 ${failures.length} 项失败`)
+      } else {
+        Toast.error(failures[0] ?? '导入失败')
+      }
+
+      return createdIds
+    } finally {
+      options.processingBulk.value = false
     }
   }
 
@@ -99,6 +154,43 @@ export function useSnippetState(options: UseSnippetStateOptions) {
     }
   }
 
+  async function setSnippetsEnabled(ids: string[], enabled: boolean) {
+    const targetSnippets = options.snippets.value.filter((snippet) => ids.includes(snippet.id))
+    if (!targetSnippets.length) {
+      Toast.warning('请先选择代码块')
+      return
+    }
+
+    options.processingBulk.value = true
+    let successCount = 0
+    try {
+      for (const snippet of targetSnippets) {
+        try {
+          await snippetApi.updateEnabled(snippet.id, enabled, snippet.metadata.version)
+          successCount += 1
+        } catch {
+          continue
+        }
+      }
+
+      await options.refreshSnippetList()
+
+      if (successCount === targetSnippets.length) {
+        Toast.success(`已${enabled ? '启用' : '禁用'} ${successCount} 个代码块`)
+      } else if (successCount > 0) {
+        Toast.warning(
+          `已${enabled ? '启用' : '禁用'} ${successCount} 个代码块，另有 ${
+            targetSnippets.length - successCount
+          } 个失败`,
+        )
+      } else {
+        Toast.error(`${enabled ? '启用' : '禁用'}失败`)
+      }
+    } finally {
+      options.processingBulk.value = false
+    }
+  }
+
   function confirmDeleteSnippet() {
     if (!options.editSnippet.value) return
     const id = options.editSnippet.value.id
@@ -126,11 +218,82 @@ export function useSnippetState(options: UseSnippetStateOptions) {
     })
   }
 
+  function confirmDeleteSnippets(ids: string[]) {
+    const targetSnippets = options.snippets.value.filter((snippet) => ids.includes(snippet.id))
+    if (!targetSnippets.length) {
+      Toast.warning('请先选择代码块')
+      return
+    }
+
+    Dialog.warning({
+      title: '批量删除代码块',
+      description: `确认删除已选择的 ${targetSnippets.length} 个代码块？删除后无法恢复。`,
+      confirmType: 'danger',
+      async onConfirm() {
+        options.processingBulk.value = true
+        let successCount = 0
+        try {
+          for (const snippet of targetSnippets) {
+            try {
+              await snippetApi.delete(snippet.id)
+              successCount += 1
+            } catch {
+              continue
+            }
+          }
+
+          if (targetSnippets.some((snippet) => snippet.id === options.selectedSnippetId.value)) {
+            options.selectedSnippetId.value = null
+            options.editSnippet.value = null
+            options.editDirty.value = false
+          }
+
+          await options.refreshSnippetList()
+          const orderResult = await options.saveSnippetOrderMap(options.snippets.value)
+
+          if (successCount === targetSnippets.length && orderResult === true) {
+            Toast.success(`已删除 ${successCount} 个代码块`)
+          } else if (successCount > 0) {
+            const suffix = orderResult === true ? '' : `；顺序保存失败：${orderResult}`
+            Toast.warning(
+              `已删除 ${successCount} 个代码块，另有 ${
+                targetSnippets.length - successCount
+              } 个失败${suffix}`,
+            )
+          } else {
+            Toast.error('删除失败')
+          }
+        } finally {
+          options.processingBulk.value = false
+        }
+      },
+    })
+  }
+
   return {
     snippetEditorError,
     addSnippet,
+    importSnippets,
     saveSnippet,
     toggleSnippetEnabled,
+    setSnippetsEnabled,
     confirmDeleteSnippet,
+    confirmDeleteSnippets,
   }
+}
+
+function validateSnippetDraft(snippet: Pick<CodeSnippetEditorDraft, 'code'>) {
+  if (!snippet.code.trim()) {
+    return '代码内容不能为空'
+  }
+  return null
+}
+
+function appendCreatedResourcesInOrder<T extends { id: string }>(items: T[], createdIds: string[]) {
+  const createdIdSet = new Set(createdIds)
+  const untouchedItems = items.filter((item) => !createdIdSet.has(item.id))
+  const createdItems = createdIds
+    .map((id) => items.find((item) => item.id === id))
+    .filter((item): item is T => !!item)
+  return [...untouchedItems, ...createdItems]
 }

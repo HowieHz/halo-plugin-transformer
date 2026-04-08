@@ -16,6 +16,7 @@ export function useInjectorData() {
   const loading = ref(false)
   const creating = ref(false)
   const savingEditor = ref(false)
+  const processingBulk = ref(false)
 
   const snippetsResp = ref(emptyList<CodeSnippetReadModel>())
   const rulesResp = ref(emptyList<InjectionRuleReadModel>())
@@ -78,6 +79,7 @@ export function useInjectorData() {
   const snippetState = useSnippetState({
     creating,
     savingEditor,
+    processingBulk,
     snippets: snippetOrderState.items,
     editSnippet: editorSelectionState.editSnippet,
     editDirty: editorSelectionState.editDirty,
@@ -90,6 +92,7 @@ export function useInjectorData() {
   const ruleState = useRuleState({
     creating,
     savingEditor,
+    processingBulk,
     rules: ruleOrderState.items,
     editRule: editorSelectionState.editRule,
     editRuleSnippetIds: editorSelectionState.editRuleSnippetIds,
@@ -104,6 +107,7 @@ export function useInjectorData() {
     loading,
     creating,
     savingEditor,
+    processingBulk,
     snippets: snippetOrderState.items,
     rules: ruleOrderState.items,
     selectedSnippetId: editorSelectionState.selectedSnippetId,
@@ -118,15 +122,21 @@ export function useInjectorData() {
     snippetsInRule: editorSelectionState.snippetsInRule,
     fetchAll,
     addSnippet: snippetState.addSnippet,
+    importSnippets: snippetState.importSnippets,
     saveSnippet: snippetState.saveSnippet,
     toggleSnippetEnabled: snippetState.toggleSnippetEnabled,
+    setSnippetsEnabled: snippetState.setSnippetsEnabled,
     confirmDeleteSnippet: snippetState.confirmDeleteSnippet,
+    confirmDeleteSnippets: snippetState.confirmDeleteSnippets,
     discardSnippetEdit: editorSelectionState.discardSnippetEdit,
     reorderSnippet: snippetOrderState.reorder,
     addRule: ruleState.addRule,
+    importRules: ruleState.importRules,
     saveRule: ruleState.saveRule,
     toggleRuleEnabled: ruleState.toggleRuleEnabled,
+    setRulesEnabled: ruleState.setRulesEnabled,
     confirmDeleteRule: ruleState.confirmDeleteRule,
+    confirmDeleteRules: ruleState.confirmDeleteRules,
     discardRuleEdit: editorSelectionState.discardRuleEdit,
     toggleSnippetInRuleEditor: editorSelectionState.toggleSnippetInRuleEditor,
     reorderRule: ruleOrderState.reorder,
