@@ -13,6 +13,7 @@ import org.jspecify.annotations.NonNull;
 import org.reactivestreams.Publisher;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -81,7 +82,7 @@ public class InjectorWebFilter implements AdditionalWebFilter {
         var statusCode = response.getStatusCode();
         return statusCode != null
                 && statusCode.isSameCodeAs(HttpStatus.OK)
-                && isHtmlResponse(response);
+                && isInjectableHtmlResponse(response);
     }
 
     ServerWebExchangeMatcher createPathMatcher() {
@@ -254,5 +255,33 @@ public class InjectorWebFilter implements AdditionalWebFilter {
     private boolean isHtmlResponse(ServerHttpResponse response) {
         return response.getHeaders().getContentType() != null
                 && response.getHeaders().getContentType().includes(MediaType.TEXT_HTML);
+    }
+
+    /**
+     * why: 当前响应改写链路只处理“未压缩的 UTF-8 HTML body”；
+     * 若上游已经做了 body encoding，或声明了非 UTF-8 字符集，就显式跳过，避免隐式解码/重编码破坏响应。
+     */
+    private boolean isInjectableHtmlResponse(ServerHttpResponse response) {
+        return isHtmlResponse(response)
+                && hasNoEncodedBody(response)
+                && usesUtf8Charset(response);
+    }
+
+    private boolean hasNoEncodedBody(ServerHttpResponse response) {
+        List<String> encodings = response.getHeaders().getOrEmpty(HttpHeaders.CONTENT_ENCODING);
+        if (encodings.isEmpty()) {
+            return true;
+        }
+        return encodings.stream()
+                .filter(encoding -> encoding != null && !encoding.isBlank())
+                .allMatch("identity"::equalsIgnoreCase);
+    }
+
+    private boolean usesUtf8Charset(ServerHttpResponse response) {
+        MediaType contentType = response.getHeaders().getContentType();
+        if (contentType == null || contentType.getCharset() == null) {
+            return true;
+        }
+        return StandardCharsets.UTF_8.equals(contentType.getCharset());
     }
 }

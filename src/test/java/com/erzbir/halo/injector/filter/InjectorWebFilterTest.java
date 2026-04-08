@@ -163,6 +163,65 @@ class InjectorWebFilterTest {
         assertTrue(result.contains("<div class=\"slot\">A<span class=\"selector\">S</span></div>"));
     }
 
+    // why: 当前过滤器不会解压已编码响应；一旦上游已声明 Content-Encoding，
+    // 就必须原样透传，避免把压缩字节误按 UTF-8 HTML 改写。
+    @Test
+    void shouldSkipEncodedHtmlResponses() {
+        when(injectHelper.hasDomProcessCandidate("/demo", InjectionRule.Mode.SELECTOR))
+                .thenReturn(Mono.just(true));
+
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/demo")
+                        .accept(MediaType.TEXT_HTML)
+                        .build()
+        );
+
+        filter.filter(exchange, decoratedExchange -> {
+            var response = decoratedExchange.getResponse();
+            response.setStatusCode(HttpStatus.OK);
+            response.getHeaders().setContentType(MediaType.TEXT_HTML);
+            response.getHeaders().set("Content-Encoding", "gzip");
+            var body = response.bufferFactory()
+                    .wrap("<html><body><div class='slot'>A</div></body></html>"
+                            .getBytes(StandardCharsets.UTF_8));
+            return response.writeWith(Mono.just(body));
+        }).block();
+
+        String result = exchange.getResponse().getBodyAsString().block();
+
+        assertEquals(0, filter.parseCount.get());
+        assertEquals("<html><body><div class='slot'>A</div></body></html>", result);
+    }
+
+    // why: 当前实现显式约束在 UTF-8 HTML body 上；
+    // 对其它 charset 直接跳过，比隐式重编码更安全、更可预期。
+    @Test
+    void shouldSkipNonUtf8HtmlResponses() {
+        when(injectHelper.hasDomProcessCandidate("/demo", InjectionRule.Mode.SELECTOR))
+                .thenReturn(Mono.just(true));
+
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/demo")
+                        .accept(MediaType.TEXT_HTML)
+                        .build()
+        );
+
+        filter.filter(exchange, decoratedExchange -> {
+            var response = decoratedExchange.getResponse();
+            response.setStatusCode(HttpStatus.OK);
+            response.getHeaders().setContentType(new MediaType("text", "html", StandardCharsets.ISO_8859_1));
+            var body = response.bufferFactory()
+                    .wrap("<html><body><div class='slot'>A</div></body></html>"
+                            .getBytes(StandardCharsets.ISO_8859_1));
+            return response.writeWith(Mono.just(body));
+        }).block();
+
+        String result = exchange.getResponse().getBodyAsString().block();
+
+        assertEquals(0, filter.parseCount.get());
+        assertEquals("<html><body><div class='slot'>A</div></body></html>", result);
+    }
+
     private InjectionRule domRule(String id, InjectionRule.Mode mode, String match) {
         InjectionRule rule = new InjectionRule();
         Metadata metadata = new Metadata();
