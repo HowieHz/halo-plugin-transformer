@@ -4,6 +4,7 @@ import { snippetApi } from '@/apis'
 import type { CodeSnippetEditorDraft, CodeSnippetReadModel } from '@/types'
 import { buildSnippetWritePayload } from './snippetDraft'
 import { getErrorMessage } from './injectorShared'
+import { appendCreatedResourcesInOrder } from './util'
 
 interface UseSnippetStateOptions {
   creating: Ref<boolean>
@@ -288,13 +289,4 @@ function validateSnippetDraft(snippet: Pick<CodeSnippetEditorDraft, 'code'>) {
     return '代码内容不能为空'
   }
   return null
-}
-
-function appendCreatedResourcesInOrder<T extends { id: string }>(items: T[], createdIds: string[]) {
-  const createdIdSet = new Set(createdIds)
-  const untouchedItems = items.filter((item) => !createdIdSet.has(item.id))
-  const createdItems = createdIds
-    .map((id) => items.find((item) => item.id === id))
-    .filter((item): item is T => !!item)
-  return [...untouchedItems, ...createdItems]
 }

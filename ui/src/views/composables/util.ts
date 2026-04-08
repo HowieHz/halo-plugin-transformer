@@ -70,6 +70,22 @@ export function buildExplicitOrderMap<T extends { id: string }>(items: T[]): Ord
   }, {})
 }
 
+/**
+ * why: 批量导入后的新增资源需要稳定落在当前列表末尾，且保持“用户导入时的成功创建顺序”；
+ * 这样排序持久化只关心一个 authoritative list，不必在规则与代码块两侧各自再维护一套拼接语义。
+ */
+export function appendCreatedResourcesInOrder<T extends { id: string }>(
+  items: T[],
+  createdIds: string[],
+) {
+  const createdIdSet = new Set(createdIds)
+  const untouchedItems = items.filter((item) => !createdIdSet.has(item.id))
+  const createdItems = createdIds
+    .map((id) => items.find((item) => item.id === id))
+    .filter((item): item is T => !!item)
+  return [...untouchedItems, ...createdItems]
+}
+
 export function sortSelectedFirst<T extends { id: string }>(items: T[], selectedIds: string[]) {
   const selected = new Set(selectedIds)
   return [...items].sort((a, b) => {

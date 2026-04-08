@@ -5,7 +5,7 @@ import type { InjectionRuleEditorDraft, InjectionRuleReadModel } from '@/types'
 import { formatMatchRuleError, isValidMatchRule, resolveRuleMatchRule } from './matchRule'
 import { buildRuleWritePayload } from './ruleDraft'
 import { getErrorMessage } from './injectorShared'
-import { uniqueStrings } from './util'
+import { appendCreatedResourcesInOrder, uniqueStrings } from './util'
 
 interface UseRuleStateOptions {
   creating: Ref<boolean>
@@ -335,13 +335,4 @@ export function useRuleState(options: UseRuleStateOptions) {
     confirmDeleteRule,
     confirmDeleteRules,
   }
-}
-
-function appendCreatedResourcesInOrder<T extends { id: string }>(items: T[], createdIds: string[]) {
-  const createdIdSet = new Set(createdIds)
-  const untouchedItems = items.filter((item) => !createdIdSet.has(item.id))
-  const createdItems = createdIds
-    .map((id) => items.find((item) => item.id === id))
-    .filter((item): item is T => !!item)
-  return [...untouchedItems, ...createdItems]
 }

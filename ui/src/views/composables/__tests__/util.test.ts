@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildExplicitOrderMap, sortByOrderMap } from '../util'
+import { appendCreatedResourcesInOrder, buildExplicitOrderMap, sortByOrderMap } from '../util'
 
 describe('sortByOrderMap', () => {
   // why: 未显式排序的资源默认按 0 处理并排在最前面，这样新增项不需要先保存 order map 也能自然浮到顶部。
@@ -53,5 +53,26 @@ describe('buildExplicitOrderMap', () => {
       b: 2,
       c: 3,
     })
+  })
+})
+
+describe('appendCreatedResourcesInOrder', () => {
+  // why: 批量导入成功项需要按“创建成功顺序”稳定追加到末尾，避免 snippet/rule 各自维护不同的导入后排序语义。
+  it('moves created resources to the end in creation order', () => {
+    const items = [
+      { id: 'existing-a' },
+      { id: 'created-b' },
+      { id: 'existing-c' },
+      { id: 'created-a' },
+    ]
+
+    const ordered = appendCreatedResourcesInOrder(items, ['created-a', 'created-b'])
+
+    expect(ordered.map((item) => item.id)).toEqual([
+      'existing-a',
+      'existing-c',
+      'created-a',
+      'created-b',
+    ])
   })
 })
