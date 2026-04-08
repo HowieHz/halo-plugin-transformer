@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router'
+import { onBeforeRouteUpdate, useRoute, useRouter, type LocationQueryRaw } from 'vue-router'
 import {
   IconPlug,
   Toast,
@@ -43,6 +43,12 @@ import BulkImportOptionsModal from './components/BulkImportOptionsModal.vue'
 import BulkImportResultModal from './components/BulkImportResultModal.vue'
 import type { CodeSnippetEditorDraft, InjectionRuleEditorDraft } from '@/types'
 import { useDragAutoScroll } from './composables/useDragAutoScroll'
+import {
+  buildInjectorRouteQuery,
+  isSameInjectorRouteState,
+  parseInjectorRouteState,
+  type InjectorRouteState,
+} from './composables/injectorRouteState'
 
 const activeTab = ref<ActiveTab>('snippets')
 const route = useRoute()
@@ -159,18 +165,6 @@ function handleLeftPaneDropCapture() {
   resourceListRef.value?.commitPendingDrop()
 }
 
-function normalizeTab(tab: unknown): ActiveTab {
-  return tab === 'rules' ? 'rules' : 'snippets'
-}
-
-function normalizeAction(action: unknown): 'create' | null {
-  return action === 'create' ? 'create' : null
-}
-
-function normalizeViewMode(mode: unknown): 'bulk' | null {
-  return mode === 'bulk' ? 'bulk' : null
-}
-
 function currentSelectedId(tab: ActiveTab) {
   if (bulkSelectionState.isBulkMode.value) {
     return null
@@ -185,17 +179,23 @@ function currentAction(tab: ActiveTab) {
   return null
 }
 
-function applyQueryState() {
-  const nextTab = normalizeTab(route.query.tab)
-  const nextId = typeof route.query.id === 'string' ? route.query.id : null
-  const nextAction = normalizeAction(route.query.action)
-  const nextMode = normalizeViewMode(route.query.mode)
+function currentLocalRouteState(): InjectorRouteState {
+  return {
+    tab: activeTab.value,
+    selectedId: currentSelectedId(activeTab.value),
+    action: currentAction(activeTab.value),
+    viewMode: bulkSelectionState.isBulkMode.value ? 'bulk' : 'single',
+  }
+}
 
-  activeTab.value = nextTab
-  showSnippetModal.value = nextMode !== 'bulk' && nextTab === 'snippets' && nextAction === 'create'
-  showRuleModal.value = nextMode !== 'bulk' && nextTab === 'rules' && nextAction === 'create'
+function applyRouteState(nextState: InjectorRouteState) {
+  activeTab.value = nextState.tab
+  showSnippetModal.value =
+    nextState.viewMode !== 'bulk' && nextState.tab === 'snippets' && nextState.action === 'create'
+  showRuleModal.value =
+    nextState.viewMode !== 'bulk' && nextState.tab === 'rules' && nextState.action === 'create'
 
-  if (nextMode === 'bulk') {
+  if (nextState.viewMode === 'bulk') {
     bulkSelectionState.enterBulkMode()
     selectedSnippetId.value = null
     selectedRuleId.value = null
@@ -205,8 +205,8 @@ function applyQueryState() {
 
   bulkSelectionState.exitBulkMode()
 
-  if (nextAction === 'create') {
-    if (nextTab === 'snippets') {
+  if (nextState.action === 'create') {
+    if (nextState.tab === 'snippets') {
       selectedSnippetId.value = null
     } else {
       selectedRuleId.value = null
@@ -215,55 +215,27 @@ function applyQueryState() {
     return
   }
 
-  if (nextTab === 'snippets') {
-    selectedSnippetId.value = nextId
+  if (nextState.tab === 'snippets') {
+    selectedSnippetId.value = nextState.selectedId
   } else {
-    selectedRuleId.value = nextId
+    selectedRuleId.value = nextState.selectedId
   }
   queryStateHydrated.value = true
 }
 
-function syncQueryState() {
-  const tab = activeTab.value
-  const id = currentSelectedId(tab)
-  const action = currentAction(tab)
-  const mode = bulkSelectionState.isBulkMode.value ? 'bulk' : null
-  const currentTab = normalizeTab(route.query.tab)
-  const currentId = typeof route.query.id === 'string' ? route.query.id : null
-  const currentActionValue = normalizeAction(route.query.action)
-  const currentMode = normalizeViewMode(route.query.mode)
+function applyQueryState() {
+  applyRouteState(parseInjectorRouteState(route.query))
+}
 
-  if (
-    currentTab === tab &&
-    currentId === id &&
-    currentActionValue === action &&
-    currentMode === mode
-  ) {
+function syncQueryState() {
+  const nextState = currentLocalRouteState()
+  const currentState = parseInjectorRouteState(route.query)
+
+  if (isSameInjectorRouteState(currentState, nextState)) {
     return
   }
 
-  const nextQuery: LocationQueryRaw = {
-    ...route.query,
-    tab,
-  }
-
-  if (action) {
-    nextQuery.action = action
-    delete nextQuery.mode
-    delete nextQuery.id
-  } else if (mode === 'bulk') {
-    nextQuery.mode = 'bulk'
-    delete nextQuery.action
-    delete nextQuery.id
-  } else {
-    delete nextQuery.mode
-    delete nextQuery.action
-    if (id) {
-      nextQuery.id = id
-    } else {
-      delete nextQuery.id
-    }
-  }
+  const nextQuery: LocationQueryRaw = buildInjectorRouteQuery(route.query, nextState)
 
   syncingQuery.value = true
   void router
@@ -274,6 +246,33 @@ function syncQueryState() {
       syncingQuery.value = false
     })
 }
+
+/**
+ * why: 编辑保护不能只拦住“组件内部按钮”，浏览器前进/后退、外部 query 变更也必须走同一条离开确认路径；
+ * 否则 URL 仍会成为绕过草稿保护的后门。
+ */
+onBeforeRouteUpdate((to) => {
+  if (syncingQuery.value || !queryStateHydrated.value) {
+    return true
+  }
+
+  const nextState = parseInjectorRouteState(to.query)
+  if (isSameInjectorRouteState(currentLocalRouteState(), nextState)) {
+    return true
+  }
+  if (!hasUnsavedChanges()) {
+    return true
+  }
+
+  pendingLeaveAction.value = async () => {
+    await router.push({
+      query: buildInjectorRouteQuery(to.query, nextState),
+    })
+  }
+  leaveConfirmCanSave.value = !currentValidationError()
+  leaveConfirmVisible.value = true
+  return false
+})
 
 function validateSelection() {
   const hasSnippet =
