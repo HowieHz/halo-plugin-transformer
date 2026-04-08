@@ -59,7 +59,7 @@ function listOf<T>(items: T[]): ItemList<T> {
 
 describe('useInjectorData', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
   })
 
   // why: 启停现在应走独立写口，并只改已保存规则的 enabled；
@@ -346,6 +346,59 @@ describe('useInjectorData', () => {
         snippetIds: [],
       }),
     )
+  })
+
+  // why: 删除一个资源后，页面上两侧列表和关联面板都可能受影响；删除路径应刷新整页资源快照，而不是只刷当前标签页。
+  it('refreshes both snippet and rule lists after deleting a rule', async () => {
+    const savedRule = makeRuleEditorDraft({
+      id: 'rule-a',
+      metadata: { name: 'rule-a', version: 1 },
+      name: 'Rule A',
+      matchRule: {
+        type: 'GROUP',
+        negate: false,
+        operator: 'AND',
+        children: [
+          {
+            type: 'PATH',
+            negate: false,
+            matcher: 'ANT',
+            value: '/**',
+          },
+        ],
+      },
+    })
+    delete (savedRule as { matchRuleSource?: unknown }).matchRuleSource
+    const savedSnippet = makeSnippetEditorDraft({
+      id: 'snippet-a',
+      metadata: { name: 'snippet-a', version: 1 },
+      code: '<div>ok</div>',
+    })
+
+    snippetApi.list
+      .mockResolvedValueOnce({ data: listOf([savedSnippet]) })
+      .mockResolvedValueOnce({ data: listOf([savedSnippet]) })
+    snippetApi.getOrder.mockResolvedValue({ data: { orders: { 'snippet-a': 1 }, version: 1 } })
+    ruleApi.list
+      .mockResolvedValueOnce({ data: listOf([savedRule]) })
+      .mockResolvedValueOnce({ data: listOf([]) })
+    ruleApi.getOrder.mockResolvedValue({ data: { orders: { 'rule-a': 1 }, version: 1 } })
+    ruleApi.delete.mockResolvedValue({})
+    ruleApi.updateOrder.mockResolvedValue({ data: { orders: {}, version: 2 } })
+
+    const store = useInjectorData()
+    await store.fetchAll()
+    store.selectedRuleId.value = 'rule-a'
+    await nextTick()
+
+    store.confirmDeleteRule()
+    const deleteDialogConfig = vi.mocked(dialog.warning).mock.calls[0]?.[0]
+    expect(deleteDialogConfig).toBeTruthy()
+
+    await deleteDialogConfig?.onConfirm?.()
+
+    expect(ruleApi.list).toHaveBeenCalledTimes(2)
+    expect(snippetApi.list).toHaveBeenCalledTimes(2)
   })
 
   // why: 左侧排序保存失败时，只应回拉排序映射；右侧未保存的规则草稿不能被整页重载冲掉。

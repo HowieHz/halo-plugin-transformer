@@ -17,6 +17,7 @@ interface UseRuleStateOptions {
   editDirty: Ref<boolean>
   selectedRuleId: Ref<string | null>
   refreshRuleList: () => Promise<void>
+  refreshAllResources: () => Promise<void>
   saveRuleOrderMap: (items: InjectionRuleReadModel[]) => Promise<true | string>
   applySavedRuleSnapshot: (rule: InjectionRuleReadModel) => void
 }
@@ -257,7 +258,7 @@ export function useRuleState(options: UseRuleStateOptions) {
           options.editRule.value = null
           options.editRuleSnippetIds.value = []
           options.editDirty.value = false
-          await options.refreshRuleList()
+          await options.refreshAllResources()
           const orderResult = await options.saveRuleOrderMap(options.rules.value)
           if (orderResult === true) {
             Toast.success('规则已删除')
@@ -302,7 +303,7 @@ export function useRuleState(options: UseRuleStateOptions) {
             options.editDirty.value = false
           }
 
-          await options.refreshRuleList()
+          await options.refreshAllResources()
           const orderResult = await options.saveRuleOrderMap(options.rules.value)
 
           if (successCount === targetRules.length && orderResult === true) {

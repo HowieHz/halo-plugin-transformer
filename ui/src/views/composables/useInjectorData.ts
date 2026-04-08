@@ -76,6 +76,14 @@ export function useInjectorData() {
     }
   }
 
+  /**
+   * why: 删除会影响当前资源列表，也可能影响另一侧的关联展示与计数；
+   * 这里显式提供一个整页快照刷新入口，避免各个 delete 路径各自猜“要不要顺手刷新另一侧”。
+   */
+  async function refreshAllResources() {
+    await Promise.all([refreshSnippetList(), refreshRuleList()])
+  }
+
   const snippetState = useSnippetState({
     creating,
     savingEditor,
@@ -85,6 +93,7 @@ export function useInjectorData() {
     editDirty: editorSelectionState.editDirty,
     selectedSnippetId: editorSelectionState.selectedSnippetId,
     refreshSnippetList,
+    refreshAllResources,
     saveSnippetOrderMap: snippetOrderState.saveOrderMap,
     applySavedSnippetSnapshot: editorSelectionState.applySavedSnippetSnapshot,
   })
@@ -99,6 +108,7 @@ export function useInjectorData() {
     editDirty: editorSelectionState.editDirty,
     selectedRuleId: editorSelectionState.selectedRuleId,
     refreshRuleList,
+    refreshAllResources,
     saveRuleOrderMap: ruleOrderState.saveOrderMap,
     applySavedRuleSnapshot: editorSelectionState.applySavedRuleSnapshot,
   })

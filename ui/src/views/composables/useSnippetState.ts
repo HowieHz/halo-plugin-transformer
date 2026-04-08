@@ -14,6 +14,7 @@ interface UseSnippetStateOptions {
   editDirty: Ref<boolean>
   selectedSnippetId: Ref<string | null>
   refreshSnippetList: () => Promise<void>
+  refreshAllResources: () => Promise<void>
   saveSnippetOrderMap: (items: CodeSnippetReadModel[]) => Promise<true | string>
   applySavedSnippetSnapshot: (snippet: CodeSnippetReadModel) => void
 }
@@ -204,7 +205,7 @@ export function useSnippetState(options: UseSnippetStateOptions) {
           if (options.selectedSnippetId.value === id) options.selectedSnippetId.value = null
           options.editSnippet.value = null
           options.editDirty.value = false
-          await options.refreshSnippetList()
+          await options.refreshAllResources()
           const orderResult = await options.saveSnippetOrderMap(options.snippets.value)
           if (orderResult === true) {
             Toast.success('代码块已删除')
@@ -248,7 +249,7 @@ export function useSnippetState(options: UseSnippetStateOptions) {
             options.editDirty.value = false
           }
 
-          await options.refreshSnippetList()
+          await options.refreshAllResources()
           const orderResult = await options.saveSnippetOrderMap(options.snippets.value)
 
           if (successCount === targetSnippets.length && orderResult === true) {
