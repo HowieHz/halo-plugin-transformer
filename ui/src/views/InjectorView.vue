@@ -50,6 +50,10 @@ import BulkImportResultModal from './components/BulkImportResultModal.vue'
 import { useDragAutoScroll } from './composables/useDragAutoScroll'
 import { useLeaveConfirmation } from './composables/useLeaveConfirmation'
 import {
+  useBulkImportFlowState,
+  type BulkImportPayload,
+} from './composables/useBulkImportFlowState'
+import {
   applyInjectorRouteSelection,
   buildInjectorRouteQuery,
   isSameInjectorRouteState,
@@ -65,16 +69,9 @@ const router = useRouter()
 const createModalTab = ref<ActiveTab | null>(null)
 const syncingQuery = ref(false)
 const queryStateHydrated = ref(false)
-const bulkImportSourceVisible = ref(false)
-const bulkImportOptionsVisible = ref(false)
-const bulkImportResult = ref<null | { count: number; tab: ActiveTab }>(null)
 const bulkExportFallback = ref<TransferFileDraft | null>(null)
 const bulkImportFileInput = ref<HTMLInputElement | null>(null)
-const pendingBulkImport = ref<
-  | { tab: 'snippets'; items: CodeSnippetEditorDraft[] }
-  | { tab: 'rules'; items: InjectionRuleEditorDraft[] }
-  | null
->(null)
+const bulkImportFlow = useBulkImportFlowState()
 const snippetFormRef = ref<{
   reset: () => void
   hasUnsavedChanges: () => boolean
@@ -480,14 +477,11 @@ function handleBulkToggleAll() {
 }
 
 function openBulkImportSourceModal() {
-  bulkImportSourceVisible.value = true
+  bulkImportFlow.openSource()
 }
 
 function closeBulkImportFlow() {
-  bulkImportSourceVisible.value = false
-  bulkImportOptionsVisible.value = false
-  bulkImportResult.value = null
-  pendingBulkImport.value = null
+  bulkImportFlow.close()
 }
 
 async function handleBulkImportFromClipboard() {
@@ -512,7 +506,7 @@ async function handleBulkImportFromClipboard() {
 }
 
 async function handleBulkImportFromFile() {
-  bulkImportSourceVisible.value = false
+  bulkImportFlow.close()
   await nextTick()
   bulkImportFileInput.value?.click()
 }
@@ -534,43 +528,39 @@ async function handleBulkImportFileChange(event: Event) {
 }
 
 function applyBulkImportSource(raw: string) {
-  pendingBulkImport.value =
+  const pendingImport: BulkImportPayload =
     activeTab.value === 'snippets'
       ? { tab: 'snippets', items: parseSnippetBatchTransfer(raw) }
       : { tab: 'rules', items: parseRuleBatchTransfer(raw) }
-  bulkImportSourceVisible.value = false
-  bulkImportOptionsVisible.value = true
+  bulkImportFlow.openOptions(pendingImport)
 }
 
 async function submitBulkImport(enabled: boolean) {
-  if (!pendingBulkImport.value) {
+  const pendingImport = bulkImportFlow.pendingImport.value
+  if (!pendingImport) {
     return
   }
 
   const importedIds =
-    pendingBulkImport.value.tab === 'snippets'
-      ? await importSnippets(pendingBulkImport.value.items, enabled)
-      : await importRules(pendingBulkImport.value.items, enabled)
-
-  bulkImportOptionsVisible.value = false
+    pendingImport.tab === 'snippets'
+      ? await importSnippets(pendingImport.items, enabled)
+      : await importRules(pendingImport.items, enabled)
 
   if (importedIds.length > 0) {
-    if (pendingBulkImport.value.tab === activeTab.value) {
+    if (pendingImport.tab === activeTab.value) {
       bulkSelectionState.appendCurrentBulkSelection(importedIds)
     }
-    bulkImportResult.value = {
+    bulkImportFlow.openResult({
       count: importedIds.length,
-      tab: pendingBulkImport.value.tab,
-    }
+      tab: pendingImport.tab,
+    })
   } else {
-    pendingBulkImport.value = null
+    bulkImportFlow.close()
   }
 }
 
 function continueBulkImport() {
-  bulkImportResult.value = null
-  pendingBulkImport.value = null
-  bulkImportSourceVisible.value = true
+  bulkImportFlow.continueImport()
 }
 
 function handleBulkExport() {
@@ -697,24 +687,26 @@ function jumpToSnippet(id: string) {
       @close="bulkExportFallback = null"
     />
     <ImportSourceModal
-      v-if="bulkImportSourceVisible"
+      v-if="bulkImportFlow.sourceVisible.value"
       :resource-label="activeTab === 'snippets' ? '批量代码块' : '批量注入规则'"
       @close="closeBulkImportFlow"
       @import-from-clipboard="handleBulkImportFromClipboard"
       @import-from-file="handleBulkImportFromFile"
     />
     <BulkImportOptionsModal
-      v-if="bulkImportOptionsVisible && pendingBulkImport"
-      :item-count="pendingBulkImport.items.length"
-      :resource-label="pendingBulkImport.tab === 'snippets' ? '代码块' : '注入规则'"
+      v-if="bulkImportFlow.pendingImport.value"
+      :item-count="bulkImportFlow.pendingImport.value.items.length"
+      :resource-label="
+        bulkImportFlow.pendingImport.value.tab === 'snippets' ? '代码块' : '注入规则'
+      "
       :submitting="processingBulk"
       @close="closeBulkImportFlow"
       @submit="submitBulkImport"
     />
     <BulkImportResultModal
-      v-if="bulkImportResult"
-      :imported-count="bulkImportResult.count"
-      :resource-label="bulkImportResult.tab === 'snippets' ? '代码块' : '注入规则'"
+      v-if="bulkImportFlow.importResult.value"
+      :imported-count="bulkImportFlow.importResult.value.count"
+      :resource-label="bulkImportFlow.importResult.value.tab === 'snippets' ? '代码块' : '注入规则'"
       @close="closeBulkImportFlow"
       @continue="continueBulkImport"
     />
