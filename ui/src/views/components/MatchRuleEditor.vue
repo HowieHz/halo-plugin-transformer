@@ -286,6 +286,40 @@ function moveNode(
   updateSimple(nextRule)
 }
 
+/**
+ * why: 绿色插入线是节点 dragover 算出来的，但松手时 drop 未必还落在节点本体；
+ * 例如边缘自动滚动激活时，事件可能落到外围容器，所以这里需要按当前高亮落点兜底提交。
+ */
+function commitPendingDrop() {
+  const sourcePath = draggingPath.value ? [...draggingPath.value] : null
+  const targetPath = dropTargetPath.value ? [...dropTargetPath.value] : null
+  const placement = dropPlacement.value
+
+  clearDragState()
+  if (!sourcePath || !targetPath || !placement) {
+    return
+  }
+  moveNode(sourcePath, targetPath, placement)
+}
+
+function handleContainerDragOver(event: DragEvent) {
+  if (!draggingPath.value || !dropTargetPath.value || !dropPlacement.value) {
+    return
+  }
+  event.preventDefault()
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move'
+  }
+}
+
+function handleContainerDrop(event: DragEvent) {
+  if (!draggingPath.value) {
+    return
+  }
+  event.preventDefault()
+  commitPendingDrop()
+}
+
 function normalizeDropTarget(targetPath: MatchRuleNodePath, placement: MatchRuleDropPlacement) {
   if (placement !== 'after') {
     return { path: targetPath, placement }
@@ -489,7 +523,7 @@ function tokenizeJson(text: string) {
 </script>
 
 <template>
-  <div class=":uno: space-y-3">
+  <div class=":uno: space-y-3" @dragover="handleContainerDragOver" @drop="handleContainerDrop">
     <div class=":uno: flex flex-wrap items-center justify-between gap-2">
       <div
         aria-label="匹配规则编辑模式"
