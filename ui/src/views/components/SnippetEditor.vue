@@ -116,23 +116,29 @@ function applyUndoFieldState(field: UndoableSnippetField, value: unknown) {
 }
 
 function handleEditorKeydown(event: KeyboardEvent) {
-  if (!props.snippet || event.altKey || event.shiftKey) {
+  if (!props.snippet || event.altKey) {
     return
   }
-  const isUndoShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z'
-  if (!isUndoShortcut) {
+  const key = event.key.toLowerCase()
+  const modifierPressed = event.ctrlKey || event.metaKey
+  const isUndoShortcut = modifierPressed && !event.shiftKey && key === 'z'
+  const isRedoShortcut =
+    (modifierPressed && event.shiftKey && key === 'z') ||
+    (event.ctrlKey && !event.metaKey && key === 'y')
+
+  if (!isUndoShortcut && !isRedoShortcut) {
     return
   }
 
-  const latest = undo.undoLatest((field) =>
+  const snapshot = (isUndoShortcut ? undo.undoLatest : undo.redoLatest)((field) =>
     resolveUndoFieldCurrentValue(field as UndoableSnippetField),
   )
-  if (!latest) {
+  if (!snapshot) {
     return
   }
 
   event.preventDefault()
-  applyUndoFieldState(latest.field as UndoableSnippetField, latest.value)
+  applyUndoFieldState(snapshot.field as UndoableSnippetField, snapshot.value)
 }
 
 function syncCodeScroll(event: Event) {

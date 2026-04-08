@@ -371,23 +371,29 @@ function resetField(field: UndoableRuleField) {
 }
 
 function handleEditorKeydown(event: KeyboardEvent) {
-  if (!currentRule.value || event.altKey || event.shiftKey) {
+  if (!currentRule.value || event.altKey) {
     return
   }
-  const isUndoShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z'
-  if (!isUndoShortcut) {
+  const key = event.key.toLowerCase()
+  const modifierPressed = event.ctrlKey || event.metaKey
+  const isUndoShortcut = modifierPressed && !event.shiftKey && key === 'z'
+  const isRedoShortcut =
+    (modifierPressed && event.shiftKey && key === 'z') ||
+    (event.ctrlKey && !event.metaKey && key === 'y')
+
+  if (!isUndoShortcut && !isRedoShortcut) {
     return
   }
 
-  const latest = undo.undoLatest((field) =>
+  const snapshot = (isUndoShortcut ? undo.undoLatest : undo.redoLatest)((field) =>
     resolveUndoFieldCurrentValue(field as UndoableRuleField),
   )
-  if (!latest) {
+  if (!snapshot) {
     return
   }
 
   event.preventDefault()
-  applyUndoFieldState(latest.field as UndoableRuleField, latest.value)
+  applyUndoFieldState(snapshot.field as UndoableRuleField, snapshot.value)
 }
 
 async function exportRule() {
