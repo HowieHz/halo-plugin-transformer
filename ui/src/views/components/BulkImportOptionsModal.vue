@@ -25,7 +25,7 @@ const enabled = ref(true)
         class=":uno: flex items-center justify-between rounded-md border border-gray-200 px-4 py-3"
       >
         <div>
-          <p class=":uno: font-medium text-gray-900">导入后启用状态</p>
+          <p class=":uno: font-medium text-gray-900">以启用状态导入</p>
           <p class=":uno: text-xs text-gray-500">
             关闭后，本次导入的全部{{ resourceLabel }}都会以禁用状态写入。
           </p>

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router'
 import {
   IconPlug,
@@ -126,6 +126,16 @@ const bulkSelectionState = useBulkSelectionState({
   snippets,
   rules,
 })
+const selectedBulkResources = computed(() => {
+  if (activeTab.value === 'snippets') {
+    const selectedIds = new Set(bulkSelectionState.currentBulkIds.value)
+    return snippets.value.filter((item) => selectedIds.has(item.id))
+  }
+  const selectedIds = new Set(bulkSelectionState.currentBulkIds.value)
+  return rules.value.filter((item) => selectedIds.has(item.id))
+})
+const canBulkEnable = computed(() => selectedBulkResources.value.some((item) => !item.enabled))
+const canBulkDisable = computed(() => selectedBulkResources.value.some((item) => item.enabled))
 
 onMounted(fetchAll)
 
@@ -927,6 +937,8 @@ function jumpToSnippet(id: string) {
           <div class=":uno: main h-full flex-none flex flex-col overflow-hidden">
             <BulkOperationPanel
               v-if="bulkSelectionState.isBulkMode.value"
+              :can-disable="canBulkDisable"
+              :can-enable="canBulkEnable"
               :processing="processingBulk"
               :selected-count="bulkSelectionState.currentBulkSelectionCount.value"
               :tab="activeTab"

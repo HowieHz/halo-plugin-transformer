@@ -8,6 +8,8 @@ const props = defineProps<{
   tab: ActiveTab
   selectedCount: number
   processing: boolean
+  canEnable: boolean
+  canDisable: boolean
 }>()
 
 const emit = defineEmits<{
@@ -32,10 +34,18 @@ const hasSelection = computed(() => props.selectedCount > 0)
         <VButton :disabled="processing || !hasSelection" size="sm" @click="emit('export')">
           批量导出
         </VButton>
-        <VButton :disabled="processing || !hasSelection" size="sm" @click="emit('enable')">
+        <VButton
+          :disabled="processing || !hasSelection || !canEnable"
+          size="sm"
+          @click="emit('enable')"
+        >
           启用
         </VButton>
-        <VButton :disabled="processing || !hasSelection" size="sm" @click="emit('disable')">
+        <VButton
+          :disabled="processing || !hasSelection || !canDisable"
+          size="sm"
+          @click="emit('disable')"
+        >
           禁用
         </VButton>
         <VButton
