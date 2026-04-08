@@ -6,7 +6,7 @@ import { makeSnippetEditorDraft } from '@/types'
 import BaseFormModal from './BaseFormModal.vue'
 import EnabledSwitch from './EnabledSwitch.vue'
 import FormField from './FormField.vue'
-import ImportJsonSourceModal from './ImportJsonSourceModal.vue'
+import ImportSourceModal from './ImportSourceModal.vue'
 import { parseSnippetTransfer } from '@/views/composables/transfer'
 
 const props = defineProps<{
@@ -234,7 +234,7 @@ defineExpose({
     </template>
   </BaseFormModal>
 
-  <ImportJsonSourceModal
+  <ImportSourceModal
     v-if="importSourceVisible"
     resource-label="代码块"
     @close="closeImportSourceModal"

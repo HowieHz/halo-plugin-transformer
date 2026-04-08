@@ -35,8 +35,8 @@ import RuleEditor from './components/RuleEditor.vue'
 import RelationPanel from './components/RelationPanel.vue'
 import SnippetFormModal from './components/SnippetFormModal.vue'
 import RuleFormModal from './components/RuleFormModal.vue'
-import ImportJsonSourceModal from './components/ImportJsonSourceModal.vue'
-import ExportJsonFallbackModal from './components/ExportJsonFallbackModal.vue'
+import ImportSourceModal from './components/ImportSourceModal.vue'
+import ExportContentModal from './components/ExportContentModal.vue'
 import BulkOperationPanel from './components/BulkOperationPanel.vue'
 import BulkModeSidePanel from './components/BulkModeSidePanel.vue'
 import BulkImportOptionsModal from './components/BulkImportOptionsModal.vue'
@@ -723,13 +723,13 @@ function jumpToSnippet(id: string) {
 
 <template>
   <div id="injector-view">
-    <ExportJsonFallbackModal
+    <ExportContentModal
       v-if="bulkExportFallback"
       :content="bulkExportFallback.content"
       :file-name="bulkExportFallback.fileName"
       @close="bulkExportFallback = null"
     />
-    <ImportJsonSourceModal
+    <ImportSourceModal
       v-if="bulkImportSourceVisible"
       :resource-label="activeTab === 'snippets' ? '批量代码块' : '批量注入规则'"
       @close="closeBulkImportFlow"

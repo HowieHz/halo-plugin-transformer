@@ -12,7 +12,7 @@ import {
 import ItemPicker from './ItemPicker.vue'
 import EditorToolbar from './EditorToolbar.vue'
 import EditorFooter from './EditorFooter.vue'
-import ExportJsonFallbackModal from './ExportJsonFallbackModal.vue'
+import ExportContentModal from './ExportContentModal.vue'
 import FormField from './FormField.vue'
 import MatchRuleEditor from './MatchRuleEditor.vue'
 import RuleRuntimeOrderField from './RuleRuntimeOrderField.vue'
@@ -420,7 +420,7 @@ onBeforeUnmount(() => {
     @dragleave.capture="handleEditorContainerDragLeave"
     @drop.capture="handleEditorContainerDropCapture"
   >
-    <ExportJsonFallbackModal
+    <ExportContentModal
       v-if="exportFallback"
       :content="exportFallback.content"
       :file-name="exportFallback.fileName"

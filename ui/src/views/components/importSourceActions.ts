@@ -1,7 +1,7 @@
-export type ImportJsonSourceAction = 'close' | 'import-from-clipboard' | 'import-from-file'
+export type ImportSourceAction = 'close' | 'import-from-clipboard' | 'import-from-file'
 
-export const IMPORT_JSON_SOURCE_ACTIONS: ReadonlyArray<{
-  action: ImportJsonSourceAction
+export const IMPORT_SOURCE_ACTIONS: ReadonlyArray<{
+  action: ImportSourceAction
   label: string
   secondary?: boolean
 }> = [

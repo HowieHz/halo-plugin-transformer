@@ -2,7 +2,7 @@
 import type { CodeSnippetEditorDraft } from '@/types'
 import EditorToolbar from './EditorToolbar.vue'
 import EditorFooter from './EditorFooter.vue'
-import ExportJsonFallbackModal from './ExportJsonFallbackModal.vue'
+import ExportContentModal from './ExportContentModal.vue'
 import FormField from './FormField.vue'
 import FieldUndoButton from './FieldUndoButton.vue'
 import { useFieldUndo } from '@/views/composables/useFieldUndo'
@@ -142,7 +142,7 @@ async function exportSnippet() {
 
 <template>
   <div class=":uno: h-full flex flex-col injector-editor-container">
-    <ExportJsonFallbackModal
+    <ExportContentModal
       v-if="exportFallback"
       :content="exportFallback.content"
       :file-name="exportFallback.fileName"

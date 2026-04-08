@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { IMPORT_JSON_SOURCE_ACTIONS } from '../importJsonSource'
+import { IMPORT_SOURCE_ACTIONS } from '../importSourceActions'
 
-describe('IMPORT_JSON_SOURCE_ACTIONS', () => {
+describe('IMPORT_SOURCE_ACTIONS', () => {
   // why: 显式的二次选择流程；
   // 这里锁住动作顺序和文案，避免后续重构时又悄悄退回成单一路径导入。
   it('defines cancel clipboard and file actions in order', () => {
-    expect(IMPORT_JSON_SOURCE_ACTIONS).toEqual([
+    expect(IMPORT_SOURCE_ACTIONS).toEqual([
       {
         action: 'close',
         label: '取消',

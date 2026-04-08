@@ -19,7 +19,7 @@ import EnabledSwitch from './EnabledSwitch.vue'
 import ItemPicker from './ItemPicker.vue'
 import FormField from './FormField.vue'
 import MatchRuleEditor from './MatchRuleEditor.vue'
-import ImportJsonSourceModal from './ImportJsonSourceModal.vue'
+import ImportSourceModal from './ImportSourceModal.vue'
 import RuleRuntimeOrderField from './RuleRuntimeOrderField.vue'
 import { updateSelectByWheel } from '@/views/composables/selectWheel.ts'
 import { parseRuleTransfer } from '@/views/composables/transfer.ts'
@@ -345,7 +345,7 @@ defineExpose({
     </template>
   </BaseFormModal>
 
-  <ImportJsonSourceModal
+  <ImportSourceModal
     v-if="importSourceVisible"
     resource-label="注入规则"
     @close="closeImportSourceModal"

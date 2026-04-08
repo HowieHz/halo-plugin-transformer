@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { VButton, VModal, VSpace } from '@halo-dev/components'
-import { IMPORT_JSON_SOURCE_ACTIONS, type ImportJsonSourceAction } from './importJsonSource'
+import { IMPORT_SOURCE_ACTIONS, type ImportSourceAction } from './importSourceActions'
 
 defineProps<{
   resourceLabel: string
@@ -12,7 +12,7 @@ const emit = defineEmits<{
   (e: 'import-from-file'): void
 }>()
 
-function emitAction(action: ImportJsonSourceAction) {
+function emitAction(action: ImportSourceAction) {
   switch (action) {
     case 'close':
       emit('close')
@@ -37,7 +37,7 @@ function emitAction(action: ImportJsonSourceAction) {
     <template #footer>
       <VSpace>
         <VButton
-          v-for="item in IMPORT_JSON_SOURCE_ACTIONS"
+          v-for="item in IMPORT_SOURCE_ACTIONS"
           :key="item.action"
           :type="item.secondary ? 'secondary' : undefined"
           @click="emitAction(item.action)"
