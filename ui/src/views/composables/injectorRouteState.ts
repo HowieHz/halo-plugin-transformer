@@ -81,23 +81,34 @@ export function isSameInjectorRouteState(
 
 /**
  * why: route 只表达“当前 tab 想进入什么页面语义”，
- * 不应该顺手改掉另一个 tab 的 remembered selection；否则 URL intent 会越权覆盖本地记忆态。
+ * `bulk / create` 并不代表“把 remembered selection 真删掉”；否则退出这些模式后就无法回到原先打开的资源。
  */
 export function applyInjectorRouteSelection(
   currentSelection: InjectorRememberedSelection,
   state: InjectorRouteState,
 ): InjectorRememberedSelection {
   if (state.viewMode === 'bulk' || state.action === 'create') {
-    return {
-      ...currentSelection,
-      [state.tab]: null,
-    }
+    return currentSelection
   }
 
   return {
     ...currentSelection,
     [state.tab]: state.selectedId,
   }
+}
+
+/**
+ * why: 左侧列表高亮和 URL `id` 一样，都属于“当前界面正在展示哪条资源”的可见语义；
+ * create / bulk 只需要隐藏这个可见选中态，不应该把 remembered selection 本身清掉。
+ */
+export function resolveVisibleInjectorSelection(
+  state: Pick<InjectorRouteState, 'action' | 'viewMode'>,
+  selectedId: string | null,
+): string | null {
+  if (state.viewMode === 'bulk' || state.action === 'create') {
+    return null
+  }
+  return selectedId
 }
 
 function normalizeInjectorRouteTab(tab: unknown): ActiveTab {

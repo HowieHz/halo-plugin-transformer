@@ -54,6 +54,7 @@ import {
   buildInjectorRouteQuery,
   isSameInjectorRouteState,
   parseInjectorRouteState,
+  resolveVisibleInjectorSelection,
   type InjectorRouteState,
 } from './composables/injectorRouteState'
 
@@ -170,10 +171,13 @@ function handleLeftPaneDropCapture() {
 }
 
 function currentSelectedId(tab: ActiveTab) {
-  if (bulkSelectionState.isBulkMode.value) {
-    return null
-  }
-  return tab === 'snippets' ? selectedSnippetId.value : selectedRuleId.value
+  return resolveVisibleInjectorSelection(
+    {
+      action: currentAction(tab),
+      viewMode: bulkSelectionState.isBulkMode.value ? 'bulk' : 'single',
+    },
+    tab === 'snippets' ? selectedSnippetId.value : selectedRuleId.value,
+  )
 }
 
 function currentAction(tab: ActiveTab) {
@@ -293,11 +297,9 @@ function openCreateModal(tab: ActiveTab) {
   activeTab.value = tab
   bulkSelectionState.exitBulkMode()
   if (tab === 'snippets') {
-    selectedSnippetId.value = null
     showSnippetModal.value = true
     showRuleModal.value = false
   } else {
-    selectedRuleId.value = null
     showRuleModal.value = true
     showSnippetModal.value = false
   }
@@ -468,11 +470,6 @@ function enterBulkMode() {
   requestEditorLeave(() => {
     showSnippetModal.value = false
     showRuleModal.value = false
-    if (activeTab.value === 'snippets') {
-      selectedSnippetId.value = null
-    } else {
-      selectedRuleId.value = null
-    }
     bulkSelectionState.enterBulkMode()
   })
 }
@@ -868,7 +865,7 @@ function jumpToSnippet(id: string) {
               :items="snippets"
               list-label="代码块列表"
               :reorderable="!bulkSelectionState.isBulkMode.value"
-              :selected-id="selectedSnippetId"
+              :selected-id="currentSelectedId('snippets')"
               :stretch="true"
               empty-text="暂无代码块"
               @drag-state-change="leftPaneAutoScroll.setDragActive"
@@ -888,7 +885,7 @@ function jumpToSnippet(id: string) {
               :items="rules"
               list-label="注入规则列表"
               :reorderable="!bulkSelectionState.isBulkMode.value"
-              :selected-id="selectedRuleId"
+              :selected-id="currentSelectedId('rules')"
               :stretch="true"
               empty-text="暂无注入规则"
               @drag-state-change="leftPaneAutoScroll.setDragActive"
@@ -975,9 +972,9 @@ function jumpToSnippet(id: string) {
               v-else
               :mode="activeTab"
               :rules-using-snippet="rulesUsingSnippet"
-              :selected-rule-id="selectedRuleId"
+              :selected-rule-id="currentSelectedId('rules')"
               :selected-rule-position="editRule?.position ?? null"
-              :selected-snippet-id="selectedSnippetId"
+              :selected-snippet-id="currentSelectedId('snippets')"
               :snippets-in-rule="snippetsInRule"
               @jump-to-rule="jumpToRule"
               @jump-to-snippet="jumpToSnippet"

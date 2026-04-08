@@ -4,6 +4,7 @@ import {
   buildInjectorRouteQuery,
   isSameInjectorRouteState,
   parseInjectorRouteState,
+  resolveVisibleInjectorSelection,
 } from '../injectorRouteState'
 
 describe('injectorRouteState', () => {
@@ -110,9 +111,9 @@ describe('injectorRouteState', () => {
     ).toBe(false)
   })
 
-  // why: URL intent 只描述当前 tab 的目标页面；
-  // 切到 bulk/create 时不能把另一个 tab 的 remembered selection 一起抹掉，否则会出现隐式状态丢失。
-  it('only rewrites the active tab selection when applying route intent', () => {
+  // why: remembered selection 是 tab 内的恢复锚点；
+  // create / bulk 只改变当前页面语义，不该把这份记忆态顺手清空。
+  it('preserves remembered selection for create and bulk route states', () => {
     expect(
       applyInjectorRouteSelection(
         {
@@ -127,7 +128,7 @@ describe('injectorRouteState', () => {
         },
       ),
     ).toEqual({
-      snippets: null,
+      snippets: 'snippet-a',
       rules: 'rule-a',
     })
 
@@ -146,7 +147,41 @@ describe('injectorRouteState', () => {
       ),
     ).toEqual({
       snippets: 'snippet-a',
-      rules: null,
+      rules: 'rule-a',
     })
+  })
+
+  // why: UI 需要在 create / bulk 里隐藏列表高亮，
+  // 但这只是“可见选中态”收起，不代表 remembered selection 被删除。
+  it('hides visible selection for create and bulk states', () => {
+    expect(
+      resolveVisibleInjectorSelection(
+        {
+          action: 'create',
+          viewMode: 'single',
+        },
+        'snippet-a',
+      ),
+    ).toBeNull()
+
+    expect(
+      resolveVisibleInjectorSelection(
+        {
+          action: null,
+          viewMode: 'bulk',
+        },
+        'rule-a',
+      ),
+    ).toBeNull()
+
+    expect(
+      resolveVisibleInjectorSelection(
+        {
+          action: null,
+          viewMode: 'single',
+        },
+        'rule-a',
+      ),
+    ).toBe('rule-a')
   })
 })
