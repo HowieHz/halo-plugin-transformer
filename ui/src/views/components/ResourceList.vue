@@ -98,10 +98,35 @@ function handleDrop(event: DragEvent, id: string) {
   if (!draggingId.value) return
   event.preventDefault()
   const placement = resolveDropPlacement(event, id)
+  commitPendingDrop(placement, dropTargetId.value)
+}
+
+/**
+ * why: 顶部/底部自动滚动热区与绿色插入线可能同时存在；
+ * 用户松手时 drop 事件未必还落在具体的列表项上，所以这里需要一个“按当前高亮落点兜底提交”的容器级路径。
+ */
+function handleContainerDragOver(event: DragEvent) {
+  if (!draggingId.value || !dropTargetId.value || !dropPlacement.value) {
+    return
+  }
+  event.preventDefault()
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move'
+  }
+}
+
+function handleContainerDrop(event: DragEvent) {
+  if (!draggingId.value) {
+    return
+  }
+  event.preventDefault()
+  commitPendingDrop(dropPlacement.value, dropTargetId.value)
+}
+
+function commitPendingDrop(placement: ReorderPlacement | null, targetId: string | null) {
   const sourceId = draggingId.value
-  const targetId = dropTargetId.value
   clearDragState()
-  if (!placement || !targetId || sourceId === targetId) {
+  if (!placement || !targetId || !sourceId || sourceId === targetId) {
     return
   }
   emit('reorder', { sourceId, targetId, placement })
@@ -141,6 +166,8 @@ function handleReorderButtonKeydown(event: KeyboardEvent, index: number) {
     ref="scrollContainer"
     :class="stretch ? ':uno: min-h-0 flex-1 overflow-y-auto' : ''"
     class=":uno: relative"
+    @dragover="handleContainerDragOver"
+    @drop="handleContainerDrop"
     @scroll="emit('scroll-container')"
   >
     <slot name="placeholder" />
