@@ -85,6 +85,7 @@ class InjectorWebFilterTest {
         var buffer = filter.createHtmlResponseBuffer("   ", response);
 
         assertEquals("   ", buffer.toString(java.nio.charset.StandardCharsets.UTF_8));
+        assertEquals(3, response.getHeaders().getContentLength());
     }
 
     private InjectionRule domRule(String id, InjectionRule.Mode mode, String match) {

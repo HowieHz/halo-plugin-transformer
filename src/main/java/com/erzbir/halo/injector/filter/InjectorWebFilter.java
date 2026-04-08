@@ -171,6 +171,7 @@ public class InjectorWebFilter implements AdditionalWebFilter {
      */
     DataBuffer createHtmlResponseBuffer(String html, ServerHttpResponse response) {
         byte[] resultBytes = html.getBytes(StandardCharsets.UTF_8);
+        response.getHeaders().setContentLength(resultBytes.length);
         return response.bufferFactory().wrap(resultBytes);
     }
 
