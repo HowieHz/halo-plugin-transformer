@@ -23,6 +23,7 @@ import org.springframework.web.server.ServerWebInputException;
 import reactor.core.publisher.Mono;
 import run.halo.app.core.extension.endpoint.CustomEndpoint;
 import run.halo.app.extension.AbstractExtension;
+import run.halo.app.extension.ExtensionUtil;
 import run.halo.app.extension.GroupVersion;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
@@ -197,6 +198,7 @@ public class ResourceOrderEndpoint implements CustomEndpoint {
         Function<T, String> displayNameGetter) {
         Map<String, T> resourceById = resources.stream()
             .filter(Objects::nonNull)
+            .filter(resource -> !ExtensionUtil.isDeleted(resource))
             .filter(resource -> resource.getMetadata() != null
                 && StringUtils.hasText(resource.getMetadata().getName()))
             .collect(
@@ -253,4 +255,3 @@ public class ResourceOrderEndpoint implements CustomEndpoint {
         private Long version;
     }
 }
-

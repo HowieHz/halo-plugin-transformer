@@ -3,6 +3,7 @@ package top.howiehz.halo.transformer.endpoint;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -70,6 +71,23 @@ class ResourceOrderEndpointTest {
         assertEquals(Map.of("snippet-a", 1), sanitized);
     }
 
+    // why: 删除中的资源仍可能暂时出现在底层 list 结果里；
+    // 排序读模型不能继续把它当成有效资源，否则控制台左侧顺序会比可见列表慢一拍。
+    @Test
+    void shouldIgnoreDeletingResourcesWhenSanitizingOrders() {
+        TransformationSnippet active = snippet("snippet-a", "Alpha");
+        TransformationSnippet deleting = snippet("snippet-b", "Beta");
+        deleting.getMetadata().setDeletionTimestamp(Instant.now());
+
+        Map<String, Integer> sanitized = endpoint.sanitizeOrders(
+            Map.of("snippet-a", 1, "snippet-b", 2),
+            List.of(active, deleting),
+            TransformationSnippet::getName
+        );
+
+        assertEquals(Map.of("snippet-a", 1), sanitized);
+    }
+
     // why: 排序接口现在依赖 Halo 的 metadata.version 做乐观并发；
     // payload 必须显式携带版本，不能再默默退回 last-write-wins。
     @Test
@@ -119,4 +137,3 @@ class ResourceOrderEndpointTest {
         return snippet;
     }
 }
-
