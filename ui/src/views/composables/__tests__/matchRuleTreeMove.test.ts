@@ -33,6 +33,52 @@ describe('matchRuleTreeMove', () => {
     expect(moved?.children?.[0].children?.map((child) => child.value)).toEqual(['page', '/a'])
   })
 
+  // why: 精确插入落在组内“第一条之前”时，必须稳定映射成 before 第一个子节点；
+  // 否则 UI 虽然显示插入线，最终顺序仍会悄悄落错位置。
+  it('moves a node before the first child inside a group', () => {
+    const targetGroup = makeMatchRuleGroup({
+      children: [
+        makeTemplateMatchRule({ value: 'page' }),
+        makeTemplateMatchRule({ value: 'post' }),
+      ],
+    })
+    const root = makeMatchRuleGroup({
+      children: [makePathMatchRule({ value: '/a' }), targetGroup],
+    })
+
+    const moved = moveMatchRuleNode(root, [0], [1, 0], 'before')
+
+    expect(moved?.children?.[0].type).toBe('GROUP')
+    expect(moved?.children?.[0].children?.map((child) => child.value)).toEqual([
+      '/a',
+      'page',
+      'post',
+    ])
+  })
+
+  // why: 非空组末尾插入现在走 “after 最后一个子节点”；
+  // 这条测试保证 UI 的末尾插入线与真正写回的顺序严格一致。
+  it('moves a node after the last child inside a group', () => {
+    const targetGroup = makeMatchRuleGroup({
+      children: [
+        makeTemplateMatchRule({ value: 'page' }),
+        makeTemplateMatchRule({ value: 'post' }),
+      ],
+    })
+    const root = makeMatchRuleGroup({
+      children: [makePathMatchRule({ value: '/a' }), targetGroup],
+    })
+
+    const moved = moveMatchRuleNode(root, [0], [1, 1], 'after')
+
+    expect(moved?.children?.[0].type).toBe('GROUP')
+    expect(moved?.children?.[0].children?.map((child) => child.value)).toEqual([
+      'page',
+      'post',
+      '/a',
+    ])
+  })
+
   // why: 组节点绝不能拖进自己的子树里，否则树会形成循环语义；
   // 这里要显式拒绝，而不是让 UI 走到一半再出怪异结果。
   it('rejects moving a group into its own descendant', () => {

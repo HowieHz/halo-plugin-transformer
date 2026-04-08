@@ -218,7 +218,7 @@ function handleDropOnNode(event: DragEvent) {
 }
 
 function handleDragOverIntoGroup(event: DragEvent) {
-  if (!dragContext?.draggingPath.value || !isGroup.value) {
+  if (!dragContext?.draggingPath.value || !isGroup.value || hasGroupChildren.value) {
     return
   }
   if (!dragContext.canDrop(dragContext.draggingPath.value, currentNodePath.value, 'inside')) {
@@ -236,7 +236,7 @@ function handleDragOverIntoGroup(event: DragEvent) {
 
 function handleDropIntoGroup(event: DragEvent) {
   const sourcePath = dragContext?.draggingPath.value
-  if (!dragContext || !sourcePath || !isGroup.value) {
+  if (!dragContext || !sourcePath || !isGroup.value || hasGroupChildren.value) {
     return
   }
 
@@ -247,6 +247,72 @@ function handleDropIntoGroup(event: DragEvent) {
     return
   }
   dragContext.moveNode(sourcePath, currentNodePath.value, 'inside')
+}
+
+function resolveInsertionSlotTarget(index: number) {
+  const children = rule.value.children ?? []
+  if (!children.length || index < 0 || index > children.length) {
+    return null
+  }
+
+  if (index === children.length) {
+    return {
+      targetPath: [...currentNodePath.value, children.length - 1],
+      placement: 'after' as const,
+    }
+  }
+
+  return {
+    targetPath: [...currentNodePath.value, index],
+    placement: 'before' as const,
+  }
+}
+
+function isInsertionSlotActive(index: number) {
+  const target = resolveInsertionSlotTarget(index)
+  if (!target) {
+    return false
+  }
+  return (
+    pathKey(dragContext?.dropTargetPath.value ?? null) === pathKey(target.targetPath) &&
+    dragContext?.dropPlacement.value === target.placement
+  )
+}
+
+function handleDragOverInsertionSlot(event: DragEvent, index: number) {
+  const sourcePath = dragContext?.draggingPath.value
+  const target = resolveInsertionSlotTarget(index)
+  if (!dragContext || !sourcePath || !target) {
+    return
+  }
+  if (!dragContext.canDrop(sourcePath, target.targetPath, target.placement)) {
+    dragContext.setDropTarget(null, null)
+    return
+  }
+
+  event.preventDefault()
+  event.stopPropagation()
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move'
+  }
+  dragContext.setDropTarget(target.targetPath, target.placement)
+}
+
+function handleDropOnInsertionSlot(event: DragEvent, index: number) {
+  const sourcePath = dragContext?.draggingPath.value
+  const target = resolveInsertionSlotTarget(index)
+  if (!dragContext || !sourcePath || !target) {
+    return
+  }
+  if (!dragContext.canDrop(sourcePath, target.targetPath, target.placement)) {
+    dragContext.clearDragState()
+    return
+  }
+
+  event.preventDefault()
+  event.stopPropagation()
+  dragContext.clearDragState()
+  dragContext.moveNode(sourcePath, target.targetPath, target.placement)
 }
 
 function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | null {
@@ -261,7 +327,7 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
   if (isGroup.value) {
     if (ratio < 0.25) return 'before'
     if (ratio > 0.75) return 'after'
-    return 'inside'
+    return hasGroupChildren.value ? null : 'inside'
   }
 
   return ratio < 0.5 ? 'before' : 'after'
@@ -357,27 +423,65 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
         </VButton>
       </div>
 
-      <div class=":uno: space-y-2" @dragover="handleDragOverIntoGroup" @drop="handleDropIntoGroup">
-        <MatchRuleNodeEditor
-          v-for="(child, index) in rule.children ?? []"
-          :key="index"
-          :can-remove="true"
-          :model-value="child"
-          :node-path="[...currentNodePath, index]"
-          :path="`${currentPath}.children[${index}]`"
-          :validation-errors="validationErrors"
-          @change="emit('change')"
-          @remove="removeChild(index)"
-          @update:model-value="updateChild(index, $event)"
-        />
+      <div class=":uno: space-y-2">
+        <template v-if="hasGroupChildren">
+          <div
+            v-if="dragContext?.draggingPath.value"
+            aria-hidden="true"
+            class=":uno: relative -my-1 flex items-center px-1 py-1.5"
+            @dragover="handleDragOverInsertionSlot($event, 0)"
+            @drop="handleDropOnInsertionSlot($event, 0)"
+          >
+            <div
+              :class="isInsertionSlotActive(0) ? ':uno: opacity-100 bg-primary' : ':uno: opacity-0'"
+              class=":uno: h-0.5 w-full rounded-full transition-opacity"
+            />
+          </div>
+
+          <template v-for="(child, index) in rule.children ?? []" :key="index">
+            <MatchRuleNodeEditor
+              :can-remove="true"
+              :model-value="child"
+              :node-path="[...currentNodePath, index]"
+              :path="`${currentPath}.children[${index}]`"
+              :validation-errors="validationErrors"
+              @change="emit('change')"
+              @remove="removeChild(index)"
+              @update:model-value="updateChild(index, $event)"
+            />
+
+            <div
+              v-if="dragContext?.draggingPath.value"
+              aria-hidden="true"
+              class=":uno: relative -my-1 flex items-center px-1 py-1.5"
+              @dragover="handleDragOverInsertionSlot($event, index + 1)"
+              @drop="handleDropOnInsertionSlot($event, index + 1)"
+            >
+              <div
+                :class="
+                  isInsertionSlotActive(index + 1)
+                    ? ':uno: opacity-100 bg-primary'
+                    : ':uno: opacity-0'
+                "
+                class=":uno: h-0.5 w-full rounded-full transition-opacity"
+              />
+            </div>
+          </template>
+        </template>
 
         <div
-          v-if="isDropInside"
-          :class="hasGroupChildren ? ':uno: mt-1' : ''"
-          aria-hidden="true"
-          class=":uno: pointer-events-none px-1"
+          v-else
+          :class="
+            isDropInside ? ':uno: border-primary/50 bg-primary/[0.03]' : ':uno: border-gray-200'
+          "
+          class=":uno: rounded-md border border-dashed px-3 py-4"
+          @dragover="handleDragOverIntoGroup"
+          @drop="handleDropIntoGroup"
         >
-          <div class=":uno: h-0.5 rounded-full bg-primary" />
+          <div v-if="isDropInside" aria-hidden="true" class=":uno: pointer-events-none px-1">
+            <div class=":uno: h-0.5 rounded-full bg-primary" />
+          </div>
+          <p class=":uno: text-xs text-gray-400">拖到这里，放入此条件组</p>
         </div>
 
         <div class=":uno: flex flex-wrap gap-2">
