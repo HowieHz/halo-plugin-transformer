@@ -22,11 +22,14 @@ export function useDragAutoScroll(
 ) {
   const minScrollStepPx = options.minStepPx ?? 6
   const maxScrollStepPx = options.maxStepPx ?? 28
+  const warmupDurationMs = 220
+  const initialSpeedFactor = 0.35
   const isDragActive = ref(false)
   const activeDirection = ref<DragAutoScrollDirection | null>(null)
   const scrollTop = ref(0)
   const maxScrollTop = ref(0)
   const currentStepPx = ref(minScrollStepPx)
+  let activeDirectionStartedAt = 0
   let animationFrameId: number | null = null
 
   const canScrollUp = computed(() => scrollTop.value > 0)
@@ -46,6 +49,7 @@ export function useDragAutoScroll(
   function stopAutoScroll() {
     activeDirection.value = null
     currentStepPx.value = minScrollStepPx
+    activeDirectionStartedAt = 0
     if (animationFrameId !== null) {
       cancelAnimationFrame(animationFrameId)
       animationFrameId = null
@@ -97,6 +101,9 @@ export function useDragAutoScroll(
       event.dataTransfer.dropEffect = 'move'
     }
 
+    if (activeDirection.value !== direction) {
+      activeDirectionStartedAt = performance.now()
+    }
     activeDirection.value = direction
     currentStepPx.value = resolveScrollStepPxWithinBounds(
       currentTarget,
@@ -160,7 +167,13 @@ export function useDragAutoScroll(
     const pointerRatio = clamp((event.clientY - zoneRect.top) / zoneRect.height, 0, 1)
     const edgeIntensity = direction === 'up' ? 1 - pointerRatio : pointerRatio
     const easedIntensity = edgeIntensity ** 1.6
-    return minScrollStepPx + (maxScrollStepPx - minScrollStepPx) * easedIntensity
+    const spatialStep = minScrollStepPx + (maxScrollStepPx - minScrollStepPx) * easedIntensity
+    const warmupProgress =
+      activeDirectionStartedAt > 0
+        ? clamp((performance.now() - activeDirectionStartedAt) / warmupDurationMs, 0, 1)
+        : 0
+    const warmupFactor = initialSpeedFactor + (1 - initialSpeedFactor) * easeOutQuad(warmupProgress)
+    return minScrollStepPx + (spatialStep - minScrollStepPx) * warmupFactor
   }
 
   function resolveAutoScrollDirection(
@@ -205,6 +218,10 @@ export function useDragAutoScroll(
 
   function clamp(value: number, min: number, max: number) {
     return Math.min(max, Math.max(min, value))
+  }
+
+  function easeOutQuad(value: number) {
+    return 1 - (1 - value) ** 2
   }
 
   watch(
