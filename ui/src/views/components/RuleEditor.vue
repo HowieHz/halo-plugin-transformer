@@ -371,7 +371,7 @@ async function exportRule() {
 </script>
 
 <template>
-  <div class=":uno: h-full flex flex-col injector-editor-container">
+  <div class=":uno: relative h-full flex flex-col injector-editor-container">
     <ExportJsonFallbackModal
       v-if="exportFallback"
       :content="exportFallback.content"
@@ -390,6 +390,15 @@ async function exportRule() {
       @toggle-enabled="emit('toggle-enabled')"
     />
 
+    <DragAutoScrollOverlay
+      :active="autoScroll.isDragActive.value"
+      :active-direction="autoScroll.activeDirection.value"
+      :can-scroll-up="autoScroll.canScrollUp.value"
+      :can-scroll-down="autoScroll.canScrollDown.value"
+      @zone-dragleave="autoScroll.handleZoneLeave"
+      @zone-dragover="autoScroll.startAutoScroll"
+    />
+
     <div v-if="!currentRule" class=":uno: flex flex-1 items-center justify-center">
       <span class=":uno: text-sm text-gray-500">从左侧选择规则进行编辑</span>
     </div>
@@ -400,15 +409,6 @@ async function exportRule() {
         class=":uno: relative min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-4"
         @scroll="autoScroll.handleContainerScroll"
       >
-        <DragAutoScrollOverlay
-          :active="autoScroll.isDragActive.value"
-          :active-direction="autoScroll.activeDirection.value"
-          :can-scroll-up="autoScroll.canScrollUp.value"
-          :can-scroll-down="autoScroll.canScrollDown.value"
-          @zone-dragleave="autoScroll.handleZoneLeave"
-          @zone-dragover="autoScroll.startAutoScroll"
-        />
-
         <FormField label="名称">
           <template v-if="canUndo('name')" #actions>
             <FieldUndoButton @reset="resetField('name')" @undo="undoField('name')" />
