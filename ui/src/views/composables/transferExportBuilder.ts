@@ -47,8 +47,8 @@ export function buildSnippetTransfer(snippet: CodeSnippetEditorDraft): SnippetTr
 }
 
 /**
- * why: 规则导出保留当前编辑器看到的规则内容与编辑模式，
- * 这样用户再导入时，既能得到同一条规则，也不会把关联代码块一并复制过去。
+ * why: 规则导出保留当前编辑器可见的业务内容，但不会把编辑器内部状态原样透传；
+ * 对可成功解析的 `JSON_DRAFT`，这里会收敛成规范的 `RULE_TREE`，只有仍然无效的 JSON 草稿才继续按 `JSON_DRAFT` 导出。
  */
 export function buildRuleTransfer(rule: InjectionRuleEditorDraft): RuleTransferEnvelope {
   const matchRuleSource = buildRuleTransferMatchRuleSource(rule)
