@@ -81,6 +81,7 @@ const ownErrors = computed(() => {
 const ownErrorPaths = computed(() => new Set(ownErrors.value.map((error) => error.path)))
 const ownErrorMessages = computed(() => ownErrors.value.map((error) => error.message))
 const hasNodeError = computed(() => ownErrors.value.length > 0)
+const hasGroupChildren = computed(() => (rule.value.children?.length ?? 0) > 0)
 const isDraggingNode = computed(() =>
   isSamePath(dragContext?.draggingPath.value ?? null, currentNodePath.value),
 )
@@ -272,7 +273,6 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
     :class="[
       hasNodeError ? ':uno: border-red-300 bg-red-50/40' : ':uno: border-gray-200 bg-white',
       isDraggingNode ? ':uno: opacity-60' : '',
-      isDropInside && !root ? ':uno: border-primary bg-primary/5' : '',
     ]"
     :aria-invalid="hasNodeError"
     class=":uno: relative rounded-md border p-3 space-y-3"
@@ -357,12 +357,7 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
         </VButton>
       </div>
 
-      <div
-        :class="isDropInside ? ':uno: rounded-md border border-dashed border-primary/50 p-2' : ''"
-        class=":uno: space-y-2"
-        @dragover="handleDragOverIntoGroup"
-        @drop="handleDropIntoGroup"
-      >
+      <div class=":uno: space-y-2" @dragover="handleDragOverIntoGroup" @drop="handleDropIntoGroup">
         <MatchRuleNodeEditor
           v-for="(child, index) in rule.children ?? []"
           :key="index"
@@ -375,6 +370,15 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
           @remove="removeChild(index)"
           @update:model-value="updateChild(index, $event)"
         />
+
+        <div
+          v-if="isDropInside"
+          :class="hasGroupChildren ? ':uno: mt-1' : ''"
+          aria-hidden="true"
+          class=":uno: pointer-events-none px-1"
+        >
+          <div class=":uno: h-0.5 rounded-full bg-primary" />
+        </div>
 
         <div class=":uno: flex flex-wrap gap-2">
           <VButton size="sm" @click="addPathRule">添加匹配规则</VButton>
