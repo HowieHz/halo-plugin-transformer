@@ -49,19 +49,19 @@ public class InjectorWebFilter implements AdditionalWebFilter {
     public @NonNull Mono<Void> filter(@NonNull ServerWebExchange exchange, @NonNull WebFilterChain chain) {
         return pathMatcher.matches(exchange)
                 .flatMap(matchResult -> {
-                    if (matchResult.isMatch() && shouldInject(exchange)) {
-                        String path = exchange.getRequest().getPath().value();
-                        return hasMatchingRules(path).flatMap(hasRules -> {
-                            if (hasRules) {
-                                var decoratedExchange = exchange.mutate()
-                                        .response(new InjectorResponseDecorator(exchange))
-                                        .build();
-                                return chain.filter(decoratedExchange);
-                            }
-                            return chain.filter(exchange);
-                        });
+                    if (!matchResult.isMatch()) {
+                        return chain.filter(exchange);
                     }
-                    return chain.filter(exchange);
+                    String path = exchange.getRequest().getPath().value();
+                    return hasMatchingRules(path).flatMap(hasRules -> {
+                        if (!hasRules) {
+                            return chain.filter(exchange);
+                        }
+                        var decoratedExchange = exchange.mutate()
+                                .response(new InjectorResponseDecorator(exchange))
+                                .build();
+                        return chain.filter(decoratedExchange);
+                    });
                 });
     }
 
@@ -73,12 +73,15 @@ public class InjectorWebFilter implements AdditionalWebFilter {
         return injectHelper.hasDomProcessCandidate(path, InjectionRule.Mode.SELECTOR)
                 .defaultIfEmpty(false);
     }
-
-
-    boolean shouldInject(ServerWebExchange exchange) {
-        var response = exchange.getResponse();
+    /**
+     * why: handler 写响应头前，`statusCode` 往往还是空；因此这里只能在真正写 body 的时点
+     * 用最终响应状态决定是否改写，不能在进入 filter 链前提前否决。
+     */
+    boolean isEligibleInjectionResponse(ServerHttpResponse response) {
         var statusCode = response.getStatusCode();
-        return statusCode != null && statusCode.isSameCodeAs(HttpStatus.OK);
+        return statusCode != null
+                && statusCode.isSameCodeAs(HttpStatus.OK)
+                && isHtmlResponse(response);
     }
 
     ServerWebExchangeMatcher createPathMatcher() {
@@ -188,17 +191,12 @@ public class InjectorWebFilter implements AdditionalWebFilter {
             this.exchange = exchange;
         }
 
-        boolean isHtmlResponse(ServerHttpResponse response) {
-            return response.getHeaders().getContentType() != null &&
-                    response.getHeaders().getContentType().includes(MediaType.TEXT_HTML);
-        }
-
         @Override
         @NonNull
         public Mono<Void> writeAndFlushWith(
                 @NonNull Publisher<? extends Publisher<? extends DataBuffer>> body) {
             var response = getDelegate();
-            if (!isHtmlResponse(response)) {
+            if (!isEligibleInjectionResponse(response)) {
                 return super.writeAndFlushWith(body);
             }
             String path = exchange.getRequest().getPath().value();
@@ -224,5 +222,10 @@ public class InjectorWebFilter implements AdditionalWebFilter {
     }
 
     record DomInjectionPlan(HTMLInjector injector, InjectionRule rule, String code) {
+    }
+
+    private boolean isHtmlResponse(ServerHttpResponse response) {
+        return response.getHeaders().getContentType() != null
+                && response.getHeaders().getContentType().includes(MediaType.TEXT_HTML);
     }
 }

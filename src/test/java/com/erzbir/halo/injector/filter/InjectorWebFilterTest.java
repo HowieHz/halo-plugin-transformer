@@ -11,11 +11,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.buffer.DefaultDataBufferFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import run.halo.app.extension.Metadata;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -86,6 +91,41 @@ class InjectorWebFilterTest {
 
         assertEquals("   ", buffer.toString(java.nio.charset.StandardCharsets.UTF_8));
         assertEquals(3, response.getHeaders().getContentLength());
+    }
+
+    // why: 进入 filter 链时响应状态通常尚未确定；若在 chain.filter 之前就看 status，
+    // 会把本该改写的正常 HTML 响应直接漏掉。
+    @Test
+    void shouldDecorateRequestBeforeResponseStatusIsCommitted() {
+        InjectionRule selectorRule = domRule("rule-selector", InjectionRule.Mode.SELECTOR, ".slot");
+        when(injectHelper.hasDomProcessCandidate("/demo", InjectionRule.Mode.SELECTOR))
+                .thenReturn(Mono.just(true));
+        when(injectHelper.getMatchedRules("/demo", "", InjectionRule.Mode.SELECTOR))
+                .thenReturn(Flux.just(selectorRule));
+        when(injectHelper.resolveRuleCodes(List.of(selectorRule))).thenReturn(Mono.just(List.of(
+                new InjectHelper.ResolvedRuleCode(selectorRule, "<span class='selector'>S</span>")
+        )));
+
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/demo")
+                        .accept(MediaType.TEXT_HTML)
+                        .build()
+        );
+
+        filter.filter(exchange, decoratedExchange -> {
+            var response = decoratedExchange.getResponse();
+            response.setStatusCode(HttpStatus.OK);
+            response.getHeaders().setContentType(MediaType.TEXT_HTML);
+            var body = response.bufferFactory()
+                    .wrap("<html><body><div class='slot'>A</div></body></html>"
+                            .getBytes(StandardCharsets.UTF_8));
+            return response.writeAndFlushWith(Flux.just(Mono.just(body)));
+        }).block();
+
+        String result = exchange.getResponse().getBodyAsString().block();
+
+        assertEquals(1, filter.parseCount.get());
+        assertTrue(result.contains("<div class=\"slot\">A<span class=\"selector\">S</span></div>"));
     }
 
     private InjectionRule domRule(String id, InjectionRule.Mode mode, String match) {
