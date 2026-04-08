@@ -301,9 +301,10 @@ function buildJavaArtifact(data) {
   const nodeTypeCases = Object.entries(data.nodeTypes)
     .map(
       ([name, spec]) =>
-        `            case ${name} -> new NodeTypeSpec("${spec.label}", List.of(${spec.allowedFields
-          .map((field) => `"${field}"`)
-          .join(", ")}));`,
+        `            case ${name} ->
+                new NodeTypeSpec("${spec.label}", List.of(${spec.allowedFields
+                  .map((field) => `"${field}"`)
+                  .join(", ")}));`,
     )
     .join("\n");
 
@@ -326,14 +327,16 @@ public final class MatchRuleContractMessages {
 
     public static String formatUnsupportedFieldMessage(MatchRule.Type nodeType) {
         NodeTypeSpec spec = nodeTypeSpec(nodeType);
-        return "不支持该字段；" + spec.label() + "仅支持 " + formatQuotedValues(spec.allowedFields(), JoinStyle.LIST);
+        return "不支持该字段；" + spec.label() + "仅支持 " + formatQuotedValues(spec.allowedFields(),
+            JoinStyle.LIST);
     }
 
-    public static String formatMissingEnumFieldMessage(String fieldName, EnumName enumName, String label) {
+    public static String formatMissingEnumFieldMessage(String fieldName, EnumName enumName,
+        String label) {
         EnumSpec spec = enumSpec(enumName);
         String prefix = label == null || label.isBlank() ? "缺少必填字段" : label + "缺少必填字段";
         return prefix + " \\"" + fieldName + "\\"；该字段可选值为 "
-                + formatQuotedValues(spec.values(), spec.joinStyle());
+            + formatQuotedValues(spec.values(), spec.joinStyle());
     }
 
     public static String formatInvalidEnumFieldTypeMessage(EnumName enumName) {
@@ -373,8 +376,9 @@ ${enumCases}
 
     private static String formatQuotedValues(List<String> values, JoinStyle joinStyle) {
         List<String> quoted = values.stream()
-                .map(value -> "true".equals(value) || "false".equals(value) ? value : "\\"" + value + "\\"")
-                .toList();
+            .map(value -> "true".equals(value) || "false".equals(value) ? value
+                : "\\"" + value + "\\"")
+            .toList();
         if (quoted.isEmpty()) {
             return "";
         }
@@ -386,7 +390,7 @@ ${enumCases}
                 return quoted.get(0) + " 或 " + quoted.get(1);
             }
             return String.join("、", quoted.subList(0, quoted.size() - 1))
-                    + " 或 " + quoted.get(quoted.size() - 1);
+                + " 或 " + quoted.get(quoted.size() - 1);
         }
         return String.join("、", quoted);
     }

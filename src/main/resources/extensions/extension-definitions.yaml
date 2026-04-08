@@ -6,7 +6,7 @@ spec:
   extensionPointName: template-footer-processor
   className: top.howiehz.halo.transformer.process.TransformerFooterProcessor
   displayName: "TransformerFooterProcessor"
-  description: "Transform the page content and place it inside a <footer>"
+  description: "Transform the page content and place it inside a <halo:footer>"
 ---
 apiVersion: plugin.halo.run/v1alpha1
 kind: ExtensionDefinition
