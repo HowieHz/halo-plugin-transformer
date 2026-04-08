@@ -39,6 +39,18 @@ export function useInjectorData() {
     rules: ruleOrderState.items,
   })
 
+  async function refreshSnippetList() {
+    const response = await snippetApi.list()
+    snippetsResp.value = response.data
+    editorSelectionState.hydrateSelectedSnippetDraft()
+  }
+
+  async function refreshRuleList() {
+    const response = await ruleApi.list()
+    rulesResp.value = response.data
+    editorSelectionState.hydrateSelectedRuleDraft()
+  }
+
   async function fetchAll() {
     loading.value = true
     try {
@@ -70,7 +82,7 @@ export function useInjectorData() {
     editSnippet: editorSelectionState.editSnippet,
     editDirty: editorSelectionState.editDirty,
     selectedSnippetId: editorSelectionState.selectedSnippetId,
-    fetchAll,
+    refreshSnippetList,
     saveSnippetOrderMap: snippetOrderState.saveOrderMap,
     applySavedSnippetSnapshot: editorSelectionState.applySavedSnippetSnapshot,
   })
@@ -83,7 +95,7 @@ export function useInjectorData() {
     editRuleSnippetIds: editorSelectionState.editRuleSnippetIds,
     editDirty: editorSelectionState.editDirty,
     selectedRuleId: editorSelectionState.selectedRuleId,
-    fetchAll,
+    refreshRuleList,
     saveRuleOrderMap: ruleOrderState.saveOrderMap,
     applySavedRuleSnapshot: editorSelectionState.applySavedRuleSnapshot,
   })

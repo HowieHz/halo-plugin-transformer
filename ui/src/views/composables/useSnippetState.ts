@@ -12,7 +12,7 @@ interface UseSnippetStateOptions {
   editSnippet: Ref<CodeSnippetEditorDraft | null>
   editDirty: Ref<boolean>
   selectedSnippetId: Ref<string | null>
-  fetchAll: () => Promise<void>
+  refreshSnippetList: () => Promise<void>
   saveSnippetOrderMap: (items: CodeSnippetReadModel[]) => Promise<true | string>
   applySavedSnippetSnapshot: (snippet: CodeSnippetReadModel) => void
 }
@@ -38,7 +38,7 @@ export function useSnippetState(options: UseSnippetStateOptions) {
     try {
       const response = await snippetApi.add(buildSnippetWritePayload(snippet))
       const id = response.data.id
-      await options.fetchAll()
+      await options.refreshSnippetList()
       const orderResult = await options.saveSnippetOrderMap(options.snippets.value)
       options.selectedSnippetId.value = id
       if (orderResult === true) {
@@ -69,7 +69,7 @@ export function useSnippetState(options: UseSnippetStateOptions) {
         options.editSnippet.value.id,
         buildSnippetWritePayload(options.editSnippet.value),
       )
-      await options.fetchAll()
+      await options.refreshSnippetList()
       options.editDirty.value = false
       Toast.success('保存成功')
       return true
@@ -112,7 +112,7 @@ export function useSnippetState(options: UseSnippetStateOptions) {
           if (options.selectedSnippetId.value === id) options.selectedSnippetId.value = null
           options.editSnippet.value = null
           options.editDirty.value = false
-          await options.fetchAll()
+          await options.refreshSnippetList()
           const orderResult = await options.saveSnippetOrderMap(options.snippets.value)
           if (orderResult === true) {
             Toast.success('代码块已删除')

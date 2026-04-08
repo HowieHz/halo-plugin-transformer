@@ -217,6 +217,89 @@ describe('useInjectorData', () => {
     expect(snippetApi.update).not.toHaveBeenCalled()
   })
 
+  // why: 规则保存只应刷新规则上下文；不该再顺手把代码块列表和代码块顺序也整页回拉。
+  it('refreshes only rules after saving a rule', async () => {
+    const savedRule = makeRuleEditorDraft({
+      id: 'rule-a',
+      metadata: { name: 'rule-a', version: 1 },
+      name: 'Rule A',
+      matchRule: {
+        type: 'GROUP',
+        negate: false,
+        operator: 'AND',
+        children: [
+          {
+            type: 'PATH',
+            negate: false,
+            matcher: 'ANT',
+            value: '/**',
+          },
+        ],
+      },
+    })
+    delete (savedRule as { matchRuleSource?: unknown }).matchRuleSource
+    const savedSnippet = makeSnippetEditorDraft({
+      id: 'snippet-a',
+      metadata: { name: 'snippet-a' },
+      code: '<div>ok</div>',
+    })
+
+    snippetApi.list.mockResolvedValue({ data: listOf([savedSnippet]) })
+    snippetApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } })
+    ruleApi.list
+      .mockResolvedValueOnce({ data: listOf([savedRule]) })
+      .mockResolvedValueOnce({ data: listOf([savedRule]) })
+    ruleApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } })
+    ruleApi.update.mockResolvedValue({ data: savedRule })
+
+    const store = useInjectorData()
+    await store.fetchAll()
+    store.selectedRuleId.value = 'rule-a'
+    await nextTick()
+
+    await store.saveRule()
+
+    expect(ruleApi.list).toHaveBeenCalledTimes(2)
+    expect(ruleApi.getOrder).toHaveBeenCalledTimes(1)
+    expect(snippetApi.list).toHaveBeenCalledTimes(1)
+    expect(snippetApi.getOrder).toHaveBeenCalledTimes(1)
+  })
+
+  // why: 代码块保存只应刷新代码块上下文；规则列表和规则顺序不该因为一次 snippet 保存被整页重拉。
+  it('refreshes only snippets after saving a snippet', async () => {
+    const savedSnippet = makeSnippetEditorDraft({
+      id: 'snippet-a',
+      metadata: { name: 'snippet-a', version: 1 },
+      name: 'Snippet A',
+      code: '<div>ok</div>',
+    })
+    const savedRule = makeRuleEditorDraft({
+      id: 'rule-a',
+      metadata: { name: 'rule-a' },
+    })
+    delete (savedRule as { matchRuleSource?: unknown }).matchRuleSource
+
+    snippetApi.list
+      .mockResolvedValueOnce({ data: listOf([savedSnippet]) })
+      .mockResolvedValueOnce({ data: listOf([savedSnippet]) })
+    snippetApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } })
+    snippetApi.update.mockResolvedValue({ data: savedSnippet })
+    ruleApi.list.mockResolvedValue({ data: listOf([savedRule]) })
+    ruleApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } })
+
+    const store = useInjectorData()
+    await store.fetchAll()
+    store.selectedSnippetId.value = 'snippet-a'
+    await nextTick()
+
+    await store.saveSnippet()
+
+    expect(snippetApi.list).toHaveBeenCalledTimes(2)
+    expect(snippetApi.getOrder).toHaveBeenCalledTimes(1)
+    expect(ruleApi.list).toHaveBeenCalledTimes(1)
+    expect(ruleApi.getOrder).toHaveBeenCalledTimes(1)
+  })
+
   // why: 左侧排序保存失败时，只应回拉排序映射；右侧未保存的规则草稿不能被整页重载冲掉。
   it('keeps unsaved rule editor state when rule reorder persistence fails', async () => {
     const ruleA = makeRuleEditorDraft({
