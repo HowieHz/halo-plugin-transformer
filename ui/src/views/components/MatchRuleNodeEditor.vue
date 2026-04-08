@@ -180,15 +180,16 @@ function clearDragState() {
 }
 
 function handleDragOverNode(event: DragEvent) {
-  if (!dragContext?.draggingPath.value) {
+  const sourcePath = dragContext?.draggingPath.value
+  if (!sourcePath) {
     return
   }
 
-  const placement = resolveNodeDropPlacement(event)
-  if (
-    !placement ||
-    !dragContext.canDrop(dragContext.draggingPath.value, currentNodePath.value, placement)
-  ) {
+  const rawPlacement = resolveNodeDropPlacement(event)
+  const target = rawPlacement
+    ? dragContext.normalizeDropTarget(currentNodePath.value, rawPlacement)
+    : null
+  if (!target || !dragContext.canDrop(sourcePath, target.path, target.placement)) {
     dragContext.setDropTarget(null, null)
     return
   }
@@ -197,7 +198,7 @@ function handleDragOverNode(event: DragEvent) {
   if (event.dataTransfer) {
     event.dataTransfer.dropEffect = 'move'
   }
-  dragContext.setDropTarget(currentNodePath.value, placement)
+  dragContext.setDropTarget(target.path, target.placement)
 }
 
 function handleDropOnNode(event: DragEvent) {
@@ -206,14 +207,17 @@ function handleDropOnNode(event: DragEvent) {
     return
   }
 
-  const placement = resolveNodeDropPlacement(event)
+  const rawPlacement = resolveNodeDropPlacement(event)
+  const target = rawPlacement
+    ? dragContext.normalizeDropTarget(currentNodePath.value, rawPlacement)
+    : null
   dragContext.clearDragState()
-  if (!placement || !dragContext.canDrop(sourcePath, currentNodePath.value, placement)) {
+  if (!target || !dragContext.canDrop(sourcePath, target.path, target.placement)) {
     return
   }
 
   event.preventDefault()
-  dragContext.moveNode(sourcePath, currentNodePath.value, placement)
+  dragContext.moveNode(sourcePath, target.path, target.placement)
 }
 
 function handleDragOverIntoGroup(event: DragEvent) {

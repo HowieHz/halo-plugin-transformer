@@ -286,6 +286,42 @@ function moveNode(
   updateSimple(nextRule)
 }
 
+function normalizeDropTarget(targetPath: MatchRuleNodePath, placement: MatchRuleDropPlacement) {
+  if (placement !== 'after') {
+    return { path: targetPath, placement }
+  }
+
+  const root = normalizeMatchRule(props.modelValue)
+  const parentPath = targetPath.slice(0, -1)
+  const siblingIndex = targetPath[targetPath.length - 1]
+  if (siblingIndex === undefined) {
+    return { path: targetPath, placement }
+  }
+  const parent = resolveGroupAtPath(root, parentPath)
+  const nextSibling = parent?.children?.[siblingIndex + 1]
+
+  if (!nextSibling) {
+    return { path: targetPath, placement }
+  }
+
+  return {
+    path: [...parentPath, siblingIndex + 1],
+    placement: 'before' as const,
+  }
+}
+
+function resolveGroupAtPath(root: MatchRule, path: MatchRuleNodePath) {
+  let current: MatchRule = root
+  for (const segment of path) {
+    const next = current.children?.[segment]
+    if (!next || next.type !== 'GROUP') {
+      return null
+    }
+    current = next
+  }
+  return current.type === 'GROUP' ? current : null
+}
+
 provide(MATCH_RULE_DRAG_CONTEXT_KEY, {
   draggingPath,
   dropTargetPath,
@@ -295,6 +331,7 @@ provide(MATCH_RULE_DRAG_CONTEXT_KEY, {
   clearDragState,
   canDrop,
   moveNode,
+  normalizeDropTarget,
 })
 
 function syncJsonScroll(event: Event) {

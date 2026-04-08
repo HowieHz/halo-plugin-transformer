@@ -22,6 +22,13 @@ export interface MatchRuleDragContext {
     targetPath: MatchRuleNodePath,
     placement: MatchRuleDropPlacement,
   ) => void
+  normalizeDropTarget: (
+    targetPath: MatchRuleNodePath,
+    placement: MatchRuleDropPlacement,
+  ) => {
+    path: MatchRuleNodePath
+    placement: MatchRuleDropPlacement
+  }
 }
 
 export const MATCH_RULE_DRAG_CONTEXT_KEY: InjectionKey<MatchRuleDragContext> =

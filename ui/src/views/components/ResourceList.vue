@@ -56,10 +56,20 @@ function resolveDropPlacement(event: DragEvent, id: string): ReorderPlacement | 
   }
 
   const rect = currentTarget.getBoundingClientRect()
-  const placement: ReorderPlacement =
+  const rawPlacement: ReorderPlacement =
     event.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
+  const currentIndex = props.items.findIndex((item) => item.id === id)
+  if (currentIndex === -1) {
+    dropTargetId.value = null
+    dropPlacement.value = null
+    return null
+  }
 
-  dropTargetId.value = id
+  const nextItem = props.items[currentIndex + 1]
+  const placement = rawPlacement === 'after' && nextItem ? 'before' : rawPlacement
+  const targetId = rawPlacement === 'after' && nextItem ? nextItem.id : id
+
+  dropTargetId.value = targetId
   dropPlacement.value = placement
   return placement
 }
@@ -89,11 +99,12 @@ function handleDrop(event: DragEvent, id: string) {
   event.preventDefault()
   const placement = resolveDropPlacement(event, id)
   const sourceId = draggingId.value
+  const targetId = dropTargetId.value
   clearDragState()
-  if (!placement || sourceId === id) {
+  if (!placement || !targetId || sourceId === targetId) {
     return
   }
-  emit('reorder', { sourceId, targetId: id, placement })
+  emit('reorder', { sourceId, targetId, placement })
 }
 
 function handleSelect(id: string) {
