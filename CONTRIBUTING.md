@@ -46,6 +46,12 @@ pnpm dev
 
 这样可以避免把 `id`、临时编辑状态、JSON 草稿等前端态字段混进写接口。
 
+导入 / 导出同样遵循这条边界：
+
+- transfer 只承载可移植的编辑内容
+- 不承载 `id`、排序、系统 metadata
+- 规则 transfer 也不承载 `snippetIds`；跨环境关系迁移若以后要支持，应单独设计显式协议，而不是偷偷把关系字段塞回当前 transfer
+
 ## Match-rule specs
 
 为了避免“README 很长，但 contract fixture 很薄”，`match-rule` 现在拆成两类规范源：
