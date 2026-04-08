@@ -339,7 +339,7 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
               type="checkbox"
               @change="updateGroupField('negate', ($event.target as HTMLInputElement).checked)"
             />
-            不满足本组（NOT）
+            本组取反（NOT）
           </label>
           <div v-if="!root" class=":uno: inline-flex items-center gap-1">
             <button
@@ -453,7 +453,7 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
               type="checkbox"
               @change="updateGroupField('negate', ($event.target as HTMLInputElement).checked)"
             />
-            不满足本项（NOT）
+            本项取反（NOT）
           </label>
 
           <div v-if="!root" class=":uno: inline-flex items-center gap-1">

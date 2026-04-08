@@ -1,8 +1,11 @@
 package top.howiehz.halo.transformer.endpoint;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Instant;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import run.halo.app.extension.Metadata;
@@ -56,5 +59,52 @@ class ConsoleReadModelMapperTest {
         assertEquals(5L, readModel.metadata().version());
         assertEquals(42, readModel.runtimeOrder());
         assertEquals(Set.of("snippet-a"), readModel.snippetIds());
+    }
+
+    // why: 代码片段删除走 finalizer 最终一致；控制台列表必须立刻把 deleting 资源隐藏掉，
+    // 否则左侧列表会滞后一拍，用户会误以为第一次删除没有生效。
+    @Test
+    void shouldHideDeletingSnippetFromSnippetList() {
+        TransformationSnippet activeSnippet = new TransformationSnippet();
+        Metadata activeMetadata = new Metadata();
+        activeMetadata.setName("snippet-active");
+        activeSnippet.setMetadata(activeMetadata);
+        activeSnippet.setName("Active");
+
+        TransformationSnippet deletingSnippet = new TransformationSnippet();
+        Metadata deletingMetadata = new Metadata();
+        deletingMetadata.setName("snippet-deleting");
+        deletingMetadata.setDeletionTimestamp(Instant.now());
+        deletingSnippet.setMetadata(deletingMetadata);
+        deletingSnippet.setName("Deleting");
+
+        ConsoleItemList<TransformationSnippetReadModel> list = mapper.toSnippetList(
+            List.of(activeSnippet, deletingSnippet));
+
+        assertEquals(1, list.items().size());
+        assertEquals("snippet-active", list.items().getFirst().id());
+    }
+
+    // why: 控制台读模型应对 deleting 资源保持同一套可见性语义；
+    // 即使规则删除通常更快完成，也不该把 deleting 规则继续暴露给左侧列表。
+    @Test
+    void shouldHideDeletingRuleFromRuleList() {
+        TransformationRule activeRule = new TransformationRule();
+        Metadata activeMetadata = new Metadata();
+        activeMetadata.setName("rule-active");
+        activeRule.setMetadata(activeMetadata);
+
+        TransformationRule deletingRule = new TransformationRule();
+        Metadata deletingMetadata = new Metadata();
+        deletingMetadata.setName("rule-deleting");
+        deletingMetadata.setDeletionTimestamp(Instant.now());
+        deletingRule.setMetadata(deletingMetadata);
+
+        ConsoleItemList<TransformationRuleReadModel> list = mapper.toRuleList(
+            List.of(activeRule, deletingRule));
+
+        assertEquals(1, list.items().size());
+        assertEquals("rule-active", list.items().getFirst().id());
+        assertTrue(list.items().stream().noneMatch(item -> item.id().equals("rule-deleting")));
     }
 }

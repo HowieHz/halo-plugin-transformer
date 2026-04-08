@@ -3,6 +3,7 @@ package top.howiehz.halo.transformer.endpoint;
 import java.util.LinkedHashSet;
 import java.util.List;
 import org.springframework.stereotype.Component;
+import run.halo.app.extension.ExtensionUtil;
 import run.halo.app.extension.MetadataOperator;
 import top.howiehz.halo.transformer.scheme.TransformationRule;
 import top.howiehz.halo.transformer.scheme.TransformationSnippet;
@@ -50,11 +51,17 @@ public class ConsoleReadModelMapper {
 
     public ConsoleItemList<TransformationSnippetReadModel> toSnippetList(
         List<TransformationSnippet> snippets) {
-        return ConsoleItemList.of(snippets.stream().map(this::toReadModel).toList());
+        return ConsoleItemList.of(snippets.stream()
+            .filter(snippet -> !ExtensionUtil.isDeleted(snippet))
+            .map(this::toReadModel)
+            .toList());
     }
 
     public ConsoleItemList<TransformationRuleReadModel> toRuleList(List<TransformationRule> rules) {
-        return ConsoleItemList.of(rules.stream().map(this::toReadModel).toList());
+        return ConsoleItemList.of(rules.stream()
+            .filter(rule -> !ExtensionUtil.isDeleted(rule))
+            .map(this::toReadModel)
+            .toList());
     }
 
     private ConsoleResourceMetadata toConsoleMetadata(MetadataOperator metadata) {
