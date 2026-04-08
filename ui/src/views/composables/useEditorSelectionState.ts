@@ -1,5 +1,6 @@
 import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
 import type {
+  ActiveTab,
   CodeSnippetEditorDraft,
   CodeSnippetReadModel,
   InjectionRuleEditorDraft,
@@ -11,24 +12,116 @@ import { hydrateSnippetEditorDraft } from './snippetDraft'
 import { mergeSavedMetadata } from './injectorShared'
 
 interface UseEditorSelectionStateOptions {
+  activeTab: Ref<ActiveTab>
   snippetsResp: Ref<ItemList<CodeSnippetReadModel>>
   rulesResp: Ref<ItemList<InjectionRuleReadModel>>
   snippets: ComputedRef<CodeSnippetReadModel[]>
   rules: ComputedRef<InjectionRuleReadModel[]>
 }
 
+interface SnippetEditorSession {
+  tab: 'snippets'
+  draft: CodeSnippetEditorDraft | null
+  dirty: boolean
+}
+
+interface RuleEditorSession {
+  tab: 'rules'
+  draft: InjectionRuleEditorDraft | null
+  snippetIds: string[]
+  dirty: boolean
+}
+
+type EditorSession = SnippetEditorSession | RuleEditorSession
+
 /**
  * why: 选中态、草稿 hydration 与“只同步已保存快照的一小部分字段”属于编辑器上下文；
  * 把它从总控模块里拆出来后，CRUD 与排序逻辑都不必再关心右侧面板如何维护草稿。
  */
 export function useEditorSelectionState(options: UseEditorSelectionStateOptions) {
-  const selectedSnippetId = ref<string | null>(null)
-  const selectedRuleId = ref<string | null>(null)
+  const rememberedSelectionByTab = ref<Record<ActiveTab, string | null>>({
+    snippets: null,
+    rules: null,
+  })
+  const editorSession = ref<EditorSession>(createSnippetEditorSession())
 
-  const editSnippet = ref<CodeSnippetEditorDraft | null>(null)
-  const editRule = ref<InjectionRuleEditorDraft | null>(null)
-  const editRuleSnippetIds = ref<string[]>([])
-  const editDirty = ref(false)
+  const selectedSnippetId = computed({
+    get: () => rememberedSelectionByTab.value.snippets,
+    set: (selectedId: string | null) => {
+      rememberedSelectionByTab.value = {
+        ...rememberedSelectionByTab.value,
+        snippets: selectedId,
+      }
+      if (options.activeTab.value === 'snippets') {
+        hydrateSelectedSnippetDraft()
+      }
+    },
+  })
+
+  const selectedRuleId = computed({
+    get: () => rememberedSelectionByTab.value.rules,
+    set: (selectedId: string | null) => {
+      rememberedSelectionByTab.value = {
+        ...rememberedSelectionByTab.value,
+        rules: selectedId,
+      }
+      if (options.activeTab.value === 'rules') {
+        hydrateSelectedRuleDraft()
+      }
+    },
+  })
+
+  const editSnippet = computed({
+    get: () => (editorSession.value.tab === 'snippets' ? editorSession.value.draft : null),
+    set: (draft: CodeSnippetEditorDraft | null) => {
+      if (editorSession.value.tab !== 'snippets') {
+        return
+      }
+      editorSession.value = {
+        ...editorSession.value,
+        draft,
+      }
+    },
+  })
+
+  const editRule = computed({
+    get: () => (editorSession.value.tab === 'rules' ? editorSession.value.draft : null),
+    set: (draft: InjectionRuleEditorDraft | null) => {
+      if (editorSession.value.tab !== 'rules') {
+        return
+      }
+      editorSession.value = {
+        ...editorSession.value,
+        draft,
+      }
+    },
+  })
+
+  const editRuleSnippetIds = computed({
+    get: () => (editorSession.value.tab === 'rules' ? editorSession.value.snippetIds : []),
+    set: (snippetIds: string[]) => {
+      if (editorSession.value.tab !== 'rules') {
+        return
+      }
+      editorSession.value = {
+        ...editorSession.value,
+        snippetIds: [...snippetIds],
+      }
+      if (editorSession.value.draft) {
+        editorSession.value.draft.snippetIds = [...snippetIds]
+      }
+    },
+  })
+
+  const editDirty = computed({
+    get: () => editorSession.value.dirty,
+    set: (dirty: boolean) => {
+      editorSession.value = {
+        ...editorSession.value,
+        dirty,
+      }
+    },
+  })
 
   const rulesUsingSnippet = computed(() => {
     if (!selectedSnippetId.value) return []
@@ -52,30 +145,26 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
   }
 
   function hydrateSelectedSnippetDraft() {
-    if (!selectedSnippetId.value) {
-      editSnippet.value = null
-      editDirty.value = false
+    if (options.activeTab.value !== 'snippets') {
       return
     }
     const found = options.snippets.value.find((snippet) => snippet.id === selectedSnippetId.value)
-    editSnippet.value = found ? hydrateSnippetEditorDraft(found) : null
-    editDirty.value = false
+    editorSession.value = createSnippetEditorSession(
+      found ? hydrateSnippetEditorDraft(found) : null,
+    )
   }
 
   function hydrateSelectedRuleDraft() {
-    if (!selectedRuleId.value) {
-      editRule.value = null
-      editRuleSnippetIds.value = []
-      editDirty.value = false
+    if (options.activeTab.value !== 'rules') {
       return
     }
     const found = options.rules.value.find((rule) => rule.id === selectedRuleId.value)
-    editRule.value = found ? hydrateRuleEditorDraft(found) : null
-    editRuleSnippetIds.value = found ? filterExistingSnippetIds(found.snippetIds ?? []) : []
-    if (editRule.value) {
-      editRule.value.snippetIds = [...editRuleSnippetIds.value]
+    const snippetIds = found ? filterExistingSnippetIds(found.snippetIds ?? []) : []
+    const draft = found ? hydrateRuleEditorDraft(found) : null
+    if (draft) {
+      draft.snippetIds = [...snippetIds]
     }
-    editDirty.value = false
+    editorSession.value = createRuleEditorSession(draft, snippetIds)
   }
 
   /**
@@ -83,13 +172,19 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
    * 编辑器不应继续把已不存在的 snippet id 当成“已选”，否则 UI 计数和后续保存 payload 都会漂移。
    */
   function reconcileRuleEditorSnippetIds() {
-    const nextSnippetIds = filterExistingSnippetIds(editRuleSnippetIds.value)
-    if (nextSnippetIds.length === editRuleSnippetIds.value.length) {
+    if (editorSession.value.tab !== 'rules') {
       return
     }
-    editRuleSnippetIds.value = nextSnippetIds
-    if (editRule.value) {
-      editRule.value.snippetIds = [...nextSnippetIds]
+    const nextSnippetIds = filterExistingSnippetIds(editorSession.value.snippetIds)
+    if (nextSnippetIds.length === editorSession.value.snippetIds.length) {
+      return
+    }
+    editorSession.value = {
+      ...editorSession.value,
+      snippetIds: nextSnippetIds,
+    }
+    if (editorSession.value.draft) {
+      editorSession.value.draft.snippetIds = [...nextSnippetIds]
     }
   }
 
@@ -99,9 +194,12 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
    */
   function applySavedSnippetSnapshot(snippet: CodeSnippetReadModel) {
     options.snippetsResp.value = replaceItemInList(options.snippetsResp.value, snippet)
-    if (editSnippet.value?.id === snippet.id) {
-      editSnippet.value.enabled = snippet.enabled
-      editSnippet.value.metadata = mergeSavedMetadata(editSnippet.value.metadata, snippet.metadata)
+    if (editorSession.value.tab === 'snippets' && editorSession.value.draft?.id === snippet.id) {
+      editorSession.value.draft.enabled = snippet.enabled
+      editorSession.value.draft.metadata = mergeSavedMetadata(
+        editorSession.value.draft.metadata,
+        snippet.metadata,
+      )
     }
   }
 
@@ -111,18 +209,30 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
    */
   function applySavedRuleSnapshot(rule: InjectionRuleReadModel) {
     options.rulesResp.value = replaceItemInList(options.rulesResp.value, rule)
-    if (editRule.value?.id === rule.id) {
-      editRule.value.enabled = rule.enabled
-      editRule.value.metadata = mergeSavedMetadata(editRule.value.metadata, rule.metadata)
+    if (editorSession.value.tab === 'rules' && editorSession.value.draft?.id === rule.id) {
+      editorSession.value.draft.enabled = rule.enabled
+      editorSession.value.draft.metadata = mergeSavedMetadata(
+        editorSession.value.draft.metadata,
+        rule.metadata,
+      )
     }
   }
 
   function toggleSnippetInRuleEditor(snippetId: string) {
-    const ids = editRuleSnippetIds.value
-    editRuleSnippetIds.value = ids.includes(snippetId)
-      ? ids.filter((id) => id !== snippetId)
-      : [...ids, snippetId]
-    editDirty.value = true
+    if (editorSession.value.tab !== 'rules') {
+      return
+    }
+    const nextSnippetIds = editorSession.value.snippetIds.includes(snippetId)
+      ? editorSession.value.snippetIds.filter((id) => id !== snippetId)
+      : [...editorSession.value.snippetIds, snippetId]
+    editorSession.value = {
+      ...editorSession.value,
+      snippetIds: nextSnippetIds,
+      dirty: true,
+    }
+    if (editorSession.value.draft) {
+      editorSession.value.draft.snippetIds = [...nextSnippetIds]
+    }
   }
 
   function discardSnippetEdit() {
@@ -133,8 +243,13 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
     hydrateSelectedRuleDraft()
   }
 
-  watch(selectedSnippetId, hydrateSelectedSnippetDraft)
-  watch(selectedRuleId, hydrateSelectedRuleDraft)
+  watch(options.activeTab, (activeTab) => {
+    if (activeTab === 'snippets') {
+      hydrateSelectedSnippetDraft()
+      return
+    }
+    hydrateSelectedRuleDraft()
+  })
   watch(options.snippets, reconcileRuleEditorSnippetIds)
 
   return {
@@ -153,6 +268,28 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
     toggleSnippetInRuleEditor,
     discardSnippetEdit,
     discardRuleEdit,
+  }
+}
+
+function createSnippetEditorSession(
+  draft: CodeSnippetEditorDraft | null = null,
+): SnippetEditorSession {
+  return {
+    tab: 'snippets',
+    draft,
+    dirty: false,
+  }
+}
+
+function createRuleEditorSession(
+  draft: InjectionRuleEditorDraft | null = null,
+  snippetIds: string[] = [],
+): RuleEditorSession {
+  return {
+    tab: 'rules',
+    draft,
+    snippetIds,
+    dirty: false,
   }
 }
 

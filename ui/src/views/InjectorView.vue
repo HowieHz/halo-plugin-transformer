@@ -18,7 +18,7 @@ import {
   VSpace,
 } from '@halo-dev/components'
 
-import type { ActiveTab } from '@/types'
+import type { ActiveTab, CodeSnippetEditorDraft, InjectionRuleEditorDraft } from '@/types'
 import { useInjectorData } from './composables/useInjectorData.ts'
 import { rulePreview } from './composables/util.ts'
 import { matchRuleSummary } from './composables/matchRule.ts'
@@ -47,7 +47,6 @@ import BulkOperationPanel from './components/BulkOperationPanel.vue'
 import BulkModeSidePanel from './components/BulkModeSidePanel.vue'
 import BulkImportOptionsModal from './components/BulkImportOptionsModal.vue'
 import BulkImportResultModal from './components/BulkImportResultModal.vue'
-import type { CodeSnippetEditorDraft, InjectionRuleEditorDraft } from '@/types'
 import { useDragAutoScroll } from './composables/useDragAutoScroll'
 import { useLeaveConfirmation } from './composables/useLeaveConfirmation'
 import {
@@ -132,7 +131,7 @@ const {
   discardRuleEdit,
   toggleSnippetInRuleEditor,
   reorderRule,
-} = useInjectorData()
+} = useInjectorData(activeTab)
 
 const bulkSelectionState = useBulkSelectionState({
   activeTab,

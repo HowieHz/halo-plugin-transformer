@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { nextTick } from 'vue'
-import { makeRuleEditorDraft, makeSnippetEditorDraft, type ItemList } from '@/types'
+import { nextTick, ref } from 'vue'
+import { makeRuleEditorDraft, makeSnippetEditorDraft, type ActiveTab, type ItemList } from '@/types'
 
 const { toast, dialog, snippetApi, ruleApi } = vi.hoisted(() => ({
   toast: {
@@ -65,6 +65,7 @@ describe('useInjectorData', () => {
   // why: 启停现在应走独立写口，并只改已保存规则的 enabled；
   // 当前右侧的未保存草稿既不该被顺手保存，也不该被整页重载冲掉。
   it('toggles rule enabled without saving or discarding other draft fields', async () => {
+    const activeTab = ref<ActiveTab>('rules')
     const savedRule = makeRuleEditorDraft({
       id: 'rule-a',
       metadata: { name: 'rule-a', version: 1 },
@@ -100,7 +101,7 @@ describe('useInjectorData', () => {
       },
     })
 
-    const store = useInjectorData()
+    const store = useInjectorData(activeTab)
     await store.fetchAll()
     store.selectedRuleId.value = 'rule-a'
     await nextTick()
@@ -148,7 +149,7 @@ describe('useInjectorData', () => {
     ruleApi.list.mockResolvedValue({ data: listOf([]) })
     ruleApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } })
 
-    const store = useInjectorData()
+    const store = useInjectorData(ref<ActiveTab>('snippets'))
     await store.fetchAll()
     store.selectedSnippetId.value = 'snippet-a'
     await nextTick()
@@ -175,6 +176,7 @@ describe('useInjectorData', () => {
 
   // why: 前端保存规则时不应再去二次改写代码块；双向关联应交给后端单接口完成。
   it('saves rules without issuing secondary snippet update requests', async () => {
+    const activeTab = ref<ActiveTab>('rules')
     const savedRule = makeRuleEditorDraft({
       id: 'rule-a',
       metadata: { name: 'rule-a' },
@@ -206,7 +208,7 @@ describe('useInjectorData', () => {
     ruleApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } })
     ruleApi.update.mockResolvedValue({ data: savedRule })
 
-    const store = useInjectorData()
+    const store = useInjectorData(activeTab)
     await store.fetchAll()
     store.selectedRuleId.value = 'rule-a'
     await nextTick()
@@ -219,6 +221,7 @@ describe('useInjectorData', () => {
 
   // why: 规则保存只应刷新规则上下文；不该再顺手把代码块列表和代码块顺序也整页回拉。
   it('refreshes only rules after saving a rule', async () => {
+    const activeTab = ref<ActiveTab>('rules')
     const savedRule = makeRuleEditorDraft({
       id: 'rule-a',
       metadata: { name: 'rule-a', version: 1 },
@@ -252,7 +255,7 @@ describe('useInjectorData', () => {
     ruleApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } })
     ruleApi.update.mockResolvedValue({ data: savedRule })
 
-    const store = useInjectorData()
+    const store = useInjectorData(activeTab)
     await store.fetchAll()
     store.selectedRuleId.value = 'rule-a'
     await nextTick()
@@ -287,7 +290,7 @@ describe('useInjectorData', () => {
     ruleApi.list.mockResolvedValue({ data: listOf([savedRule]) })
     ruleApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } })
 
-    const store = useInjectorData()
+    const store = useInjectorData(ref<ActiveTab>('snippets'))
     await store.fetchAll()
     store.selectedSnippetId.value = 'snippet-a'
     await nextTick()
@@ -302,6 +305,7 @@ describe('useInjectorData', () => {
 
   // why: snippet 删除和 rule 引用清理是最终一致；在后端完成收敛前，前端编辑器也不应继续回传已失效的 snippet id。
   it('prunes missing snippet ids from the rule editor selection state', async () => {
+    const activeTab = ref<ActiveTab>('rules')
     const savedRule = makeRuleEditorDraft({
       id: 'rule-a',
       metadata: { name: 'rule-a', version: 1 },
@@ -330,7 +334,7 @@ describe('useInjectorData', () => {
     ruleApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } })
     ruleApi.update.mockResolvedValue({ data: { ...savedRule, snippetIds: [] } })
 
-    const store = useInjectorData()
+    const store = useInjectorData(activeTab)
     await store.fetchAll()
     store.selectedRuleId.value = 'rule-a'
     await nextTick()
@@ -350,6 +354,7 @@ describe('useInjectorData', () => {
 
   // why: 删除一个资源后，页面上两侧列表和关联面板都可能受影响；删除路径应刷新整页资源快照，而不是只刷当前标签页。
   it('refreshes both snippet and rule lists after deleting a rule', async () => {
+    const activeTab = ref<ActiveTab>('rules')
     const savedRule = makeRuleEditorDraft({
       id: 'rule-a',
       metadata: { name: 'rule-a', version: 1 },
@@ -386,7 +391,7 @@ describe('useInjectorData', () => {
     ruleApi.delete.mockResolvedValue({})
     ruleApi.updateOrder.mockResolvedValue({ data: { orders: {}, version: 2 } })
 
-    const store = useInjectorData()
+    const store = useInjectorData(activeTab)
     await store.fetchAll()
     store.selectedRuleId.value = 'rule-a'
     await nextTick()
@@ -403,6 +408,7 @@ describe('useInjectorData', () => {
 
   // why: 左侧排序保存失败时，只应回拉排序映射；右侧未保存的规则草稿不能被整页重载冲掉。
   it('keeps unsaved rule editor state when rule reorder persistence fails', async () => {
+    const activeTab = ref<ActiveTab>('rules')
     const ruleA = makeRuleEditorDraft({
       id: 'rule-a',
       metadata: { name: 'rule-a' },
@@ -450,7 +456,7 @@ describe('useInjectorData', () => {
       .mockResolvedValueOnce({ data: { orders: { 'rule-a': 10, 'rule-b': 20 }, version: 1 } })
     ruleApi.updateOrder.mockRejectedValue(new Error('boom'))
 
-    const store = useInjectorData()
+    const store = useInjectorData(activeTab)
     await store.fetchAll()
     store.selectedRuleId.value = 'rule-a'
     await nextTick()
@@ -501,7 +507,7 @@ describe('useInjectorData', () => {
     ruleApi.list.mockResolvedValue({ data: listOf([]) })
     ruleApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } })
 
-    const store = useInjectorData()
+    const store = useInjectorData(ref<ActiveTab>('snippets'))
     await store.fetchAll()
     store.selectedSnippetId.value = 'snippet-a'
     await nextTick()
@@ -523,5 +529,73 @@ describe('useInjectorData', () => {
     expect(snippetApi.list).toHaveBeenCalledTimes(1)
     expect(ruleApi.list).toHaveBeenCalledTimes(1)
     expect(snippetApi.getOrder).toHaveBeenCalledTimes(2)
+  })
+
+  // why: editor draft 必须由当前 tab 的单一活动会话承载；
+  // inactive tab 最多只记住 selectedId，不能继续隐藏第二份草稿并共享 dirty 状态。
+  it('keeps exactly one active editor session for the current tab', async () => {
+    const activeTab = ref<ActiveTab>('snippets')
+    const savedSnippet = makeSnippetEditorDraft({
+      id: 'snippet-a',
+      metadata: { name: 'snippet-a', version: 1 },
+      name: 'Snippet A',
+      code: '<div>saved</div>',
+    })
+    const savedRule = makeRuleEditorDraft({
+      id: 'rule-a',
+      metadata: { name: 'rule-a', version: 1 },
+      name: 'Rule A',
+      matchRule: {
+        type: 'GROUP',
+        negate: false,
+        operator: 'AND',
+        children: [
+          {
+            type: 'PATH',
+            negate: false,
+            matcher: 'ANT',
+            value: '/**',
+          },
+        ],
+      },
+    })
+    delete (savedRule as { matchRuleSource?: unknown }).matchRuleSource
+
+    snippetApi.list.mockResolvedValue({ data: listOf([savedSnippet]) })
+    snippetApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } })
+    ruleApi.list.mockResolvedValue({ data: listOf([savedRule]) })
+    ruleApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } })
+
+    const store = useInjectorData(activeTab)
+    await store.fetchAll()
+
+    store.selectedSnippetId.value = 'snippet-a'
+    await nextTick()
+    store.editSnippet.value = {
+      ...store.editSnippet.value!,
+      name: 'draft snippet',
+    }
+    store.editDirty.value = true
+
+    store.selectedRuleId.value = 'rule-a'
+    await nextTick()
+
+    expect(store.editRule.value).toBeNull()
+    expect(store.editSnippet.value?.name).toBe('draft snippet')
+
+    activeTab.value = 'rules'
+    await nextTick()
+
+    expect(store.editSnippet.value).toBeNull()
+    expect(store.editRule.value?.id).toBe('rule-a')
+    expect(store.editRule.value?.name).toBe('Rule A')
+    expect(store.editDirty.value).toBe(false)
+
+    activeTab.value = 'snippets'
+    await nextTick()
+
+    expect(store.editSnippet.value?.id).toBe('snippet-a')
+    expect(store.editSnippet.value?.name).toBe('Snippet A')
+    expect(store.editDirty.value).toBe(false)
   })
 })

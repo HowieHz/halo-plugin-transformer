@@ -1,7 +1,7 @@
-import { ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import { Toast } from '@halo-dev/components'
 import { ruleApi, snippetApi } from '@/apis'
-import type { CodeSnippetReadModel, InjectionRuleReadModel } from '@/types'
+import type { ActiveTab, CodeSnippetReadModel, InjectionRuleReadModel } from '@/types'
 import { emptyList, getErrorMessage } from './injectorShared'
 import { useEditorSelectionState } from './useEditorSelectionState'
 import { useResourceOrderState } from './useResourceOrderState'
@@ -12,7 +12,7 @@ import { useSnippetState } from './useSnippetState'
  * why: `useInjectorData` 现在只保留页面级编排职责：
  * 装载共享资源快照，并把 snippet / rule / order / editor-selection 这几个 bounded context 组合起来。
  */
-export function useInjectorData() {
+export function useInjectorData(activeTab: Ref<ActiveTab>) {
   const loading = ref(false)
   const creating = ref(false)
   const savingEditor = ref(false)
@@ -34,6 +34,7 @@ export function useInjectorData() {
   })
 
   const editorSelectionState = useEditorSelectionState({
+    activeTab,
     snippetsResp,
     rulesResp,
     snippets: snippetOrderState.items,

@@ -52,6 +52,12 @@ pnpm dev
 - 不承载 `id`、排序、系统 metadata
 - 规则 transfer 也不承载 `snippetIds`；跨环境关系迁移若以后要支持，应单独设计显式协议，而不是偷偷把关系字段塞回当前 transfer
 
+编辑器会额外遵循“单活动会话”约束：
+
+- 当前 tab 只允许存在一份活动 `EditorDraft`
+- `tab -> selectedId` 可以按标签页分别记忆，方便路由恢复与面板跳转
+- 但未保存草稿不会在两个 tab 后面各藏一份；切换时总是重新 hydrate 当前 tab 的活动会话，避免共享一个 `dirty` 标记却同时维护两份隐式草稿
+
 ## Match-rule specs
 
 为了避免“README 很长，但 contract fixture 很薄”，`match-rule` 现在拆成两类规范源：
