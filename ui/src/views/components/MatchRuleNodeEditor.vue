@@ -284,7 +284,7 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
       isDraggingNode ? ':uno: opacity-60' : '',
     ]"
     :aria-invalid="hasNodeError"
-    class=":uno: relative rounded-md border p-3 space-y-3"
+    class=":uno: relative rounded-md border p-3"
     role="group"
     @dragover="handleDragOverNode"
     @drop="handleDropOnNode"
@@ -298,211 +298,215 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
       class=":uno: pointer-events-none absolute z-10 left-3 right-3 -bottom-1 h-0.5 rounded-full bg-primary"
     />
 
-    <template v-if="isGroup">
-      <div class=":uno: flex flex-wrap items-center gap-2">
-        <span class=":uno: text-sm font-medium text-gray-700">
-          {{ root ? '根条件组' : '条件组' }}
-        </span>
-        <select
-          :value="rule.operator"
-          :aria-invalid="hasFieldError('operator')"
-          aria-label="条件组逻辑"
+    <div class=":uno: space-y-3">
+      <template v-if="isGroup">
+        <div class=":uno: flex flex-wrap items-center gap-2">
+          <span class=":uno: text-sm font-medium text-gray-700">
+            {{ root ? '根条件组' : '条件组' }}
+          </span>
+          <select
+            :value="rule.operator"
+            :aria-invalid="hasFieldError('operator')"
+            aria-label="条件组逻辑"
+            :class="
+              hasFieldError('operator')
+                ? ':uno: border-red-300 focus:border-red-500'
+                : ':uno: border-gray-200 focus:border-primary'
+            "
+            class=":uno: min-w-[7rem] shrink-0 rounded-md border bg-white px-2 py-1 pr-8 text-sm focus:outline-none"
+            @wheel="updateSelectByWheel"
+            @change="
+              updateGroupField(
+                'operator',
+                ($event.target as HTMLSelectElement).value as MatchRule['operator'],
+              )
+            "
+          >
+            <option
+              v-for="option in MATCH_RULE_GROUP_OPTIONS"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ option.label }}
+            </option>
+          </select>
+          <label
+            :class="hasFieldError('negate') ? ':uno: text-red-600' : ':uno: text-gray-700'"
+            class=":uno: inline-flex items-center gap-2 text-sm"
+          >
+            <input
+              :checked="rule.negate"
+              type="checkbox"
+              @change="updateGroupField('negate', ($event.target as HTMLInputElement).checked)"
+            />
+            不满足本组（NOT）
+          </label>
+          <div v-if="!root" class=":uno: inline-flex items-center gap-1">
+            <button
+              aria-label="拖动当前条件组"
+              class=":uno: inline-flex h-7 w-7 shrink-0 cursor-grab active:cursor-grabbing items-center justify-center rounded text-sm leading-none tracking-[-0.2em] text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+              draggable="true"
+              title="按住拖动；拖到条件组中部可放入该组"
+              type="button"
+              @click.stop
+              @dragend="clearDragState"
+              @dragstart.stop="startDrag"
+              @mousedown.stop
+            >
+              ⋮⋮
+            </button>
+          </div>
+          <VButton
+            v-if="!root && canRemove !== false"
+            aria-label="移除当前条件组"
+            size="sm"
+            type="danger"
+            @click="emit('remove')"
+          >
+            移除此组
+          </VButton>
+        </div>
+
+        <div class=":uno: space-y-2">
+          <template v-if="(rule.children?.length ?? 0) > 0">
+            <MatchRuleNodeEditor
+              v-for="(child, index) in rule.children ?? []"
+              :key="index"
+              :can-remove="true"
+              :model-value="child"
+              :node-path="[...currentNodePath, index]"
+              :path="`${currentPath}.children[${index}]`"
+              :validation-errors="validationErrors"
+              @change="emit('change')"
+              @remove="removeChild(index)"
+              @update:model-value="updateChild(index, $event)"
+            />
+          </template>
+
+          <div
+            v-else
+            :class="
+              isDropInside ? ':uno: border-primary bg-primary/[0.04]' : ':uno: border-gray-200'
+            "
+            class=":uno: rounded-md border border-dashed px-3 py-4 transition-colors"
+            @dragover="handleDragOverIntoGroup"
+            @drop="handleDropIntoGroup"
+          />
+
+          <div class=":uno: flex flex-wrap gap-2">
+            <VButton size="sm" @click="addPathRule">添加匹配规则</VButton>
+            <VButton size="sm" type="secondary" @click="addGroupRule">添加条件组</VButton>
+          </div>
+        </div>
+      </template>
+
+      <template v-else>
+        <div class=":uno: flex flex-wrap items-center gap-2">
+          <select
+            :value="rule.type"
+            :aria-invalid="hasFieldError('type')"
+            aria-label="匹配规则类型"
+            :class="
+              hasFieldError('type')
+                ? ':uno: border-red-300 focus:border-red-500'
+                : ':uno: border-gray-200 focus:border-primary'
+            "
+            class=":uno: min-w-[8rem] shrink-0 rounded-md border bg-white px-2 py-1 pr-8 text-sm focus:outline-none"
+            @wheel="updateSelectByWheel"
+            @change="
+              switchLeafType(($event.target as HTMLSelectElement).value as 'PATH' | 'TEMPLATE_ID')
+            "
+          >
+            <option value="PATH">页面路径匹配</option>
+            <option value="TEMPLATE_ID">模板 ID 匹配</option>
+          </select>
+
+          <select
+            :value="rule.matcher"
+            :aria-invalid="hasFieldError('matcher')"
+            aria-label="匹配方式"
+            :class="
+              hasFieldError('matcher')
+                ? ':uno: border-red-300 focus:border-red-500'
+                : ':uno: border-gray-200 focus:border-primary'
+            "
+            class=":uno: min-w-[8rem] shrink-0 rounded-md border bg-white px-2 py-1 pr-8 text-sm focus:outline-none"
+            @wheel="updateSelectByWheel"
+            @change="
+              updateGroupField(
+                'matcher',
+                ($event.target as HTMLSelectElement).value as MatchRule['matcher'],
+              )
+            "
+          >
+            <option v-for="option in matcherOptions" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+
+          <label
+            :class="hasFieldError('negate') ? ':uno: text-red-600' : ':uno: text-gray-700'"
+            class=":uno: inline-flex items-center gap-2 text-sm"
+          >
+            <input
+              :checked="rule.negate"
+              type="checkbox"
+              @change="updateGroupField('negate', ($event.target as HTMLInputElement).checked)"
+            />
+            不满足本项（NOT）
+          </label>
+
+          <div v-if="!root" class=":uno: inline-flex items-center gap-1">
+            <button
+              aria-label="拖动当前匹配条件"
+              class=":uno: inline-flex h-7 w-7 shrink-0 cursor-grab active:cursor-grabbing items-center justify-center rounded text-sm leading-none tracking-[-0.2em] text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+              draggable="true"
+              title="按住拖动排序"
+              type="button"
+              @click.stop
+              @dragend="clearDragState"
+              @dragstart.stop="startDrag"
+              @mousedown.stop
+            >
+              ⋮⋮
+            </button>
+          </div>
+
+          <VButton
+            v-if="canRemove !== false"
+            aria-label="移除当前匹配条件"
+            size="sm"
+            type="danger"
+            @click="emit('remove')"
+          >
+            移除此条件
+          </VButton>
+        </div>
+
+        <input
+          :value="rule.value"
+          :aria-invalid="hasFieldError('value')"
+          aria-label="匹配值"
           :class="
-            hasFieldError('operator')
+            hasFieldError('value')
               ? ':uno: border-red-300 focus:border-red-500'
               : ':uno: border-gray-200 focus:border-primary'
           "
-          class=":uno: min-w-[7rem] shrink-0 rounded-md border bg-white px-2 py-1 pr-8 text-sm focus:outline-none"
-          @wheel="updateSelectByWheel"
-          @change="
-            updateGroupField(
-              'operator',
-              ($event.target as HTMLSelectElement).value as MatchRule['operator'],
-            )
-          "
-        >
-          <option
-            v-for="option in MATCH_RULE_GROUP_OPTIONS"
-            :key="option.value"
-            :value="option.value"
-          >
-            {{ option.label }}
-          </option>
-        </select>
-        <label
-          :class="hasFieldError('negate') ? ':uno: text-red-600' : ':uno: text-gray-700'"
-          class=":uno: inline-flex items-center gap-2 text-sm"
-        >
-          <input
-            :checked="rule.negate"
-            type="checkbox"
-            @change="updateGroupField('negate', ($event.target as HTMLInputElement).checked)"
-          />
-          不满足本组（NOT）
-        </label>
-        <div v-if="!root" class=":uno: inline-flex items-center gap-1">
-          <button
-            aria-label="拖动当前条件组"
-            class=":uno: inline-flex h-7 w-7 shrink-0 cursor-grab active:cursor-grabbing items-center justify-center rounded text-sm leading-none tracking-[-0.2em] text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
-            draggable="true"
-            title="按住拖动；拖到条件组中部可放入该组"
-            type="button"
-            @click.stop
-            @dragend="clearDragState"
-            @dragstart.stop="startDrag"
-            @mousedown.stop
-          >
-            ⋮⋮
-          </button>
-        </div>
-        <VButton
-          v-if="!root && canRemove !== false"
-          aria-label="移除当前条件组"
-          size="sm"
-          type="danger"
-          @click="emit('remove')"
-        >
-          移除此组
-        </VButton>
-      </div>
-
-      <div class=":uno: space-y-2">
-        <template v-if="(rule.children?.length ?? 0) > 0">
-          <MatchRuleNodeEditor
-            v-for="(child, index) in rule.children ?? []"
-            :key="index"
-            :can-remove="true"
-            :model-value="child"
-            :node-path="[...currentNodePath, index]"
-            :path="`${currentPath}.children[${index}]`"
-            :validation-errors="validationErrors"
-            @change="emit('change')"
-            @remove="removeChild(index)"
-            @update:model-value="updateChild(index, $event)"
-          />
-        </template>
-
-        <div
-          v-else
-          :class="isDropInside ? ':uno: border-primary bg-primary/[0.04]' : ':uno: border-gray-200'"
-          class=":uno: rounded-md border border-dashed px-3 py-4 transition-colors"
-          @dragover="handleDragOverIntoGroup"
-          @drop="handleDropIntoGroup"
+          class=":uno: w-full rounded-md border px-3 py-1.5 text-sm font-mono focus:outline-none"
+          :placeholder="valuePlaceholder"
+          @input="updateGroupField('value', ($event.target as HTMLInputElement).value)"
         />
+      </template>
 
-        <div class=":uno: flex flex-wrap gap-2">
-          <VButton size="sm" @click="addPathRule">添加匹配规则</VButton>
-          <VButton size="sm" type="secondary" @click="addGroupRule">添加条件组</VButton>
-        </div>
+      <div v-if="ownErrorMessages.length" aria-live="polite" class=":uno: space-y-1" role="alert">
+        <p
+          v-for="(message, index) in ownErrorMessages"
+          :key="`${currentPath}-${index}-${message}`"
+          class=":uno: text-xs text-red-500"
+        >
+          {{ message }}
+        </p>
       </div>
-    </template>
-
-    <template v-else>
-      <div class=":uno: flex flex-wrap items-center gap-2">
-        <select
-          :value="rule.type"
-          :aria-invalid="hasFieldError('type')"
-          aria-label="匹配规则类型"
-          :class="
-            hasFieldError('type')
-              ? ':uno: border-red-300 focus:border-red-500'
-              : ':uno: border-gray-200 focus:border-primary'
-          "
-          class=":uno: min-w-[8rem] shrink-0 rounded-md border bg-white px-2 py-1 pr-8 text-sm focus:outline-none"
-          @wheel="updateSelectByWheel"
-          @change="
-            switchLeafType(($event.target as HTMLSelectElement).value as 'PATH' | 'TEMPLATE_ID')
-          "
-        >
-          <option value="PATH">页面路径匹配</option>
-          <option value="TEMPLATE_ID">模板 ID 匹配</option>
-        </select>
-
-        <select
-          :value="rule.matcher"
-          :aria-invalid="hasFieldError('matcher')"
-          aria-label="匹配方式"
-          :class="
-            hasFieldError('matcher')
-              ? ':uno: border-red-300 focus:border-red-500'
-              : ':uno: border-gray-200 focus:border-primary'
-          "
-          class=":uno: min-w-[8rem] shrink-0 rounded-md border bg-white px-2 py-1 pr-8 text-sm focus:outline-none"
-          @wheel="updateSelectByWheel"
-          @change="
-            updateGroupField(
-              'matcher',
-              ($event.target as HTMLSelectElement).value as MatchRule['matcher'],
-            )
-          "
-        >
-          <option v-for="option in matcherOptions" :key="option.value" :value="option.value">
-            {{ option.label }}
-          </option>
-        </select>
-
-        <label
-          :class="hasFieldError('negate') ? ':uno: text-red-600' : ':uno: text-gray-700'"
-          class=":uno: inline-flex items-center gap-2 text-sm"
-        >
-          <input
-            :checked="rule.negate"
-            type="checkbox"
-            @change="updateGroupField('negate', ($event.target as HTMLInputElement).checked)"
-          />
-          不满足本项（NOT）
-        </label>
-
-        <div v-if="!root" class=":uno: inline-flex items-center gap-1">
-          <button
-            aria-label="拖动当前匹配条件"
-            class=":uno: inline-flex h-7 w-7 shrink-0 cursor-grab active:cursor-grabbing items-center justify-center rounded text-sm leading-none tracking-[-0.2em] text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
-            draggable="true"
-            title="按住拖动排序"
-            type="button"
-            @click.stop
-            @dragend="clearDragState"
-            @dragstart.stop="startDrag"
-            @mousedown.stop
-          >
-            ⋮⋮
-          </button>
-        </div>
-
-        <VButton
-          v-if="canRemove !== false"
-          aria-label="移除当前匹配条件"
-          size="sm"
-          type="danger"
-          @click="emit('remove')"
-        >
-          移除此条件
-        </VButton>
-      </div>
-
-      <input
-        :value="rule.value"
-        :aria-invalid="hasFieldError('value')"
-        aria-label="匹配值"
-        :class="
-          hasFieldError('value')
-            ? ':uno: border-red-300 focus:border-red-500'
-            : ':uno: border-gray-200 focus:border-primary'
-        "
-        class=":uno: w-full rounded-md border px-3 py-1.5 text-sm font-mono focus:outline-none"
-        :placeholder="valuePlaceholder"
-        @input="updateGroupField('value', ($event.target as HTMLInputElement).value)"
-      />
-    </template>
-
-    <div v-if="ownErrorMessages.length" aria-live="polite" class=":uno: space-y-1" role="alert">
-      <p
-        v-for="(message, index) in ownErrorMessages"
-        :key="`${currentPath}-${index}-${message}`"
-        class=":uno: text-xs text-red-500"
-      >
-        {{ message }}
-      </p>
     </div>
   </div>
 </template>
