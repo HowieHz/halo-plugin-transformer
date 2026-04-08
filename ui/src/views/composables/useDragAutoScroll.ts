@@ -22,8 +22,8 @@ export function useDragAutoScroll(
 ) {
   const minScrollStepPx = options.minStepPx ?? 6
   const maxScrollStepPx = options.maxStepPx ?? 28
-  const warmupDurationMs = 220
-  const initialSpeedFactor = 0.175
+  const initialScrollStepPx = Math.max(1, minScrollStepPx * 0.5)
+  const warmupDurationMs = 320
   const isDragActive = ref(false)
   const activeDirection = ref<DragAutoScrollDirection | null>(null)
   const scrollTop = ref(0)
@@ -172,8 +172,9 @@ export function useDragAutoScroll(
       activeDirectionStartedAt > 0
         ? clamp((performance.now() - activeDirectionStartedAt) / warmupDurationMs, 0, 1)
         : 0
-    const warmupFactor = initialSpeedFactor + (1 - initialSpeedFactor) * easeOutQuad(warmupProgress)
-    return minScrollStepPx + (spatialStep - minScrollStepPx) * warmupFactor
+    return (
+      initialScrollStepPx + (spatialStep - initialScrollStepPx) * easeOutQuad(warmupProgress)
+    )
   }
 
   function resolveAutoScrollDirection(
