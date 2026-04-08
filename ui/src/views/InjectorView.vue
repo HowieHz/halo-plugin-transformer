@@ -62,8 +62,7 @@ const activeTab = ref<ActiveTab>('snippets')
 const route = useRoute()
 const router = useRouter()
 
-const showSnippetModal = ref(false)
-const showRuleModal = ref(false)
+const createModalTab = ref<ActiveTab | null>(null)
 const syncingQuery = ref(false)
 const queryStateHydrated = ref(false)
 const bulkImportSourceVisible = ref(false)
@@ -182,8 +181,7 @@ function currentSelectedId(tab: ActiveTab) {
 
 function currentAction(tab: ActiveTab) {
   if (bulkSelectionState.isBulkMode.value) return null
-  if (tab === 'snippets' && showSnippetModal.value) return 'create'
-  if (tab === 'rules' && showRuleModal.value) return 'create'
+  if (createModalTab.value === tab) return 'create'
   return null
 }
 
@@ -198,10 +196,8 @@ function currentLocalRouteState(): InjectorRouteState {
 
 function applyRouteState(nextState: InjectorRouteState) {
   activeTab.value = nextState.tab
-  showSnippetModal.value =
-    nextState.viewMode !== 'bulk' && nextState.tab === 'snippets' && nextState.action === 'create'
-  showRuleModal.value =
-    nextState.viewMode !== 'bulk' && nextState.tab === 'rules' && nextState.action === 'create'
+  createModalTab.value =
+    nextState.viewMode !== 'bulk' && nextState.action === 'create' ? nextState.tab : null
 
   const nextSelection = applyInjectorRouteSelection(
     {
@@ -296,26 +292,24 @@ function validateSelection() {
 function openCreateModal(tab: ActiveTab) {
   activeTab.value = tab
   bulkSelectionState.exitBulkMode()
-  if (tab === 'snippets') {
-    showSnippetModal.value = true
-    showRuleModal.value = false
-  } else {
-    showRuleModal.value = true
-    showSnippetModal.value = false
-  }
+  createModalTab.value = tab
 }
 
 function closeSnippetModal() {
-  showSnippetModal.value = false
+  if (createModalTab.value === 'snippets') {
+    createModalTab.value = null
+  }
 }
 
 function closeRuleModal() {
-  showRuleModal.value = false
+  if (createModalTab.value === 'rules') {
+    createModalTab.value = null
+  }
 }
 
 function currentCreateController() {
-  if (showSnippetModal.value) return snippetFormRef.value
-  if (showRuleModal.value) return ruleFormRef.value
+  if (createModalTab.value === 'snippets') return snippetFormRef.value
+  if (createModalTab.value === 'rules') return ruleFormRef.value
   return null
 }
 
@@ -332,21 +326,21 @@ function hasUnsavedChanges() {
 }
 
 function currentValidationError() {
-  if (showSnippetModal.value) {
+  if (createModalTab.value === 'snippets') {
     return snippetFormRef.value?.getValidationError() ?? null
   }
-  if (showRuleModal.value) {
+  if (createModalTab.value === 'rules') {
     return ruleFormRef.value?.getValidationError() ?? null
   }
   return activeTab.value === 'snippets' ? snippetEditorError.value : ruleEditorError.value
 }
 
 function discardCurrentChanges() {
-  if (showSnippetModal.value) {
+  if (createModalTab.value === 'snippets') {
     snippetFormRef.value?.reset()
     return
   }
-  if (showRuleModal.value) {
+  if (createModalTab.value === 'rules') {
     ruleFormRef.value?.reset()
     return
   }
@@ -363,17 +357,17 @@ function closePostCreatePrompt() {
 
 async function saveCurrentChanges() {
   let saved = false
-  if (showSnippetModal.value) {
+  if (createModalTab.value === 'snippets') {
     const payload = snippetFormRef.value?.getSubmitPayload()
     saved = payload ? !!(await addSnippet(payload.snippet)) : false
     if (saved) {
-      showSnippetModal.value = false
+      createModalTab.value = null
     }
-  } else if (showRuleModal.value) {
+  } else if (createModalTab.value === 'rules') {
     const payload = ruleFormRef.value?.getSubmitPayload()
     saved = payload ? !!(await addRule(payload.rule, payload.snippetIds)) : false
     if (saved) {
-      showRuleModal.value = false
+      createModalTab.value = null
     }
   } else {
     saved = activeTab.value === 'snippets' ? await saveSnippet() : await saveRule()
@@ -422,11 +416,11 @@ function focusCreatedResource() {
   }
   resetCreateForm(prompt.tab)
   if (prompt.tab === 'snippets') {
-    showSnippetModal.value = false
+    createModalTab.value = null
     activeTab.value = 'snippets'
     selectedSnippetId.value = prompt.id
   } else {
-    showRuleModal.value = false
+    createModalTab.value = null
     activeTab.value = 'rules'
     selectedRuleId.value = prompt.id
   }
@@ -468,8 +462,7 @@ function handleOpenCreateModal(tab: ActiveTab) {
 
 function enterBulkMode() {
   requestEditorLeave(() => {
-    showSnippetModal.value = false
-    showRuleModal.value = false
+    createModalTab.value = null
     bulkSelectionState.enterBulkMode()
   })
 }
@@ -640,14 +633,7 @@ watch(
 )
 
 watch(
-  [
-    activeTab,
-    selectedSnippetId,
-    selectedRuleId,
-    showSnippetModal,
-    showRuleModal,
-    bulkSelectionState.viewMode,
-  ],
+  [activeTab, selectedSnippetId, selectedRuleId, createModalTab, bulkSelectionState.viewMode],
   () => {
     if (!queryStateHydrated.value || syncingQuery.value) return
     syncQueryState()
@@ -688,8 +674,7 @@ async function handleAddRule(...args: Parameters<typeof addRule>) {
 function jumpToRule(id: string) {
   requestEditorLeave(() => {
     activeTab.value = 'rules'
-    showSnippetModal.value = false
-    showRuleModal.value = false
+    createModalTab.value = null
     selectedRuleId.value = id
   })
 }
@@ -697,8 +682,7 @@ function jumpToRule(id: string) {
 function jumpToSnippet(id: string) {
   requestEditorLeave(() => {
     activeTab.value = 'snippets'
-    showSnippetModal.value = false
-    showRuleModal.value = false
+    createModalTab.value = null
     selectedSnippetId.value = id
   })
 }
@@ -735,14 +719,14 @@ function jumpToSnippet(id: string) {
       @continue="continueBulkImport"
     />
     <SnippetFormModal
-      v-if="showSnippetModal"
+      v-if="createModalTab === 'snippets'"
       ref="snippetFormRef"
       :saving="creating"
       @close="requestEditorLeave(closeSnippetModal)"
       @submit="handleAddSnippet"
     />
     <RuleFormModal
-      v-if="showRuleModal"
+      v-if="createModalTab === 'rules'"
       ref="ruleFormRef"
       :saving="creating"
       :snippets="snippets"

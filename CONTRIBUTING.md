@@ -58,6 +58,7 @@ pnpm dev
 - `tab -> selectedId` 可以按标签页分别记忆，方便路由恢复与面板跳转
 - 但未保存草稿不会在两个 tab 后面各藏一份；切换时总是重新 hydrate 当前 tab 的活动会话，避免共享一个 `dirty` 标记却同时维护两份隐式草稿
 - `bulk / create` 只会隐藏当前的 visible selection，不会顺手清掉 remembered selection；退出这些页面语义后应能回到该 tab 上次打开的资源
+- 新建弹窗用单一 `ActiveTab | null` 判别状态表达，不再维护两颗互斥布尔；避免出现 `snippet/rule` 弹窗同时为真或同时忘记收口的隐式组合态
 - route intent 只改当前 tab 的页面语义；不要让 `mode=bulk`、`action=create` 这类 URL 状态顺手清掉另一个 tab 的 remembered selection
 
 ## Match-rule specs
