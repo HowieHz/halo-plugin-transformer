@@ -3,7 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { MATCH_RULE_ENUM_SPECS, MATCH_RULE_NODE_SPECS } from '../matchRuleContract.generated'
-import { matchRuleExpression, parseMatchRuleDraft, supportsDomPathPrecheck } from '../matchRule'
+import { matchRuleSummary, parseMatchRuleDraft, supportsDomPathPrecheck } from '../matchRule'
 
 interface WriteValidationExpectation {
   ok?: boolean
@@ -17,7 +17,7 @@ interface SideExpectation {
 
 interface SharedExpectation {
   domPathPrecheck?: boolean
-  minimizedExpression?: string
+  minimizedSummary?: string
   writeValidation?: WriteValidationExpectation
 }
 
@@ -85,14 +85,14 @@ describe('matchRule contract fixtures', () => {
   // why: 布尔最小化已经升级为共享契约；这里直接吃同一批 spec cases，
   // 防止前端分析表达式和后端运行时最小化再次各走各的。
   for (const contractCase of contractSuite.cases.filter(
-    (item) => typeof item.shared?.minimizedExpression === 'string',
+    (item) => typeof item.shared?.minimizedSummary === 'string',
   )) {
     it(`matches boolean minimization contract: ${contractCase.name}`, () => {
       const result = parseMatchRuleDraft(JSON.stringify(contractCase.input))
 
       expect(result.error).toBeNull()
       expect(result.rule).not.toBeNull()
-      expect(matchRuleExpression(result.rule!)).toBe(contractCase.shared?.minimizedExpression)
+      expect(matchRuleSummary(result.rule!)).toBe(contractCase.shared?.minimizedSummary)
     })
   }
 

@@ -23,7 +23,7 @@ public final class MatchRuleBooleanMinimizer {
         return toMatchRule(simplify(buildExpression(rule)));
     }
 
-    static String minimizedExpression(MatchRule rule) {
+    static String minimizedSummary(MatchRule rule) {
         return formatExpression(simplify(buildExpression(rule)), true);
     }
 
@@ -361,9 +361,9 @@ public final class MatchRuleBooleanMinimizer {
         return switch (expression) {
             case ConstantExpression constantExpression -> constantExpression.value() ? "TRUE" : "FALSE";
             case LeafExpression leafExpression -> {
-                String subject = leafExpression.type() == MatchRule.Type.PATH ? "path" : "template_id";
+                String subject = leafExpression.type() == MatchRule.Type.PATH ? "path" : "id";
                 String matcher = switch (leafExpression.matcher()) {
-                    case REGEX -> "regex";
+                    case REGEX -> "re";
                     case EXACT -> "=";
                     case ANT -> "ant";
                 };

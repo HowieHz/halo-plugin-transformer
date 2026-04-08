@@ -79,8 +79,8 @@ class MatchRuleContractTest {
         MatchRule.validateForWrite(rule);
 
         assertEquals(
-                contractCase.shared().minimizedExpression(),
-                MatchRuleBooleanMinimizer.minimizedExpression(rule)
+                contractCase.shared().minimizedSummary(),
+                MatchRuleBooleanMinimizer.minimizedSummary(rule)
         );
     }
 
@@ -163,7 +163,7 @@ class MatchRuleContractTest {
     private Stream<ContractCase> contractCasesWithMinimizedExpression() {
         return loadContractSuite().cases().stream()
                 .filter(contractCase -> contractCase.shared() != null
-                        && contractCase.shared().minimizedExpression() != null)
+                        && contractCase.shared().minimizedSummary() != null)
                 .toList()
                 .stream();
     }
@@ -383,7 +383,7 @@ class MatchRuleContractTest {
     }
 
     private record SharedExpectation(Boolean domPathPrecheck,
-                                     String minimizedExpression,
+                                     String minimizedSummary,
                                      WriteValidationExpectation writeValidation) {
     }
 

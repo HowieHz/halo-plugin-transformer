@@ -39,7 +39,7 @@
             },
             "shared": {
                 "writeValidation": { "ok": true },
-                "minimizedExpression": "template_id:=:post",
+                "minimizedSummary": "id:=:post",
             },
         },
         {
@@ -64,7 +64,7 @@
             },
             "shared": {
                 "writeValidation": { "ok": true },
-                "minimizedExpression": "FALSE",
+                "minimizedSummary": "FALSE",
             },
         },
         {
@@ -81,7 +81,7 @@
             },
             "shared": {
                 "writeValidation": { "ok": true },
-                "minimizedExpression": "FALSE",
+                "minimizedSummary": "FALSE",
             },
         },
         {
@@ -98,7 +98,7 @@
             },
             "shared": {
                 "writeValidation": { "ok": true },
-                "minimizedExpression": "path:ant:/posts/**",
+                "minimizedSummary": "path:ant:/posts/**",
             },
         },
         {
@@ -112,7 +112,7 @@
             },
             "shared": {
                 "writeValidation": { "ok": true },
-                "minimizedExpression": "path:ant:/posts/**",
+                "minimizedSummary": "path:ant:/posts/**",
             },
         },
         {
@@ -137,7 +137,7 @@
             },
             "shared": {
                 "writeValidation": { "ok": true },
-                "minimizedExpression": "path:ant:/posts/**",
+                "minimizedSummary": "path:ant:/posts/**",
             },
         },
         {
@@ -170,7 +170,7 @@
             },
             "shared": {
                 "writeValidation": { "ok": true },
-                "minimizedExpression": "path:ant:/posts/** & (template_id:=:page | template_id:=:post)",
+                "minimizedSummary": "path:ant:/posts/** & (id:=:page | id:=:post)",
             },
         },
         {
@@ -187,7 +187,7 @@
             },
             "shared": {
                 "writeValidation": { "ok": true },
-                "minimizedExpression": "!(path:ant:/posts/** & template_id:=:post)",
+                "minimizedSummary": "!(path:ant:/posts/** & id:=:post)",
             },
         },
         {
@@ -204,7 +204,7 @@
             },
             "shared": {
                 "writeValidation": { "ok": true },
-                "minimizedExpression": "!(path:ant:/posts/** | template_id:=:post)",
+                "minimizedSummary": "!(path:ant:/posts/** | id:=:post)",
             },
         },
         {
