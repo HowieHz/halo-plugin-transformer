@@ -157,4 +157,3 @@ export function useTransformerData(activeTab: Ref<ActiveTab>) {
     reorderRule: ruleOrderState.reorder,
   }
 }
-

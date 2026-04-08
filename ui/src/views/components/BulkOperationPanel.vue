@@ -71,4 +71,3 @@ const hasSelection = computed(() => props.selectedCount > 0)
     </div>
   </div>
 </template>
-

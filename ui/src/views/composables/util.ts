@@ -95,4 +95,3 @@ export function sortSelectedFirst<T extends { id: string }>(items: T[], selected
     return aSelected ? -1 : 1
   })
 }
-

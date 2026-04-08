@@ -290,4 +290,3 @@ function validateSnippetDraft(snippet: Pick<TransformationSnippetEditorDraft, 'c
   }
   return null
 }
-

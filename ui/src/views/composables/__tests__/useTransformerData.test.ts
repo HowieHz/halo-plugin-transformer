@@ -599,4 +599,3 @@ describe('useTransformerData', () => {
     expect(store.editDirty.value).toBe(false)
   })
 })
-

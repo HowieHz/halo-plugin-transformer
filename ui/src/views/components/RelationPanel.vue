@@ -96,4 +96,3 @@ const ruleSnippetsEmptyText = computed(() =>
     </div>
   </div>
 </template>
-

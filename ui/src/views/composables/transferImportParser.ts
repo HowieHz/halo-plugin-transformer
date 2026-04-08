@@ -214,4 +214,3 @@ function parseImportedMatchRuleSource(source: unknown): {
     matchRuleSource: makeRuleTreeSource(matchRule),
   }
 }
-

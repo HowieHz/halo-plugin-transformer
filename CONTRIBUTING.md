@@ -391,6 +391,7 @@ pnpm dev
 pnpm verify:spec-artifacts
 
 # 前端
+pnpm --dir ui fmt
 pnpm --dir ui lint
 pnpm --dir ui type-check
 pnpm --dir ui test:unit

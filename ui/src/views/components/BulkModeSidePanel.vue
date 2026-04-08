@@ -25,4 +25,3 @@ const resourceLabel = computed(() => (props.tab === 'snippets' ? '代码片段' 
     </div>
   </div>
 </template>
-

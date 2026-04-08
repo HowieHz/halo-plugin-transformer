@@ -336,4 +336,3 @@ export function useRuleState(options: UseRuleStateOptions) {
     confirmDeleteRules,
   }
 }
-

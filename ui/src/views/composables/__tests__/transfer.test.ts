@@ -565,4 +565,3 @@ describe('batch transfer', () => {
     expect(payload.data.items[0].runtimeOrder).toBe(42)
   })
 })
-

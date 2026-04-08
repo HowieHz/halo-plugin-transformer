@@ -10,18 +10,13 @@
     "build:compiled": "run-p type-check \"build-only {@}\" --",
     "build-only": "rsbuild build",
     "dev": "rsbuild build --watch --env-mode=development",
+    "fmt": "oxfmt src public env.d.ts eslint.config.ts package.json rsbuild.config.ts tsconfig.app.json tsconfig.json tsconfig.node.json tsconfig.vitest.json uno.config.ts vitest.config.ts .oxfmtrc.json --ignore-path .gitignore",
+    "fmt:check": "oxfmt src public env.d.ts eslint.config.ts package.json rsbuild.config.ts tsconfig.app.json tsconfig.json tsconfig.node.json tsconfig.vitest.json uno.config.ts vitest.config.ts .oxfmtrc.json --check --ignore-path .gitignore",
     "lint:oxlint": "oxlint . --fix -D correctness --ignore-path ../.gitignore",
     "lint:eslint": "eslint . --fix",
     "lint": "run-s lint:*",
-    "prettier": "prettier --write src/",
     "test:unit": "vitest --passWithNoTests",
     "type-check": "vue-tsc --build"
-  },
-  "prettier": {
-    "printWidth": 100,
-    "semi": false,
-    "singleQuote": true,
-    "tabWidth": 2
   },
   "dependencies": {
     "@halo-dev/api-client": "^2.23.0",
@@ -54,8 +49,8 @@
     "eslint-plugin-vue": "~10.8.0",
     "jsdom": "^29.0.1",
     "npm-run-all2": "^8.0.4",
+    "oxfmt": "^0.44.0",
     "oxlint": "^1.58.0",
-    "prettier": "^3.8.1",
     "sass": "^1.99.0",
     "typescript": "~6.0.2",
     "unocss": "^66.6.7",
