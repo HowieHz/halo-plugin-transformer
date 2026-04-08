@@ -55,8 +55,9 @@ const editorFooterShell = ref<HTMLElement | null>(null)
 const matchRuleEditorRef = ref<{
   commitPendingDrop: () => void
 } | null>(null)
-const dragOverlayTopHeight = ref(48)
-const dragOverlayBottomHeight = ref(52)
+const RULE_EDITOR_EDGE_OVERLAP_PX = 8
+const dragOverlayTopHeight = ref(48 + RULE_EDITOR_EDGE_OVERLAP_PX)
+const dragOverlayBottomHeight = ref(52 + RULE_EDITOR_EDGE_OVERLAP_PX)
 const autoScroll = useDragAutoScroll(editorScrollContainer)
 let dragOverlayResizeObserver: ResizeObserver | null = null
 
@@ -87,8 +88,10 @@ type UndoableRuleField =
   | 'snippetIds'
 
 function updateDragOverlayHeights() {
-  dragOverlayTopHeight.value = editorToolbarShell.value?.offsetHeight ?? 48
-  dragOverlayBottomHeight.value = editorFooterShell.value?.offsetHeight ?? 52
+  dragOverlayTopHeight.value =
+    (editorToolbarShell.value?.offsetHeight ?? 48) + RULE_EDITOR_EDGE_OVERLAP_PX
+  dragOverlayBottomHeight.value =
+    (editorFooterShell.value?.offsetHeight ?? 52) + RULE_EDITOR_EDGE_OVERLAP_PX
 }
 
 function handleEditorContainerDragOver(event: DragEvent) {

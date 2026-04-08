@@ -51,6 +51,7 @@ const resourceListRef = ref<{
 } | null>(null)
 const resourceListScrollContainer = ref<HTMLElement | null>(null)
 const leftPaneAutoScroll = useDragAutoScroll(resourceListScrollContainer)
+const LEFT_PANE_EDGE_OVERLAP_PX = 5
 
 const {
   loading,
@@ -93,8 +94,8 @@ const postCreatePrompt = ref<null | { tab: ActiveTab; id: string }>(null)
 
 function handleLeftPaneDragOver(event: DragEvent) {
   leftPaneAutoScroll.handleContainerDragOver(event, {
-    topZoneHeight: 48,
-    bottomZoneHeight: 48,
+    topZoneHeight: 48 + LEFT_PANE_EDGE_OVERLAP_PX,
+    bottomZoneHeight: 48 + LEFT_PANE_EDGE_OVERLAP_PX,
   })
 }
 
@@ -557,6 +558,8 @@ function jumpToSnippet(id: string) {
               :active-direction="leftPaneAutoScroll.activeDirection.value"
               :can-scroll-up="leftPaneAutoScroll.canScrollUp.value"
               :can-scroll-down="leftPaneAutoScroll.canScrollDown.value"
+              :top-zone-height="48 + LEFT_PANE_EDGE_OVERLAP_PX"
+              :bottom-zone-height="48 + LEFT_PANE_EDGE_OVERLAP_PX"
             />
 
             <VLoading v-if="loading" />
