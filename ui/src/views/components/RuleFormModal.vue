@@ -15,6 +15,7 @@ import {
   resolveRuleMatchRule,
 } from '@/views/composables/matchRule'
 import BaseFormModal from './BaseFormModal.vue'
+import EnabledSwitch from './EnabledSwitch.vue'
 import ItemPicker from './ItemPicker.vue'
 import FormField from './FormField.vue'
 import MatchRuleEditor from './MatchRuleEditor.vue'
@@ -208,13 +209,20 @@ defineExpose({
     @submit="handleSubmit"
   >
     <template #actions>
-      <div class=":uno: flex items-center justify-end">
+      <div class=":uno: flex items-center justify-end gap-2">
         <input
           ref="fileInput"
           accept="application/json,.json"
           class=":uno: hidden"
           type="file"
           @change="handleImportFile"
+        />
+        <EnabledSwitch
+          :enabled="rule.enabled"
+          label="切换新建注入规则的启用状态"
+          title-when-disabled="当前新建后会保持禁用，点击改为启用"
+          title-when-enabled="当前新建后会直接启用，点击改为禁用"
+          @toggle="rule.enabled = !rule.enabled"
         />
         <VButton size="sm" type="secondary" @click="openImportSourceModal">导入</VButton>
       </div>
