@@ -20,7 +20,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.http.server.reactive.ServerHttpResponseDecorator;
 import org.springframework.security.web.server.util.matcher.AndServerWebExchangeMatcher;
-import org.springframework.security.web.server.util.matcher.MediaTypeServerWebExchangeMatcher;
 import org.springframework.security.web.server.util.matcher.NegatedServerWebExchangeMatcher;
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher;
 import org.springframework.stereotype.Component;
@@ -94,11 +93,7 @@ public class InjectorWebFilter implements AdditionalWebFilter {
                                 "/plugins/**", "/actuator/**", "/api/**",
                                 "/apis/**", "/system/**",
                                 "/upload/**", "/webjars/**"));
-        var mediaTypeMatcher = new MediaTypeServerWebExchangeMatcher(MediaType.TEXT_HTML);
-        mediaTypeMatcher.setIgnoredMediaTypes(Set.of(MediaType.ALL));
-
         return new AndServerWebExchangeMatcher(
-                mediaTypeMatcher,
                 excludeMatcher,
                 pathMatcher
         );
