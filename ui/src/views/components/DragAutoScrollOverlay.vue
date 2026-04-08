@@ -33,7 +33,7 @@ defineProps<{
           activeDirection === 'up'
             ? canScrollUp
               ? ':uno: opacity-100 bg-primary/45'
-              : ':uno: opacity-100 bg-amber-400/60'
+              : ':uno: opacity-0'
             : ':uno: opacity-0'
         "
         class=":uno: pointer-events-none absolute left-4 right-4 top-1 h-0.5 rounded-full transition-opacity"
@@ -60,7 +60,7 @@ defineProps<{
           activeDirection === 'down'
             ? canScrollDown
               ? ':uno: opacity-100 bg-primary/45'
-              : ':uno: opacity-100 bg-amber-400/60'
+              : ':uno: opacity-0'
             : ':uno: opacity-0'
         "
         class=":uno: pointer-events-none absolute left-4 right-4 bottom-1 h-0.5 rounded-full transition-opacity"
