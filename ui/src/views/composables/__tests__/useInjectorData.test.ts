@@ -300,6 +300,54 @@ describe('useInjectorData', () => {
     expect(ruleApi.getOrder).toHaveBeenCalledTimes(1)
   })
 
+  // why: snippet 删除和 rule 引用清理是最终一致；在后端完成收敛前，前端编辑器也不应继续回传已失效的 snippet id。
+  it('prunes missing snippet ids from the rule editor selection state', async () => {
+    const savedRule = makeRuleEditorDraft({
+      id: 'rule-a',
+      metadata: { name: 'rule-a', version: 1 },
+      snippetIds: ['snippet-missing'],
+      matchRule: {
+        type: 'GROUP',
+        negate: false,
+        operator: 'AND',
+        children: [
+          {
+            type: 'PATH',
+            negate: false,
+            matcher: 'ANT',
+            value: '/**',
+          },
+        ],
+      },
+    })
+    delete (savedRule as { matchRuleSource?: unknown }).matchRuleSource
+
+    snippetApi.list.mockResolvedValue({ data: listOf([]) })
+    snippetApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } })
+    ruleApi.list
+      .mockResolvedValueOnce({ data: listOf([savedRule]) })
+      .mockResolvedValueOnce({ data: listOf([savedRule]) })
+    ruleApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } })
+    ruleApi.update.mockResolvedValue({ data: { ...savedRule, snippetIds: [] } })
+
+    const store = useInjectorData()
+    await store.fetchAll()
+    store.selectedRuleId.value = 'rule-a'
+    await nextTick()
+
+    expect(store.editRuleSnippetIds.value).toEqual([])
+    expect(store.editRule.value?.snippetIds).toEqual([])
+
+    await store.saveRule()
+
+    expect(ruleApi.update).toHaveBeenCalledWith(
+      'rule-a',
+      expect.objectContaining({
+        snippetIds: [],
+      }),
+    )
+  })
+
   // why: 左侧排序保存失败时，只应回拉排序映射；右侧未保存的规则草稿不能被整页重载冲掉。
   it('keeps unsaved rule editor state when rule reorder persistence fails', async () => {
     const ruleA = makeRuleEditorDraft({

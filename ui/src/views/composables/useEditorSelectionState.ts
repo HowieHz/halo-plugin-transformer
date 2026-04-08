@@ -44,6 +44,13 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
       .filter((snippet): snippet is CodeSnippetReadModel => !!snippet)
   })
 
+  function filterExistingSnippetIds(snippetIds: string[]) {
+    const availableSnippetIds = new Set(options.snippets.value.map((snippet) => snippet.id))
+    return snippetIds.filter((snippetId, index) => {
+      return availableSnippetIds.has(snippetId) && snippetIds.indexOf(snippetId) === index
+    })
+  }
+
   function hydrateSelectedSnippetDraft() {
     if (!selectedSnippetId.value) {
       editSnippet.value = null
@@ -64,8 +71,26 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
     }
     const found = options.rules.value.find((rule) => rule.id === selectedRuleId.value)
     editRule.value = found ? hydrateRuleEditorDraft(found) : null
-    editRuleSnippetIds.value = found ? [...(found.snippetIds ?? [])] : []
+    editRuleSnippetIds.value = found ? filterExistingSnippetIds(found.snippetIds ?? []) : []
+    if (editRule.value) {
+      editRule.value.snippetIds = [...editRuleSnippetIds.value]
+    }
     editDirty.value = false
+  }
+
+  /**
+   * why: snippet 可能被别处删除，而 rule 清理是异步最终一致；
+   * 编辑器不应继续把已不存在的 snippet id 当成“已选”，否则 UI 计数和后续保存 payload 都会漂移。
+   */
+  function reconcileRuleEditorSnippetIds() {
+    const nextSnippetIds = filterExistingSnippetIds(editRuleSnippetIds.value)
+    if (nextSnippetIds.length === editRuleSnippetIds.value.length) {
+      return
+    }
+    editRuleSnippetIds.value = nextSnippetIds
+    if (editRule.value) {
+      editRule.value.snippetIds = [...nextSnippetIds]
+    }
   }
 
   /**
@@ -110,6 +135,7 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
 
   watch(selectedSnippetId, hydrateSelectedSnippetDraft)
   watch(selectedRuleId, hydrateSelectedRuleDraft)
+  watch(options.snippets, reconcileRuleEditorSnippetIds)
 
   return {
     selectedSnippetId,
