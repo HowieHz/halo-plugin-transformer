@@ -18,6 +18,196 @@
             "shared": { "domPathPrecheck": true, "writeValidation": { "ok": true } },
         },
         {
+            "name": "boolean_minimization_eliminates_and_identity_true_term",
+            "covers": ["runtime.boolean-minimization.and-true-eliminates-neutral-term"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    {
+                        "type": "GROUP",
+                        "negate": false,
+                        "operator": "OR",
+                        "children": [
+                            { "type": "PATH", "negate": false, "matcher": "ANT", "value": "/posts/**" },
+                            { "type": "PATH", "negate": true, "matcher": "ANT", "value": "/posts/**" },
+                        ],
+                    },
+                    { "type": "TEMPLATE_ID", "negate": false, "matcher": "EXACT", "value": "post" },
+                ],
+            },
+            "shared": {
+                "writeValidation": { "ok": true },
+                "minimizedExpression": "template_id:=:post",
+            },
+        },
+        {
+            "name": "boolean_minimization_short_circuits_and_false_term",
+            "covers": ["runtime.boolean-minimization.and-false-short-circuits-to-false"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    {
+                        "type": "GROUP",
+                        "negate": false,
+                        "operator": "AND",
+                        "children": [
+                            { "type": "PATH", "negate": false, "matcher": "ANT", "value": "/posts/**" },
+                            { "type": "PATH", "negate": true, "matcher": "ANT", "value": "/posts/**" },
+                        ],
+                    },
+                    { "type": "TEMPLATE_ID", "negate": false, "matcher": "EXACT", "value": "post" },
+                ],
+            },
+            "shared": {
+                "writeValidation": { "ok": true },
+                "minimizedExpression": "FALSE",
+            },
+        },
+        {
+            "name": "boolean_minimization_folds_and_complement_pair",
+            "covers": ["runtime.boolean-minimization.and-complement-folds-to-false"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    { "type": "PATH", "negate": false, "matcher": "ANT", "value": "/posts/**" },
+                    { "type": "PATH", "negate": true, "matcher": "ANT", "value": "/posts/**" },
+                ],
+            },
+            "shared": {
+                "writeValidation": { "ok": true },
+                "minimizedExpression": "FALSE",
+            },
+        },
+        {
+            "name": "boolean_minimization_removes_duplicate_and_terms",
+            "covers": ["runtime.boolean-minimization.and-idempotence-removes-duplicates"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    { "type": "PATH", "negate": false, "matcher": "ANT", "value": "/posts/**" },
+                    { "type": "PATH", "negate": false, "matcher": "ANT", "value": "/posts/**" },
+                ],
+            },
+            "shared": {
+                "writeValidation": { "ok": true },
+                "minimizedExpression": "path:ant:/posts/**",
+            },
+        },
+        {
+            "name": "boolean_minimization_eliminates_double_negation",
+            "covers": ["runtime.boolean-minimization.double-negation-eliminates-noise"],
+            "input": {
+                "type": "GROUP",
+                "negate": true,
+                "operator": "AND",
+                "children": [{ "type": "PATH", "negate": true, "matcher": "ANT", "value": "/posts/**" }],
+            },
+            "shared": {
+                "writeValidation": { "ok": true },
+                "minimizedExpression": "path:ant:/posts/**",
+            },
+        },
+        {
+            "name": "boolean_minimization_applies_and_absorption",
+            "covers": ["runtime.boolean-minimization.and-absorption-removes-redundant-or-branch"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    { "type": "PATH", "negate": false, "matcher": "ANT", "value": "/posts/**" },
+                    {
+                        "type": "GROUP",
+                        "negate": false,
+                        "operator": "OR",
+                        "children": [
+                            { "type": "PATH", "negate": false, "matcher": "ANT", "value": "/posts/**" },
+                            { "type": "TEMPLATE_ID", "negate": false, "matcher": "EXACT", "value": "post" },
+                        ],
+                    },
+                ],
+            },
+            "shared": {
+                "writeValidation": { "ok": true },
+                "minimizedExpression": "path:ant:/posts/**",
+            },
+        },
+        {
+            "name": "boolean_minimization_factorizes_shared_and_term",
+            "covers": ["runtime.boolean-minimization.or-factorization-pulls-shared-and-term"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "OR",
+                "children": [
+                    {
+                        "type": "GROUP",
+                        "negate": false,
+                        "operator": "AND",
+                        "children": [
+                            { "type": "PATH", "negate": false, "matcher": "ANT", "value": "/posts/**" },
+                            { "type": "TEMPLATE_ID", "negate": false, "matcher": "EXACT", "value": "post" },
+                        ],
+                    },
+                    {
+                        "type": "GROUP",
+                        "negate": false,
+                        "operator": "AND",
+                        "children": [
+                            { "type": "PATH", "negate": false, "matcher": "ANT", "value": "/posts/**" },
+                            { "type": "TEMPLATE_ID", "negate": false, "matcher": "EXACT", "value": "page" },
+                        ],
+                    },
+                ],
+            },
+            "shared": {
+                "writeValidation": { "ok": true },
+                "minimizedExpression": "path:ant:/posts/** & (template_id:=:page | template_id:=:post)",
+            },
+        },
+        {
+            "name": "boolean_minimization_applies_reverse_demorgan_for_or_of_negations",
+            "covers": ["runtime.boolean-minimization.or-of-negations-applies-reverse-demorgan"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "OR",
+                "children": [
+                    { "type": "PATH", "negate": true, "matcher": "ANT", "value": "/posts/**" },
+                    { "type": "TEMPLATE_ID", "negate": true, "matcher": "EXACT", "value": "post" },
+                ],
+            },
+            "shared": {
+                "writeValidation": { "ok": true },
+                "minimizedExpression": "!(path:ant:/posts/** & template_id:=:post)",
+            },
+        },
+        {
+            "name": "boolean_minimization_applies_reverse_demorgan_for_and_of_negations",
+            "covers": ["runtime.boolean-minimization.and-of-negations-applies-reverse-demorgan"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    { "type": "PATH", "negate": true, "matcher": "ANT", "value": "/posts/**" },
+                    { "type": "TEMPLATE_ID", "negate": true, "matcher": "EXACT", "value": "post" },
+                ],
+            },
+            "shared": {
+                "writeValidation": { "ok": true },
+                "minimizedExpression": "!(path:ant:/posts/** | template_id:=:post)",
+            },
+        },
+        {
             "name": "or_group_with_path_and_template_is_not_path_scoped",
             "covers": ["runtime.dom-path-precheck.or-path-template-unscoped"],
             "input": {

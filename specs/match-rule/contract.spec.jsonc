@@ -128,6 +128,51 @@
             "summary": "只有模板分支的 AND 不能做路径预筛",
         },
         {
+            "id": "runtime.boolean-minimization.and-true-eliminates-neutral-term",
+            "layer": "shared_contract",
+            "summary": "AND(true, x) 会消去恒等项，只保留 x",
+        },
+        {
+            "id": "runtime.boolean-minimization.and-false-short-circuits-to-false",
+            "layer": "shared_contract",
+            "summary": "AND(false, x) 会折叠为 false",
+        },
+        {
+            "id": "runtime.boolean-minimization.and-complement-folds-to-false",
+            "layer": "shared_contract",
+            "summary": "AND(x, NOT(x)) 会按补元律折叠为 false",
+        },
+        {
+            "id": "runtime.boolean-minimization.and-idempotence-removes-duplicates",
+            "layer": "shared_contract",
+            "summary": "AND(x, x) 会按幂等律去重",
+        },
+        {
+            "id": "runtime.boolean-minimization.double-negation-eliminates-noise",
+            "layer": "shared_contract",
+            "summary": "NOT(NOT(x)) 会消去双重否定噪音",
+        },
+        {
+            "id": "runtime.boolean-minimization.and-absorption-removes-redundant-or-branch",
+            "layer": "shared_contract",
+            "summary": "AND(x, OR(x, y)) 会按吸收律收敛为 x",
+        },
+        {
+            "id": "runtime.boolean-minimization.or-factorization-pulls-shared-and-term",
+            "layer": "shared_contract",
+            "summary": "OR(AND(x, y), AND(x, z)) 会做因式分解，减少重复项",
+        },
+        {
+            "id": "runtime.boolean-minimization.or-of-negations-applies-reverse-demorgan",
+            "layer": "shared_contract",
+            "summary": "OR(NOT(x), NOT(y)) 会按德摩根变换收缩为 NOT(AND(x, y))",
+        },
+        {
+            "id": "runtime.boolean-minimization.and-of-negations-applies-reverse-demorgan",
+            "layer": "shared_contract",
+            "summary": "AND(NOT(x), NOT(y)) 会按德摩根变换收缩为 NOT(OR(x, y))",
+        },
+        {
             "id": "editor.simple-mode-shows-all-locatable-errors",
             "layer": "frontend_only",
             "summary": "简单模式会同时展示多个可定位错误",

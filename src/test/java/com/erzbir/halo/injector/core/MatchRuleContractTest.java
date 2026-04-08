@@ -68,6 +68,22 @@ class MatchRuleContractTest {
         );
     }
 
+    // why: 布尔最小化规则属于共享语义，而不是前后端各自“差不多就行”的优化细节；
+    // 这里复用同一批 fixture，保证 Java 运行时最小化与前端分析表达式对齐。
+    @DisplayName("match-rule boolean minimization stays aligned with contract fixtures")
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("contractCasesWithMinimizedExpression")
+    void shouldMatchBooleanMinimizationContract(ContractCase contractCase) {
+        MatchRule rule = deserializeRule(contractCase.input());
+
+        MatchRule.validateForWrite(rule);
+
+        assertEquals(
+                contractCase.shared().minimizedExpression(),
+                MatchRuleBooleanMinimizer.minimizedExpression(rule)
+        );
+    }
+
     // why: README 里的共享语义已经显式沉淀为 checklist；
     // 这里要求每个 shared contract 至少有一条 fixture 覆盖，避免文档加了语义但双端契约测试没跟上。
     @Test
@@ -140,6 +156,14 @@ class MatchRuleContractTest {
         return loadContractSuite().cases().stream()
                 .filter(contractCase -> contractCase.shared() != null
                         && contractCase.shared().domPathPrecheck() != null)
+                .toList()
+                .stream();
+    }
+
+    private Stream<ContractCase> contractCasesWithMinimizedExpression() {
+        return loadContractSuite().cases().stream()
+                .filter(contractCase -> contractCase.shared() != null
+                        && contractCase.shared().minimizedExpression() != null)
                 .toList()
                 .stream();
     }
@@ -358,7 +382,9 @@ class MatchRuleContractTest {
         }
     }
 
-    private record SharedExpectation(Boolean domPathPrecheck, WriteValidationExpectation writeValidation) {
+    private record SharedExpectation(Boolean domPathPrecheck,
+                                     String minimizedExpression,
+                                     WriteValidationExpectation writeValidation) {
     }
 
     private record SideExpectation(WriteValidationExpectation writeValidation) {

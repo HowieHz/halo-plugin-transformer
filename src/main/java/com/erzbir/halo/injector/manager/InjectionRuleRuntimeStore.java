@@ -1,5 +1,6 @@
 package com.erzbir.halo.injector.manager;
 
+import com.erzbir.halo.injector.core.MatchRuleBooleanMinimizer;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -176,7 +177,7 @@ public class InjectionRuleRuntimeStore {
                 ));
                 continue;
             }
-            rulesByMode.get(rule.getMode()).add(rule);
+            rulesByMode.get(rule.getMode()).add(toRuntimeRule(rule));
         }
         Map<InjectionRule.Mode, List<InjectionRule>> immutableByMode =
                 new EnumMap<>(InjectionRule.Mode.class);
@@ -289,11 +290,34 @@ public class InjectionRuleRuntimeStore {
         List<InjectionRule> activeRules = new ArrayList<>();
         for (InjectionRule rule : rules) {
             if (activeMode(rule) == mode) {
-                activeRules.add(rule);
+                activeRules.add(toRuntimeRule(rule));
             }
         }
         activeRules.sort(runtimeOrderComparator());
         return List.copyOf(activeRules);
+    }
+
+    /**
+     * why: 运行时快照不必携带用户原始树里的冗余布尔结构；
+     * 这里单独生成一份 runtime copy，把最小化后的 `matchRule` 放进内存快照，
+     * 既避免请求期重复化简，也不污染持久化层和控制台编辑态。
+     */
+    private InjectionRule toRuntimeRule(InjectionRule rule) {
+        InjectionRule runtimeRule = new InjectionRule();
+        runtimeRule.setMetadata(rule.getMetadata());
+        runtimeRule.setName(rule.getName());
+        runtimeRule.setDescription(rule.getDescription());
+        runtimeRule.setEnabled(rule.isEnabled());
+        runtimeRule.setMode(rule.getMode());
+        runtimeRule.setMatch(rule.getMatch());
+        runtimeRule.setMatchRule(MatchRuleBooleanMinimizer.minimizeForRuntime(rule.getMatchRule()));
+        runtimeRule.setPosition(rule.getPosition());
+        runtimeRule.setWrapMarker(rule.getWrapMarker());
+        runtimeRule.setRuntimeOrder(rule.getRuntimeOrder());
+        runtimeRule.setSnippetIds(rule.getSnippetIds() == null
+                ? new LinkedHashSet<>()
+                : new LinkedHashSet<>(rule.getSnippetIds()));
+        return runtimeRule;
     }
 
     List<SkippedEnabledRule> skippedEnabledRules() {
