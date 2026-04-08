@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { ref } from 'vue'
 import type { DragAutoScrollDirection } from '@/views/composables/useDragAutoScroll'
 
 defineProps<{
@@ -14,14 +15,57 @@ const emit = defineEmits<{
   (e: 'zone-dragover', direction: DragAutoScrollDirection, event: DragEvent): void
   (e: 'zone-dragleave', direction: DragAutoScrollDirection): void
 }>()
+
+const topZone = ref<HTMLElement | null>(null)
+const bottomZone = ref<HTMLElement | null>(null)
+
+/**
+ * why: 边缘热区只负责自动滚动与到顶/到底提示，不应该抢走真正的放置动作；
+ * 否则用户已经看到绿色插入线，松手却因为 drop 落在热区层而排序失败。
+ */
+function forwardDropToUnderlyingTarget(event: DragEvent, zoneElement: HTMLElement | null) {
+  if (!zoneElement || typeof document === 'undefined') {
+    return
+  }
+
+  const previousPointerEvents = zoneElement.style.pointerEvents
+  zoneElement.style.pointerEvents = 'none'
+  const dropTarget = document.elementFromPoint(event.clientX, event.clientY)
+  zoneElement.style.pointerEvents = previousPointerEvents
+
+  if (!dropTarget || dropTarget === zoneElement) {
+    return
+  }
+
+  const forwardedDropEvent = new DragEvent('drop', {
+    bubbles: true,
+    cancelable: true,
+    composed: true,
+    clientX: event.clientX,
+    clientY: event.clientY,
+    screenX: event.screenX,
+    screenY: event.screenY,
+    dataTransfer: event.dataTransfer ?? undefined,
+  })
+  dropTarget.dispatchEvent(forwardedDropEvent)
+}
+
+function handleZoneDrop(direction: DragAutoScrollDirection, event: DragEvent) {
+  event.preventDefault()
+  event.stopPropagation()
+  emit('zone-dragleave', direction)
+  forwardDropToUnderlyingTarget(event, direction === 'up' ? topZone.value : bottomZone.value)
+}
 </script>
 
 <template>
   <template v-if="active">
     <div
+      ref="topZone"
       aria-hidden="true"
       :style="{ height: `${topZoneHeight ?? 64}px` }"
       class=":uno: absolute inset-x-0 top-0 z-20"
+      @drop="handleZoneDrop('up', $event)"
       @dragover="emit('zone-dragover', 'up', $event)"
       @dragleave="emit('zone-dragleave', 'up')"
     >
@@ -48,9 +92,11 @@ const emit = defineEmits<{
     </div>
 
     <div
+      ref="bottomZone"
       aria-hidden="true"
       :style="{ height: `${bottomZoneHeight ?? 64}px` }"
       class=":uno: absolute inset-x-0 bottom-0 z-20"
+      @drop="handleZoneDrop('down', $event)"
       @dragover="emit('zone-dragover', 'down', $event)"
       @dragleave="emit('zone-dragleave', 'down')"
     >
