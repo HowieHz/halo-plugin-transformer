@@ -5,6 +5,8 @@ import com.erzbir.halo.injector.scheme.CodeSnippet;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.stereotype.Component;
 import run.halo.app.extension.ExtensionUtil;
 import run.halo.app.extension.ExtensionClient;
@@ -22,6 +24,8 @@ import java.util.Set;
 @Component
 @RequiredArgsConstructor
 public class CodeSnippetDeletionReconciler implements Reconciler<Reconciler.Request> {
+    private static final int MAX_CONFLICT_RETRIES = 3;
+
     private final ExtensionClient client;
     private final InjectionRuleRuntimeStore ruleRuntimeStore;
 
@@ -45,17 +49,7 @@ public class CodeSnippetDeletionReconciler implements Reconciler<Reconciler.Requ
             ruleRuntimeStore.invalidateAndWarmUpAsync();
         }
 
-        var latestSnippetOptional = client.fetch(CodeSnippet.class, request.name());
-        if (latestSnippetOptional.isEmpty()) {
-            return Result.doNotRetry();
-        }
-        CodeSnippet latestSnippet = latestSnippetOptional.get();
-        if (!CodeSnippetLifecycleService.isDeletionPendingCleanup(latestSnippet)) {
-            return Result.doNotRetry();
-        }
-
-        CodeSnippetLifecycleService.removeDeletionFinalizer(latestSnippet);
-        client.update(latestSnippet);
+        removeSnippetDeletionFinalizerWithRetry(request.name());
         log.info("Completed finalizer cleanup for deleting snippet [{}]", request.name());
         return Result.doNotRetry();
     }
@@ -83,20 +77,73 @@ public class CodeSnippetDeletionReconciler implements Reconciler<Reconciler.Requ
                 .filter(name -> name != null && !name.isBlank())
                 .toList();
         for (String ruleName : referencingRuleNames) {
-            var latestRuleOptional = client.fetch(InjectionRule.class, ruleName);
-            if (latestRuleOptional.isEmpty()) {
-                continue;
+            if (detachSnippetReferenceWithRetry(ruleName, snippetId)) {
+                detachedAnyRule = true;
             }
-            InjectionRule latestRule = latestRuleOptional.get();
-            LinkedHashSet<String> nextSnippetIds = normalizeSnippetIds(latestRule.getSnippetIds());
-            if (!nextSnippetIds.remove(snippetId)) {
-                continue;
-            }
-            latestRule.setSnippetIds(nextSnippetIds);
-            client.update(latestRule);
-            detachedAnyRule = true;
         }
         return detachedAnyRule;
+    }
+
+    /**
+     * why: reconciler 同样是写路径，不能把正确性暗押给底层“也许会做版本保护”；
+     * 这里显式建模 `conflict -> refetch -> retry`，把最终一致过程写清楚。
+     */
+    private boolean detachSnippetReferenceWithRetry(String ruleName, String snippetId) {
+        return retryOnConflict(
+                "detach deleting snippet [" + snippetId + "] from rule [" + ruleName + "]",
+                () -> {
+                    var latestRuleOptional = client.fetch(InjectionRule.class, ruleName);
+                    if (latestRuleOptional.isEmpty()) {
+                        return false;
+                    }
+                    InjectionRule latestRule = latestRuleOptional.get();
+                    LinkedHashSet<String> nextSnippetIds = normalizeSnippetIds(latestRule.getSnippetIds());
+                    if (!nextSnippetIds.remove(snippetId)) {
+                        return false;
+                    }
+                    latestRule.setSnippetIds(nextSnippetIds);
+                    client.update(latestRule);
+                    return true;
+                }
+        );
+    }
+
+    private void removeSnippetDeletionFinalizerWithRetry(String snippetName) {
+        retryOnConflict(
+                "remove deletion finalizer from snippet [" + snippetName + "]",
+                () -> {
+                    var latestSnippetOptional = client.fetch(CodeSnippet.class, snippetName);
+                    if (latestSnippetOptional.isEmpty()) {
+                        return false;
+                    }
+                    CodeSnippet latestSnippet = latestSnippetOptional.get();
+                    if (!CodeSnippetLifecycleService.isDeletionPendingCleanup(latestSnippet)) {
+                        return false;
+                    }
+                    CodeSnippetLifecycleService.removeDeletionFinalizer(latestSnippet);
+                    client.update(latestSnippet);
+                    return true;
+                }
+        );
+    }
+
+    private boolean retryOnConflict(String operationLabel, ConflictRetriableOperation operation) {
+        ResponseStatusException lastConflict = null;
+        for (int attempt = 1; attempt <= MAX_CONFLICT_RETRIES; attempt++) {
+            try {
+                return operation.run();
+            } catch (ResponseStatusException exception) {
+                if (!HttpStatus.CONFLICT.equals(exception.getStatusCode())) {
+                    throw exception;
+                }
+                lastConflict = exception;
+                log.info("Conflict while attempting to {}. Retrying with latest resource state ({}/{}).",
+                        operationLabel, attempt, MAX_CONFLICT_RETRIES);
+            }
+        }
+        throw lastConflict == null
+                ? new IllegalStateException("Conflict retry exhausted without captured conflict for " + operationLabel)
+                : lastConflict;
     }
 
     private LinkedHashSet<String> normalizeSnippetIds(Set<String> snippetIds) {
@@ -108,5 +155,10 @@ public class CodeSnippetDeletionReconciler implements Reconciler<Reconciler.Requ
                 .filter(id -> id != null && !id.isBlank())
                 .forEach(normalized::add);
         return normalized;
+    }
+
+    @FunctionalInterface
+    private interface ConflictRetriableOperation {
+        boolean run();
     }
 }

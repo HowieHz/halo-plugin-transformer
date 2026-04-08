@@ -5,6 +5,8 @@ import com.erzbir.halo.injector.scheme.CodeSnippet;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import run.halo.app.extension.Extension;
 import run.halo.app.extension.ExtensionClient;
 import run.halo.app.extension.Metadata;
@@ -22,8 +24,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -84,6 +89,43 @@ class CodeSnippetDeletionReconcilerTest {
         verify(client, never()).update(any(CodeSnippet.class));
     }
 
+    // why: 删除协调器也属于后台写路径；若规则在摘引用过程中发生版本冲突，
+    // 必须显式 refetch 最新资源再重试，而不是把正确性隐含押给底层最后写入行为。
+    @Test
+    void shouldRefetchLatestRuleWhenDetachingSnippetHitsConflict() {
+        CodeSnippet deletingSnippet = deletingSnippet("snippet-a");
+        InjectionRule listedRule = rule("rule-a", Set.of("snippet-a", "snippet-b"));
+        InjectionRule staleRule = rule("rule-a", Set.of("snippet-a", "snippet-b"));
+        staleRule.getMetadata().setVersion(2L);
+        InjectionRule latestRule = rule("rule-a", Set.of("snippet-a", "snippet-b", "snippet-c"));
+        latestRule.getMetadata().setVersion(3L);
+        CodeSnippet latestSnippet = deletingSnippet("snippet-a");
+
+        when(client.fetch(CodeSnippet.class, "snippet-a"))
+                .thenReturn(Optional.of(deletingSnippet))
+                .thenReturn(Optional.of(latestSnippet));
+        when(client.list(eq(InjectionRule.class), any(), eq(null))).thenReturn(List.of(listedRule));
+        when(client.fetch(InjectionRule.class, "rule-a"))
+                .thenReturn(Optional.of(staleRule))
+                .thenReturn(Optional.of(latestRule));
+        doThrow(conflict())
+                .doAnswer(invocation -> invocation.getArgument(0))
+                .when(client).update(any(InjectionRule.class));
+        doAnswer(invocation -> invocation.getArgument(0))
+                .when(client).update(any(CodeSnippet.class));
+
+        reconciler.reconcile(new Reconciler.Request("snippet-a"));
+
+        var updateCaptor = org.mockito.ArgumentCaptor.forClass(InjectionRule.class);
+        verify(client, times(2)).update(updateCaptor.capture());
+        List<InjectionRule> updatedRules = updateCaptor.getAllValues();
+
+        assertEquals(new LinkedHashSet<>(Set.of("snippet-b")), updatedRules.get(0).getSnippetIds());
+        assertEquals(new LinkedHashSet<>(Set.of("snippet-b", "snippet-c")), updatedRules.get(1).getSnippetIds());
+        verify(client, times(2)).fetch(InjectionRule.class, "rule-a");
+        verify(ruleRuntimeStore).invalidateAndWarmUpAsync();
+    }
+
     private CodeSnippet deletingSnippet(String id) {
         CodeSnippet snippet = new CodeSnippet();
         Metadata metadata = new Metadata();
@@ -101,5 +143,9 @@ class CodeSnippetDeletionReconcilerTest {
         rule.setMetadata(metadata);
         rule.setSnippetIds(new LinkedHashSet<>(snippetIds));
         return rule;
+    }
+
+    private ResponseStatusException conflict() {
+        return new ResponseStatusException(HttpStatus.CONFLICT, "conflict");
     }
 }
