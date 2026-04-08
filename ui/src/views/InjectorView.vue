@@ -47,6 +47,7 @@ const ruleFormRef = ref<{
 } | null>(null)
 const resourceListRef = ref<{
   getScrollContainer: () => HTMLElement | null
+  commitPendingDrop: () => void
 } | null>(null)
 const resourceListScrollContainer = ref<HTMLElement | null>(null)
 const leftPaneAutoScroll = useDragAutoScroll(resourceListScrollContainer)
@@ -99,6 +100,10 @@ function handleLeftPaneDragOver(event: DragEvent) {
 
 function handleLeftPaneDragLeave(event: DragEvent) {
   leftPaneAutoScroll.handleContainerDragLeave(event)
+}
+
+function handleLeftPaneDropCapture() {
+  resourceListRef.value?.commitPendingDrop()
 }
 
 function normalizeTab(tab: unknown): ActiveTab {
@@ -523,6 +528,7 @@ function jumpToSnippet(id: string) {
             class=":uno: relative aside h-full flex-none flex flex-col overflow-hidden"
             @dragover.capture="handleLeftPaneDragOver"
             @dragleave.capture="handleLeftPaneDragLeave"
+            @drop.capture="handleLeftPaneDropCapture"
           >
             <div
               class=":uno: sticky top-0 z-10 h-12 flex items-center gap-4 border-b bg-white px-4 shrink-0"

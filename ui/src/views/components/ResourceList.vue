@@ -34,6 +34,9 @@ defineExpose({
   getScrollContainer() {
     return scrollContainer.value
   },
+  commitPendingDrop() {
+    commitPendingDrop(dropPlacement.value, dropTargetId.value)
+  },
 })
 
 function clearDragState() {

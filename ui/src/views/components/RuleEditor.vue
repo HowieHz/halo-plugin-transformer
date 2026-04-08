@@ -52,6 +52,9 @@ const exportFallback = ref<TransferFileDraft | null>(null)
 const editorScrollContainer = ref<HTMLElement | null>(null)
 const editorToolbarShell = ref<HTMLElement | null>(null)
 const editorFooterShell = ref<HTMLElement | null>(null)
+const matchRuleEditorRef = ref<{
+  commitPendingDrop: () => void
+} | null>(null)
 const dragOverlayTopHeight = ref(48)
 const dragOverlayBottomHeight = ref(52)
 const autoScroll = useDragAutoScroll(editorScrollContainer)
@@ -97,6 +100,10 @@ function handleEditorContainerDragOver(event: DragEvent) {
 
 function handleEditorContainerDragLeave(event: DragEvent) {
   autoScroll.handleContainerDragLeave(event)
+}
+
+function handleEditorContainerDropCapture() {
+  matchRuleEditorRef.value?.commitPendingDrop()
 }
 
 function observeDragOverlayShell() {
@@ -406,6 +413,7 @@ onBeforeUnmount(() => {
     class=":uno: relative h-full flex flex-col injector-editor-container"
     @dragover.capture="handleEditorContainerDragOver"
     @dragleave.capture="handleEditorContainerDragLeave"
+    @drop.capture="handleEditorContainerDropCapture"
   >
     <ExportJsonFallbackModal
       v-if="exportFallback"
@@ -625,6 +633,7 @@ onBeforeUnmount(() => {
           <template #default="{ inputId, labelId }">
             <div :id="inputId" :aria-labelledby="labelId">
               <MatchRuleEditor
+                ref="matchRuleEditorRef"
                 :model-value="currentRule.matchRule"
                 :source="currentRule.matchRuleSource"
                 @change="emit('field-change')"

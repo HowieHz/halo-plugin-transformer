@@ -320,6 +320,10 @@ function handleContainerDrop(event: DragEvent) {
   commitPendingDrop()
 }
 
+defineExpose({
+  commitPendingDrop,
+})
+
 function normalizeDropTarget(targetPath: MatchRuleNodePath, placement: MatchRuleDropPlacement) {
   if (placement !== 'after') {
     return { path: targetPath, placement }
