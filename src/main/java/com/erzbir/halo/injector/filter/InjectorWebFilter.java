@@ -193,6 +193,20 @@ public class InjectorWebFilter implements AdditionalWebFilter {
 
         @Override
         @NonNull
+        public Mono<Void> writeWith(@NonNull Publisher<? extends DataBuffer> body) {
+            var response = getDelegate();
+            if (!isEligibleInjectionResponse(response)) {
+                return super.writeWith(body);
+            }
+            String path = exchange.getRequest().getPath().value();
+            if (path.isBlank()) {
+                return super.writeWith(body);
+            }
+            return super.writeWith(rewriteHtmlBody(body, response, path));
+        }
+
+        @Override
+        @NonNull
         public Mono<Void> writeAndFlushWith(
                 @NonNull Publisher<? extends Publisher<? extends DataBuffer>> body) {
             var response = getDelegate();
@@ -204,20 +218,33 @@ public class InjectorWebFilter implements AdditionalWebFilter {
                 return super.writeAndFlushWith(body);
             }
             var flattenedBody = Flux.from(body).flatMapSequential(publisher -> publisher);
-            var processedBody = DataBufferUtils.join(flattenedBody).flatMap(dataBuffer -> {
+            var processedBody = rewriteHtmlBody(flattenedBody, response, path)
+                    .flux()
+                    .map(Flux::just);
+            return super.writeAndFlushWith(processedBody);
+        }
+
+        /**
+         * why: WebFlux 可能经由 `writeWith` 或 `writeAndFlushWith` 写 HTML body；
+         * 两条路径必须共享同一份改写语义，避免只修一边时再出现漏拦截。
+         */
+        private Mono<DataBuffer> rewriteHtmlBody(Publisher<? extends DataBuffer> body,
+                                                 ServerHttpResponse response,
+                                                 String path) {
+            return DataBufferUtils.join(Flux.from(body)).flatMap(dataBuffer -> {
                 try {
                     String html = dataBuffer.toString(StandardCharsets.UTF_8);
                     String templateId = ContextUtil.getTemplateId(exchange);
                     if (html.isBlank()) {
                         return Mono.just(createHtmlResponseBuffer(html, response));
                     }
-                    return inject(html, path, templateId).onErrorResume(e -> Mono.just(html))
+                    return inject(html, path, templateId)
+                            .onErrorResume(e -> Mono.just(html))
                             .map(processedHtml -> createHtmlResponseBuffer(processedHtml, response));
                 } finally {
                     DataBufferUtils.release(dataBuffer);
                 }
-            }).flux().map(Flux::just);
-            return super.writeAndFlushWith(processedBody);
+            });
         }
     }
 

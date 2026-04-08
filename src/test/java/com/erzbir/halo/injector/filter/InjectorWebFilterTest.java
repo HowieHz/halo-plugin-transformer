@@ -128,6 +128,41 @@ class InjectorWebFilterTest {
         assertTrue(result.contains("<div class=\"slot\">A<span class=\"selector\">S</span></div>"));
     }
 
+    // why: 部分响应链路经由 `writeWith` 而不是 `writeAndFlushWith` 输出；
+    // 这两条路径都必须命中同一份注入逻辑，否则会出现“部分页面能注入、部分页面失效”的分叉行为。
+    @Test
+    void shouldRewriteHtmlResponsesWrittenViaWriteWith() {
+        InjectionRule selectorRule = domRule("rule-selector", InjectionRule.Mode.SELECTOR, ".slot");
+        when(injectHelper.hasDomProcessCandidate("/demo", InjectionRule.Mode.SELECTOR))
+                .thenReturn(Mono.just(true));
+        when(injectHelper.getMatchedRules("/demo", "", InjectionRule.Mode.SELECTOR))
+                .thenReturn(Flux.just(selectorRule));
+        when(injectHelper.resolveRuleCodes(List.of(selectorRule))).thenReturn(Mono.just(List.of(
+                new InjectHelper.ResolvedRuleCode(selectorRule, "<span class='selector'>S</span>")
+        )));
+
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/demo")
+                        .accept(MediaType.TEXT_HTML)
+                        .build()
+        );
+
+        filter.filter(exchange, decoratedExchange -> {
+            var response = decoratedExchange.getResponse();
+            response.setStatusCode(HttpStatus.OK);
+            response.getHeaders().setContentType(MediaType.TEXT_HTML);
+            var body = response.bufferFactory()
+                    .wrap("<html><body><div class='slot'>A</div></body></html>"
+                            .getBytes(StandardCharsets.UTF_8));
+            return response.writeWith(Mono.just(body));
+        }).block();
+
+        String result = exchange.getResponse().getBodyAsString().block();
+
+        assertEquals(1, filter.parseCount.get());
+        assertTrue(result.contains("<div class=\"slot\">A<span class=\"selector\">S</span></div>"));
+    }
+
     private InjectionRule domRule(String id, InjectionRule.Mode mode, String match) {
         InjectionRule rule = new InjectionRule();
         Metadata metadata = new Metadata();
