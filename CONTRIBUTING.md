@@ -77,6 +77,24 @@ pnpm dev
     - 负责 `match-rule` 领域结构
 - `ui/public/injector.schema.json` 会通过 `$ref` 引用 `match-rule` generated schema，而不是在 envelope 中手写一遍规则树结构
 
+### Runtime boolean simplification
+
+运行时和分析期会先对 `match-rule` 做一轮“收缩表达式 / 减少操作数”方向的布尔最小化；这一步只影响运行期分析与匹配，不会改写控制台草稿，也不会改写持久化存储的原始规则树。
+
+当前已覆盖的规则包括：
+
+- 恒等消去：`AND(true, x) -> x`
+- 常量折叠：`AND(false, x) -> false`
+- 补元律：`AND(x, NOT(x)) -> false`
+- 幂等律：`AND(x, x) -> x`
+- 双重否定消去：`NOT(NOT(x)) -> x`
+- 吸收律：`AND(x, OR(x, y)) -> x`
+- 反向分配律（因式分解）：`OR(AND(x, y), AND(x, z)) -> AND(x, OR(y, z))`
+- 德摩根变换：`OR(NOT(x), NOT(y)) -> NOT(AND(x, y))`
+- 德摩根变换：`AND(NOT(x), NOT(y)) -> NOT(OR(x, y))`
+
+这份清单应与 `specs/match-rule/contract.spec.jsonc` / `specs/match-rule/contract.cases.jsonc` 保持一致；如果后续新增或删除规则，请同时更新 spec、测试和这里的说明。
+
 ## 架构约定
 
 本插件优先复用 Halo CMS 的原生资源模型与控制面能力，而不是在业务层重复发明平台机制。
