@@ -128,6 +128,40 @@ class InjectorWebFilterTest {
         assertTrue(result.contains("<div class=\"slot\">A<span class=\"selector\">S</span></div>"));
     }
 
+    // why: WebFlux 的普通成功响应经常依赖 implicit 200，而不是显式 `setStatusCode(OK)`；
+    // write-phase guard 必须把这种空状态码视作可注入的成功响应，避免漏掉主链路 HTML 页面。
+    @Test
+    void shouldRewriteImplicitOkHtmlResponsesWithoutExplicitStatus() {
+        InjectionRule selectorRule = domRule("rule-selector", InjectionRule.Mode.SELECTOR, ".slot");
+        when(injectHelper.hasDomProcessCandidate("/demo", InjectionRule.Mode.SELECTOR))
+                .thenReturn(Mono.just(true));
+        when(injectHelper.getMatchedRules("/demo", "", InjectionRule.Mode.SELECTOR))
+                .thenReturn(Flux.just(selectorRule));
+        when(injectHelper.resolveRuleCodes(List.of(selectorRule))).thenReturn(Mono.just(List.of(
+                new InjectHelper.ResolvedRuleCode(selectorRule, "<span class='selector'>S</span>")
+        )));
+
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/demo")
+                        .accept(MediaType.TEXT_HTML)
+                        .build()
+        );
+
+        filter.filter(exchange, decoratedExchange -> {
+            var response = decoratedExchange.getResponse();
+            response.getHeaders().setContentType(MediaType.TEXT_HTML);
+            var body = response.bufferFactory()
+                    .wrap("<html><body><div class='slot'>A</div></body></html>"
+                            .getBytes(StandardCharsets.UTF_8));
+            return response.writeWith(Mono.just(body));
+        }).block();
+
+        String result = exchange.getResponse().getBodyAsString().block();
+
+        assertEquals(1, filter.parseCount.get());
+        assertTrue(result.contains("<div class=\"slot\">A<span class=\"selector\">S</span></div>"));
+    }
+
     // why: 请求侧 `Accept` 只是客户端偏好，不是最终响应类型真相；
     // 只要最终写出的是可注入 HTML，过滤器就不该因为请求没带 `Accept: text/html` 而漏掉整条注入链路。
     @Test

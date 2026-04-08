@@ -76,11 +76,12 @@ public class InjectorWebFilter implements AdditionalWebFilter {
     /**
      * why: handler 写响应头前，`statusCode` 往往还是空；因此这里只能在真正写 body 的时点
      * 用最终响应状态决定是否改写，不能在进入 filter 链前提前否决。
+     * 另外 WebFlux 成功响应经常依赖“未显式设置状态码 == implicit 200”，
+     * 因此这里必须把 `null` 视作默认 `200 OK`，否则会漏掉正常 HTML 页面。
      */
     boolean isEligibleInjectionResponse(ServerHttpResponse response) {
         var statusCode = response.getStatusCode();
-        return statusCode != null
-                && statusCode.isSameCodeAs(HttpStatus.OK)
+        return (statusCode == null || statusCode.isSameCodeAs(HttpStatus.OK))
                 && isInjectableHtmlResponse(response);
     }
 
