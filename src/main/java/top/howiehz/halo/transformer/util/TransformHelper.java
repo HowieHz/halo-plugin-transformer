@@ -1,11 +1,13 @@
 package top.howiehz.halo.transformer.util;
 
-import top.howiehz.halo.transformer.core.RuntimeTransformationRule;
-import top.howiehz.halo.transformer.manager.TransformationSnippetManager;
-import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
-import top.howiehz.halo.transformer.scheme.TransformationSnippet;
-import top.howiehz.halo.transformer.scheme.TransformationRule;
-import top.howiehz.halo.transformer.core.MatchRule;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.server.PathContainer;
@@ -16,15 +18,12 @@ import org.springframework.web.util.pattern.PathPatternRouteMatcher;
 import org.springframework.web.util.pattern.PatternParseException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
+import top.howiehz.halo.transformer.core.MatchRule;
+import top.howiehz.halo.transformer.core.RuntimeTransformationRule;
+import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
+import top.howiehz.halo.transformer.manager.TransformationSnippetManager;
+import top.howiehz.halo.transformer.scheme.TransformationRule;
+import top.howiehz.halo.transformer.scheme.TransformationSnippet;
 
 /**
  * @author HowieHz
@@ -44,7 +43,7 @@ public class TransformHelper {
     }
 
     public Flux<RuntimeTransformationRule> getMatchedRules(String targetPath,
-                                               TransformationRule.Mode mode) {
+        TransformationRule.Mode mode) {
         return getMatchedRules(targetPath, "", mode);
     }
 
@@ -53,15 +52,16 @@ public class TransformHelper {
      * 这样路径、模板 ID、取反与分组语义只维护一份，避免前后两条链路出现行为漂移。
      */
     public Flux<RuntimeTransformationRule> getMatchedRules(String targetPath,
-                                               String templateId,
-                                               TransformationRule.Mode mode) {
-        MatchContext context = new MatchContext(targetPath, templateId, parseCurrentPathRoute(targetPath));
+        String templateId,
+        TransformationRule.Mode mode) {
+        MatchContext context =
+            new MatchContext(targetPath, templateId, parseCurrentPathRoute(targetPath));
         return getRulesByMode(mode)
-                .filter(rule -> evaluate(rule.matchRule(), context) == MatchState.MATCH)
-                .onErrorResume(e -> {
-                    log.error("Failed to get matched rules for mode: {}", mode, e);
-                    return Flux.empty();
-                });
+            .filter(rule -> evaluate(rule.matchRule(), context) == MatchState.MATCH)
+            .onErrorResume(e -> {
+                log.error("Failed to get matched rules for mode: {}", mode, e);
+                return Flux.empty();
+            });
     }
 
     /**
@@ -69,19 +69,19 @@ public class TransformHelper {
      * 只有可能命中的 DOM 规则才值得进入整页 HTML 缓冲链路。
      */
     public Flux<RuntimeTransformationRule> getPathMatchedRules(String targetPath,
-                                                   TransformationRule.Mode mode) {
+        TransformationRule.Mode mode) {
         if (targetPath.isEmpty()) {
             return Flux.empty();
         }
         RouteMatcher.Route currentRoute = parseCurrentPathRoute(targetPath);
 
         return getRulesByMode(mode)
-                .filter(rule -> MatchRule.supportsDomPathPrecheck(rule.matchRule()))
-                .filter(rule -> pathPrecheckMatches(rule.matchRule(), targetPath, currentRoute))
-                .onErrorResume(e -> {
-                    log.error("Failed to get matched rules for mode: {}", mode, e);
-                    return Flux.empty();
-                });
+            .filter(rule -> MatchRule.supportsDomPathPrecheck(rule.matchRule()))
+            .filter(rule -> pathPrecheckMatches(rule.matchRule(), targetPath, currentRoute))
+            .onErrorResume(e -> {
+                log.error("Failed to get matched rules for mode: {}", mode, e);
+                return Flux.empty();
+            });
     }
 
     /**
@@ -89,16 +89,16 @@ public class TransformHelper {
      * 再等模板上下文就绪后做完整匹配；这里返回“当前请求是否需要进入这条慢路径”。
      */
     public Mono<Boolean> hasDomProcessCandidate(String targetPath,
-                                                TransformationRule.Mode mode) {
+        TransformationRule.Mode mode) {
         if (targetPath.isEmpty()) {
             return Mono.just(false);
         }
         RouteMatcher.Route currentRoute = parseCurrentPathRoute(targetPath);
 
         return getRulesByMode(mode)
-                .any(rule -> !MatchRule.supportsDomPathPrecheck(rule.matchRule())
-                        || pathPrecheckMatches(rule.matchRule(), targetPath, currentRoute))
-                .defaultIfEmpty(false);
+            .any(rule -> !MatchRule.supportsDomPathPrecheck(rule.matchRule())
+                || pathPrecheckMatches(rule.matchRule(), targetPath, currentRoute))
+            .defaultIfEmpty(false);
     }
 
     /**
@@ -110,9 +110,9 @@ public class TransformHelper {
             return Mono.just(List.of());
         }
         return loadSnippetsByIds(collectUniqueSnippetIds(rules))
-                .map(snippetsById -> rules.stream()
-                        .map(rule -> new ResolvedRuleCode(rule, concatCode(rule, snippetsById)))
-                        .toList());
+            .map(snippetsById -> rules.stream()
+                .map(rule -> new ResolvedRuleCode(rule, concatCode(rule, snippetsById)))
+                .toList());
     }
 
     Mono<Map<String, TransformationSnippet>> loadSnippetsByIds(Collection<String> snippetIds) {
@@ -120,8 +120,8 @@ public class TransformHelper {
             return Mono.just(Map.of());
         }
         return Flux.fromIterable(snippetIds)
-                .flatMap(id -> snippetManager.get(id).map(snippet -> Map.entry(id, snippet)))
-                .collectMap(Map.Entry::getKey, Map.Entry::getValue, LinkedHashMap::new);
+            .flatMap(id -> snippetManager.get(id).map(snippet -> Map.entry(id, snippet)))
+            .collectMap(Map.Entry::getKey, Map.Entry::getValue, LinkedHashMap::new);
     }
 
     List<String> collectUniqueSnippetIds(List<RuntimeTransformationRule> rules) {
@@ -135,7 +135,8 @@ public class TransformHelper {
         return List.copyOf(uniqueIds);
     }
 
-    String concatCode(RuntimeTransformationRule rule, Map<String, TransformationSnippet> snippetsById) {
+    String concatCode(RuntimeTransformationRule rule,
+        Map<String, TransformationSnippet> snippetsById) {
         if (rule == null || rule.snippetIds() == null || rule.snippetIds().isEmpty()) {
             return "";
         }
@@ -169,7 +170,8 @@ public class TransformHelper {
         if (rule.getChildren() == null || rule.getChildren().isEmpty()) {
             return MatchState.NO_MATCH;
         }
-        MatchRule.Operator operator = rule.getOperator() == null ? MatchRule.Operator.AND : rule.getOperator();
+        MatchRule.Operator operator =
+            rule.getOperator() == null ? MatchRule.Operator.AND : rule.getOperator();
         return switch (operator) {
             case AND -> evaluateAnd(rule, context);
             case OR -> evaluateOr(rule, context);
@@ -204,7 +206,8 @@ public class TransformHelper {
         return hasUnknown ? MatchState.UNKNOWN : MatchState.NO_MATCH;
     }
 
-    private MatchState evaluatePath(MatchRule rule, String currentPath, RouteMatcher.Route currentRoute) {
+    private MatchState evaluatePath(MatchRule rule, String currentPath,
+        RouteMatcher.Route currentRoute) {
         if (currentPath == null || currentPath.isBlank()) {
             return MatchState.NO_MATCH;
         }
@@ -212,7 +215,8 @@ public class TransformHelper {
         if (value.isBlank()) {
             return MatchState.NO_MATCH;
         }
-        MatchRule.Matcher matcher = rule.getMatcher() == null ? MatchRule.Matcher.ANT : rule.getMatcher();
+        MatchRule.Matcher matcher =
+            rule.getMatcher() == null ? MatchRule.Matcher.ANT : rule.getMatcher();
         boolean matched = switch (matcher) {
             case EXACT -> value.equals(currentPath);
             case REGEX -> matchesRegex(value, currentPath);
@@ -229,7 +233,8 @@ public class TransformHelper {
         if (value.isBlank()) {
             return MatchState.NO_MATCH;
         }
-        MatchRule.Matcher matcher = rule.getMatcher() == null ? MatchRule.Matcher.EXACT : rule.getMatcher();
+        MatchRule.Matcher matcher =
+            rule.getMatcher() == null ? MatchRule.Matcher.EXACT : rule.getMatcher();
         boolean matched = switch (matcher) {
             case EXACT -> value.equals(templateId.trim());
             case REGEX -> matchesRegex(value, templateId.trim());
@@ -238,7 +243,8 @@ public class TransformHelper {
         return matched ? MatchState.MATCH : MatchState.NO_MATCH;
     }
 
-    private boolean matchesAntPath(String pattern, String currentPath, RouteMatcher.Route currentRoute) {
+    private boolean matchesAntPath(String pattern, String currentPath,
+        RouteMatcher.Route currentRoute) {
         if (currentRoute == null) {
             return false;
         }
@@ -251,9 +257,11 @@ public class TransformHelper {
     }
 
     private boolean matchesRegex(String pattern, String value) {
-        RegexPatternHolder holder = regexPatternCache.computeIfAbsent(pattern, this::compileRegexHolder);
+        RegexPatternHolder holder =
+            regexPatternCache.computeIfAbsent(pattern, this::compileRegexHolder);
         if (holder.pattern() == null) {
-            log.warn("Parse regex [{}] failed for value [{}]: {}", pattern, value, holder.errorMessage());
+            log.warn("Parse regex [{}] failed for value [{}]: {}", pattern, value,
+                holder.errorMessage());
             return false;
         }
         return holder.pattern().matcher(value).matches();
@@ -278,7 +286,8 @@ public class TransformHelper {
      * 对能先按路径缩小范围的规则，这里可提前跳过大部分页面；
      * 对不能缩小范围的规则，则会退化成“所有 HTML 页面都先进入处理，再在后面看模板 ID”等完整条件。
      */
-    private boolean pathPrecheckMatches(MatchRule rule, String currentPath, RouteMatcher.Route currentRoute) {
+    private boolean pathPrecheckMatches(MatchRule rule, String currentPath,
+        RouteMatcher.Route currentRoute) {
         if (rule == null || rule.getType() == null) {
             return false;
         }
@@ -291,16 +300,17 @@ public class TransformHelper {
     }
 
     private boolean pathPrecheckGroupMatches(MatchRule rule, String currentPath,
-                                             RouteMatcher.Route currentRoute) {
+        RouteMatcher.Route currentRoute) {
         if (rule.getChildren() == null || rule.getChildren().isEmpty()) {
             return false;
         }
-        MatchRule.Operator operator = rule.getOperator() == null ? MatchRule.Operator.AND : rule.getOperator();
+        MatchRule.Operator operator =
+            rule.getOperator() == null ? MatchRule.Operator.AND : rule.getOperator();
         return switch (operator) {
             case AND -> rule.getChildren().stream()
-                    .allMatch(child -> pathPrecheckMatches(child, currentPath, currentRoute));
+                .allMatch(child -> pathPrecheckMatches(child, currentPath, currentRoute));
             case OR -> rule.getChildren().stream()
-                    .anyMatch(child -> pathPrecheckMatches(child, currentPath, currentRoute));
+                .anyMatch(child -> pathPrecheckMatches(child, currentPath, currentRoute));
         };
     }
 
@@ -329,6 +339,10 @@ public class TransformHelper {
         return new PathPatternRouteMatcher(parser);
     }
 
+    private enum MatchState {
+        MATCH, NO_MATCH, UNKNOWN
+    }
+
     private record MatchContext(String path, String templateId, RouteMatcher.Route route) {
     }
 
@@ -336,10 +350,6 @@ public class TransformHelper {
     }
 
     public record ResolvedRuleCode(RuntimeTransformationRule rule, String code) {
-    }
-
-    private enum MatchState {
-        MATCH, NO_MATCH, UNKNOWN
     }
 }
 

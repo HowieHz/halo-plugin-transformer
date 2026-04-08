@@ -7,7 +7,8 @@ import org.jsoup.nodes.Element;
  * @since 1.0.0
  */
 public class TransformUtil {
-    public static void transformElement(Element element, String code, ITransformationRule.Position position) {
+    public static void transformElement(Element element, String code,
+        ITransformationRule.Position position) {
         switch (position) {
             case APPEND -> element.append(code);
             case PREPEND -> element.prepend(code);

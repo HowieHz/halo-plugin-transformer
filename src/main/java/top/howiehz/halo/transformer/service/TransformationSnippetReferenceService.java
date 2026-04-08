@@ -1,16 +1,15 @@
 package top.howiehz.halo.transformer.service;
 
-import top.howiehz.halo.transformer.scheme.TransformationSnippet;
-import top.howiehz.halo.transformer.util.TransformationRuleValidationException;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import run.halo.app.extension.ExtensionUtil;
 import run.halo.app.extension.ReactiveExtensionClient;
-
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
+import top.howiehz.halo.transformer.scheme.TransformationSnippet;
+import top.howiehz.halo.transformer.util.TransformationRuleValidationException;
 
 @Component
 public class TransformationSnippetReferenceService {
@@ -36,8 +35,9 @@ public class TransformationSnippetReferenceService {
      * why: 更新规则时不能因为历史坏关联就把“改名称/描述/启用状态”这种无关写入也一并拦住；
      * 因此这里只校验“新增关联”，已存在的旧关联允许先保留，并由显式清理路径来修复。
      */
-    public Mono<LinkedHashSet<String>> normalizeAndValidateAddedSnippetIds(Set<String> existingSnippetIds,
-                                                                           Set<String> nextSnippetIds) {
+    public Mono<LinkedHashSet<String>> normalizeAndValidateAddedSnippetIds(
+        Set<String> existingSnippetIds,
+        Set<String> nextSnippetIds) {
         LinkedHashSet<String> normalizedExisting = normalizeIds(existingSnippetIds);
         LinkedHashSet<String> normalizedNext = normalizeIds(nextSnippetIds);
         LinkedHashSet<String> addedSnippetIds = new LinkedHashSet<>(normalizedNext);
@@ -54,15 +54,15 @@ public class TransformationSnippetReferenceService {
      */
     private Mono<Void> fetchAndValidateSnippetTargets(Set<String> snippetIds) {
         return Flux.fromIterable(snippetIds)
-                .concatMap(this::fetchSnippetTarget)
-                .collectList()
-                .flatMap(this::validateFetchedSnippetTargets);
+            .concatMap(this::fetchSnippetTarget)
+            .collectList()
+            .flatMap(this::validateFetchedSnippetTargets);
     }
 
     private Mono<SnippetTargetLookup> fetchSnippetTarget(String snippetId) {
         return client.fetch(TransformationSnippet.class, snippetId)
-                .map(snippet -> SnippetTargetLookup.found(snippetId, snippet))
-                .switchIfEmpty(Mono.just(SnippetTargetLookup.missing(snippetId)));
+            .map(snippet -> SnippetTargetLookup.found(snippetId, snippet))
+            .switchIfEmpty(Mono.just(SnippetTargetLookup.missing(snippetId)));
     }
 
     private Mono<Void> validateFetchedSnippetTargets(List<SnippetTargetLookup> lookups) {
@@ -75,12 +75,12 @@ public class TransformationSnippetReferenceService {
             TransformationSnippet snippet = lookup.snippet();
             if (snippet != null && (ExtensionUtil.isDeleted(snippet) || !snippet.isValid())) {
                 return Mono.error(new TransformationRuleValidationException(
-                        "snippetIds：代码片段 " + snippet.getId() + " 当前无法关联"));
+                    "snippetIds：代码片段 " + snippet.getId() + " 当前无法关联"));
             }
         }
         if (!missingIds.isEmpty()) {
             return Mono.error(new TransformationRuleValidationException(
-                    "snippetIds：包含不存在的代码片段：" + String.join("、", missingIds)));
+                "snippetIds：包含不存在的代码片段：" + String.join("、", missingIds)));
         }
         return Mono.empty();
     }

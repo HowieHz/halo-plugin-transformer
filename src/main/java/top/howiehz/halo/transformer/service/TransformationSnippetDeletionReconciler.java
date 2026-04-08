@@ -1,24 +1,23 @@
 package top.howiehz.halo.transformer.service;
 
-import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
-import top.howiehz.halo.transformer.scheme.TransformationSnippet;
-import top.howiehz.halo.transformer.scheme.TransformationRule;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.stereotype.Component;
-import run.halo.app.extension.ExtensionUtil;
+import org.springframework.web.server.ResponseStatusException;
 import run.halo.app.extension.ExtensionClient;
+import run.halo.app.extension.ExtensionUtil;
 import run.halo.app.extension.ListOptions;
 import run.halo.app.extension.controller.Controller;
 import run.halo.app.extension.controller.ControllerBuilder;
 import run.halo.app.extension.controller.Reconciler;
 import run.halo.app.extension.index.query.Queries;
-
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
+import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
+import top.howiehz.halo.transformer.scheme.TransformationRule;
+import top.howiehz.halo.transformer.scheme.TransformationSnippet;
 
 @Slf4j
 @Component
@@ -44,7 +43,8 @@ public class TransformationSnippetDeletionReconciler implements Reconciler<Recon
             return Result.doNotRetry();
         }
 
-        boolean detachedAnyRule = detachSnippetFromReferencingRules(snippet.getMetadata().getName());
+        boolean detachedAnyRule =
+            detachSnippetFromReferencingRules(snippet.getMetadata().getName());
         if (detachedAnyRule) {
             ruleRuntimeStore.invalidateAndWarmUpAsync();
         }
@@ -57,13 +57,13 @@ public class TransformationSnippetDeletionReconciler implements Reconciler<Recon
     @Override
     public Controller setupWith(ControllerBuilder builder) {
         return builder
-                .extension(new TransformationSnippet())
-                .syncAllListOptions(ListOptions.builder()
-                        .fieldQuery(Queries.not(Queries.isNull("metadata.deletionTimestamp")))
-                        .build())
-                .onAddMatcher(ExtensionUtil::isDeleted)
-                .onUpdateMatcher(ExtensionUtil::isDeleted)
-                .build();
+            .extension(new TransformationSnippet())
+            .syncAllListOptions(ListOptions.builder()
+                .fieldQuery(Queries.not(Queries.isNull("metadata.deletionTimestamp")))
+                .build())
+            .onAddMatcher(ExtensionUtil::isDeleted)
+            .onUpdateMatcher(ExtensionUtil::isDeleted)
+            .build();
     }
 
     private boolean detachSnippetFromReferencingRules(String snippetId) {
@@ -72,10 +72,10 @@ public class TransformationSnippetDeletionReconciler implements Reconciler<Recon
                 TransformationRule.class,
                 rule -> normalizeSnippetIds(rule.getSnippetIds()).contains(snippetId),
                 null
-        ).stream()
-                .map(rule -> rule.getMetadata() == null ? null : rule.getMetadata().getName())
-                .filter(name -> name != null && !name.isBlank())
-                .toList();
+            ).stream()
+            .map(rule -> rule.getMetadata() == null ? null : rule.getMetadata().getName())
+            .filter(name -> name != null && !name.isBlank())
+            .toList();
         for (String ruleName : referencingRuleNames) {
             if (detachSnippetReferenceWithRetry(ruleName, snippetId)) {
                 detachedAnyRule = true;
@@ -90,40 +90,42 @@ public class TransformationSnippetDeletionReconciler implements Reconciler<Recon
      */
     private boolean detachSnippetReferenceWithRetry(String ruleName, String snippetId) {
         return retryOnConflict(
-                "detach deleting snippet [" + snippetId + "] from rule [" + ruleName + "]",
-                () -> {
-                    var latestRuleOptional = client.fetch(TransformationRule.class, ruleName);
-                    if (latestRuleOptional.isEmpty()) {
-                        return false;
-                    }
-                    TransformationRule latestRule = latestRuleOptional.get();
-                    LinkedHashSet<String> nextSnippetIds = normalizeSnippetIds(latestRule.getSnippetIds());
-                    if (!nextSnippetIds.remove(snippetId)) {
-                        return false;
-                    }
-                    latestRule.setSnippetIds(nextSnippetIds);
-                    client.update(latestRule);
-                    return true;
+            "detach deleting snippet [" + snippetId + "] from rule [" + ruleName + "]",
+            () -> {
+                var latestRuleOptional = client.fetch(TransformationRule.class, ruleName);
+                if (latestRuleOptional.isEmpty()) {
+                    return false;
                 }
+                TransformationRule latestRule = latestRuleOptional.get();
+                LinkedHashSet<String> nextSnippetIds =
+                    normalizeSnippetIds(latestRule.getSnippetIds());
+                if (!nextSnippetIds.remove(snippetId)) {
+                    return false;
+                }
+                latestRule.setSnippetIds(nextSnippetIds);
+                client.update(latestRule);
+                return true;
+            }
         );
     }
 
     private void removeSnippetDeletionFinalizerWithRetry(String snippetName) {
         retryOnConflict(
-                "remove deletion finalizer from snippet [" + snippetName + "]",
-                () -> {
-                    var latestSnippetOptional = client.fetch(TransformationSnippet.class, snippetName);
-                    if (latestSnippetOptional.isEmpty()) {
-                        return false;
-                    }
-                    TransformationSnippet latestSnippet = latestSnippetOptional.get();
-                    if (!TransformationSnippetLifecycleService.isDeletionPendingCleanup(latestSnippet)) {
-                        return false;
-                    }
-                    TransformationSnippetLifecycleService.removeDeletionFinalizer(latestSnippet);
-                    client.update(latestSnippet);
-                    return true;
+            "remove deletion finalizer from snippet [" + snippetName + "]",
+            () -> {
+                var latestSnippetOptional = client.fetch(TransformationSnippet.class, snippetName);
+                if (latestSnippetOptional.isEmpty()) {
+                    return false;
                 }
+                TransformationSnippet latestSnippet = latestSnippetOptional.get();
+                if (!TransformationSnippetLifecycleService.isDeletionPendingCleanup(
+                    latestSnippet)) {
+                    return false;
+                }
+                TransformationSnippetLifecycleService.removeDeletionFinalizer(latestSnippet);
+                client.update(latestSnippet);
+                return true;
+            }
         );
     }
 
@@ -137,13 +139,15 @@ public class TransformationSnippetDeletionReconciler implements Reconciler<Recon
                     throw exception;
                 }
                 lastConflict = exception;
-                log.info("Conflict while attempting to {}. Retrying with latest resource state ({}/{}).",
-                        operationLabel, attempt, MAX_CONFLICT_RETRIES);
+                log.info(
+                    "Conflict while attempting to {}. Retrying with latest resource state ({}/{}).",
+                    operationLabel, attempt, MAX_CONFLICT_RETRIES);
             }
         }
         throw lastConflict == null
-                ? new IllegalStateException("Conflict retry exhausted without captured conflict for " + operationLabel)
-                : lastConflict;
+            ? new IllegalStateException(
+            "Conflict retry exhausted without captured conflict for " + operationLabel)
+            : lastConflict;
     }
 
     private LinkedHashSet<String> normalizeSnippetIds(Set<String> snippetIds) {
@@ -152,8 +156,8 @@ public class TransformationSnippetDeletionReconciler implements Reconciler<Recon
             return normalized;
         }
         snippetIds.stream()
-                .filter(id -> id != null && !id.isBlank())
-                .forEach(normalized::add);
+            .filter(id -> id != null && !id.isBlank())
+            .forEach(normalized::add);
         return normalized;
     }
 

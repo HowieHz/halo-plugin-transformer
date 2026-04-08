@@ -1,14 +1,13 @@
 package top.howiehz.halo.transformer.endpoint;
 
-import top.howiehz.halo.transformer.scheme.TransformationSnippet;
-import top.howiehz.halo.transformer.scheme.TransformationRule;
-import org.junit.jupiter.api.Test;
-import run.halo.app.extension.Metadata;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.jupiter.api.Test;
+import run.halo.app.extension.Metadata;
+import top.howiehz.halo.transformer.scheme.TransformationRule;
+import top.howiehz.halo.transformer.scheme.TransformationSnippet;
 
 class ConsoleReadModelMapperTest {
     private final ConsoleReadModelMapper mapper = new ConsoleReadModelMapper();

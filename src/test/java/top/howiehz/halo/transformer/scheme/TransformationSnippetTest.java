@@ -1,11 +1,11 @@
 package top.howiehz.halo.transformer.scheme;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import run.halo.app.extension.Metadata;
-
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 class TransformationSnippetTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -43,14 +43,14 @@ class TransformationSnippetTest {
     @Test
     void shouldTreatIdAsReadOnlyResponseField() throws Exception {
         TransformationSnippet snippet = objectMapper.readValue("""
-                {
-                  "metadata": {
-                    "name": "snippet-a"
-                  },
-                  "id": "snippet-a",
-                  "code": "<div>ok</div>"
-                }
-                """, TransformationSnippet.class);
+            {
+              "metadata": {
+                "name": "snippet-a"
+              },
+              "id": "snippet-a",
+              "code": "<div>ok</div>"
+            }
+            """, TransformationSnippet.class);
 
         assertFalse(snippet.getUnknownFields().contains("id"));
         assertTrue(snippet.isValid());

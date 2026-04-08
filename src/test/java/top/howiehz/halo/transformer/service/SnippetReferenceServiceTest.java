@@ -1,17 +1,5 @@
 package top.howiehz.halo.transformer.service;
 
-import top.howiehz.halo.transformer.scheme.TransformationSnippet;
-import top.howiehz.halo.transformer.util.TransformationRuleValidationException;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import reactor.core.publisher.Mono;
-import run.halo.app.extension.Metadata;
-import run.halo.app.extension.ReactiveExtensionClient;
-
-import java.util.LinkedHashSet;
-import java.util.Set;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -19,6 +7,17 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import java.util.LinkedHashSet;
+import java.util.Set;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import reactor.core.publisher.Mono;
+import run.halo.app.extension.Metadata;
+import run.halo.app.extension.ReactiveExtensionClient;
+import top.howiehz.halo.transformer.scheme.TransformationSnippet;
+import top.howiehz.halo.transformer.util.TransformationRuleValidationException;
 
 class TransformationSnippetReferenceServiceTest {
     private ReactiveExtensionClient client;
@@ -33,19 +32,21 @@ class TransformationSnippetReferenceServiceTest {
     // why: 没有关联代码片段时不应额外查询或报错，规则保存应允许空关联稳定通过。
     @Test
     void shouldAllowEmptySnippetIds() {
-        assertEquals(new LinkedHashSet<>(), service.normalizeAndValidateSnippetIds(Set.of()).block());
+        assertEquals(new LinkedHashSet<>(),
+            service.normalizeAndValidateSnippetIds(Set.of()).block());
     }
 
     // why: 规则现在是唯一真源，因此写入前必须明确拒绝不存在的代码片段 id，避免悬挂引用落库。
     @Test
     void shouldRejectMissingSnippetIds() {
         TransformationSnippet existingSnippet = snippet("snippet-a");
-        when(client.fetch(TransformationSnippet.class, "snippet-a")).thenReturn(Mono.just(existingSnippet));
+        when(client.fetch(TransformationSnippet.class, "snippet-a")).thenReturn(
+            Mono.just(existingSnippet));
         when(client.fetch(TransformationSnippet.class, "snippet-b")).thenReturn(Mono.empty());
 
         TransformationRuleValidationException error = assertThrows(
-                TransformationRuleValidationException.class,
-                () -> service.normalizeAndValidateSnippetIds(Set.of("snippet-a", "snippet-b")).block()
+            TransformationRuleValidationException.class,
+            () -> service.normalizeAndValidateSnippetIds(Set.of("snippet-a", "snippet-b")).block()
         );
 
         assertEquals("snippetIds：包含不存在的代码片段：snippet-b", error.getReason());
@@ -57,11 +58,12 @@ class TransformationSnippetReferenceServiceTest {
     void shouldRejectInvalidSnippetReference() {
         TransformationSnippet invalidSnippet = snippet("snippet-a");
         invalidSnippet.setCode("");
-        when(client.fetch(TransformationSnippet.class, "snippet-a")).thenReturn(Mono.just(invalidSnippet));
+        when(client.fetch(TransformationSnippet.class, "snippet-a")).thenReturn(
+            Mono.just(invalidSnippet));
 
         TransformationRuleValidationException error = assertThrows(
-                TransformationRuleValidationException.class,
-                () -> service.normalizeAndValidateSnippetIds(Set.of("snippet-a")).block()
+            TransformationRuleValidationException.class,
+            () -> service.normalizeAndValidateSnippetIds(Set.of("snippet-a")).block()
         );
 
         assertEquals("snippetIds：代码片段 snippet-a 当前无法关联", error.getReason());
@@ -74,11 +76,12 @@ class TransformationSnippetReferenceServiceTest {
     void shouldAllowKeepingExistingInvalidSnippetReferenceDuringUpdate() {
         TransformationSnippet invalidSnippet = snippet("snippet-a");
         invalidSnippet.setCode("");
-        when(client.fetch(TransformationSnippet.class, "snippet-a")).thenReturn(Mono.just(invalidSnippet));
+        when(client.fetch(TransformationSnippet.class, "snippet-a")).thenReturn(
+            Mono.just(invalidSnippet));
 
         LinkedHashSet<String> result = service.normalizeAndValidateAddedSnippetIds(
-                Set.of("snippet-a"),
-                Set.of("snippet-a")
+            Set.of("snippet-a"),
+            Set.of("snippet-a")
         ).block();
 
         assertEquals(new LinkedHashSet<>(Set.of("snippet-a")), result);
@@ -92,15 +95,17 @@ class TransformationSnippetReferenceServiceTest {
         TransformationSnippet validSnippet = snippet("snippet-a");
         TransformationSnippet invalidSnippet = snippet("snippet-b");
         invalidSnippet.setCode("");
-        when(client.fetch(TransformationSnippet.class, "snippet-a")).thenReturn(Mono.just(validSnippet));
-        when(client.fetch(TransformationSnippet.class, "snippet-b")).thenReturn(Mono.just(invalidSnippet));
+        when(client.fetch(TransformationSnippet.class, "snippet-a")).thenReturn(
+            Mono.just(validSnippet));
+        when(client.fetch(TransformationSnippet.class, "snippet-b")).thenReturn(
+            Mono.just(invalidSnippet));
 
         TransformationRuleValidationException error = assertThrows(
-                TransformationRuleValidationException.class,
-                () -> service.normalizeAndValidateAddedSnippetIds(
-                        Set.of("snippet-a"),
-                        Set.of("snippet-a", "snippet-b")
-                ).block()
+            TransformationRuleValidationException.class,
+            () -> service.normalizeAndValidateAddedSnippetIds(
+                Set.of("snippet-a"),
+                Set.of("snippet-a", "snippet-b")
+            ).block()
         );
 
         assertEquals("snippetIds：代码片段 snippet-b 当前无法关联", error.getReason());
@@ -113,11 +118,12 @@ class TransformationSnippetReferenceServiceTest {
         TransformationSnippet deletingSnippet = snippet("snippet-a");
         deletingSnippet.getMetadata().setDeletionTimestamp(java.time.Instant.now());
 
-        when(client.fetch(TransformationSnippet.class, "snippet-a")).thenReturn(Mono.just(deletingSnippet));
+        when(client.fetch(TransformationSnippet.class, "snippet-a")).thenReturn(
+            Mono.just(deletingSnippet));
 
         TransformationRuleValidationException error = assertThrows(
-                TransformationRuleValidationException.class,
-                () -> service.normalizeAndValidateSnippetIds(Set.of("snippet-a")).block()
+            TransformationRuleValidationException.class,
+            () -> service.normalizeAndValidateSnippetIds(Set.of("snippet-a")).block()
         );
 
         assertEquals("snippetIds：代码片段 snippet-a 当前无法关联", error.getReason());
@@ -130,10 +136,13 @@ class TransformationSnippetReferenceServiceTest {
     void shouldFetchOnlyReferencedSnippetIdsInsteadOfListingAllSnippets() {
         TransformationSnippet snippetA = snippet("snippet-a");
         TransformationSnippet snippetB = snippet("snippet-b");
-        when(client.fetch(TransformationSnippet.class, "snippet-a")).thenReturn(Mono.just(snippetA));
-        when(client.fetch(TransformationSnippet.class, "snippet-b")).thenReturn(Mono.just(snippetB));
+        when(client.fetch(TransformationSnippet.class, "snippet-a")).thenReturn(
+            Mono.just(snippetA));
+        when(client.fetch(TransformationSnippet.class, "snippet-b")).thenReturn(
+            Mono.just(snippetB));
 
-        LinkedHashSet<String> result = service.normalizeAndValidateSnippetIds(Set.of("snippet-a", "snippet-b"))
+        LinkedHashSet<String> result =
+            service.normalizeAndValidateSnippetIds(Set.of("snippet-a", "snippet-b"))
                 .block();
 
         assertEquals(new LinkedHashSet<>(Set.of("snippet-a", "snippet-b")), result);

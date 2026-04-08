@@ -34,22 +34,26 @@ public final class MatchRuleBooleanMinimizer {
 
         AnalysisExpression base = switch (rule.getType()) {
             case GROUP -> new GroupExpression(
-                    rule.getOperator() == MatchRule.Operator.OR ? MatchRule.Operator.OR : MatchRule.Operator.AND,
-                    rule.getChildren() == null
-                            ? List.of()
-                            : rule.getChildren().stream().map(MatchRuleBooleanMinimizer::buildExpression).toList()
+                rule.getOperator() == MatchRule.Operator.OR ? MatchRule.Operator.OR
+                    : MatchRule.Operator.AND,
+                rule.getChildren() == null
+                    ? List.of()
+                    : rule.getChildren().stream().map(MatchRuleBooleanMinimizer::buildExpression)
+                        .toList()
             );
             case PATH -> new LeafExpression(
-                    MatchRule.Type.PATH,
-                    rule.getMatcher() == MatchRule.Matcher.REGEX || rule.getMatcher() == MatchRule.Matcher.EXACT
-                            ? rule.getMatcher()
-                            : MatchRule.Matcher.ANT,
-                    rule.getValue() == null ? "" : rule.getValue().trim()
+                MatchRule.Type.PATH,
+                rule.getMatcher() == MatchRule.Matcher.REGEX
+                    || rule.getMatcher() == MatchRule.Matcher.EXACT
+                    ? rule.getMatcher()
+                    : MatchRule.Matcher.ANT,
+                rule.getValue() == null ? "" : rule.getValue().trim()
             );
             case TEMPLATE_ID -> new LeafExpression(
-                    MatchRule.Type.TEMPLATE_ID,
-                    rule.getMatcher() == MatchRule.Matcher.REGEX ? MatchRule.Matcher.REGEX : MatchRule.Matcher.EXACT,
-                    rule.getValue() == null ? "" : rule.getValue().trim()
+                MatchRule.Type.TEMPLATE_ID,
+                rule.getMatcher() == MatchRule.Matcher.REGEX ? MatchRule.Matcher.REGEX
+                    : MatchRule.Matcher.EXACT,
+                rule.getValue() == null ? "" : rule.getValue().trim()
             );
         };
 
@@ -59,11 +63,11 @@ public final class MatchRuleBooleanMinimizer {
     private static MatchRule toMatchRule(AnalysisExpression expression) {
         return switch (expression) {
             case ConstantExpression constantExpression -> constantExpression.value()
-                    ? MatchRule.pathRule(MatchRule.Matcher.ANT, MATCH_ALL_PATH)
-                    : negated(MatchRule.pathRule(MatchRule.Matcher.ANT, MATCH_ALL_PATH));
+                ? MatchRule.pathRule(MatchRule.Matcher.ANT, MATCH_ALL_PATH)
+                : negated(MatchRule.pathRule(MatchRule.Matcher.ANT, MATCH_ALL_PATH));
             case LeafExpression leafExpression -> leafExpression.type() == MatchRule.Type.PATH
-                    ? MatchRule.pathRule(leafExpression.matcher(), leafExpression.value())
-                    : MatchRule.templateRule(leafExpression.matcher(), leafExpression.value());
+                ? MatchRule.pathRule(leafExpression.matcher(), leafExpression.value())
+                : MatchRule.templateRule(leafExpression.matcher(), leafExpression.value());
             case NotExpression notExpression -> negated(toMatchRule(notExpression.child()));
             case GroupExpression groupExpression -> {
                 MatchRule groupRule = new MatchRule();
@@ -71,8 +75,8 @@ public final class MatchRuleBooleanMinimizer {
                 groupRule.setNegate(false);
                 groupRule.setOperator(groupExpression.operator());
                 groupRule.setChildren(groupExpression.children().stream()
-                        .map(MatchRuleBooleanMinimizer::toMatchRule)
-                        .toList());
+                    .map(MatchRuleBooleanMinimizer::toMatchRule)
+                    .toList());
                 yield groupRule;
             }
         };
@@ -87,37 +91,43 @@ public final class MatchRuleBooleanMinimizer {
         return switch (expression) {
             case ConstantExpression constantExpression -> constantExpression;
             case LeafExpression leafExpression -> leafExpression;
-            case NotExpression notExpression -> simplifyNot(new NotExpression(simplify(notExpression.child())));
+            case NotExpression notExpression ->
+                simplifyNot(new NotExpression(simplify(notExpression.child())));
             case GroupExpression groupExpression -> simplifyGroup(new GroupExpression(
-                    groupExpression.operator(),
-                    groupExpression.children().stream().map(MatchRuleBooleanMinimizer::simplify).toList()
+                groupExpression.operator(),
+                groupExpression.children().stream().map(MatchRuleBooleanMinimizer::simplify)
+                    .toList()
             ));
         };
     }
 
     private static AnalysisExpression simplifyNot(NotExpression expression) {
         AnalysisExpression child = expression.child();
-        if (child instanceof ConstantExpression constantExpression) {
-            return constantExpression.value() ? CONST_FALSE : CONST_TRUE;
+        if (child instanceof ConstantExpression(boolean value)) {
+            return value ? CONST_FALSE : CONST_TRUE;
         }
-        if (child instanceof NotExpression nestedNot) {
-            return simplify(nestedNot.child());
+        if (child instanceof NotExpression(AnalysisExpression child1)) {
+            return simplify(child1);
         }
         return expression;
     }
 
     private static AnalysisExpression simplifyGroup(GroupExpression expression) {
         AnalysisExpression current = expression;
-        while (current instanceof GroupExpression currentGroup) {
-            List<AnalysisExpression> flattenedChildren = currentGroup.children().stream()
-                    .flatMap(child -> child instanceof GroupExpression childGroup
-                                    && childGroup.operator() == currentGroup.operator()
-                            ? childGroup.children().stream()
-                            : java.util.stream.Stream.of(child))
-                    .toList();
+        while (current instanceof GroupExpression(
+            MatchRule.Operator operator1, List<AnalysisExpression> children1
+        )) {
+            List<AnalysisExpression> flattenedChildren = children1.stream()
+                .flatMap(child -> child instanceof GroupExpression(
+                    MatchRule.Operator operator, List<AnalysisExpression> children
+                )
+                    && operator == operator1
+                    ? children.stream()
+                    : java.util.stream.Stream.of(child))
+                .toList();
             GroupExpression flattened = new GroupExpression(
-                    currentGroup.operator(),
-                    sortExpressions(deduplicateExpressions(flattenedChildren))
+                operator1,
+                sortExpressions(deduplicateExpressions(flattenedChildren))
             );
             AnalysisExpression next = simplifyGroupOnce(flattened);
             if (expressionKey(next).equals(expressionKey(current))) {
@@ -154,15 +164,17 @@ public final class MatchRuleBooleanMinimizer {
 
     private static AnalysisExpression buildReverseDeMorganCandidate(GroupExpression expression) {
         if (expression.children().size() < 2
-                || expression.children().stream().anyMatch(child -> !(child instanceof NotExpression))) {
+            || expression.children().stream()
+            .anyMatch(child -> !(child instanceof NotExpression))) {
             return null;
         }
         List<AnalysisExpression> unwrappedChildren = expression.children().stream()
-                .map(child -> ((NotExpression) child).child())
-                .toList();
+            .map(child -> ((NotExpression) child).child())
+            .toList();
         return new NotExpression(new GroupExpression(
-                expression.operator() == MatchRule.Operator.AND ? MatchRule.Operator.OR : MatchRule.Operator.AND,
-                unwrappedChildren
+            expression.operator() == MatchRule.Operator.AND ? MatchRule.Operator.OR
+                : MatchRule.Operator.AND,
+            unwrappedChildren
         ));
     }
 
@@ -172,22 +184,24 @@ public final class MatchRuleBooleanMinimizer {
         }
 
         List<List<AnalysisExpression>> factorizedTerms = expression.children().stream()
-                .map(child -> child instanceof GroupExpression childGroup
-                                && childGroup.operator() == MatchRule.Operator.AND
-                        ? childGroup.children()
-                        : List.of(child))
-                .toList();
+            .map(child -> child instanceof GroupExpression(
+                MatchRule.Operator operator, List<AnalysisExpression> children
+            )
+                && operator == MatchRule.Operator.AND
+                ? children
+                : List.of(child))
+            .toList();
         List<String> commonFactorKeys = intersectExpressionKeys(factorizedTerms);
         if (commonFactorKeys.isEmpty()) {
             return null;
         }
 
         List<AnalysisExpression> commonFactors = factorizedTerms.getFirst().stream()
-                .filter(term -> commonFactorKeys.contains(expressionKey(term)))
-                .toList();
+            .filter(term -> commonFactorKeys.contains(expressionKey(term)))
+            .toList();
         List<AnalysisExpression> residualTerms = factorizedTerms.stream()
-                .map(termFactors -> buildResidualExpression(termFactors, commonFactorKeys))
-                .toList();
+            .map(termFactors -> buildResidualExpression(termFactors, commonFactorKeys))
+            .toList();
 
         List<AnalysisExpression> factoredChildren = new ArrayList<>(commonFactors);
         factoredChildren.add(new GroupExpression(MatchRule.Operator.OR, residualTerms));
@@ -195,10 +209,10 @@ public final class MatchRuleBooleanMinimizer {
     }
 
     private static AnalysisExpression buildResidualExpression(List<AnalysisExpression> termFactors,
-                                                              List<String> commonFactorKeys) {
+        List<String> commonFactorKeys) {
         List<AnalysisExpression> residualFactors = termFactors.stream()
-                .filter(term -> !commonFactorKeys.contains(expressionKey(term)))
-                .toList();
+            .filter(term -> !commonFactorKeys.contains(expressionKey(term)))
+            .toList();
         if (residualFactors.isEmpty()) {
             return CONST_TRUE;
         }
@@ -214,17 +228,19 @@ public final class MatchRuleBooleanMinimizer {
         }
 
         Set<String> directChildKeys = expression.children().stream()
-                .filter(child -> !(child instanceof GroupExpression childGroup
-                        && childGroup.operator() == MatchRule.Operator.OR))
-                .map(MatchRuleBooleanMinimizer::expressionKey)
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+            .filter(child -> !(child instanceof GroupExpression childGroup
+                && childGroup.operator() == MatchRule.Operator.OR))
+            .map(MatchRuleBooleanMinimizer::expressionKey)
+            .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
 
         List<AnalysisExpression> filteredChildren = expression.children().stream()
-                .filter(child -> !(child instanceof GroupExpression childGroup
-                        && childGroup.operator() == MatchRule.Operator.OR
-                        && childGroup.children().stream().anyMatch(option ->
-                        directChildKeys.contains(expressionKey(option)))))
-                .toList();
+            .filter(child -> !(child instanceof GroupExpression(
+                MatchRule.Operator operator, List<AnalysisExpression> children
+            )
+                && operator == MatchRule.Operator.OR
+                && children.stream().anyMatch(option ->
+                directChildKeys.contains(expressionKey(option)))))
+            .toList();
 
         if (filteredChildren.size() == expression.children().size()) {
             return null;
@@ -234,11 +250,11 @@ public final class MatchRuleBooleanMinimizer {
 
     private static AnalysisExpression foldComplement(GroupExpression expression) {
         Set<String> childKeys = expression.children().stream()
-                .map(MatchRuleBooleanMinimizer::expressionKey)
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+            .map(MatchRuleBooleanMinimizer::expressionKey)
+            .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
         for (AnalysisExpression child : expression.children()) {
-            if (child instanceof NotExpression notExpression
-                    && childKeys.contains(expressionKey(notExpression.child()))) {
+            if (child instanceof NotExpression(AnalysisExpression child1)
+                && childKeys.contains(expressionKey(child1))) {
                 return expression.operator() == MatchRule.Operator.OR ? CONST_TRUE : CONST_FALSE;
             }
         }
@@ -247,14 +263,15 @@ public final class MatchRuleBooleanMinimizer {
 
     private static AnalysisExpression foldConstants(GroupExpression expression) {
         if (expression.operator() == MatchRule.Operator.AND) {
-            if (expression.children().stream().anyMatch(child -> child instanceof ConstantExpression constantExpression
-                    && !constantExpression.value())) {
+            if (expression.children().stream()
+                .anyMatch(child -> child instanceof ConstantExpression(boolean value)
+                    && !value)) {
                 return CONST_FALSE;
             }
             List<AnalysisExpression> nonTrueChildren = expression.children().stream()
-                    .filter(child -> !(child instanceof ConstantExpression constantExpression
-                            && constantExpression.value()))
-                    .toList();
+                .filter(child -> !(child instanceof ConstantExpression(boolean value)
+                    && value))
+                .toList();
             if (nonTrueChildren.isEmpty()) {
                 return CONST_TRUE;
             }
@@ -264,14 +281,15 @@ public final class MatchRuleBooleanMinimizer {
             return new GroupExpression(MatchRule.Operator.AND, nonTrueChildren);
         }
 
-        if (expression.children().stream().anyMatch(child -> child instanceof ConstantExpression constantExpression
-                && constantExpression.value())) {
+        if (expression.children().stream()
+            .anyMatch(child -> child instanceof ConstantExpression(boolean value)
+                && value)) {
             return CONST_TRUE;
         }
         List<AnalysisExpression> nonFalseChildren = expression.children().stream()
-                .filter(child -> !(child instanceof ConstantExpression constantExpression
-                        && !constantExpression.value()))
-                .toList();
+            .filter(child -> !(child instanceof ConstantExpression(boolean value)
+                && !value))
+            .toList();
         if (nonFalseChildren.isEmpty()) {
             return CONST_FALSE;
         }
@@ -281,7 +299,8 @@ public final class MatchRuleBooleanMinimizer {
         return new GroupExpression(MatchRule.Operator.OR, nonFalseChildren);
     }
 
-    private static List<AnalysisExpression> deduplicateExpressions(List<AnalysisExpression> expressions) {
+    private static List<AnalysisExpression> deduplicateExpressions(
+        List<AnalysisExpression> expressions) {
         Map<String, AnalysisExpression> deduplicated = new LinkedHashMap<>();
         for (AnalysisExpression expression : expressions) {
             deduplicated.put(expressionKey(expression), expression);
@@ -291,8 +310,8 @@ public final class MatchRuleBooleanMinimizer {
 
     private static List<AnalysisExpression> sortExpressions(List<AnalysisExpression> expressions) {
         return expressions.stream()
-                .sorted(MatchRuleBooleanMinimizer::compareExpressions)
-                .toList();
+            .sorted(MatchRuleBooleanMinimizer::compareExpressions)
+            .toList();
     }
 
     private static int compareExpressions(AnalysisExpression left, AnalysisExpression right) {
@@ -317,12 +336,12 @@ public final class MatchRuleBooleanMinimizer {
             return List.of();
         }
         Set<String> sharedKeys = new LinkedHashSet<>(terms.getFirst().stream()
-                .map(MatchRuleBooleanMinimizer::expressionKey)
-                .toList());
+            .map(MatchRuleBooleanMinimizer::expressionKey)
+            .toList());
         for (List<AnalysisExpression> termFactors : terms.subList(1, terms.size())) {
             Set<String> currentKeys = termFactors.stream()
-                    .map(MatchRuleBooleanMinimizer::expressionKey)
-                    .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+                .map(MatchRuleBooleanMinimizer::expressionKey)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
             sharedKeys.removeIf(key -> !currentKeys.contains(key));
         }
         return sharedKeys.stream().sorted().toList();
@@ -338,28 +357,31 @@ public final class MatchRuleBooleanMinimizer {
             case LeafExpression ignored -> 1;
             case NotExpression notExpression -> 1 + expressionComplexity(notExpression.child());
             case GroupExpression groupExpression -> 1 + groupExpression.children().stream()
-                    .mapToInt(MatchRuleBooleanMinimizer::expressionComplexity)
-                    .sum();
+                .mapToInt(MatchRuleBooleanMinimizer::expressionComplexity)
+                .sum();
         };
     }
 
     private static String expressionKey(AnalysisExpression expression) {
         return switch (expression) {
-            case ConstantExpression constantExpression -> constantExpression.value() ? "TRUE" : "FALSE";
+            case ConstantExpression constantExpression ->
+                constantExpression.value() ? "TRUE" : "FALSE";
             case LeafExpression leafExpression ->
-                    leafExpression.type() + ":" + leafExpression.matcher() + ":" + leafExpression.value();
+                leafExpression.type() + ":" + leafExpression.matcher() + ":"
+                    + leafExpression.value();
             case NotExpression notExpression -> "!" + expressionKey(notExpression.child());
             case GroupExpression groupExpression -> groupExpression.operator() + "("
-                    + sortExpressions(groupExpression.children()).stream()
-                    .map(MatchRuleBooleanMinimizer::expressionKey)
-                    .collect(java.util.stream.Collectors.joining(","))
-                    + ")";
+                + sortExpressions(groupExpression.children()).stream()
+                .map(MatchRuleBooleanMinimizer::expressionKey)
+                .collect(java.util.stream.Collectors.joining(","))
+                + ")";
         };
     }
 
     private static String formatExpression(AnalysisExpression expression, boolean root) {
         return switch (expression) {
-            case ConstantExpression constantExpression -> constantExpression.value() ? "TRUE" : "FALSE";
+            case ConstantExpression constantExpression ->
+                constantExpression.value() ? "TRUE" : "FALSE";
             case LeafExpression leafExpression -> {
                 String subject = leafExpression.type() == MatchRule.Type.PATH ? "path" : "id";
                 String matcher = switch (leafExpression.matcher()) {
@@ -371,19 +393,22 @@ public final class MatchRuleBooleanMinimizer {
             }
             case NotExpression notExpression -> {
                 String child = formatExpression(notExpression.child(), true);
-                yield notExpression.child() instanceof GroupExpression ? "!(" + child + ")" : "!" + child;
+                yield notExpression.child() instanceof GroupExpression ? "!(" + child + ")"
+                    : "!" + child;
             }
             case GroupExpression groupExpression -> {
-                String operator = groupExpression.operator() == MatchRule.Operator.OR ? " | " : " & ";
+                String operator =
+                    groupExpression.operator() == MatchRule.Operator.OR ? " | " : " & ";
                 String content = groupExpression.children().stream()
-                        .map(child -> formatExpression(child, false))
-                        .collect(java.util.stream.Collectors.joining(operator));
+                    .map(child -> formatExpression(child, false))
+                    .collect(java.util.stream.Collectors.joining(operator));
                 yield root ? content : "(" + content + ")";
             }
         };
     }
 
-    sealed interface AnalysisExpression permits ConstantExpression, LeafExpression, NotExpression, GroupExpression {
+    sealed interface AnalysisExpression
+        permits ConstantExpression, LeafExpression, NotExpression, GroupExpression {
     }
 
     private record ConstantExpression(boolean value) implements AnalysisExpression {
@@ -397,6 +422,7 @@ public final class MatchRuleBooleanMinimizer {
     }
 
     private record GroupExpression(MatchRule.Operator operator,
-                                   List<AnalysisExpression> children) implements AnalysisExpression {
+                                   List<AnalysisExpression> children)
+        implements AnalysisExpression {
     }
 }

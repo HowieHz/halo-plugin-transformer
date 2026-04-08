@@ -10,14 +10,16 @@ public final class MatchRuleContractMessages {
 
     public static String formatUnsupportedFieldMessage(MatchRule.Type nodeType) {
         NodeTypeSpec spec = nodeTypeSpec(nodeType);
-        return "不支持该字段；" + spec.label() + "仅支持 " + formatQuotedValues(spec.allowedFields(), JoinStyle.LIST);
+        return "不支持该字段；" + spec.label() + "仅支持 " + formatQuotedValues(spec.allowedFields(),
+            JoinStyle.LIST);
     }
 
-    public static String formatMissingEnumFieldMessage(String fieldName, EnumName enumName, String label) {
+    public static String formatMissingEnumFieldMessage(String fieldName, EnumName enumName,
+        String label) {
         EnumSpec spec = enumSpec(enumName);
         String prefix = label == null || label.isBlank() ? "缺少必填字段" : label + "缺少必填字段";
         return prefix + " \"" + fieldName + "\"；该字段可选值为 "
-                + formatQuotedValues(spec.values(), spec.joinStyle());
+            + formatQuotedValues(spec.values(), spec.joinStyle());
     }
 
     public static String formatInvalidEnumFieldTypeMessage(EnumName enumName) {
@@ -45,9 +47,12 @@ public final class MatchRuleContractMessages {
 
     private static NodeTypeSpec nodeTypeSpec(MatchRule.Type nodeType) {
         return switch (nodeType) {
-            case GROUP -> new NodeTypeSpec("条件组", List.of("type", "negate", "operator", "children"));
-            case PATH -> new NodeTypeSpec("页面路径条件", List.of("type", "negate", "matcher", "value"));
-            case TEMPLATE_ID -> new NodeTypeSpec("模板 ID 条件", List.of("type", "negate", "matcher", "value"));
+            case GROUP ->
+                new NodeTypeSpec("条件组", List.of("type", "negate", "operator", "children"));
+            case PATH ->
+                new NodeTypeSpec("页面路径条件", List.of("type", "negate", "matcher", "value"));
+            case TEMPLATE_ID ->
+                new NodeTypeSpec("模板 ID 条件", List.of("type", "negate", "matcher", "value"));
         };
     }
 
@@ -63,8 +68,9 @@ public final class MatchRuleContractMessages {
 
     private static String formatQuotedValues(List<String> values, JoinStyle joinStyle) {
         List<String> quoted = values.stream()
-                .map(value -> "true".equals(value) || "false".equals(value) ? value : "\"" + value + "\"")
-                .toList();
+            .map(value -> "true".equals(value) || "false".equals(value) ? value
+                : "\"" + value + "\"")
+            .toList();
         if (quoted.isEmpty()) {
             return "";
         }
@@ -76,7 +82,7 @@ public final class MatchRuleContractMessages {
                 return quoted.get(0) + " 或 " + quoted.get(1);
             }
             return String.join("、", quoted.subList(0, quoted.size() - 1))
-                    + " 或 " + quoted.get(quoted.size() - 1);
+                + " 或 " + quoted.get(quoted.size() - 1);
         }
         return String.join("、", quoted);
     }

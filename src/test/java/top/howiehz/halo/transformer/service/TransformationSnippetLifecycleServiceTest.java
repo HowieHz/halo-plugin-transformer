@@ -1,18 +1,18 @@
 package top.howiehz.halo.transformer.service;
 
-import top.howiehz.halo.transformer.scheme.TransformationSnippet;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import reactor.core.publisher.Mono;
-import run.halo.app.extension.Metadata;
-import run.halo.app.extension.ReactiveExtensionClient;
-
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Mono;
+import run.halo.app.extension.Metadata;
+import run.halo.app.extension.ReactiveExtensionClient;
+import top.howiehz.halo.transformer.scheme.TransformationSnippet;
 
 class TransformationSnippetLifecycleServiceTest {
     private ReactiveExtensionClient client;
@@ -29,8 +29,10 @@ class TransformationSnippetLifecycleServiceTest {
     @Test
     void shouldAddFinalizerBeforeRequestingDeletion() {
         TransformationSnippet snippet = snippet("snippet-a");
-        when(client.update(any(TransformationSnippet.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
-        when(client.delete(any(TransformationSnippet.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+        when(client.update(any(TransformationSnippet.class))).thenAnswer(
+            invocation -> Mono.just(invocation.getArgument(0)));
+        when(client.delete(any(TransformationSnippet.class))).thenAnswer(
+            invocation -> Mono.just(invocation.getArgument(0)));
 
         service.markForDeletion(snippet).block();
 
@@ -46,7 +48,8 @@ class TransformationSnippetLifecycleServiceTest {
 
         TransformationSnippet prepared = service.prepareForPersist(snippet);
 
-        assertTrue(prepared.getMetadata().getFinalizers().contains(TransformationSnippetLifecycleService.DELETION_FINALIZER));
+        assertTrue(prepared.getMetadata().getFinalizers()
+            .contains(TransformationSnippetLifecycleService.DELETION_FINALIZER));
     }
 
     // why: 已经处于 deleting 状态的代码片段，不需要重复发起 delete；

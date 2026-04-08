@@ -1,29 +1,28 @@
 package top.howiehz.halo.transformer.scheme;
 
-import top.howiehz.halo.transformer.core.ITransformationSnippet;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import run.halo.app.extension.AbstractExtension;
 import run.halo.app.extension.GVK;
-
-import java.util.LinkedHashSet;
-import java.util.Set;
+import top.howiehz.halo.transformer.core.ITransformationSnippet;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
 @JsonIgnoreProperties("id")
 @GVK(kind = "TransformationSnippet", group = "transformer.howiehz.top",
-        version = "v1alpha1", singular = "transformationSnippet", plural = "transformationSnippets")
+    version = "v1alpha1", singular = "transformationSnippet", plural = "transformationSnippets")
 public class TransformationSnippet extends AbstractExtension implements ITransformationSnippet {
+    @JsonIgnore
+    private final Set<String> unknownFields = new LinkedHashSet<>();
     private String name = "";
     private String code = "";
     private String description = "";
     private Boolean enabled = true;
-    @JsonIgnore
-    private final Set<String> unknownFields = new LinkedHashSet<>();
 
     @Override
     public boolean isEnabled() {

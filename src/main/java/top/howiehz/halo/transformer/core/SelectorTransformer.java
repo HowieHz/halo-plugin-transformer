@@ -13,8 +13,9 @@ import org.springframework.stereotype.Component;
 public class SelectorTransformer implements HTMLTransformer {
 
     @Override
-    public boolean transform(Document document, String match, String code, ITransformationRule.Position position,
-                             boolean wrapMarker) {
+    public boolean transform(Document document, String match, String code,
+        ITransformationRule.Position position,
+        boolean wrapMarker) {
         Elements elements = document.select(match);
         if (elements.isEmpty()) {
             return false;

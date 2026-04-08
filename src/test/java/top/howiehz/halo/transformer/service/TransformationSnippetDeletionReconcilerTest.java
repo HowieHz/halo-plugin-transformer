@@ -1,23 +1,5 @@
 package top.howiehz.halo.transformer.service;
 
-import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
-import top.howiehz.halo.transformer.scheme.TransformationSnippet;
-import top.howiehz.halo.transformer.scheme.TransformationRule;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
-import run.halo.app.extension.Extension;
-import run.halo.app.extension.ExtensionClient;
-import run.halo.app.extension.Metadata;
-import run.halo.app.extension.controller.Reconciler;
-
-import java.time.Instant;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -31,6 +13,23 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+import run.halo.app.extension.Extension;
+import run.halo.app.extension.ExtensionClient;
+import run.halo.app.extension.Metadata;
+import run.halo.app.extension.controller.Reconciler;
+import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
+import top.howiehz.halo.transformer.scheme.TransformationRule;
+import top.howiehz.halo.transformer.scheme.TransformationSnippet;
 
 class TransformationSnippetDeletionReconcilerTest {
     private ExtensionClient client;
@@ -54,9 +53,10 @@ class TransformationSnippetDeletionReconcilerTest {
         latestRule.setDescription("latest description");
 
         when(client.fetch(TransformationSnippet.class, "snippet-a"))
-                .thenReturn(Optional.of(deletingSnippet))
-                .thenReturn(Optional.of(deletingSnippet("snippet-a")));
-        when(client.list(eq(TransformationRule.class), any(), eq(null))).thenReturn(List.of(listedRule));
+            .thenReturn(Optional.of(deletingSnippet))
+            .thenReturn(Optional.of(deletingSnippet("snippet-a")));
+        when(client.list(eq(TransformationRule.class), any(), eq(null))).thenReturn(
+            List.of(listedRule));
         when(client.fetch(TransformationRule.class, "rule-a")).thenReturn(Optional.of(latestRule));
 
         reconciler.reconcile(new Reconciler.Request("snippet-a"));
@@ -65,14 +65,16 @@ class TransformationSnippetDeletionReconcilerTest {
         verify(client, atLeastOnce()).update(updateCaptor.capture());
         List<Extension> updatedResources = updateCaptor.getAllValues();
 
-        TransformationRule updatedRule = assertInstanceOf(TransformationRule.class, updatedResources.get(0));
+        TransformationRule updatedRule =
+            assertInstanceOf(TransformationRule.class, updatedResources.get(0));
         assertEquals(new LinkedHashSet<>(Set.of("snippet-b")), updatedRule.getSnippetIds());
         assertEquals("latest description", updatedRule.getDescription());
 
-        TransformationSnippet finalizedSnippet = assertInstanceOf(TransformationSnippet.class, updatedResources.get(1));
+        TransformationSnippet finalizedSnippet =
+            assertInstanceOf(TransformationSnippet.class, updatedResources.get(1));
         assertTrue(finalizedSnippet.getMetadata().getFinalizers() == null
-                || !finalizedSnippet.getMetadata().getFinalizers()
-                .contains(TransformationSnippetLifecycleService.DELETION_FINALIZER));
+            || !finalizedSnippet.getMetadata().getFinalizers()
+            .contains(TransformationSnippetLifecycleService.DELETION_FINALIZER));
         verify(ruleRuntimeStore).invalidateAndWarmUpAsync();
         verify(client).fetch(TransformationRule.class, "rule-a");
     }
@@ -97,22 +99,24 @@ class TransformationSnippetDeletionReconcilerTest {
         TransformationRule listedRule = rule("rule-a", Set.of("snippet-a", "snippet-b"));
         TransformationRule staleRule = rule("rule-a", Set.of("snippet-a", "snippet-b"));
         staleRule.getMetadata().setVersion(2L);
-        TransformationRule latestRule = rule("rule-a", Set.of("snippet-a", "snippet-b", "snippet-c"));
+        TransformationRule latestRule =
+            rule("rule-a", Set.of("snippet-a", "snippet-b", "snippet-c"));
         latestRule.getMetadata().setVersion(3L);
         TransformationSnippet latestSnippet = deletingSnippet("snippet-a");
 
         when(client.fetch(TransformationSnippet.class, "snippet-a"))
-                .thenReturn(Optional.of(deletingSnippet))
-                .thenReturn(Optional.of(latestSnippet));
-        when(client.list(eq(TransformationRule.class), any(), eq(null))).thenReturn(List.of(listedRule));
+            .thenReturn(Optional.of(deletingSnippet))
+            .thenReturn(Optional.of(latestSnippet));
+        when(client.list(eq(TransformationRule.class), any(), eq(null))).thenReturn(
+            List.of(listedRule));
         when(client.fetch(TransformationRule.class, "rule-a"))
-                .thenReturn(Optional.of(staleRule))
-                .thenReturn(Optional.of(latestRule));
+            .thenReturn(Optional.of(staleRule))
+            .thenReturn(Optional.of(latestRule));
         doThrow(conflict())
-                .doAnswer(invocation -> invocation.getArgument(0))
-                .when(client).update(any(TransformationRule.class));
+            .doAnswer(invocation -> invocation.getArgument(0))
+            .when(client).update(any(TransformationRule.class));
         doAnswer(invocation -> invocation.getArgument(0))
-                .when(client).update(any(TransformationSnippet.class));
+            .when(client).update(any(TransformationSnippet.class));
 
         reconciler.reconcile(new Reconciler.Request("snippet-a"));
 
@@ -121,7 +125,8 @@ class TransformationSnippetDeletionReconcilerTest {
         List<TransformationRule> updatedRules = updateCaptor.getAllValues();
 
         assertEquals(new LinkedHashSet<>(Set.of("snippet-b")), updatedRules.get(0).getSnippetIds());
-        assertEquals(new LinkedHashSet<>(Set.of("snippet-b", "snippet-c")), updatedRules.get(1).getSnippetIds());
+        assertEquals(new LinkedHashSet<>(Set.of("snippet-b", "snippet-c")),
+            updatedRules.get(1).getSnippetIds());
         verify(client, times(2)).fetch(TransformationRule.class, "rule-a");
         verify(ruleRuntimeStore).invalidateAndWarmUpAsync();
     }
@@ -131,7 +136,8 @@ class TransformationSnippetDeletionReconcilerTest {
         Metadata metadata = new Metadata();
         metadata.setName(id);
         metadata.setDeletionTimestamp(Instant.now());
-        metadata.setFinalizers(new LinkedHashSet<>(Set.of(TransformationSnippetLifecycleService.DELETION_FINALIZER)));
+        metadata.setFinalizers(
+            new LinkedHashSet<>(Set.of(TransformationSnippetLifecycleService.DELETION_FINALIZER)));
         snippet.setMetadata(metadata);
         return snippet;
     }

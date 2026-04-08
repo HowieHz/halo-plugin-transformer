@@ -1,11 +1,13 @@
 package top.howiehz.halo.transformer.endpoint;
 
-import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
-import top.howiehz.halo.transformer.scheme.TransformationSnippet;
-import top.howiehz.halo.transformer.service.TransformationSnippetLifecycleService;
-import top.howiehz.halo.transformer.util.TransformationSnippetValidationException;
-import top.howiehz.halo.transformer.util.TransformationSnippetValidator;
-import top.howiehz.halo.transformer.util.OptimisticConcurrencyGuard;
+import static org.springframework.web.reactive.function.server.RequestPredicates.DELETE;
+import static org.springframework.web.reactive.function.server.RequestPredicates.GET;
+import static org.springframework.web.reactive.function.server.RequestPredicates.POST;
+import static org.springframework.web.reactive.function.server.RequestPredicates.PUT;
+import static org.springframework.web.reactive.function.server.RouterFunctions.route;
+
+import java.net.URI;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -18,20 +20,18 @@ import reactor.core.publisher.Mono;
 import run.halo.app.core.extension.endpoint.CustomEndpoint;
 import run.halo.app.extension.GroupVersion;
 import run.halo.app.extension.ReactiveExtensionClient;
-
-import java.net.URI;
-import java.util.Objects;
-
-import static org.springframework.web.reactive.function.server.RequestPredicates.GET;
-import static org.springframework.web.reactive.function.server.RequestPredicates.DELETE;
-import static org.springframework.web.reactive.function.server.RequestPredicates.POST;
-import static org.springframework.web.reactive.function.server.RequestPredicates.PUT;
-import static org.springframework.web.reactive.function.server.RouterFunctions.route;
+import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
+import top.howiehz.halo.transformer.scheme.TransformationSnippet;
+import top.howiehz.halo.transformer.service.TransformationSnippetLifecycleService;
+import top.howiehz.halo.transformer.util.OptimisticConcurrencyGuard;
+import top.howiehz.halo.transformer.util.TransformationSnippetValidationException;
+import top.howiehz.halo.transformer.util.TransformationSnippetValidator;
 
 @Component
 @RequiredArgsConstructor
 public class TransformationSnippetEndpoint implements CustomEndpoint {
-    private static final String CONSOLE_API_VERSION = "console.api.transformer.howiehz.top/v1alpha1";
+    private static final String CONSOLE_API_VERSION =
+        "console.api.transformer.howiehz.top/v1alpha1";
 
     private final ReactiveExtensionClient client;
     private final TransformationSnippetValidator validator;
@@ -42,11 +42,11 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
     @Override
     public RouterFunction<ServerResponse> endpoint() {
         return route(GET("/transformationSnippets"), this::listSnippets)
-                .andRoute(GET("/transformationSnippets/{name}"), this::getSnippet)
-                .andRoute(POST("/transformationSnippets"), this::createSnippet)
-                .andRoute(PUT("/transformationSnippets/{name}"), this::updateSnippet)
-                .andRoute(PUT("/transformationSnippets/{name}/enabled"), this::updateSnippetEnabled)
-                .andRoute(DELETE("/transformationSnippets/{name}"), this::deleteSnippet);
+            .andRoute(GET("/transformationSnippets/{name}"), this::getSnippet)
+            .andRoute(POST("/transformationSnippets"), this::createSnippet)
+            .andRoute(PUT("/transformationSnippets/{name}"), this::updateSnippet)
+            .andRoute(PUT("/transformationSnippets/{name}/enabled"), this::updateSnippetEnabled)
+            .andRoute(DELETE("/transformationSnippets/{name}"), this::deleteSnippet);
     }
 
     /**
@@ -55,21 +55,21 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
      */
     private Mono<ServerResponse> listSnippets(ServerRequest request) {
         return client.list(TransformationSnippet.class, null, null)
-                .collectList()
-                .map(readModelMapper::toSnippetList)
-                .flatMap(response -> ServerResponse.ok()
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(response));
+            .collectList()
+            .map(readModelMapper::toSnippetList)
+            .flatMap(response -> ServerResponse.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(response));
     }
 
     private Mono<ServerResponse> getSnippet(ServerRequest request) {
         String name = request.pathVariable("name");
         return client.fetch(TransformationSnippet.class, name)
-                .switchIfEmpty(Mono.error(new ServerWebInputException("未找到代码片段")))
-                .map(readModelMapper::toReadModel)
-                .flatMap(response -> ServerResponse.ok()
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(response));
+            .switchIfEmpty(Mono.error(new ServerWebInputException("未找到代码片段")))
+            .map(readModelMapper::toReadModel)
+            .flatMap(response -> ServerResponse.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(response));
     }
 
     /**
@@ -78,15 +78,16 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
      */
     private Mono<ServerResponse> createSnippet(ServerRequest request) {
         return request.bodyToMono(TransformationSnippet.class)
-                .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
-                .map(lifecycleService::prepareForPersist)
-                .flatMap(validator::validateForWrite)
-                .flatMap(client::create)
-                .doOnSuccess(created -> ruleRuntimeStore.invalidateAndWarmUpAsync())
-                .flatMap(created -> ServerResponse.created(URI.create("/apis/" + CONSOLE_API_VERSION + "/transformationSnippets/"
-                                + created.getMetadata().getName()))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(readModelMapper.toReadModel(created)));
+            .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
+            .map(lifecycleService::prepareForPersist)
+            .flatMap(validator::validateForWrite)
+            .flatMap(client::create)
+            .doOnSuccess(created -> ruleRuntimeStore.invalidateAndWarmUpAsync())
+            .flatMap(created -> ServerResponse.created(
+                    URI.create("/apis/" + CONSOLE_API_VERSION + "/transformationSnippets/"
+                        + created.getMetadata().getName()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(readModelMapper.toReadModel(created)));
     }
 
     /**
@@ -96,30 +97,31 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
     private Mono<ServerResponse> updateSnippet(ServerRequest request) {
         String name = request.pathVariable("name");
         return client.fetch(TransformationSnippet.class, name)
-                .switchIfEmpty(Mono.error(new ServerWebInputException("未找到要更新的代码片段")))
-                .zipWhen(existing -> request.bodyToMono(TransformationSnippet.class)
-                        .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空"))))
-                .map(tuple -> {
-                    TransformationSnippet existing = tuple.getT1();
-                    TransformationSnippet snippet = tuple.getT2();
-                    if (snippet.getMetadata() == null
-                            || snippet.getMetadata().getName() == null
-                            || !Objects.equals(snippet.getMetadata().getName(), name)) {
-                        throw new TransformationSnippetValidationException("metadata.name 与路径参数不一致");
-                    }
-                    OptimisticConcurrencyGuard.requireMatchingVersion(
-                            existing.getMetadata(),
-                            snippet.getMetadata(),
-                            "代码片段"
-                    );
-                    return lifecycleService.prepareForPersist(snippet);
-                })
-                .flatMap(validator::validateForWrite)
-                .flatMap(client::update)
-                .doOnSuccess(updated -> ruleRuntimeStore.invalidateAndWarmUpAsync())
-                .flatMap(updated -> ServerResponse.ok()
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(readModelMapper.toReadModel(updated)));
+            .switchIfEmpty(Mono.error(new ServerWebInputException("未找到要更新的代码片段")))
+            .zipWhen(existing -> request.bodyToMono(TransformationSnippet.class)
+                .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空"))))
+            .map(tuple -> {
+                TransformationSnippet existing = tuple.getT1();
+                TransformationSnippet snippet = tuple.getT2();
+                if (snippet.getMetadata() == null
+                    || snippet.getMetadata().getName() == null
+                    || !Objects.equals(snippet.getMetadata().getName(), name)) {
+                    throw new TransformationSnippetValidationException(
+                        "metadata.name 与路径参数不一致");
+                }
+                OptimisticConcurrencyGuard.requireMatchingVersion(
+                    existing.getMetadata(),
+                    snippet.getMetadata(),
+                    "代码片段"
+                );
+                return lifecycleService.prepareForPersist(snippet);
+            })
+            .flatMap(validator::validateForWrite)
+            .flatMap(client::update)
+            .doOnSuccess(updated -> ruleRuntimeStore.invalidateAndWarmUpAsync())
+            .flatMap(updated -> ServerResponse.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(readModelMapper.toReadModel(updated)));
     }
 
     /**
@@ -129,12 +131,12 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
     private Mono<ServerResponse> updateSnippetEnabled(ServerRequest request) {
         String name = request.pathVariable("name");
         return request.bodyToMono(EnabledPayload.class)
-                .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
-                .flatMap(payload -> updateSnippetEnabled(name, payload))
-                .map(readModelMapper::toReadModel)
-                .flatMap(updated -> ServerResponse.ok()
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(updated));
+            .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
+            .flatMap(payload -> updateSnippetEnabled(name, payload))
+            .map(readModelMapper::toReadModel)
+            .flatMap(updated -> ServerResponse.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(updated));
     }
 
     /**
@@ -144,10 +146,10 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
     private Mono<ServerResponse> deleteSnippet(ServerRequest request) {
         String name = request.pathVariable("name");
         return client.fetch(TransformationSnippet.class, name)
-                .switchIfEmpty(Mono.error(new ServerWebInputException("未找到要删除的代码片段")))
-                .flatMap(lifecycleService::markForDeletion)
-                .doOnSuccess(ignored -> ruleRuntimeStore.invalidateAndWarmUpAsync())
-                .then(ServerResponse.noContent().build());
+            .switchIfEmpty(Mono.error(new ServerWebInputException("未找到要删除的代码片段")))
+            .flatMap(lifecycleService::markForDeletion)
+            .doOnSuccess(ignored -> ruleRuntimeStore.invalidateAndWarmUpAsync())
+            .then(ServerResponse.noContent().build());
     }
 
     /**
@@ -163,30 +165,30 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
             return Mono.error(new ServerWebInputException("未找到要更新的代码片段"));
         }
         return client.fetch(TransformationSnippet.class, name)
-                .switchIfEmpty(Mono.error(new ServerWebInputException("未找到要更新的代码片段")))
-                .flatMap(snippet -> {
-                    OptimisticConcurrencyGuard.requireMatchingVersion(
-                            snippet.getMetadata(),
-                            payload.metadata,
-                            "代码片段"
-                    );
-                    lifecycleService.prepareForPersist(snippet);
-                    snippet.setEnabled(enabled);
-                    return enabled ? validator.validateForWrite(snippet) : Mono.just(snippet);
-                })
-                .flatMap(client::update)
-                .doOnSuccess(updated -> ruleRuntimeStore.invalidateAndWarmUpAsync());
+            .switchIfEmpty(Mono.error(new ServerWebInputException("未找到要更新的代码片段")))
+            .flatMap(snippet -> {
+                OptimisticConcurrencyGuard.requireMatchingVersion(
+                    snippet.getMetadata(),
+                    payload.metadata,
+                    "代码片段"
+                );
+                lifecycleService.prepareForPersist(snippet);
+                snippet.setEnabled(enabled);
+                return enabled ? validator.validateForWrite(snippet) : Mono.just(snippet);
+            })
+            .flatMap(client::update)
+            .doOnSuccess(updated -> ruleRuntimeStore.invalidateAndWarmUpAsync());
+    }
+
+    @Override
+    public GroupVersion groupVersion() {
+        return GroupVersion.parseAPIVersion(CONSOLE_API_VERSION);
     }
 
     @lombok.Data
     static final class EnabledPayload {
         private Boolean enabled;
         private run.halo.app.extension.Metadata metadata;
-    }
-
-    @Override
-    public GroupVersion groupVersion() {
-        return GroupVersion.parseAPIVersion(CONSOLE_API_VERSION);
     }
 }
 

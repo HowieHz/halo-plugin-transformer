@@ -1,24 +1,23 @@
 package top.howiehz.halo.transformer.scheme;
 
-import top.howiehz.halo.transformer.core.ITransformationRule;
-import top.howiehz.halo.transformer.core.MatchRule;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonSetter;
+import java.util.LinkedHashSet;
+import java.util.Locale;
+import java.util.Set;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import run.halo.app.extension.AbstractExtension;
 import run.halo.app.extension.GVK;
-
-import java.util.LinkedHashSet;
-import java.util.Locale;
-import java.util.Set;
+import top.howiehz.halo.transformer.core.ITransformationRule;
+import top.howiehz.halo.transformer.core.MatchRule;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
 @JsonIgnoreProperties("id")
 @GVK(kind = "TransformationRule", group = "transformer.howiehz.top", version = "v1alpha1",
-        singular = "transformationRule", plural = "transformationRules")
+    singular = "transformationRule", plural = "transformationRules")
 public class TransformationRule extends AbstractExtension implements ITransformationRule {
     /**
      * why: 新建规则默认应落在最低优先级预设，而不是一创建就抢到既有规则前面；
@@ -91,8 +90,8 @@ public class TransformationRule extends AbstractExtension implements ITransforma
     @JsonSetter("match")
     void setMatchFromJson(String rawMatch) {
         this.match = legacyIdSelectorMigrationPending
-                ? migrateLegacyIdMatch(rawMatch)
-                : defaultString(rawMatch);
+            ? migrateLegacyIdMatch(rawMatch)
+            : defaultString(rawMatch);
     }
 
     private String migrateLegacyIdMatch(String rawMatch) {

@@ -1,14 +1,11 @@
 package top.howiehz.halo.transformer.core;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -17,9 +14,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class MatchRuleContractTest {
@@ -28,6 +27,35 @@ class MatchRuleContractTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    private static Path locateFixture(String fileName) {
+        Path current = Path.of("").toAbsolutePath();
+        while (current != null) {
+            Path candidate = current.resolve("specs").resolve("match-rule").resolve(fileName);
+            if (Files.exists(candidate)) {
+                return candidate;
+            }
+            current = current.getParent();
+        }
+        throw new IllegalStateException("Cannot find specs/match-rule/" + fileName);
+    }
+
+    private static Stream<JsonNode> streamObjectNodes(JsonNode arrayNode) {
+        return StreamSupport.stream(arrayNode.spliterator(), false);
+    }
+
+    private static Set<String> streamTextValues(JsonNode arrayNode, String fieldName) {
+        return streamObjectNodes(arrayNode)
+            .map(node -> node.path(fieldName).asText())
+            .filter(value -> !value.isBlank())
+            .collect(java.util.stream.Collectors.toSet());
+    }
+
+    private static List<String> textList(JsonNode arrayNode) {
+        return StreamSupport.stream(arrayNode.spliterator(), false)
+            .map(JsonNode::asText)
+            .toList();
+    }
+
     // why: `MatchRule` 在 Java 与 TypeScript 各有一份实现，这里用同一批样例锁住共享语义，避免两端规则树能力悄悄漂移。
     @DisplayName("match-rule write validation stays aligned with contract fixtures")
     @ParameterizedTest(name = "{0}")
@@ -35,9 +63,9 @@ class MatchRuleContractTest {
     void shouldMatchWriteValidationContract(ContractCase contractCase) {
         MatchRule rule = deserializeRule(contractCase.input());
         ResolvedWriteValidationExpectation expectation = resolveWriteValidation(
-                contractCase.shared(),
-                contractCase.javaSide(),
-                "matchRule"
+            contractCase.shared(),
+            contractCase.javaSide(),
+            "matchRule"
         );
 
         if (expectation.ok()) {
@@ -46,8 +74,8 @@ class MatchRuleContractTest {
         }
 
         IllegalArgumentException error = org.junit.jupiter.api.Assertions.assertThrows(
-                IllegalArgumentException.class,
-                () -> MatchRule.validateForWrite(rule)
+            IllegalArgumentException.class,
+            () -> MatchRule.validateForWrite(rule)
         );
 
         assertEquals(expectation.formattedMessage(), error.getMessage());
@@ -63,8 +91,8 @@ class MatchRuleContractTest {
         MatchRule.validateForWrite(rule);
 
         assertEquals(
-                contractCase.shared().domPathPrecheck(),
-                MatchRule.supportsDomPathPrecheck(rule)
+            contractCase.shared().domPathPrecheck(),
+            MatchRule.supportsDomPathPrecheck(rule)
         );
     }
 
@@ -79,8 +107,8 @@ class MatchRuleContractTest {
         MatchRule.validateForWrite(rule);
 
         assertEquals(
-                contractCase.shared().minimizedSummary(),
-                MatchRuleBooleanMinimizer.minimizedSummary(rule)
+            contractCase.shared().minimizedSummary(),
+            MatchRuleBooleanMinimizer.minimizedSummary(rule)
         );
     }
 
@@ -91,19 +119,19 @@ class MatchRuleContractTest {
         JsonNode spec = loadJson(SPEC_FIXTURE);
         Set<String> knownIds = streamTextValues(spec.path("checklist"), "id");
         Set<String> sharedIds = streamObjectNodes(spec.path("checklist"))
-                .filter(item -> "shared_contract".equals(item.path("layer").asText()))
-                .map(item -> item.path("id").asText())
-                .collect(java.util.stream.Collectors.toSet());
+            .filter(item -> "shared_contract".equals(item.path("layer").asText()))
+            .map(item -> item.path("id").asText())
+            .collect(java.util.stream.Collectors.toSet());
         Set<String> coveredIds = loadContractSuite().cases().stream()
-                .flatMap(contractCase -> contractCase.covers() == null
-                        ? Stream.empty()
-                        : contractCase.covers().stream())
-                .collect(java.util.stream.Collectors.toSet());
+            .flatMap(contractCase -> contractCase.covers() == null
+                ? Stream.empty()
+                : contractCase.covers().stream())
+            .collect(java.util.stream.Collectors.toSet());
 
         assertEquals(Set.of(), coveredIds.stream().filter(id -> !knownIds.contains(id))
-                .collect(java.util.stream.Collectors.toSet()));
+            .collect(java.util.stream.Collectors.toSet()));
         assertEquals(Set.of(), sharedIds.stream().filter(id -> !coveredIds.contains(id))
-                .collect(java.util.stream.Collectors.toSet()));
+            .collect(java.util.stream.Collectors.toSet()));
     }
 
     // why: 允许字段集合和错误文本模板改成由共享 spec 生成后，
@@ -113,59 +141,60 @@ class MatchRuleContractTest {
         JsonNode spec = loadJson(SPEC_FIXTURE);
 
         assertEquals(
-                textList(spec.at("/nodeTypes/GROUP/allowedFields")),
-                MatchRuleContractMessages.allowedFieldsFor(MatchRule.Type.GROUP)
+            textList(spec.at("/nodeTypes/GROUP/allowedFields")),
+            MatchRuleContractMessages.allowedFieldsFor(MatchRule.Type.GROUP)
         );
         assertEquals(
-                textList(spec.at("/nodeTypes/PATH/allowedFields")),
-                MatchRuleContractMessages.allowedFieldsFor(MatchRule.Type.PATH)
+            textList(spec.at("/nodeTypes/PATH/allowedFields")),
+            MatchRuleContractMessages.allowedFieldsFor(MatchRule.Type.PATH)
         );
         assertEquals(
-                textList(spec.at("/nodeTypes/TEMPLATE_ID/allowedFields")),
-                MatchRuleContractMessages.allowedFieldsFor(MatchRule.Type.TEMPLATE_ID)
+            textList(spec.at("/nodeTypes/TEMPLATE_ID/allowedFields")),
+            MatchRuleContractMessages.allowedFieldsFor(MatchRule.Type.TEMPLATE_ID)
         );
         assertEquals(
-                textList(spec.at("/enumValues/TYPE/values")),
-                MatchRuleContractMessages.enumValuesFor(MatchRuleContractMessages.EnumName.TYPE)
+            textList(spec.at("/enumValues/TYPE/values")),
+            MatchRuleContractMessages.enumValuesFor(MatchRuleContractMessages.EnumName.TYPE)
         );
         assertEquals(
-                textList(spec.at("/enumValues/BOOLEAN/values")),
-                MatchRuleContractMessages.enumValuesFor(MatchRuleContractMessages.EnumName.BOOLEAN)
+            textList(spec.at("/enumValues/BOOLEAN/values")),
+            MatchRuleContractMessages.enumValuesFor(MatchRuleContractMessages.EnumName.BOOLEAN)
         );
         assertEquals(
-                textList(spec.at("/enumValues/OPERATOR/values")),
-                MatchRuleContractMessages.enumValuesFor(MatchRuleContractMessages.EnumName.OPERATOR)
+            textList(spec.at("/enumValues/OPERATOR/values")),
+            MatchRuleContractMessages.enumValuesFor(MatchRuleContractMessages.EnumName.OPERATOR)
         );
         assertEquals(
-                textList(spec.at("/enumValues/PATH_MATCHER/values")),
-                MatchRuleContractMessages.enumValuesFor(MatchRuleContractMessages.EnumName.PATH_MATCHER)
+            textList(spec.at("/enumValues/PATH_MATCHER/values")),
+            MatchRuleContractMessages.enumValuesFor(MatchRuleContractMessages.EnumName.PATH_MATCHER)
         );
         assertEquals(
-                textList(spec.at("/enumValues/TEMPLATE_MATCHER/values")),
-                MatchRuleContractMessages.enumValuesFor(MatchRuleContractMessages.EnumName.TEMPLATE_MATCHER)
+            textList(spec.at("/enumValues/TEMPLATE_MATCHER/values")),
+            MatchRuleContractMessages.enumValuesFor(
+                MatchRuleContractMessages.EnumName.TEMPLATE_MATCHER)
         );
     }
 
     private Stream<ContractCase> contractCases() {
         return loadContractSuite().cases().stream()
-                .toList()
-                .stream();
+            .toList()
+            .stream();
     }
 
     private Stream<ContractCase> contractCasesWithDomPathPrecheck() {
         return loadContractSuite().cases().stream()
-                .filter(contractCase -> contractCase.shared() != null
-                        && contractCase.shared().domPathPrecheck() != null)
-                .toList()
-                .stream();
+            .filter(contractCase -> contractCase.shared() != null
+                && contractCase.shared().domPathPrecheck() != null)
+            .toList()
+            .stream();
     }
 
     private Stream<ContractCase> contractCasesWithMinimizedExpression() {
         return loadContractSuite().cases().stream()
-                .filter(contractCase -> contractCase.shared() != null
-                        && contractCase.shared().minimizedSummary() != null)
-                .toList()
-                .stream();
+            .filter(contractCase -> contractCase.shared() != null
+                && contractCase.shared().minimizedSummary() != null)
+            .toList()
+            .stream();
     }
 
     private ContractSuite loadContractSuite() {
@@ -185,21 +214,10 @@ class MatchRuleContractTest {
         }
     }
 
-    private static Path locateFixture(String fileName) {
-        Path current = Path.of("").toAbsolutePath();
-        while (current != null) {
-            Path candidate = current.resolve("specs").resolve("match-rule").resolve(fileName);
-            if (Files.exists(candidate)) {
-                return candidate;
-            }
-            current = current.getParent();
-        }
-        throw new IllegalStateException("Cannot find specs/match-rule/" + fileName);
-    }
-
     private JsonNode loadJson(Path path) {
         try {
-            return objectMapper.readTree(normalizeJsonc(Files.readString(path, StandardCharsets.UTF_8)));
+            return objectMapper.readTree(
+                normalizeJsonc(Files.readString(path, StandardCharsets.UTF_8)));
         } catch (IOException e) {
             throw new IllegalStateException("Failed to load JSON fixture: " + path, e);
         }
@@ -298,7 +316,8 @@ class MatchRuleContractTest {
 
             if (current == ',') {
                 int lookahead = index + 1;
-                while (lookahead < content.length() && Character.isWhitespace(content.charAt(lookahead))) {
+                while (lookahead < content.length() && Character.isWhitespace(
+                    content.charAt(lookahead))) {
                     lookahead++;
                 }
                 if (lookahead < content.length()) {
@@ -315,50 +334,31 @@ class MatchRuleContractTest {
         return result.toString();
     }
 
-    private static Stream<JsonNode> streamObjectNodes(JsonNode arrayNode) {
-        return StreamSupport.stream(arrayNode.spliterator(), false);
-    }
-
-    private static Set<String> streamTextValues(JsonNode arrayNode, String fieldName) {
-        return streamObjectNodes(arrayNode)
-                .map(node -> node.path(fieldName).asText())
-                .filter(value -> !value.isBlank())
-                .collect(java.util.stream.Collectors.toSet());
-    }
-
-    private static List<String> textList(JsonNode arrayNode) {
-        return StreamSupport.stream(arrayNode.spliterator(), false)
-                .map(JsonNode::asText)
-                .toList();
-    }
-
-    private record ContractSuite(int version, List<ContractCase> cases) {
-    }
-
     private ResolvedWriteValidationExpectation resolveWriteValidation(SharedExpectation shared,
-                                                                     SideExpectation override,
-                                                                     String rootPath) {
+        SideExpectation override,
+        String rootPath) {
         WriteValidationExpectation sharedExpectation =
-                shared != null ? shared.writeValidation() : null;
+            shared != null ? shared.writeValidation() : null;
         WriteValidationExpectation overrideExpectation =
-                override != null ? override.writeValidation() : null;
+            override != null ? override.writeValidation() : null;
 
         Boolean ok = overrideExpectation != null && overrideExpectation.ok() != null
-                ? overrideExpectation.ok()
-                : sharedExpectation != null ? sharedExpectation.ok() : null;
-        String relativePath = overrideExpectation != null && overrideExpectation.relativePath() != null
+            ? overrideExpectation.ok()
+            : sharedExpectation != null ? sharedExpectation.ok() : null;
+        String relativePath =
+            overrideExpectation != null && overrideExpectation.relativePath() != null
                 ? overrideExpectation.relativePath()
                 : sharedExpectation != null ? sharedExpectation.relativePath() : null;
         String message = overrideExpectation != null && overrideExpectation.message() != null
-                ? overrideExpectation.message()
-                : sharedExpectation != null ? sharedExpectation.message() : null;
+            ? overrideExpectation.message()
+            : sharedExpectation != null ? sharedExpectation.message() : null;
 
         if (ok == null) {
             throw new IllegalStateException("Missing writeValidation.ok in contract fixture");
         }
 
         return new ResolvedWriteValidationExpectation(ok, formatRuntimePath(rootPath, relativePath),
-                message);
+            message);
     }
 
     private String formatRuntimePath(String rootPath, String relativePath) {
@@ -368,13 +368,16 @@ class MatchRuleContractTest {
         return rootPath + "." + relativePath;
     }
 
+    private record ContractSuite(int version, List<ContractCase> cases) {
+    }
+
     private record ContractCase(
-            String name,
-            JsonNode input,
-            List<String> covers,
-            SharedExpectation shared,
-            @JsonProperty("java") SideExpectation javaSide,
-            @JsonProperty("ts") SideExpectation ts
+        String name,
+        JsonNode input,
+        List<String> covers,
+        SharedExpectation shared,
+        @JsonProperty("java") SideExpectation javaSide,
+        @JsonProperty("ts") SideExpectation ts
     ) {
         @Override
         public String toString() {

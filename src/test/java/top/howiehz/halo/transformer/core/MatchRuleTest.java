@@ -1,10 +1,10 @@
 package top.howiehz.halo.transformer.core;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Test;
 
 class MatchRuleTest {
     private final ObjectMapper objectMapper = new ObjectMapper();

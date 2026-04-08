@@ -1,19 +1,18 @@
 package top.howiehz.halo.transformer.endpoint;
 
-import top.howiehz.halo.transformer.scheme.TransformationSnippet;
-import top.howiehz.halo.transformer.scheme.TransformationRule;
-import top.howiehz.halo.transformer.util.OptimisticConcurrencyGuard;
-import org.junit.jupiter.api.Test;
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.web.server.ServerWebInputException;
-import run.halo.app.extension.Metadata;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.Test;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.server.ServerWebInputException;
+import run.halo.app.extension.Metadata;
+import top.howiehz.halo.transformer.scheme.TransformationRule;
+import top.howiehz.halo.transformer.scheme.TransformationSnippet;
+import top.howiehz.halo.transformer.util.OptimisticConcurrencyGuard;
 
 class ResourceOrderEndpointTest {
     private final ResourceOrderEndpoint endpoint = new ResourceOrderEndpoint(null);
@@ -37,7 +36,7 @@ class ResourceOrderEndpointTest {
         incoming.put("snippet-a", -1);
 
         ServerWebInputException error = assertThrows(ServerWebInputException.class,
-                () -> endpoint.validateIncomingOrders(incoming, "代码片段"));
+            () -> endpoint.validateIncomingOrders(incoming, "代码片段"));
 
         assertEquals("代码片段排序项 snippet-a 的值不能小于 0", error.getReason());
     }
@@ -49,9 +48,9 @@ class ResourceOrderEndpointTest {
         TransformationRule alpha = rule("rule-a", "Alpha");
 
         Map<String, Integer> sanitized = endpoint.sanitizeOrders(
-                Map.of("rule-z", 1, "rule-a", 1),
-                List.of(zebra, alpha),
-                TransformationRule::getName
+            Map.of("rule-z", 1, "rule-a", 1),
+            List.of(zebra, alpha),
+            TransformationRule::getName
         );
 
         assertEquals(List.of("rule-a", "rule-z"), sanitized.keySet().stream().toList());
@@ -63,9 +62,9 @@ class ResourceOrderEndpointTest {
         TransformationSnippet existing = snippet("snippet-a", "Alpha");
 
         Map<String, Integer> sanitized = endpoint.sanitizeOrders(
-                Map.of("snippet-a", 1, "snippet-deleted", 2),
-                List.of(existing),
-                TransformationSnippet::getName
+            Map.of("snippet-a", 1, "snippet-deleted", 2),
+            List.of(existing),
+            TransformationSnippet::getName
         );
 
         assertEquals(Map.of("snippet-a", 1), sanitized);
@@ -93,8 +92,9 @@ class ResourceOrderEndpointTest {
         incoming.setVersion(4L);
 
         ResponseStatusException error = assertThrows(
-                ResponseStatusException.class,
-                () -> OptimisticConcurrencyGuard.requireMatchingVersion(persisted, incoming, "代码片段排序配置")
+            ResponseStatusException.class,
+            () -> OptimisticConcurrencyGuard.requireMatchingVersion(persisted, incoming,
+                "代码片段排序配置")
         );
 
         assertEquals(409, error.getStatusCode().value());

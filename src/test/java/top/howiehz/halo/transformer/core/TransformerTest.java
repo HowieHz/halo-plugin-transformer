@@ -1,8 +1,8 @@
 package top.howiehz.halo.transformer.core;
 
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.Test;
 
 class TransformerTest {
     private final Transformer transformer = new Transformer() {
@@ -12,8 +12,8 @@ class TransformerTest {
     @Test
     void shouldWrapCodeWithMarkersByDefault() {
         assertEquals(
-                "<!-- PluginTransformer start --><script></script><!-- PluginTransformer end -->",
-                transformer.processCode("<script></script>")
+            "<!-- PluginTransformer start --><script></script><!-- PluginTransformer end -->",
+            transformer.processCode("<script></script>")
         );
     }
 

@@ -1,13 +1,13 @@
 package top.howiehz.halo.transformer.util;
 
-import top.howiehz.halo.transformer.scheme.TransformationSnippet;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Test;
-import run.halo.app.extension.Metadata;
-
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Test;
+import run.halo.app.extension.Metadata;
+import top.howiehz.halo.transformer.scheme.TransformationSnippet;
 
 class TransformationSnippetValidatorTest {
     private final TransformationSnippetValidator validator = new TransformationSnippetValidator();
@@ -35,8 +35,8 @@ class TransformationSnippetValidatorTest {
         snippet.setCode("   ");
 
         TransformationSnippetValidationException error = assertThrows(
-                TransformationSnippetValidationException.class,
-                () -> validator.validateForWrite(snippet).block()
+            TransformationSnippetValidationException.class,
+            () -> validator.validateForWrite(snippet).block()
         );
 
         assertEquals("code：请填写代码内容", error.getReason());
@@ -46,20 +46,20 @@ class TransformationSnippetValidatorTest {
     @Test
     void shouldRejectUnknownSnippetFieldDuringWriteValidation() throws Exception {
         TransformationSnippet snippet = objectMapper.readValue("""
-                {
-                  "code": "<div>ok</div>",
-                  "unknownField": true
-                }
-                """, TransformationSnippet.class);
+            {
+              "code": "<div>ok</div>",
+              "unknownField": true
+            }
+            """, TransformationSnippet.class);
 
         TransformationSnippetValidationException error = assertThrows(
-                TransformationSnippetValidationException.class,
-                () -> validator.validateForWrite(snippet).block()
+            TransformationSnippetValidationException.class,
+            () -> validator.validateForWrite(snippet).block()
         );
 
         assertEquals(
-                "unknownField：不支持该字段；代码片段仅支持 \"enabled\"、\"name\"、\"description\"、\"code\"",
-                error.getReason()
+            "unknownField：不支持该字段；代码片段仅支持 \"enabled\"、\"name\"、\"description\"、\"code\"",
+            error.getReason()
         );
     }
 
@@ -74,8 +74,8 @@ class TransformationSnippetValidatorTest {
         snippet.setCode("<div>ok</div>");
 
         TransformationSnippetValidationException error = assertThrows(
-                TransformationSnippetValidationException.class,
-                () -> validator.validateForWrite(snippet).block()
+            TransformationSnippetValidationException.class,
+            () -> validator.validateForWrite(snippet).block()
         );
 
         assertEquals("enabled：必须是布尔值；仅支持 true 或 false", error.getReason());

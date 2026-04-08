@@ -1,10 +1,10 @@
 package top.howiehz.halo.transformer.util;
 
-import top.howiehz.halo.transformer.scheme.TransformationRule;
-import top.howiehz.halo.transformer.core.MatchRule;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
+import top.howiehz.halo.transformer.core.MatchRule;
+import top.howiehz.halo.transformer.scheme.TransformationRule;
 
 @Component
 public class TransformationRuleValidator {
@@ -22,30 +22,37 @@ public class TransformationRuleValidator {
             return Mono.error(new TransformationRuleValidationException("请求体不能为空"));
         }
         if (rule.getEnabled() == null) {
-            return Mono.error(new TransformationRuleValidationException("enabled：必须是布尔值；仅支持 true 或 false"));
+            return Mono.error(new TransformationRuleValidationException(
+                "enabled：必须是布尔值；仅支持 true 或 false"));
         }
         if (rule.getMode() == null) {
-            return Mono.error(new TransformationRuleValidationException("mode：仅支持 \"HEAD\"、\"FOOTER\"、\"SELECTOR\""));
+            return Mono.error(new TransformationRuleValidationException(
+                "mode：仅支持 \"HEAD\"、\"FOOTER\"、\"SELECTOR\""));
         }
         if (rule.getPosition() == null) {
             return Mono.error(new TransformationRuleValidationException(
-                    "position：仅支持 \"APPEND\"、\"PREPEND\"、\"BEFORE\"、\"AFTER\"、\"REPLACE\"、\"REMOVE\""));
+                "position：仅支持 \"APPEND\"、\"PREPEND\"、\"BEFORE\"、\"AFTER\"、\"REPLACE\"、\"REMOVE\""));
         }
-        if (TransformationRule.Mode.SELECTOR.equals(rule.getMode()) && !StringUtils.hasText(rule.getMatch())) {
+        if (TransformationRule.Mode.SELECTOR.equals(rule.getMode()) && !StringUtils.hasText(
+            rule.getMatch())) {
             return Mono.error(new TransformationRuleValidationException("match：请填写匹配内容"));
         }
         try {
             MatchRule.validateForWrite(rule.getMatchRule());
             if (rule.getRuntimeOrder() < 0) {
-                return Mono.error(new TransformationRuleValidationException("runtimeOrder：不能小于 0"));
+                return Mono.error(
+                    new TransformationRuleValidationException("runtimeOrder：不能小于 0"));
             }
             if (TransformationRule.Position.REMOVE.equals(rule.getPosition())
-                    && rule.getSnippetIds() != null
-                    && !rule.getSnippetIds().isEmpty()) {
-                return Mono.error(new TransformationRuleValidationException("snippetIds：REMOVE 模式下无需关联代码片段"));
+                && rule.getSnippetIds() != null
+                && !rule.getSnippetIds().isEmpty()) {
+                return Mono.error(new TransformationRuleValidationException(
+                    "snippetIds：REMOVE 模式下无需关联代码片段"));
             }
-            if (TransformationRule.Position.REMOVE.equals(rule.getPosition()) && rule.getWrapMarker()) {
-                return Mono.error(new TransformationRuleValidationException("wrapMarker：REMOVE 模式下无需输出注释标记"));
+            if (TransformationRule.Position.REMOVE.equals(rule.getPosition())
+                && rule.getWrapMarker()) {
+                return Mono.error(new TransformationRuleValidationException(
+                    "wrapMarker：REMOVE 模式下无需输出注释标记"));
             }
             return Mono.just(rule);
         } catch (IllegalArgumentException e) {

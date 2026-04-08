@@ -1,16 +1,15 @@
 package top.howiehz.halo.transformer.scheme;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Test;
-import run.halo.app.extension.Metadata;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+import run.halo.app.extension.Metadata;
 
 class TransformationRuleTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -19,29 +18,29 @@ class TransformationRuleTest {
     @Test
     void shouldAllowUnsupportedDomRuleWhenConvertedToTransformationRule() {
         TransformationRule rule = assertDoesNotThrow(
-                () -> objectMapper.convertValue(
-                        Map.of(
-                                "mode", "SELECTOR",
-                                "match", "main",
-                                "matchRule", Map.of(
-                                        "type", "GROUP",
-                                        "operator", "OR",
-                                        "children", List.of(
-                                                Map.of(
-                                                        "type", "PATH",
-                                                        "matcher", "ANT",
-                                                        "value", "/posts/**"
-                                                ),
-                                                Map.of(
-                                                        "type", "TEMPLATE_ID",
-                                                        "matcher", "EXACT",
-                                                        "value", "post"
-                                                )
-                                        )
-                                )
-                        ),
-                        TransformationRule.class
-                )
+            () -> objectMapper.convertValue(
+                Map.of(
+                    "mode", "SELECTOR",
+                    "match", "main",
+                    "matchRule", Map.of(
+                        "type", "GROUP",
+                        "operator", "OR",
+                        "children", List.of(
+                            Map.of(
+                                "type", "PATH",
+                                "matcher", "ANT",
+                                "value", "/posts/**"
+                            ),
+                            Map.of(
+                                "type", "TEMPLATE_ID",
+                                "matcher", "EXACT",
+                                "value", "post"
+                            )
+                        )
+                    )
+                ),
+                TransformationRule.class
+            )
         );
 
         assertTrue(rule.isValid());
@@ -80,14 +79,14 @@ class TransformationRuleTest {
     @Test
     void shouldMigrateLegacyIdModeToSelectorWithHashPrefixedMatch() throws Exception {
         TransformationRule rule = objectMapper.readValue("""
-                {
-                  "metadata": {
-                    "name": "rule-a"
-                  },
-                  "mode": "ID",
-                  "match": "main-content"
-                }
-                """, TransformationRule.class);
+            {
+              "metadata": {
+                "name": "rule-a"
+              },
+              "mode": "ID",
+              "match": "main-content"
+            }
+            """, TransformationRule.class);
 
         assertEquals(TransformationRule.Mode.SELECTOR, rule.getMode());
         assertEquals("#main-content", rule.getMatch());
@@ -98,14 +97,14 @@ class TransformationRuleTest {
     @Test
     void shouldSerializeMigratedLegacyIdModeAsSelectorOnly() throws Exception {
         TransformationRule rule = objectMapper.readValue("""
-                {
-                  "metadata": {
-                    "name": "rule-a"
-                  },
-                  "mode": "ID",
-                  "match": "main-content"
-                }
-                """, TransformationRule.class);
+            {
+              "metadata": {
+                "name": "rule-a"
+              },
+              "mode": "ID",
+              "match": "main-content"
+            }
+            """, TransformationRule.class);
 
         String json = objectMapper.writeValueAsString(rule);
 
@@ -119,14 +118,14 @@ class TransformationRuleTest {
     @Test
     void shouldTreatIdAsReadOnlyResponseField() throws Exception {
         TransformationRule rule = objectMapper.readValue("""
-                {
-                  "metadata": {
-                    "name": "rule-a"
-                  },
-                  "id": "rule-a",
-                  "mode": "FOOTER"
-                }
-                """, TransformationRule.class);
+            {
+              "metadata": {
+                "name": "rule-a"
+              },
+              "id": "rule-a",
+              "mode": "FOOTER"
+            }
+            """, TransformationRule.class);
 
         assertEquals("rule-a", rule.getId());
         assertTrue(rule.isValid());

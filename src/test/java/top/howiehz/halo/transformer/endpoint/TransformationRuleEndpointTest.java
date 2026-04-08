@@ -1,30 +1,32 @@
 package top.howiehz.halo.transformer.endpoint;
 
-import top.howiehz.halo.transformer.core.MatchRule;
-import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
-import top.howiehz.halo.transformer.scheme.TransformationRule;
-import top.howiehz.halo.transformer.service.TransformationSnippetReferenceService;
-import top.howiehz.halo.transformer.util.TransformationRuleValidationException;
-import top.howiehz.halo.transformer.util.TransformationRuleValidator;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.web.server.ResponseStatusException;
-import reactor.core.publisher.Mono;
-import run.halo.app.extension.Metadata;
-import run.halo.app.extension.ReactiveExtensionClient;
-
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.web.server.ResponseStatusException;
+import reactor.core.publisher.Mono;
+import run.halo.app.extension.Metadata;
+import run.halo.app.extension.ReactiveExtensionClient;
+import top.howiehz.halo.transformer.core.MatchRule;
+import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
+import top.howiehz.halo.transformer.scheme.TransformationRule;
+import top.howiehz.halo.transformer.service.TransformationSnippetReferenceService;
+import top.howiehz.halo.transformer.util.TransformationRuleValidationException;
+import top.howiehz.halo.transformer.util.TransformationRuleValidator;
 
 class TransformationRuleEndpointTest {
     private ReactiveExtensionClient client;
@@ -40,11 +42,11 @@ class TransformationRuleEndpointTest {
         ruleRuntimeStore = mock(TransformationRuleRuntimeStore.class);
         snippetReferenceService = mock(TransformationSnippetReferenceService.class);
         endpoint = new TransformationRuleEndpoint(
-                client,
-                validator,
-                ruleRuntimeStore,
-                snippetReferenceService,
-                mock(ConsoleReadModelMapper.class)
+            client,
+            validator,
+            ruleRuntimeStore,
+            snippetReferenceService,
+            mock(ConsoleReadModelMapper.class)
         );
     }
 
@@ -55,14 +57,17 @@ class TransformationRuleEndpointTest {
         TransformationRule rule = rule("rule-a", false);
         rule.getMetadata().setVersion(9L);
         when(client.fetch(TransformationRule.class, "rule-a")).thenReturn(Mono.just(rule));
-        when(validator.validateForWrite(any(TransformationRule.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+        when(validator.validateForWrite(any(TransformationRule.class))).thenAnswer(
+            invocation -> Mono.just(invocation.getArgument(0)));
         when(snippetReferenceService.normalizeAndValidateSnippetIds(eq(rule.getSnippetIds())))
-                .thenReturn(Mono.just(new LinkedHashSet<>(rule.getSnippetIds())));
-        when(client.update(any(TransformationRule.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+            .thenReturn(Mono.just(new LinkedHashSet<>(rule.getSnippetIds())));
+        when(client.update(any(TransformationRule.class))).thenAnswer(
+            invocation -> Mono.just(invocation.getArgument(0)));
 
-        TransformationRule updated = endpoint.updateRuleEnabled("rule-a", enabledPayload(true, 9L)).block();
+        TransformationRule updated =
+            endpoint.updateRuleEnabled("rule-a", enabledPayload(true, 9L)).block();
 
-        assertEquals(true, updated.isEnabled());
+        assertTrue(updated.isEnabled());
         verify(client).update(any(TransformationRule.class));
         verify(ruleRuntimeStore).invalidateAndWarmUpAsync();
     }
@@ -74,11 +79,13 @@ class TransformationRuleEndpointTest {
         TransformationRule rule = rule("rule-a", true);
         rule.getMetadata().setVersion(4L);
         when(client.fetch(TransformationRule.class, "rule-a")).thenReturn(Mono.just(rule));
-        when(client.update(any(TransformationRule.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+        when(client.update(any(TransformationRule.class))).thenAnswer(
+            invocation -> Mono.just(invocation.getArgument(0)));
 
-        TransformationRule updated = endpoint.updateRuleEnabled("rule-a", enabledPayload(false, 4L)).block();
+        TransformationRule updated =
+            endpoint.updateRuleEnabled("rule-a", enabledPayload(false, 4L)).block();
 
-        assertEquals(false, updated.isEnabled());
+        assertFalse(updated.isEnabled());
         verify(validator, never()).validateForWrite(any(TransformationRule.class));
         verify(snippetReferenceService, never()).normalizeAndValidateSnippetIds(any());
     }
@@ -93,16 +100,17 @@ class TransformationRuleEndpointTest {
         rule.setMatch("");
         when(client.fetch(TransformationRule.class, "rule-a")).thenReturn(Mono.just(rule));
         TransformationRuleEndpoint endpointWithRealValidator = new TransformationRuleEndpoint(
-                client,
-                new TransformationRuleValidator(),
-                ruleRuntimeStore,
-                snippetReferenceService,
-                mock(ConsoleReadModelMapper.class)
+            client,
+            new TransformationRuleValidator(),
+            ruleRuntimeStore,
+            snippetReferenceService,
+            mock(ConsoleReadModelMapper.class)
         );
 
         TransformationRuleValidationException validationError = assertThrows(
-                TransformationRuleValidationException.class,
-                () -> endpointWithRealValidator.updateRuleEnabled("rule-a", enabledPayload(true, 11L)).block()
+            TransformationRuleValidationException.class,
+            () -> endpointWithRealValidator.updateRuleEnabled("rule-a", enabledPayload(true, 11L))
+                .block()
         );
         assertEquals("match：请填写匹配内容", validationError.getReason());
         verify(client, never()).update(any(TransformationRule.class));
@@ -117,20 +125,23 @@ class TransformationRuleEndpointTest {
         rule.setMatchRule(dirtyPersistedMatchRule());
         when(client.fetch(TransformationRule.class, "rule-a")).thenReturn(Mono.just(rule));
         when(snippetReferenceService.normalizeAndValidateSnippetIds(eq(rule.getSnippetIds())))
-                .thenReturn(Mono.just(new LinkedHashSet<>(rule.getSnippetIds())));
-        when(client.update(any(TransformationRule.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+            .thenReturn(Mono.just(new LinkedHashSet<>(rule.getSnippetIds())));
+        when(client.update(any(TransformationRule.class))).thenAnswer(
+            invocation -> Mono.just(invocation.getArgument(0)));
         TransformationRuleEndpoint endpointWithRealValidator = new TransformationRuleEndpoint(
-                client,
-                new TransformationRuleValidator(),
-                ruleRuntimeStore,
-                snippetReferenceService,
-                mock(ConsoleReadModelMapper.class)
+            client,
+            new TransformationRuleValidator(),
+            ruleRuntimeStore,
+            snippetReferenceService,
+            mock(ConsoleReadModelMapper.class)
         );
 
-        TransformationRule updated = endpointWithRealValidator.updateRuleEnabled("rule-a", enabledPayload(true, 12L)).block();
+        TransformationRule updated =
+            endpointWithRealValidator.updateRuleEnabled("rule-a", enabledPayload(true, 12L))
+                .block();
 
-        assertEquals(true, updated.isEnabled());
-        assertEquals(null, updated.getMatchRule().getChildren().get(0).getChildren());
+        assertTrue(updated.isEnabled());
+        assertNull(updated.getMatchRule().getChildren().get(0).getChildren());
         verify(client).update(any(TransformationRule.class));
     }
 
@@ -142,8 +153,8 @@ class TransformationRuleEndpointTest {
         when(client.fetch(TransformationRule.class, "rule-a")).thenReturn(Mono.just(rule));
 
         ResponseStatusException error = assertThrows(
-                ResponseStatusException.class,
-                () -> endpoint.updateRuleEnabled("rule-a", enabledPayload(true, 7L)).block()
+            ResponseStatusException.class,
+            () -> endpoint.updateRuleEnabled("rule-a", enabledPayload(true, 7L)).block()
         );
 
         assertEquals(409, error.getStatusCode().value());
@@ -166,8 +177,10 @@ class TransformationRuleEndpointTest {
         return rule;
     }
 
-    private TransformationRuleEndpoint.EnabledPayload enabledPayload(boolean enabled, long version) {
-        TransformationRuleEndpoint.EnabledPayload payload = new TransformationRuleEndpoint.EnabledPayload();
+    private TransformationRuleEndpoint.EnabledPayload enabledPayload(boolean enabled,
+        long version) {
+        TransformationRuleEndpoint.EnabledPayload payload =
+            new TransformationRuleEndpoint.EnabledPayload();
         payload.setEnabled(enabled);
         Metadata metadata = new Metadata();
         metadata.setVersion(version);

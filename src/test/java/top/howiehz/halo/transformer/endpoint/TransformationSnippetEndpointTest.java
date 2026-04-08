@@ -1,24 +1,26 @@
 package top.howiehz.halo.transformer.endpoint;
 
-import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
-import top.howiehz.halo.transformer.scheme.TransformationSnippet;
-import top.howiehz.halo.transformer.service.TransformationSnippetLifecycleService;
-import top.howiehz.halo.transformer.util.TransformationSnippetValidationException;
-import top.howiehz.halo.transformer.util.TransformationSnippetValidator;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
+import top.howiehz.halo.transformer.scheme.TransformationSnippet;
+import top.howiehz.halo.transformer.service.TransformationSnippetLifecycleService;
+import top.howiehz.halo.transformer.util.TransformationSnippetValidationException;
+import top.howiehz.halo.transformer.util.TransformationSnippetValidator;
 
 class TransformationSnippetEndpointTest {
     private ReactiveExtensionClient client;
@@ -32,11 +34,11 @@ class TransformationSnippetEndpointTest {
         validator = mock(TransformationSnippetValidator.class);
         ruleRuntimeStore = mock(TransformationRuleRuntimeStore.class);
         endpoint = new TransformationSnippetEndpoint(
-                client,
-                validator,
-                mock(TransformationSnippetLifecycleService.class),
-                ruleRuntimeStore,
-                mock(ConsoleReadModelMapper.class)
+            client,
+            validator,
+            mock(TransformationSnippetLifecycleService.class),
+            ruleRuntimeStore,
+            mock(ConsoleReadModelMapper.class)
         );
     }
 
@@ -47,13 +49,15 @@ class TransformationSnippetEndpointTest {
         TransformationSnippet snippet = snippet("snippet-a", "<div>ok</div>", false);
         snippet.getMetadata().setVersion(7L);
         when(client.fetch(TransformationSnippet.class, "snippet-a")).thenReturn(Mono.just(snippet));
-        when(validator.validateForWrite(any(TransformationSnippet.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
-        when(client.update(any(TransformationSnippet.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+        when(validator.validateForWrite(any(TransformationSnippet.class))).thenAnswer(
+            invocation -> Mono.just(invocation.getArgument(0)));
+        when(client.update(any(TransformationSnippet.class))).thenAnswer(
+            invocation -> Mono.just(invocation.getArgument(0)));
 
         TransformationSnippetEndpoint.EnabledPayload payload = enabledPayload(true, 7L);
         TransformationSnippet updated = endpoint.updateSnippetEnabled("snippet-a", payload).block();
 
-        assertEquals(true, updated.isEnabled());
+        assertTrue(updated.isEnabled());
         verify(client).update(any(TransformationSnippet.class));
         verify(ruleRuntimeStore).invalidateAndWarmUpAsync();
     }
@@ -64,11 +68,13 @@ class TransformationSnippetEndpointTest {
         TransformationSnippet snippet = snippet("snippet-a", "", true);
         snippet.getMetadata().setVersion(3L);
         when(client.fetch(TransformationSnippet.class, "snippet-a")).thenReturn(Mono.just(snippet));
-        when(client.update(any(TransformationSnippet.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+        when(client.update(any(TransformationSnippet.class))).thenAnswer(
+            invocation -> Mono.just(invocation.getArgument(0)));
 
-        TransformationSnippet updated = endpoint.updateSnippetEnabled("snippet-a", enabledPayload(false, 3L)).block();
+        TransformationSnippet updated =
+            endpoint.updateSnippetEnabled("snippet-a", enabledPayload(false, 3L)).block();
 
-        assertEquals(false, updated.isEnabled());
+        assertFalse(updated.isEnabled());
         verify(validator, never()).validateForWrite(any(TransformationSnippet.class));
     }
 
@@ -80,11 +86,12 @@ class TransformationSnippetEndpointTest {
         snippet.getMetadata().setVersion(5L);
         when(client.fetch(TransformationSnippet.class, "snippet-a")).thenReturn(Mono.just(snippet));
         when(validator.validateForWrite(any(TransformationSnippet.class)))
-                .thenReturn(Mono.error(new TransformationSnippetValidationException("code：请填写代码内容")));
+            .thenReturn(
+                Mono.error(new TransformationSnippetValidationException("code：请填写代码内容")));
 
         TransformationSnippetValidationException error = assertThrows(
-                TransformationSnippetValidationException.class,
-                () -> endpoint.updateSnippetEnabled("snippet-a", enabledPayload(true, 5L)).block()
+            TransformationSnippetValidationException.class,
+            () -> endpoint.updateSnippetEnabled("snippet-a", enabledPayload(true, 5L)).block()
         );
 
         assertEquals("code：请填写代码内容", error.getReason());
@@ -99,8 +106,8 @@ class TransformationSnippetEndpointTest {
         when(client.fetch(TransformationSnippet.class, "snippet-a")).thenReturn(Mono.just(snippet));
 
         ResponseStatusException error = assertThrows(
-                ResponseStatusException.class,
-                () -> endpoint.updateSnippetEnabled("snippet-a", enabledPayload(true, 6L)).block()
+            ResponseStatusException.class,
+            () -> endpoint.updateSnippetEnabled("snippet-a", enabledPayload(true, 6L)).block()
         );
 
         assertEquals(409, error.getStatusCode().value());
@@ -118,8 +125,10 @@ class TransformationSnippetEndpointTest {
         return snippet;
     }
 
-    private TransformationSnippetEndpoint.EnabledPayload enabledPayload(boolean enabled, long version) {
-        TransformationSnippetEndpoint.EnabledPayload payload = new TransformationSnippetEndpoint.EnabledPayload();
+    private TransformationSnippetEndpoint.EnabledPayload enabledPayload(boolean enabled,
+        long version) {
+        TransformationSnippetEndpoint.EnabledPayload payload =
+            new TransformationSnippetEndpoint.EnabledPayload();
         payload.setEnabled(enabled);
         Metadata metadata = new Metadata();
         metadata.setVersion(version);

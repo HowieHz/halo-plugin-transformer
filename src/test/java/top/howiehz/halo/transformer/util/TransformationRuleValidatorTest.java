@@ -1,13 +1,13 @@
 package top.howiehz.halo.transformer.util;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import top.howiehz.halo.transformer.scheme.TransformationRule;
-import top.howiehz.halo.transformer.core.MatchRule;
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Test;
+import top.howiehz.halo.transformer.core.MatchRule;
+import top.howiehz.halo.transformer.scheme.TransformationRule;
 
 class TransformationRuleValidatorTest {
     private final TransformationRuleValidator validator = new TransformationRuleValidator();
@@ -29,11 +29,12 @@ class TransformationRuleValidatorTest {
         setMatchRuleDirectly(rule, makeGroup(MatchRule.pathRule(MatchRule.Matcher.REGEX, "[")));
 
         TransformationRuleValidationException error = assertThrows(
-                TransformationRuleValidationException.class,
-                () -> validator.validateForWrite(rule).block()
+            TransformationRuleValidationException.class,
+            () -> validator.validateForWrite(rule).block()
         );
 
-        assertEquals("matchRule.children[0].value：正则表达式无效，Unclosed character class", error.getReason());
+        assertEquals("matchRule.children[0].value：正则表达式无效，Unclosed character class",
+            error.getReason());
     }
 
     // why: 模板 ID 规则只允许 EXACT/REGEX，写入期必须兜底拦截前后端约束不一致的数据。
@@ -45,11 +46,12 @@ class TransformationRuleValidatorTest {
         setMatchRuleDirectly(rule, makeGroup(child));
 
         TransformationRuleValidationException error = assertThrows(
-                TransformationRuleValidationException.class,
-                () -> validator.validateForWrite(rule).block()
+            TransformationRuleValidationException.class,
+            () -> validator.validateForWrite(rule).block()
         );
 
-        assertEquals("matchRule.children[0].matcher：模板 ID 仅支持 \"REGEX\" 或 \"EXACT\"", error.getReason());
+        assertEquals("matchRule.children[0].matcher：模板 ID 仅支持 \"REGEX\" 或 \"EXACT\"",
+            error.getReason());
     }
 
     // why: matcher 是叶子条件的必填键；即使其它字段齐全，缺少它也必须在写入期被拦下。
@@ -61,11 +63,14 @@ class TransformationRuleValidatorTest {
         setMatchRuleDirectly(rule, makeGroup(child));
 
         TransformationRuleValidationException error = assertThrows(
-                TransformationRuleValidationException.class,
-                () -> validator.validateForWrite(rule).block()
+            TransformationRuleValidationException.class,
+            () -> validator.validateForWrite(rule).block()
         );
 
-        assertEquals("matchRule.children[0].matcher：页面路径条件缺少必填字段 \"matcher\"；该字段可选值为 \"ANT\"、\"REGEX\"、\"EXACT\"", error.getReason());
+        assertEquals(
+            "matchRule.children[0].matcher：页面路径条件缺少必填字段 \"matcher\"；该字段可选值为 "
+                + "\"ANT\"、\"REGEX\"、\"EXACT\"",
+            error.getReason());
     }
 
     // why: `negate` 也要求显式给出 true/false，避免后端把“省略字段”静默吞成 false。
@@ -78,43 +83,46 @@ class TransformationRuleValidatorTest {
         setMatchRuleDirectly(rule, makeGroup(child));
 
         TransformationRuleValidationException error = assertThrows(
-                TransformationRuleValidationException.class,
-                () -> validator.validateForWrite(rule).block()
+            TransformationRuleValidationException.class,
+            () -> validator.validateForWrite(rule).block()
         );
 
-        assertEquals("matchRule.children[0].negate：缺少必填字段 \"negate\"；该字段可选值为 true 或 false", error.getReason());
+        assertEquals(
+            "matchRule.children[0].negate：缺少必填字段 \"negate\"；该字段可选值为 true 或 false",
+            error.getReason());
     }
 
     // why: JSON 里的错键不能被静默吞掉，否则像 `matcher` 拼错这类问题会在保存时被悄悄写成默认行为。
     @Test
     void shouldRejectUnknownMatchRuleFieldDuringWriteValidation() throws Exception {
         String raw = """
-                {
-                  "matchRule": {
-                    "type": "GROUP",
+            {
+              "matchRule": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                  {
+                    "type": "PATH",
                     "negate": false,
-                    "operator": "AND",
-                    "children": [
-                      {
-                        "type": "PATH",
-                        "negate": false,
-                        " m a tc her": "ANT",
-                        "value": "/**"
-                      }
-                    ]
+                    " m a tc her": "ANT",
+                    "value": "/**"
                   }
-                }
-                """;
+                ]
+              }
+            }
+            """;
         TransformationRule rule = objectMapper.readValue(raw, TransformationRule.class);
 
         TransformationRuleValidationException error = assertThrows(
-                TransformationRuleValidationException.class,
-                () -> validator.validateForWrite(rule).block()
+            TransformationRuleValidationException.class,
+            () -> validator.validateForWrite(rule).block()
         );
 
         assertEquals(
-                "matchRule.children[0]. m a tc her：不支持该字段；页面路径条件仅支持 \"type\"、\"negate\"、\"matcher\"、\"value\"",
-                error.getReason()
+            "matchRule.children[0]. m a tc her：不支持该字段；页面路径条件仅支持 "
+                + "\"type\"、\"negate\"、\"matcher\"、\"value\"",
+            error.getReason()
         );
     }
 
@@ -125,8 +133,8 @@ class TransformationRuleValidatorTest {
         setMatchRuleDirectly(rule, MatchRule.pathRule(MatchRule.Matcher.ANT, "/**"));
 
         TransformationRuleValidationException error = assertThrows(
-                TransformationRuleValidationException.class,
-                () -> validator.validateForWrite(rule).block()
+            TransformationRuleValidationException.class,
+            () -> validator.validateForWrite(rule).block()
         );
 
         assertEquals("matchRule.type：根节点必须是 GROUP", error.getReason());
@@ -141,13 +149,14 @@ class TransformationRuleValidatorTest {
         setMatchRuleDirectly(rule, makeGroup(child));
 
         TransformationRuleValidationException error = assertThrows(
-                TransformationRuleValidationException.class,
-                () -> validator.validateForWrite(rule).block()
+            TransformationRuleValidationException.class,
+            () -> validator.validateForWrite(rule).block()
         );
 
         assertEquals(
-                "matchRule.children[0].children：不支持该字段；页面路径条件仅支持 \"type\"、\"negate\"、\"matcher\"、\"value\"",
-                error.getReason()
+            "matchRule.children[0].children：不支持该字段；页面路径条件仅支持 "
+                + "\"type\"、\"negate\"、\"matcher\"、\"value\"",
+            error.getReason()
         );
     }
 
@@ -160,13 +169,13 @@ class TransformationRuleValidatorTest {
         setMatchRuleDirectly(rule, group);
 
         TransformationRuleValidationException error = assertThrows(
-                TransformationRuleValidationException.class,
-                () -> validator.validateForWrite(rule).block()
+            TransformationRuleValidationException.class,
+            () -> validator.validateForWrite(rule).block()
         );
 
         assertEquals(
-                "matchRule.value：不支持该字段；条件组仅支持 \"type\"、\"negate\"、\"operator\"、\"children\"",
-                error.getReason()
+            "matchRule.value：不支持该字段；条件组仅支持 \"type\"、\"negate\"、\"operator\"、\"children\"",
+            error.getReason()
         );
     }
 
@@ -179,13 +188,13 @@ class TransformationRuleValidatorTest {
         setMatchRuleDirectly(rule, group);
 
         TransformationRuleValidationException error = assertThrows(
-                TransformationRuleValidationException.class,
-                () -> validator.validateForWrite(rule).block()
+            TransformationRuleValidationException.class,
+            () -> validator.validateForWrite(rule).block()
         );
 
         assertEquals(
-                "matchRule.matcher：不支持该字段；条件组仅支持 \"type\"、\"negate\"、\"operator\"、\"children\"",
-                error.getReason()
+            "matchRule.matcher：不支持该字段；条件组仅支持 \"type\"、\"negate\"、\"operator\"、\"children\"",
+            error.getReason()
         );
     }
 
@@ -198,13 +207,14 @@ class TransformationRuleValidatorTest {
         setMatchRuleDirectly(rule, makeGroup(child));
 
         TransformationRuleValidationException error = assertThrows(
-                TransformationRuleValidationException.class,
-                () -> validator.validateForWrite(rule).block()
+            TransformationRuleValidationException.class,
+            () -> validator.validateForWrite(rule).block()
         );
 
         assertEquals(
-                "matchRule.children[0].children：不支持该字段；页面路径条件仅支持 \"type\"、\"negate\"、\"matcher\"、\"value\"",
-                error.getReason()
+            "matchRule.children[0].children：不支持该字段；页面路径条件仅支持 "
+                + "\"type\"、\"negate\"、\"matcher\"、\"value\"",
+            error.getReason()
         );
     }
 
@@ -237,8 +247,8 @@ class TransformationRuleValidatorTest {
         setSnippetIdsDirectly(rule, java.util.Set.of("snippet-a"));
 
         TransformationRuleValidationException error = assertThrows(
-                TransformationRuleValidationException.class,
-                () -> validator.validateForWrite(rule).block()
+            TransformationRuleValidationException.class,
+            () -> validator.validateForWrite(rule).block()
         );
 
         assertEquals("snippetIds：REMOVE 模式下无需关联代码片段", error.getReason());
@@ -254,8 +264,8 @@ class TransformationRuleValidatorTest {
         setWrapMarkerDirectly(rule, true);
 
         TransformationRuleValidationException error = assertThrows(
-                TransformationRuleValidationException.class,
-                () -> validator.validateForWrite(rule).block()
+            TransformationRuleValidationException.class,
+            () -> validator.validateForWrite(rule).block()
         );
 
         assertEquals("wrapMarker：REMOVE 模式下无需输出注释标记", error.getReason());
@@ -268,8 +278,8 @@ class TransformationRuleValidatorTest {
         rule.setRuntimeOrder(-1);
 
         TransformationRuleValidationException error = assertThrows(
-                TransformationRuleValidationException.class,
-                () -> validator.validateForWrite(rule).block()
+            TransformationRuleValidationException.class,
+            () -> validator.validateForWrite(rule).block()
         );
 
         assertEquals("runtimeOrder：不能小于 0", error.getReason());
@@ -282,8 +292,8 @@ class TransformationRuleValidatorTest {
         rule.setEnabled(null);
 
         TransformationRuleValidationException error = assertThrows(
-                TransformationRuleValidationException.class,
-                () -> validator.validateForWrite(rule).block()
+            TransformationRuleValidationException.class,
+            () -> validator.validateForWrite(rule).block()
         );
 
         assertEquals("enabled：必须是布尔值；仅支持 true 或 false", error.getReason());
@@ -296,8 +306,8 @@ class TransformationRuleValidatorTest {
         rule.setMode(null);
 
         TransformationRuleValidationException error = assertThrows(
-                TransformationRuleValidationException.class,
-                () -> validator.validateForWrite(rule).block()
+            TransformationRuleValidationException.class,
+            () -> validator.validateForWrite(rule).block()
         );
 
         assertEquals("mode：仅支持 \"HEAD\"、\"FOOTER\"、\"SELECTOR\"", error.getReason());
@@ -310,13 +320,13 @@ class TransformationRuleValidatorTest {
         rule.setPosition(null);
 
         TransformationRuleValidationException error = assertThrows(
-                TransformationRuleValidationException.class,
-                () -> validator.validateForWrite(rule).block()
+            TransformationRuleValidationException.class,
+            () -> validator.validateForWrite(rule).block()
         );
 
         assertEquals(
-                "position：仅支持 \"APPEND\"、\"PREPEND\"、\"BEFORE\"、\"AFTER\"、\"REPLACE\"、\"REMOVE\"",
-                error.getReason()
+            "position：仅支持 \"APPEND\"、\"PREPEND\"、\"BEFORE\"、\"AFTER\"、\"REPLACE\"、\"REMOVE\"",
+            error.getReason()
         );
     }
 

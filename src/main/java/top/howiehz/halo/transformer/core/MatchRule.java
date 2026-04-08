@@ -1,21 +1,22 @@
 package top.howiehz.halo.transformer.core;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import lombok.Data;
-import org.springframework.util.StringUtils;
-
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+import lombok.Data;
+import org.springframework.util.StringUtils;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Data
 public class MatchRule {
+    @JsonIgnore
+    private final Set<String> unknownFields = new LinkedHashSet<>();
     private Type type = Type.GROUP;
     private Boolean negate;
     private Operator operator;
@@ -33,8 +34,6 @@ public class MatchRule {
     private boolean valueDefined;
     @JsonIgnore
     private boolean childrenDefined;
-    @JsonIgnore
-    private final Set<String> unknownFields = new LinkedHashSet<>();
 
     public static MatchRule defaultRule() {
         MatchRule root = new MatchRule();
@@ -60,56 +59,6 @@ public class MatchRule {
         rule.setMatcher(matcher);
         rule.setValue(value);
         return rule;
-    }
-
-    /**
-     * why: 写入期要区分“显式写了 false”和“完全没传 negate”，
-     * 因此这里额外记录字段是否出现过，避免 Jackson 用默认值把“缺失”悄悄吞掉。
-     */
-    public void setNegate(Boolean negate) {
-        this.negate = negate;
-        this.negateDefined = true;
-    }
-
-    public void setOperator(Operator operator) {
-        this.operator = operator;
-        this.operatorDefined = true;
-    }
-
-    public void setMatcher(Matcher matcher) {
-        this.matcher = matcher;
-        this.matcherDefined = true;
-    }
-
-    public void setValue(String value) {
-        this.value = value;
-        this.valueDefined = true;
-    }
-
-    public void setChildren(List<MatchRule> children) {
-        this.children = children == null ? null : new ArrayList<>(children);
-        this.childrenDefined = true;
-    }
-
-    /**
-     * why: 这是运行期的结构有效性快速判断，不应被 Jackson 暴露成 `valid` 字段；
-     * 否则会污染转换规则的 JSON 返回值，并在前端回写时触发未知字段校验。
-     */
-    @JsonIgnore
-    public boolean isValid() {
-        if (type == null) {
-            return false;
-        }
-        // 这里只保留运行时快速判定，避免每次请求都重复编译正则；
-        // 非法正则由写入期校验兜底，防止把坏数据持久化进去。
-        return switch (type) {
-            case GROUP -> children != null
-                    && !children.isEmpty()
-                    && (operator == Operator.AND || operator == Operator.OR)
-                    && children.stream().allMatch(child -> child != null && child.isValid());
-            case PATH -> supportsPathMatcher(matcher) && StringUtils.hasText(value);
-            case TEMPLATE_ID -> supportsTemplateMatcher(matcher) && StringUtils.hasText(value);
-        };
     }
 
     /**
@@ -141,8 +90,8 @@ public class MatchRule {
             }
             if (rule.isChildrenDefined() || rule.getChildren() != null) {
                 List<MatchRule> canonicalChildren = rule.getChildren() == null
-                        ? null
-                        : rule.getChildren().stream().map(MatchRule::canonicalizeForStorage).toList();
+                    ? null
+                    : rule.getChildren().stream().map(MatchRule::canonicalizeForStorage).toList();
                 canonicalRule.setChildren(canonicalChildren);
             }
             return canonicalRule;
@@ -155,11 +104,6 @@ public class MatchRule {
             canonicalRule.setValue(rule.getValue());
         }
         return canonicalRule;
-    }
-
-    @JsonAnySetter
-    public void recordUnknownField(String key, Object ignoredValue) {
-        unknownFields.add(key);
     }
 
     /**
@@ -177,7 +121,7 @@ public class MatchRule {
         if (!rule.getUnknownFields().isEmpty()) {
             String field = rule.getUnknownFields().iterator().next();
             throw new IllegalArgumentException(path + "." + field + "："
-                    + MatchRuleContractMessages.formatUnsupportedFieldMessage(rule.getType()));
+                + MatchRuleContractMessages.formatUnsupportedFieldMessage(rule.getType()));
         }
         if (rule.getType() == null) {
             throw new IllegalArgumentException(path + ".type：不能为空");
@@ -187,15 +131,15 @@ public class MatchRule {
         }
         if (!rule.isNegateDefined()) {
             throw new IllegalArgumentException(path + ".negate："
-                    + MatchRuleContractMessages.formatMissingEnumFieldMessage(
-                    "negate",
-                    MatchRuleContractMessages.EnumName.BOOLEAN,
-                    ""
+                + MatchRuleContractMessages.formatMissingEnumFieldMessage(
+                "negate",
+                MatchRuleContractMessages.EnumName.BOOLEAN,
+                ""
             ));
         }
         if (rule.getNegate() == null) {
             throw new IllegalArgumentException(path + ".negate："
-                    + MatchRuleContractMessages.formatInvalidBooleanFieldMessage());
+                + MatchRuleContractMessages.formatInvalidBooleanFieldMessage());
         }
 
         switch (rule.getType()) {
@@ -208,11 +152,11 @@ public class MatchRule {
     private static void validateGroupRule(MatchRule rule, String path) {
         if (rule.isMatcherDefined()) {
             throw new IllegalArgumentException(path + ".matcher："
-                    + MatchRuleContractMessages.formatUnsupportedFieldMessage(Type.GROUP));
+                + MatchRuleContractMessages.formatUnsupportedFieldMessage(Type.GROUP));
         }
         if (rule.isValueDefined()) {
             throw new IllegalArgumentException(path + ".value："
-                    + MatchRuleContractMessages.formatUnsupportedFieldMessage(Type.GROUP));
+                + MatchRuleContractMessages.formatUnsupportedFieldMessage(Type.GROUP));
         }
         List<MatchRule> children = rule.getChildren();
         if (children == null || children.isEmpty()) {
@@ -220,16 +164,16 @@ public class MatchRule {
         }
         if (rule.getOperator() == null) {
             throw new IllegalArgumentException(path + ".operator："
-                    + MatchRuleContractMessages.formatMissingEnumFieldMessage(
-                    "operator",
-                    MatchRuleContractMessages.EnumName.OPERATOR,
-                    "条件组"
+                + MatchRuleContractMessages.formatMissingEnumFieldMessage(
+                "operator",
+                MatchRuleContractMessages.EnumName.OPERATOR,
+                "条件组"
             ));
         }
         if (rule.getOperator() != Operator.AND && rule.getOperator() != Operator.OR) {
             throw new IllegalArgumentException(path + ".operator："
-                    + MatchRuleContractMessages.formatInvalidEnumFieldValueMessage(
-                    MatchRuleContractMessages.EnumName.OPERATOR
+                + MatchRuleContractMessages.formatInvalidEnumFieldValueMessage(
+                MatchRuleContractMessages.EnumName.OPERATOR
             ));
         }
         for (int index = 0; index < children.size(); index++) {
@@ -240,24 +184,24 @@ public class MatchRule {
     private static void validatePathRule(MatchRule rule, String path) {
         if (rule.isOperatorDefined()) {
             throw new IllegalArgumentException(path + ".operator："
-                    + MatchRuleContractMessages.formatUnsupportedFieldMessage(Type.PATH));
+                + MatchRuleContractMessages.formatUnsupportedFieldMessage(Type.PATH));
         }
         if (rule.isChildrenDefined()) {
             throw new IllegalArgumentException(path + ".children："
-                    + MatchRuleContractMessages.formatUnsupportedFieldMessage(Type.PATH));
+                + MatchRuleContractMessages.formatUnsupportedFieldMessage(Type.PATH));
         }
         if (rule.getMatcher() == null) {
             throw new IllegalArgumentException(path + ".matcher："
-                    + MatchRuleContractMessages.formatMissingEnumFieldMessage(
-                    "matcher",
-                    MatchRuleContractMessages.EnumName.PATH_MATCHER,
-                    "页面路径条件"
+                + MatchRuleContractMessages.formatMissingEnumFieldMessage(
+                "matcher",
+                MatchRuleContractMessages.EnumName.PATH_MATCHER,
+                "页面路径条件"
             ));
         }
         if (!rule.supportsPathMatcher(rule.getMatcher())) {
             throw new IllegalArgumentException(path + ".matcher："
-                    + MatchRuleContractMessages.formatInvalidEnumFieldValueMessage(
-                    MatchRuleContractMessages.EnumName.PATH_MATCHER
+                + MatchRuleContractMessages.formatInvalidEnumFieldValueMessage(
+                MatchRuleContractMessages.EnumName.PATH_MATCHER
             ));
         }
         if (!StringUtils.hasText(rule.getValue())) {
@@ -269,24 +213,24 @@ public class MatchRule {
     private static void validateTemplateRule(MatchRule rule, String path) {
         if (rule.isOperatorDefined()) {
             throw new IllegalArgumentException(path + ".operator："
-                    + MatchRuleContractMessages.formatUnsupportedFieldMessage(Type.TEMPLATE_ID));
+                + MatchRuleContractMessages.formatUnsupportedFieldMessage(Type.TEMPLATE_ID));
         }
         if (rule.isChildrenDefined()) {
             throw new IllegalArgumentException(path + ".children："
-                    + MatchRuleContractMessages.formatUnsupportedFieldMessage(Type.TEMPLATE_ID));
+                + MatchRuleContractMessages.formatUnsupportedFieldMessage(Type.TEMPLATE_ID));
         }
         if (rule.getMatcher() == null) {
             throw new IllegalArgumentException(path + ".matcher："
-                    + MatchRuleContractMessages.formatMissingEnumFieldMessage(
-                    "matcher",
-                    MatchRuleContractMessages.EnumName.TEMPLATE_MATCHER,
-                    "模板 ID 条件"
+                + MatchRuleContractMessages.formatMissingEnumFieldMessage(
+                "matcher",
+                MatchRuleContractMessages.EnumName.TEMPLATE_MATCHER,
+                "模板 ID 条件"
             ));
         }
         if (!rule.supportsTemplateMatcher(rule.getMatcher())) {
             throw new IllegalArgumentException(path + ".matcher：模板 ID "
-                    + MatchRuleContractMessages.formatInvalidEnumFieldValueMessage(
-                    MatchRuleContractMessages.EnumName.TEMPLATE_MATCHER
+                + MatchRuleContractMessages.formatInvalidEnumFieldValueMessage(
+                MatchRuleContractMessages.EnumName.TEMPLATE_MATCHER
             ));
         }
         if (!StringUtils.hasText(rule.getValue())) {
@@ -333,8 +277,8 @@ public class MatchRule {
             case PATH -> PathPrecheckKind.PATH_SCOPED;
             case TEMPLATE_ID -> PathPrecheckKind.UNSUPPORTED;
             case GROUP -> containsTemplateRule(rule)
-                    ? PathPrecheckKind.UNSUPPORTED
-                    : pathPrecheckKindForGroupWithoutNegate(rule);
+                ? PathPrecheckKind.UNSUPPORTED
+                : pathPrecheckKindForGroupWithoutNegate(rule);
         };
     }
 
@@ -411,8 +355,63 @@ public class MatchRule {
             case TEMPLATE_ID -> true;
             case PATH -> false;
             case GROUP -> rule.getChildren() != null
-                    && rule.getChildren().stream().anyMatch(MatchRule::containsTemplateRule);
+                && rule.getChildren().stream().anyMatch(MatchRule::containsTemplateRule);
         };
+    }
+
+    /**
+     * why: 写入期要区分“显式写了 false”和“完全没传 negate”，
+     * 因此这里额外记录字段是否出现过，避免 Jackson 用默认值把“缺失”悄悄吞掉。
+     */
+    public void setNegate(Boolean negate) {
+        this.negate = negate;
+        this.negateDefined = true;
+    }
+
+    public void setOperator(Operator operator) {
+        this.operator = operator;
+        this.operatorDefined = true;
+    }
+
+    public void setMatcher(Matcher matcher) {
+        this.matcher = matcher;
+        this.matcherDefined = true;
+    }
+
+    public void setValue(String value) {
+        this.value = value;
+        this.valueDefined = true;
+    }
+
+    public void setChildren(List<MatchRule> children) {
+        this.children = children == null ? null : new ArrayList<>(children);
+        this.childrenDefined = true;
+    }
+
+    /**
+     * why: 这是运行期的结构有效性快速判断，不应被 Jackson 暴露成 `valid` 字段；
+     * 否则会污染转换规则的 JSON 返回值，并在前端回写时触发未知字段校验。
+     */
+    @JsonIgnore
+    public boolean isValid() {
+        if (type == null) {
+            return false;
+        }
+        // 这里只保留运行时快速判定，避免每次请求都重复编译正则；
+        // 非法正则由写入期校验兜底，防止把坏数据持久化进去。
+        return switch (type) {
+            case GROUP -> children != null
+                && !children.isEmpty()
+                && (operator == Operator.AND || operator == Operator.OR)
+                && children.stream().allMatch(child -> child != null && child.isValid());
+            case PATH -> supportsPathMatcher(matcher) && StringUtils.hasText(value);
+            case TEMPLATE_ID -> supportsTemplateMatcher(matcher) && StringUtils.hasText(value);
+        };
+    }
+
+    @JsonAnySetter
+    public void recordUnknownField(String key, Object ignoredValue) {
+        unknownFields.add(key);
     }
 
     private boolean supportsPathMatcher(Matcher matcher) {

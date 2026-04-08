@@ -1,9 +1,9 @@
 package top.howiehz.halo.transformer.util;
 
+import org.springframework.web.server.ServerWebExchange;
 import org.thymeleaf.context.Contexts;
 import org.thymeleaf.context.ITemplateContext;
 import org.thymeleaf.web.IWebRequest;
-import org.springframework.web.server.ServerWebExchange;
 import run.halo.app.theme.router.ModelConst;
 
 /**
@@ -35,8 +35,9 @@ public class ContextUtil {
         try {
             if (Contexts.isWebContext(context)) {
                 Contexts.asWebContext(context)
-                        .getExchange()
-                        .setAttributeValue(TEMPLATE_ID_ATTRIBUTE, templateId.isBlank() ? null : templateId);
+                    .getExchange()
+                    .setAttributeValue(TEMPLATE_ID_ATTRIBUTE,
+                        templateId.isBlank() ? null : templateId);
             }
         } catch (Exception ignored) {
         }

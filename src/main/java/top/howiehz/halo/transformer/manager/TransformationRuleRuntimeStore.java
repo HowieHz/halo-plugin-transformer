@@ -1,8 +1,17 @@
 package top.howiehz.halo.transformer.manager;
 
-import top.howiehz.halo.transformer.core.MatchRuleBooleanMinimizer;
-import top.howiehz.halo.transformer.core.RuntimeTransformationRule;
-import top.howiehz.halo.transformer.scheme.TransformationRule;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.EnumMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -13,24 +22,15 @@ import run.halo.app.extension.Extension;
 import run.halo.app.extension.GroupVersionKind;
 import run.halo.app.extension.ReactiveExtensionClient;
 import run.halo.app.extension.Watcher;
-
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.EnumMap;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.Executors;
+import top.howiehz.halo.transformer.core.MatchRuleBooleanMinimizer;
+import top.howiehz.halo.transformer.core.RuntimeTransformationRule;
+import top.howiehz.halo.transformer.scheme.TransformationRule;
 
 @Slf4j
 @Component
 public class TransformationRuleRuntimeStore {
-    private static final GroupVersionKind RULE_GVK = GroupVersionKind.fromExtension(TransformationRule.class);
+    private static final GroupVersionKind RULE_GVK =
+        GroupVersionKind.fromExtension(TransformationRule.class);
     private static final long WATCH_RECONNECT_BASE_DELAY_MILLIS = 1_000L;
     private static final long WATCH_RECONNECT_MAX_DELAY_MILLIS = 30_000L;
 
@@ -65,8 +65,9 @@ public class TransformationRuleRuntimeStore {
      * why: 测试需要把退避窗口缩短到毫秒级，才能稳定覆盖重连与 refresh retry 语义；
      * 因此保留一个包级构造器注入测试参数，但不暴露给 Spring 作为候选主构造器。
      */
-    TransformationRuleRuntimeStore(ReactiveExtensionClient client, long watchReconnectBaseDelayMillis,
-                              long watchReconnectMaxDelayMillis) {
+    TransformationRuleRuntimeStore(ReactiveExtensionClient client,
+        long watchReconnectBaseDelayMillis,
+        long watchReconnectMaxDelayMillis) {
         this.client = client;
         this.watchReconnectBaseDelayMillis = watchReconnectBaseDelayMillis;
         this.watchReconnectMaxDelayMillis = watchReconnectMaxDelayMillis;
@@ -146,14 +147,14 @@ public class TransformationRuleRuntimeStore {
 
     Mono<RuleSnapshot> refreshSnapshot() {
         return client.list(TransformationRule.class, null, null)
-                .collectList()
-                .map(this::replaceSnapshot);
+            .collectList()
+            .map(this::replaceSnapshot);
     }
 
     RuleSnapshot buildSnapshot(List<TransformationRule> rules) {
         Map<String, TransformationRule> rulesById = new LinkedHashMap<>();
         Map<TransformationRule.Mode, List<TransformationRule>> activeSourceRulesByMode =
-                new EnumMap<>(TransformationRule.Mode.class);
+            new EnumMap<>(TransformationRule.Mode.class);
         Map<String, SkippedEnabledRule> skippedEnabledRulesById = new LinkedHashMap<>();
         for (TransformationRule.Mode mode : TransformationRule.Mode.values()) {
             activeSourceRulesByMode.put(mode, new ArrayList<>());
@@ -172,24 +173,25 @@ public class TransformationRuleRuntimeStore {
             }
             if (skipReason != null) {
                 skippedEnabledRulesById.put(describeRule(rule), new SkippedEnabledRule(
-                        describeRule(rule),
-                        skipReason.code(),
-                        skipReason.detail()
+                    describeRule(rule),
+                    skipReason.code(),
+                    skipReason.detail()
                 ));
                 continue;
             }
             activeSourceRulesByMode.get(rule.getMode()).add(rule);
         }
         Map<TransformationRule.Mode, List<RuntimeTransformationRule>> immutableByMode =
-                new EnumMap<>(TransformationRule.Mode.class);
+            new EnumMap<>(TransformationRule.Mode.class);
         for (var entry : activeSourceRulesByMode.entrySet()) {
             entry.getValue().sort(runtimeOrderComparator());
-            immutableByMode.put(entry.getKey(), entry.getValue().stream().map(this::toRuntimeRule).toList());
+            immutableByMode.put(entry.getKey(),
+                entry.getValue().stream().map(this::toRuntimeRule).toList());
         }
         RuleSnapshot snapshot = new RuleSnapshot(
-                new LinkedHashMap<>(rulesById),
-                immutableByMode,
-                new LinkedHashMap<>(skippedEnabledRulesById)
+            new LinkedHashMap<>(rulesById),
+            immutableByMode,
+            new LinkedHashMap<>(skippedEnabledRulesById)
         );
         logSkippedEnabledRules(snapshot.skippedEnabledRules());
         return snapshot;
@@ -202,9 +204,9 @@ public class TransformationRuleRuntimeStore {
      */
     private Comparator<TransformationRule> runtimeOrderComparator() {
         return Comparator
-                .comparingInt(TransformationRule::getRuntimeOrder)
-                .thenComparing(TransformationRule::getName, String.CASE_INSENSITIVE_ORDER)
-                .thenComparing(TransformationRule::getId, String.CASE_INSENSITIVE_ORDER);
+            .comparingInt(TransformationRule::getRuntimeOrder)
+            .thenComparing(TransformationRule::getName, String.CASE_INSENSITIVE_ORDER)
+            .thenComparing(TransformationRule::getId, String.CASE_INSENSITIVE_ORDER);
     }
 
     /**
@@ -218,7 +220,9 @@ public class TransformationRuleRuntimeStore {
         }
         String ruleId = describeRuleId(rule);
         if (ruleId == null) {
-            log.debug("Falling back to full TransformationRule refresh because watch event had no resource name");
+            log.debug(
+                "Falling back to full TransformationRule refresh because watch event had no "
+                    + "resource name");
             requestRefreshAsync();
             return;
         }
@@ -235,13 +239,15 @@ public class TransformationRuleRuntimeStore {
         }
     }
 
-    private RuleSnapshot applyIncrementalSnapshotEvent(RuleSnapshot currentSnapshot, RuleEventType eventType,
-                                                       String ruleId, TransformationRule rule) {
-        Map<String, TransformationRule> nextRulesById = new LinkedHashMap<>(currentSnapshot.rulesById());
+    private RuleSnapshot applyIncrementalSnapshotEvent(RuleSnapshot currentSnapshot,
+        RuleEventType eventType,
+        String ruleId, TransformationRule rule) {
+        Map<String, TransformationRule> nextRulesById =
+            new LinkedHashMap<>(currentSnapshot.rulesById());
         Map<TransformationRule.Mode, List<RuntimeTransformationRule>> nextRulesByMode =
-                copyRulesByMode(currentSnapshot.rulesByMode());
+            copyRulesByMode(currentSnapshot.rulesByMode());
         Map<String, SkippedEnabledRule> nextSkippedEnabledRulesById =
-                new LinkedHashMap<>(currentSnapshot.skippedEnabledRulesById());
+            new LinkedHashMap<>(currentSnapshot.skippedEnabledRulesById());
         Set<TransformationRule.Mode> affectedModes = new LinkedHashSet<>();
 
         TransformationRule previousRule = nextRulesById.get(ruleId);
@@ -258,9 +264,9 @@ public class TransformationRuleRuntimeStore {
             RuntimeSkipReason nextSkipReason = resolveRuntimeSkipReason(rule);
             if (rule.isEnabled() && nextSkipReason != null) {
                 nextSkippedEnabledRulesById.put(ruleId, new SkippedEnabledRule(
-                        ruleId,
-                        nextSkipReason.code(),
-                        nextSkipReason.detail()
+                    ruleId,
+                    nextSkipReason.code(),
+                    nextSkipReason.detail()
                 ));
             }
             TransformationRule.Mode nextActiveMode = activeMode(rule);
@@ -273,22 +279,25 @@ public class TransformationRuleRuntimeStore {
             nextRulesByMode.put(mode, rebuildActiveRulesForMode(nextRulesById.values(), mode));
         }
 
-        RuleSnapshot snapshot = new RuleSnapshot(nextRulesById, nextRulesByMode, nextSkippedEnabledRulesById);
+        RuleSnapshot snapshot =
+            new RuleSnapshot(nextRulesById, nextRulesByMode, nextSkippedEnabledRulesById);
         logSkippedEnabledRules(snapshot.skippedEnabledRules());
         return snapshot;
     }
 
     private Map<TransformationRule.Mode, List<RuntimeTransformationRule>> copyRulesByMode(
-            Map<TransformationRule.Mode, List<RuntimeTransformationRule>> sourceRulesByMode) {
-        Map<TransformationRule.Mode, List<RuntimeTransformationRule>> copied = new EnumMap<>(TransformationRule.Mode.class);
+        Map<TransformationRule.Mode, List<RuntimeTransformationRule>> sourceRulesByMode) {
+        Map<TransformationRule.Mode, List<RuntimeTransformationRule>> copied =
+            new EnumMap<>(TransformationRule.Mode.class);
         for (TransformationRule.Mode mode : TransformationRule.Mode.values()) {
             copied.put(mode, new ArrayList<>(sourceRulesByMode.getOrDefault(mode, List.of())));
         }
         return copied;
     }
 
-    private List<RuntimeTransformationRule> rebuildActiveRulesForMode(Iterable<TransformationRule> rules,
-                                                                 TransformationRule.Mode mode) {
+    private List<RuntimeTransformationRule> rebuildActiveRulesForMode(
+        Iterable<TransformationRule> rules,
+        TransformationRule.Mode mode) {
         List<TransformationRule> matchingRules = new ArrayList<>();
         for (TransformationRule rule : rules) {
             if (activeMode(rule) == mode) {
@@ -297,8 +306,8 @@ public class TransformationRuleRuntimeStore {
         }
         matchingRules.sort(runtimeOrderComparator());
         return matchingRules.stream()
-                .map(this::toRuntimeRule)
-                .toList();
+            .map(this::toRuntimeRule)
+            .toList();
     }
 
     /**
@@ -308,8 +317,8 @@ public class TransformationRuleRuntimeStore {
      */
     private RuntimeTransformationRule toRuntimeRule(TransformationRule rule) {
         return RuntimeTransformationRule.fromStoredRule(
-                rule,
-                MatchRuleBooleanMinimizer.minimizeForRuntime(rule.getMatchRule())
+            rule,
+            MatchRuleBooleanMinimizer.minimizeForRuntime(rule.getMatchRule())
         );
     }
 
@@ -328,7 +337,7 @@ public class TransformationRuleRuntimeStore {
             return RuntimeSkipReason.MISSING_MODE;
         }
         if (TransformationRule.Mode.SELECTOR.equals(rule.getMode())
-                && (rule.getMatch() == null || rule.getMatch().isBlank())) {
+            && (rule.getMatch() == null || rule.getMatch().isBlank())) {
             return RuntimeSkipReason.BLANK_SELECTOR_MATCH;
         }
         if (rule.getMatchRule() == null) {
@@ -356,14 +365,17 @@ public class TransformationRuleRuntimeStore {
         lastSkippedEnabledRules = currentSkippedRules;
         if (currentSkippedRules.isEmpty()) {
             if (!previousSkippedRules.isEmpty()) {
-                log.info("All previously skipped enabled TransformationRule resources are back in the runtime snapshot");
+                log.info(
+                    "All previously skipped enabled TransformationRule resources are back in the "
+                        + "runtime snapshot");
             }
             return;
         }
         log.warn(
-                "Skipped {} enabled TransformationRule resource(s) from the runtime snapshot because they are invalid or incomplete: {}",
-                currentSkippedRules.size(),
-                currentSkippedRules
+            "Skipped {} enabled TransformationRule resource(s) from the runtime snapshot because "
+                + "they are invalid or incomplete: {}",
+            currentSkippedRules.size(),
+            currentSkippedRules
         );
     }
 
@@ -384,40 +396,44 @@ public class TransformationRuleRuntimeStore {
             refreshRequested = false;
         }
         refreshSnapshot()
-                .subscribeOn(Schedulers.boundedElastic())
-                .doFinally(signalType -> {
-                    boolean rerun;
-                    synchronized (refreshMonitor) {
-                        rerun = refreshRequested;
-                        if (!rerun) {
-                            refreshRunning = false;
-                        }
+            .subscribeOn(Schedulers.boundedElastic())
+            .doFinally(signalType -> {
+                boolean rerun;
+                synchronized (refreshMonitor) {
+                    rerun = refreshRequested;
+                    if (!rerun) {
+                        refreshRunning = false;
                     }
-                    if (rerun) {
-                        runRefreshLoopAsync();
+                }
+                if (rerun) {
+                    runRefreshLoopAsync();
+                }
+            })
+            .subscribe(
+                snapshot -> {
+                    int recoveredFailures = resetRefreshFailureCount();
+                    if (recoveredFailures > 0) {
+                        log.info(
+                            "Recovered TransformationRule snapshot refresh after {} failed "
+                                + "attempt(s)",
+                            recoveredFailures);
                     }
-                })
-                .subscribe(
-                        snapshot -> {
-                            int recoveredFailures = resetRefreshFailureCount();
-                            if (recoveredFailures > 0) {
-                                log.info("Recovered TransformationRule snapshot refresh after {} failed attempt(s)",
-                                        recoveredFailures);
-                            }
-                            log.debug("Refreshed rule snapshot with {} total rules", snapshot.allRules().size());
-                        },
-                        error -> {
-                            int failureCount = incrementRefreshFailureCount();
-                            long delayMillis = computeBackoffDelayMillis(failureCount);
-                            log.warn(
-                                    "Failed to refresh TransformationRule snapshot; retrying in {} ms (attempt {})",
-                                    delayMillis,
-                                    failureCount,
-                                    error
-                            );
-                            scheduleRefreshRetry(delayMillis);
-                        }
-                );
+                    log.debug("Refreshed rule snapshot with {} total rules",
+                        snapshot.allRules().size());
+                },
+                error -> {
+                    int failureCount = incrementRefreshFailureCount();
+                    long delayMillis = computeBackoffDelayMillis(failureCount);
+                    log.warn(
+                        "Failed to refresh TransformationRule snapshot; retrying in {} ms "
+                            + "(attempt {})",
+                        delayMillis,
+                        failureCount,
+                        error
+                    );
+                    scheduleRefreshRetry(delayMillis);
+                }
+            );
     }
 
     private void connectWatch(String reason) {
@@ -447,7 +463,8 @@ public class TransformationRuleRuntimeStore {
             reconnectFailureCount = 0;
         }
         if (recoveredFailures > 0) {
-            log.info("Recovered TransformationRule watch after {} failed reconnect attempt(s)", recoveredFailures);
+            log.info("Recovered TransformationRule watch after {} failed reconnect attempt(s)",
+                recoveredFailures);
         } else {
             log.info("Started TransformationRule watch");
         }
@@ -465,11 +482,11 @@ public class TransformationRuleRuntimeStore {
             delayMillis = computeBackoffDelayMillis(failureCount);
         }
         log.warn(
-                "Failed to connect TransformationRule watch during {}; retrying in {} ms (attempt {})",
-                reason,
-                delayMillis,
-                failureCount,
-                error
+            "Failed to connect TransformationRule watch during {}; retrying in {} ms (attempt {})",
+            reason,
+            delayMillis,
+            failureCount,
+            error
         );
         scheduleReconnectTask(delayMillis);
     }
@@ -488,7 +505,8 @@ public class TransformationRuleRuntimeStore {
             failureCount = ++reconnectFailureCount;
             delayMillis = computeBackoffDelayMillis(failureCount);
         }
-        log.warn("TransformationRule watch disconnected; retrying in {} ms (attempt {})", delayMillis, failureCount);
+        log.warn("TransformationRule watch disconnected; retrying in {} ms (attempt {})",
+            delayMillis, failureCount);
         scheduleReconnectTask(delayMillis);
     }
 
@@ -582,12 +600,42 @@ public class TransformationRuleRuntimeStore {
         refreshRetryTask = null;
     }
 
+    private enum RuleEventType {
+        ADD,
+        UPDATE,
+        DELETE
+    }
+
+    private enum RuntimeSkipReason {
+        MISSING_RESOURCE_NAME("missing_resource_name", "缺少 metadata.name，无法建立稳定运行时主键"),
+        MISSING_MODE("missing_mode", "运行时需要明确的执行阶段"),
+        BLANK_SELECTOR_MATCH("blank_selector_match", "CSS 选择器模式要求非空 match"),
+        MISSING_MATCH_RULE("missing_match_rule", "缺少 matchRule"),
+        INVALID_MATCH_RULE("invalid_match_rule", "matchRule 不满足运行时结构约束");
+
+        private final String code;
+        private final String detail;
+
+        RuntimeSkipReason(String code, String detail) {
+            this.code = code;
+            this.detail = detail;
+        }
+
+        String code() {
+            return code;
+        }
+
+        String detail() {
+            return detail;
+        }
+    }
+
     record RuleSnapshot(Map<String, TransformationRule> rulesById,
                         Map<TransformationRule.Mode, List<RuntimeTransformationRule>> rulesByMode,
                         Map<String, SkippedEnabledRule> skippedEnabledRulesById) {
         static RuleSnapshot empty() {
             Map<TransformationRule.Mode, List<RuntimeTransformationRule>> emptyByMode =
-                    new EnumMap<>(TransformationRule.Mode.class);
+                new EnumMap<>(TransformationRule.Mode.class);
             for (TransformationRule.Mode mode : TransformationRule.Mode.values()) {
                 emptyByMode.put(mode, List.of());
             }
@@ -605,6 +653,9 @@ public class TransformationRuleRuntimeStore {
         List<SkippedEnabledRule> skippedEnabledRules() {
             return List.copyOf(skippedEnabledRulesById.values());
         }
+    }
+
+    record SkippedEnabledRule(String ruleId, String reasonCode, String reasonDetail) {
     }
 
     private final class RuleWatcher implements Watcher {
@@ -670,39 +721,6 @@ public class TransformationRuleRuntimeStore {
                 return;
             }
             requestRefreshAsync();
-        }
-    }
-
-    private enum RuleEventType {
-        ADD,
-        UPDATE,
-        DELETE
-    }
-
-    record SkippedEnabledRule(String ruleId, String reasonCode, String reasonDetail) {
-    }
-
-    private enum RuntimeSkipReason {
-        MISSING_RESOURCE_NAME("missing_resource_name", "缺少 metadata.name，无法建立稳定运行时主键"),
-        MISSING_MODE("missing_mode", "运行时需要明确的执行阶段"),
-        BLANK_SELECTOR_MATCH("blank_selector_match", "CSS 选择器模式要求非空 match"),
-        MISSING_MATCH_RULE("missing_match_rule", "缺少 matchRule"),
-        INVALID_MATCH_RULE("invalid_match_rule", "matchRule 不满足运行时结构约束");
-
-        private final String code;
-        private final String detail;
-
-        RuntimeSkipReason(String code, String detail) {
-            this.code = code;
-            this.detail = detail;
-        }
-
-        String code() {
-            return code;
-        }
-
-        String detail() {
-            return detail;
         }
     }
 }

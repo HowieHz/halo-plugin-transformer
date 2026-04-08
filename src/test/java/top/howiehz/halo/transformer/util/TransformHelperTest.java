@@ -1,26 +1,25 @@
 package top.howiehz.halo.transformer.util;
 
-import top.howiehz.halo.transformer.manager.TransformationSnippetManager;
-import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
-import top.howiehz.halo.transformer.core.RuntimeTransformationRule;
-import top.howiehz.halo.transformer.scheme.TransformationSnippet;
-import top.howiehz.halo.transformer.scheme.TransformationRule;
-import top.howiehz.halo.transformer.core.MatchRule;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Flux;
-
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Pattern;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
+import top.howiehz.halo.transformer.core.MatchRule;
+import top.howiehz.halo.transformer.core.RuntimeTransformationRule;
+import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
+import top.howiehz.halo.transformer.manager.TransformationSnippetManager;
+import top.howiehz.halo.transformer.scheme.TransformationRule;
+import top.howiehz.halo.transformer.scheme.TransformationSnippet;
 
 @ExtendWith(MockitoExtension.class)
 class TransformHelperTest {
@@ -41,15 +40,16 @@ class TransformHelperTest {
     @Test
     void shouldMatchRuleWhenPathAndTemplateMatch() {
         TransformationRule rule = createRule(group(MatchRule.Operator.AND,
-                MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
-                MatchRule.templateRule(MatchRule.Matcher.EXACT, "post")));
+            MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
+            MatchRule.templateRule(MatchRule.Matcher.EXACT, "post")));
         RuntimeTransformationRule runtimeRule = runtimeRule(rule);
-        when(ruleRuntimeStore.listActiveByMode(TransformationRule.Mode.SELECTOR)).thenReturn(Flux.just(runtimeRule));
+        when(ruleRuntimeStore.listActiveByMode(TransformationRule.Mode.SELECTOR)).thenReturn(
+            Flux.just(runtimeRule));
 
         List<RuntimeTransformationRule> rules = transformHelper
-                .getMatchedRules("/posts/demo", "post", TransformationRule.Mode.SELECTOR)
-                .collectList()
-                .block();
+            .getMatchedRules("/posts/demo", "post", TransformationRule.Mode.SELECTOR)
+            .collectList()
+            .block();
 
         assertEquals(List.of(runtimeRule), rules);
     }
@@ -58,15 +58,15 @@ class TransformHelperTest {
     @Test
     void shouldSkipRuleWhenTemplateDoesNotMatch() {
         TransformationRule rule = createRule(group(MatchRule.Operator.AND,
-                MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
-                MatchRule.templateRule(MatchRule.Matcher.EXACT, "post")));
+            MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
+            MatchRule.templateRule(MatchRule.Matcher.EXACT, "post")));
         when(ruleRuntimeStore.listActiveByMode(TransformationRule.Mode.SELECTOR))
-                .thenReturn(Flux.just(runtimeRule(rule)));
+            .thenReturn(Flux.just(runtimeRule(rule)));
 
         List<RuntimeTransformationRule> rules = transformHelper
-                .getMatchedRules("/posts/demo", "page", TransformationRule.Mode.SELECTOR)
-                .collectList()
-                .block();
+            .getMatchedRules("/posts/demo", "page", TransformationRule.Mode.SELECTOR)
+            .collectList()
+            .block();
 
         assertTrue(rules.isEmpty());
     }
@@ -75,15 +75,16 @@ class TransformHelperTest {
     @Test
     void shouldKeepRuleDuringPathPrecheckWhenTemplateIsUnknown() {
         TransformationRule rule = createRule(group(MatchRule.Operator.AND,
-                MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
-                MatchRule.templateRule(MatchRule.Matcher.EXACT, "post")));
+            MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
+            MatchRule.templateRule(MatchRule.Matcher.EXACT, "post")));
         RuntimeTransformationRule runtimeRule = runtimeRule(rule);
-        when(ruleRuntimeStore.listActiveByMode(TransformationRule.Mode.SELECTOR)).thenReturn(Flux.just(runtimeRule));
+        when(ruleRuntimeStore.listActiveByMode(TransformationRule.Mode.SELECTOR)).thenReturn(
+            Flux.just(runtimeRule));
 
         List<RuntimeTransformationRule> rules = transformHelper
-                .getPathMatchedRules("/posts/demo", TransformationRule.Mode.SELECTOR)
-                .collectList()
-                .block();
+            .getPathMatchedRules("/posts/demo", TransformationRule.Mode.SELECTOR)
+            .collectList()
+            .block();
 
         assertEquals(List.of(runtimeRule), rules);
     }
@@ -92,15 +93,15 @@ class TransformHelperTest {
     @Test
     void shouldSkipRuleDuringPathPrecheckWhenPathDefinitelyMisses() {
         TransformationRule rule = createRule(group(MatchRule.Operator.AND,
-                MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
-                MatchRule.templateRule(MatchRule.Matcher.EXACT, "post")));
+            MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
+            MatchRule.templateRule(MatchRule.Matcher.EXACT, "post")));
         when(ruleRuntimeStore.listActiveByMode(TransformationRule.Mode.SELECTOR))
-                .thenReturn(Flux.just(runtimeRule(rule)));
+            .thenReturn(Flux.just(runtimeRule(rule)));
 
         List<RuntimeTransformationRule> rules = transformHelper
-                .getPathMatchedRules("/archives/demo", TransformationRule.Mode.SELECTOR)
-                .collectList()
-                .block();
+            .getPathMatchedRules("/archives/demo", TransformationRule.Mode.SELECTOR)
+            .collectList()
+            .block();
 
         assertTrue(rules.isEmpty());
     }
@@ -113,8 +114,8 @@ class TransformHelperTest {
         rule.setMode(TransformationRule.Mode.SELECTOR);
         rule.setMatch("main");
         setMatchRuleDirectly(rule, group(MatchRule.Operator.OR,
-                MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
-                MatchRule.templateRule(MatchRule.Matcher.EXACT, "post")));
+            MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
+            MatchRule.templateRule(MatchRule.Matcher.EXACT, "post")));
 
         assertTrue(rule.isValid());
     }
@@ -127,35 +128,37 @@ class TransformHelperTest {
         rule.setMode(TransformationRule.Mode.SELECTOR);
         rule.setMatch("main");
         setMatchRuleDirectly(rule, group(MatchRule.Operator.OR,
-                MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
-                MatchRule.templateRule(MatchRule.Matcher.EXACT, "post")));
+            MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
+            MatchRule.templateRule(MatchRule.Matcher.EXACT, "post")));
         when(ruleRuntimeStore.listActiveByMode(TransformationRule.Mode.SELECTOR))
-                .thenReturn(Flux.just(runtimeRule(rule)));
+            .thenReturn(Flux.just(runtimeRule(rule)));
 
         Boolean shouldProcess = transformHelper
-                .hasDomProcessCandidate("/archives/demo", TransformationRule.Mode.SELECTOR)
-                .block();
+            .hasDomProcessCandidate("/archives/demo", TransformationRule.Mode.SELECTOR)
+            .block();
 
-        assertTrue(Boolean.TRUE.equals(shouldProcess));
+        assertEquals(Boolean.TRUE, shouldProcess);
     }
 
     // why: 同一 regex 在运行期应复用已编译结果，避免每次请求重复 Pattern.compile 带来额外开销。
     @Test
     void shouldCompileSameRegexOnlyOnceAtRuntime() {
-        CountingTransformHelper helper = new CountingTransformHelper(ruleRuntimeStore, snippetManager);
+        CountingTransformHelper helper =
+            new CountingTransformHelper(ruleRuntimeStore, snippetManager);
         TransformationRule rule = createRule(group(MatchRule.Operator.AND,
-                MatchRule.pathRule(MatchRule.Matcher.REGEX, "^/posts/\\d+$")));
+            MatchRule.pathRule(MatchRule.Matcher.REGEX, "^/posts/\\d+$")));
         RuntimeTransformationRule runtimeRule = runtimeRule(rule);
-        when(ruleRuntimeStore.listActiveByMode(TransformationRule.Mode.SELECTOR)).thenReturn(Flux.just(runtimeRule));
+        when(ruleRuntimeStore.listActiveByMode(TransformationRule.Mode.SELECTOR)).thenReturn(
+            Flux.just(runtimeRule));
 
         List<RuntimeTransformationRule> first = helper
-                .getMatchedRules("/posts/1", TransformationRule.Mode.SELECTOR)
-                .collectList()
-                .block();
+            .getMatchedRules("/posts/1", TransformationRule.Mode.SELECTOR)
+            .collectList()
+            .block();
         List<RuntimeTransformationRule> second = helper
-                .getMatchedRules("/posts/2", TransformationRule.Mode.SELECTOR)
-                .collectList()
-                .block();
+            .getMatchedRules("/posts/2", TransformationRule.Mode.SELECTOR)
+            .collectList()
+            .block();
 
         assertEquals(List.of(runtimeRule), first);
         assertEquals(List.of(runtimeRule), second);
@@ -165,23 +168,24 @@ class TransformHelperTest {
     // why: 历史脏数据里的非法 regex 也要缓存失败结果，避免请求期反复抛异常和重复编译。
     @Test
     void shouldCacheInvalidRegexFailureToAvoidRepeatedCompile() {
-        CountingTransformHelper helper = new CountingTransformHelper(ruleRuntimeStore, snippetManager);
+        CountingTransformHelper helper =
+            new CountingTransformHelper(ruleRuntimeStore, snippetManager);
         TransformationRule rule = new TransformationRule();
         rule.setEnabled(true);
         rule.setMode(TransformationRule.Mode.FOOTER);
         setMatchRuleDirectly(rule, group(MatchRule.Operator.AND,
-                MatchRule.pathRule(MatchRule.Matcher.REGEX, "[")));
+            MatchRule.pathRule(MatchRule.Matcher.REGEX, "[")));
         when(ruleRuntimeStore.listActiveByMode(TransformationRule.Mode.FOOTER))
-                .thenReturn(Flux.just(runtimeRule(rule)));
+            .thenReturn(Flux.just(runtimeRule(rule)));
 
         List<RuntimeTransformationRule> first = helper
-                .getMatchedRules("/posts/1", TransformationRule.Mode.FOOTER)
-                .collectList()
-                .block();
+            .getMatchedRules("/posts/1", TransformationRule.Mode.FOOTER)
+            .collectList()
+            .block();
         List<RuntimeTransformationRule> second = helper
-                .getMatchedRules("/posts/2", TransformationRule.Mode.FOOTER)
-                .collectList()
-                .block();
+            .getMatchedRules("/posts/2", TransformationRule.Mode.FOOTER)
+            .collectList()
+            .block();
 
         assertTrue(first.isEmpty());
         assertTrue(second.isEmpty());
@@ -192,10 +196,10 @@ class TransformHelperTest {
     @Test
     void shouldLoadSharedSnippetOnlyOnceWhenResolvingMultipleRules() {
         TransformationRule firstRule = createRule(group(MatchRule.Operator.AND,
-                MatchRule.pathRule(MatchRule.Matcher.ANT, "/**")));
+            MatchRule.pathRule(MatchRule.Matcher.ANT, "/**")));
         firstRule.setSnippetIds(new java.util.LinkedHashSet<>(List.of("snippet-a", "snippet-b")));
         TransformationRule secondRule = createRule(group(MatchRule.Operator.AND,
-                MatchRule.pathRule(MatchRule.Matcher.ANT, "/**")));
+            MatchRule.pathRule(MatchRule.Matcher.ANT, "/**")));
         secondRule.setSnippetIds(new java.util.LinkedHashSet<>(List.of("snippet-b", "snippet-c")));
 
         AtomicInteger fetchCount = new AtomicInteger();
@@ -206,8 +210,8 @@ class TransformHelperTest {
         });
 
         List<TransformHelper.ResolvedRuleCode> resolved = transformHelper
-                .resolveRuleCodes(List.of(runtimeRule(firstRule), runtimeRule(secondRule)))
-                .block();
+            .resolveRuleCodes(List.of(runtimeRule(firstRule), runtimeRule(secondRule)))
+            .block();
 
         assertEquals(3, fetchCount.get());
         assertEquals("SNIPPET-ASNIPPET-B", resolved.get(0).code());
@@ -217,19 +221,21 @@ class TransformHelperTest {
     // why: 同一次完整匹配里，多条 PATH/ANT 条件共享同一个当前路径；应只 parseRoute 一次，再在整棵规则树里复用。
     @Test
     void shouldParseCurrentPathOnlyOnceDuringSingleMatchEvaluation() {
-        CountingTransformHelper helper = new CountingTransformHelper(ruleRuntimeStore, snippetManager);
+        CountingTransformHelper helper =
+            new CountingTransformHelper(ruleRuntimeStore, snippetManager);
         TransformationRule rule = createRule(group(MatchRule.Operator.AND,
-                MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
-                group(MatchRule.Operator.OR,
-                        MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/demo"),
-                        MatchRule.pathRule(MatchRule.Matcher.ANT, "/archives/**"))));
+            MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
+            group(MatchRule.Operator.OR,
+                MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/demo"),
+                MatchRule.pathRule(MatchRule.Matcher.ANT, "/archives/**"))));
         RuntimeTransformationRule runtimeRule = runtimeRule(rule);
-        when(ruleRuntimeStore.listActiveByMode(TransformationRule.Mode.SELECTOR)).thenReturn(Flux.just(runtimeRule));
+        when(ruleRuntimeStore.listActiveByMode(TransformationRule.Mode.SELECTOR)).thenReturn(
+            Flux.just(runtimeRule));
 
         List<RuntimeTransformationRule> matched = helper
-                .getMatchedRules("/posts/demo", "post", TransformationRule.Mode.SELECTOR)
-                .collectList()
-                .block();
+            .getMatchedRules("/posts/demo", "post", TransformationRule.Mode.SELECTOR)
+            .collectList()
+            .block();
 
         assertEquals(List.of(runtimeRule), matched);
         assertEquals(1, helper.routeParseCount.get());
@@ -281,7 +287,8 @@ class TransformHelperTest {
         private final AtomicInteger compileCount = new AtomicInteger();
         private final AtomicInteger routeParseCount = new AtomicInteger();
 
-        CountingTransformHelper(TransformationRuleRuntimeStore ruleRuntimeStore, TransformationSnippetManager snippetManager) {
+        CountingTransformHelper(TransformationRuleRuntimeStore ruleRuntimeStore,
+            TransformationSnippetManager snippetManager) {
             super(ruleRuntimeStore, snippetManager);
         }
 
@@ -292,7 +299,8 @@ class TransformHelperTest {
         }
 
         @Override
-        protected org.springframework.util.RouteMatcher.Route parseCurrentPathRoute(String currentPath) {
+        protected org.springframework.util.RouteMatcher.Route parseCurrentPathRoute(
+            String currentPath) {
             routeParseCount.incrementAndGet();
             return super.parseCurrentPathRoute(currentPath);
         }

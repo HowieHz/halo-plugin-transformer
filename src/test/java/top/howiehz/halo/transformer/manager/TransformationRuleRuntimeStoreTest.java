@@ -1,8 +1,15 @@
 package top.howiehz.halo.transformer.manager;
 
-import top.howiehz.halo.transformer.core.MatchRule;
-import top.howiehz.halo.transformer.core.RuntimeTransformationRule;
-import top.howiehz.halo.transformer.scheme.TransformationRule;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BooleanSupplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,21 +17,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Flux;
-import run.halo.app.extension.Extension;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
 import run.halo.app.extension.Watcher;
-
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BooleanSupplier;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import top.howiehz.halo.transformer.core.MatchRule;
+import top.howiehz.halo.transformer.core.RuntimeTransformationRule;
+import top.howiehz.halo.transformer.scheme.TransformationRule;
 
 @ExtendWith(MockitoExtension.class)
 class TransformationRuleRuntimeStoreTest {
@@ -43,19 +41,21 @@ class TransformationRuleRuntimeStoreTest {
     @Test
     void shouldLoadSnapshotWhenStartingWatch() {
         when(client.list(TransformationRule.class, null, null))
-                .thenReturn(Flux.just(rule("rule-a", TransformationRule.Mode.SELECTOR, true, "main")));
+            .thenReturn(Flux.just(rule("rule-a", TransformationRule.Mode.SELECTOR, true, "main")));
 
         manager.startWatching();
 
         waitUntil(() -> !manager.listActiveByMode(TransformationRule.Mode.SELECTOR)
-                .collectList()
-                .block()
-                .isEmpty());
-        List<RuntimeTransformationRule> rules = manager.listActiveByMode(TransformationRule.Mode.SELECTOR)
+            .collectList()
+            .block()
+            .isEmpty());
+        List<RuntimeTransformationRule> rules =
+            manager.listActiveByMode(TransformationRule.Mode.SELECTOR)
                 .collectList()
                 .block();
 
-        assertEquals(List.of("rule-a"), rules.stream().map(RuntimeTransformationRule::resourceName).toList());
+        assertEquals(List.of("rule-a"),
+            rules.stream().map(RuntimeTransformationRule::resourceName).toList());
         verify(client).watch(any(Watcher.class));
     }
 
@@ -67,8 +67,10 @@ class TransformationRuleRuntimeStoreTest {
         when(client.list(TransformationRule.class, null, null)).thenAnswer(invocation -> {
             int round = fetchCount.incrementAndGet();
             return round == 1
-                    ? Flux.just(namedRule("rule-a", "Before", TransformationRule.Mode.SELECTOR, true, ".before"))
-                    : Flux.just(namedRule("rule-a", "After", TransformationRule.Mode.SELECTOR, true, ".after"));
+                ? Flux.just(
+                namedRule("rule-a", "Before", TransformationRule.Mode.SELECTOR, true, ".before"))
+                : Flux.just(
+                    namedRule("rule-a", "After", TransformationRule.Mode.SELECTOR, true, ".after"));
         });
 
         ArgumentCaptor<Watcher> watcherCaptor = ArgumentCaptor.forClass(Watcher.class);
@@ -76,25 +78,25 @@ class TransformationRuleRuntimeStoreTest {
         verify(client).watch(watcherCaptor.capture());
 
         waitUntil(() -> manager.listActiveByMode(TransformationRule.Mode.SELECTOR)
-                .collectList()
-                .block()
-                .stream()
-                .map(RuntimeTransformationRule::match)
-                .toList()
-                .equals(List.of(".before")));
+            .collectList()
+            .block()
+            .stream()
+            .map(RuntimeTransformationRule::match)
+            .toList()
+            .equals(List.of(".before")));
 
         watcherCaptor.getValue().onUpdate(
-                namedRule("rule-a", "Before", TransformationRule.Mode.SELECTOR, true, ".before"),
-                namedRule("rule-a", "After", TransformationRule.Mode.SELECTOR, true, ".after")
+            namedRule("rule-a", "Before", TransformationRule.Mode.SELECTOR, true, ".before"),
+            namedRule("rule-a", "After", TransformationRule.Mode.SELECTOR, true, ".after")
         );
 
         waitUntil(() -> manager.listActiveByMode(TransformationRule.Mode.SELECTOR)
-                .collectList()
-                .block()
-                .stream()
-                .map(RuntimeTransformationRule::match)
-                .toList()
-                .equals(List.of(".after")));
+            .collectList()
+            .block()
+            .stream()
+            .map(RuntimeTransformationRule::match)
+            .toList()
+            .equals(List.of(".after")));
 
         assertEquals(1, fetchCount.get());
     }
@@ -114,22 +116,22 @@ class TransformationRuleRuntimeStoreTest {
         verify(client).watch(watcherCaptor.capture());
 
         waitUntil(() -> manager.listActiveByMode(TransformationRule.Mode.SELECTOR)
-                .collectList()
-                .block()
-                .isEmpty());
+            .collectList()
+            .block()
+            .isEmpty());
 
         watcherCaptor.getValue().onUpdate(
-                rule("rule-a", TransformationRule.Mode.SELECTOR, true, ""),
-                rule("rule-a", TransformationRule.Mode.SELECTOR, true, "main")
+            rule("rule-a", TransformationRule.Mode.SELECTOR, true, ""),
+            rule("rule-a", TransformationRule.Mode.SELECTOR, true, "main")
         );
 
         waitUntil(() -> manager.listActiveByMode(TransformationRule.Mode.SELECTOR)
-                .collectList()
-                .block()
-                .stream()
-                .map(RuntimeTransformationRule::resourceName)
-                .toList()
-                .equals(List.of("rule-a")));
+            .collectList()
+            .block()
+            .stream()
+            .map(RuntimeTransformationRule::resourceName)
+            .toList()
+            .equals(List.of("rule-a")));
 
         assertEquals(1, fetchCount.get());
     }
@@ -138,17 +140,18 @@ class TransformationRuleRuntimeStoreTest {
     // 否则控制台外部写入的坏数据只会表现成“悄悄不生效”，排查成本太高。
     @Test
     void shouldExposeReasonedDiagnosticsForSkippedEnabledRules() {
-        TransformationRule selectorRule = rule("rule-a", TransformationRule.Mode.SELECTOR, true, "");
+        TransformationRule selectorRule =
+            rule("rule-a", TransformationRule.Mode.SELECTOR, true, "");
 
         manager.buildSnapshot(List.of(selectorRule));
 
         assertEquals(
-                List.of(new TransformationRuleRuntimeStore.SkippedEnabledRule(
-                        "rule-a",
-                        "blank_selector_match",
-                        "CSS 选择器模式要求非空 match"
-                )),
-                manager.skippedEnabledRules()
+            List.of(new TransformationRuleRuntimeStore.SkippedEnabledRule(
+                "rule-a",
+                "blank_selector_match",
+                "CSS 选择器模式要求非空 match"
+            )),
+            manager.skippedEnabledRules()
         );
     }
 
@@ -157,7 +160,7 @@ class TransformationRuleRuntimeStoreTest {
     @Test
     void shouldReconnectWatchAfterUnexpectedDispose() {
         when(client.list(TransformationRule.class, null, null))
-                .thenReturn(Flux.just(rule("rule-a", TransformationRule.Mode.SELECTOR, true, "main")));
+            .thenReturn(Flux.just(rule("rule-a", TransformationRule.Mode.SELECTOR, true, "main")));
         AtomicInteger watchCount = new AtomicInteger();
         org.mockito.Mockito.doAnswer(invocation -> {
             watchCount.incrementAndGet();
@@ -182,19 +185,19 @@ class TransformationRuleRuntimeStoreTest {
         when(client.list(TransformationRule.class, null, null)).thenAnswer(invocation -> {
             int round = fetchCount.incrementAndGet();
             return round == 1
-                    ? Flux.error(new IllegalStateException("temporary failure"))
-                    : Flux.just(rule("rule-a", TransformationRule.Mode.SELECTOR, true, "main"));
+                ? Flux.error(new IllegalStateException("temporary failure"))
+                : Flux.just(rule("rule-a", TransformationRule.Mode.SELECTOR, true, "main"));
         });
 
         manager.startWatching();
 
         waitUntil(() -> manager.listActiveByMode(TransformationRule.Mode.SELECTOR)
-                .collectList()
-                .block()
-                .stream()
-                .map(RuntimeTransformationRule::resourceName)
-                .toList()
-                .equals(List.of("rule-a")));
+            .collectList()
+            .block()
+            .stream()
+            .map(RuntimeTransformationRule::resourceName)
+            .toList()
+            .equals(List.of("rule-a")));
 
         assertTrue(fetchCount.get() >= 2);
     }
@@ -232,7 +235,8 @@ class TransformationRuleRuntimeStoreTest {
         manager.stopWatching();
         manager.stopWatching();
 
-        assertFalse(manager.listActiveByMode(TransformationRule.Mode.SELECTOR).hasElements().block());
+        assertFalse(
+            manager.listActiveByMode(TransformationRule.Mode.SELECTOR).hasElements().block());
     }
 
     // why: 运行时顺序仍是同一执行阶段内的显式契约；
@@ -245,20 +249,21 @@ class TransformationRuleRuntimeStoreTest {
         TransformationRule highA = rule("rule-a", TransformationRule.Mode.SELECTOR, true, "main");
         highA.setName("Alpha");
         highA.setRuntimeOrder(0);
-        TransformationRule highFallback = rule("rule-b", TransformationRule.Mode.SELECTOR, true, "main");
+        TransformationRule highFallback =
+            rule("rule-b", TransformationRule.Mode.SELECTOR, true, "main");
         highFallback.setRuntimeOrder(0);
         TransformationRule low = rule("rule-low", TransformationRule.Mode.SELECTOR, true, "main");
         low.setName("Later");
         low.setRuntimeOrder(2147483645);
 
         TransformationRuleRuntimeStore.RuleSnapshot snapshot =
-                manager.buildSnapshot(List.of(low, highZ, highFallback, highA));
+            manager.buildSnapshot(List.of(low, highZ, highFallback, highA));
 
         assertEquals(
-                List.of("rule-a", "rule-b", "rule-z", "rule-low"),
-                snapshot.activeRules(TransformationRule.Mode.SELECTOR).stream()
-                        .map(RuntimeTransformationRule::resourceName)
-                        .toList()
+            List.of("rule-a", "rule-b", "rule-z", "rule-low"),
+            snapshot.activeRules(TransformationRule.Mode.SELECTOR).stream()
+                .map(RuntimeTransformationRule::resourceName)
+                .toList()
         );
     }
 
@@ -278,11 +283,13 @@ class TransformationRuleRuntimeStoreTest {
         assertTrue(condition.getAsBoolean(), "Condition was not satisfied in time");
     }
 
-    private TransformationRule rule(String id, TransformationRule.Mode mode, boolean enabled, String match) {
+    private TransformationRule rule(String id, TransformationRule.Mode mode, boolean enabled,
+        String match) {
         return namedRule(id, "", mode, enabled, match);
     }
 
-    private TransformationRule namedRule(String id, String name, TransformationRule.Mode mode, boolean enabled, String match) {
+    private TransformationRule namedRule(String id, String name, TransformationRule.Mode mode,
+        boolean enabled, String match) {
         TransformationRule rule = new TransformationRule();
         Metadata metadata = new Metadata();
         metadata.setName(id);

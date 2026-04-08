@@ -1,9 +1,6 @@
 package top.howiehz.halo.transformer;
 
-import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
-import top.howiehz.halo.transformer.scheme.TransformationSnippet;
-import top.howiehz.halo.transformer.scheme.TransformationRule;
-import top.howiehz.halo.transformer.scheme.ResourceOrder;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import run.halo.app.extension.Extension;
@@ -11,8 +8,10 @@ import run.halo.app.extension.GroupVersionKind;
 import run.halo.app.extension.SchemeManager;
 import run.halo.app.extension.controller.Controller;
 import run.halo.app.plugin.BasePlugin;
-
-import java.util.List;
+import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
+import top.howiehz.halo.transformer.scheme.ResourceOrder;
+import top.howiehz.halo.transformer.scheme.TransformationRule;
+import top.howiehz.halo.transformer.scheme.TransformationSnippet;
 
 /**
  * @author HowieHz
@@ -69,10 +68,11 @@ public class HaloTransformerPlugin extends BasePlugin {
 
     /**
      * why: Halo may call stop() while rolling back a failed start();
-     * at that point later schemes might not have been registered yet, so cleanup must be idempotent.
+     * at that point later schemes might not have been registered yet, so cleanup must be
+     * idempotent.
      */
     private void unregisterSchemeIfPresent(Class<? extends Extension> extensionType) {
         schemeManager.fetch(GroupVersionKind.fromExtension(extensionType))
-                .ifPresent(schemeManager::unregister);
+            .ifPresent(schemeManager::unregister);
     }
 }

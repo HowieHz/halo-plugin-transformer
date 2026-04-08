@@ -1,17 +1,16 @@
 package top.howiehz.halo.transformer.scheme;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import run.halo.app.extension.AbstractExtension;
 import run.halo.app.extension.GVK;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 @Data
 @EqualsAndHashCode(callSuper = true)
 @GVK(kind = "ResourceOrder", group = "transformer.howiehz.top", version = "v1alpha1",
-        singular = "resourceOrder", plural = "resourceOrders")
+    singular = "resourceOrder", plural = "resourceOrders")
 public class ResourceOrder extends AbstractExtension {
     /**
      * why: 排序映射单独存放，避免左侧列表拖拽继续污染代码片段 / 转换规则本体；
