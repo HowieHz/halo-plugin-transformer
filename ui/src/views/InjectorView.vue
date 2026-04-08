@@ -1,6 +1,12 @@
 <script lang="ts" setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { onBeforeRouteUpdate, useRoute, useRouter, type LocationQueryRaw } from 'vue-router'
+import {
+  onBeforeRouteLeave,
+  onBeforeRouteUpdate,
+  useRoute,
+  useRouter,
+  type LocationQueryRaw,
+} from 'vue-router'
 import {
   IconPlug,
   Toast,
@@ -43,6 +49,7 @@ import BulkImportOptionsModal from './components/BulkImportOptionsModal.vue'
 import BulkImportResultModal from './components/BulkImportResultModal.vue'
 import type { CodeSnippetEditorDraft, InjectionRuleEditorDraft } from '@/types'
 import { useDragAutoScroll } from './composables/useDragAutoScroll'
+import { useLeaveConfirmation } from './composables/useLeaveConfirmation'
 import {
   buildInjectorRouteQuery,
   isSameInjectorRouteState,
@@ -145,9 +152,6 @@ const canBulkDisable = computed(() => selectedBulkResources.value.some((item) =>
 
 onMounted(fetchAll)
 
-const leaveConfirmVisible = ref(false)
-const leaveConfirmCanSave = ref(false)
-const pendingLeaveAction = ref<null | (() => void | Promise<void>)>(null)
 const postCreatePrompt = ref<null | { tab: ActiveTab; id: string }>(null)
 
 function handleLeftPaneDragOver(event: DragEvent) {
@@ -264,13 +268,29 @@ onBeforeRouteUpdate((to) => {
     return true
   }
 
-  pendingLeaveAction.value = async () => {
+  requestEditorLeave(async () => {
     await router.push({
       query: buildInjectorRouteQuery(to.query, nextState),
     })
+  })
+  return false
+})
+
+/**
+ * why: 只拦住页内 query 变化还不够；如果整页导航能直接离开，
+ * 草稿一样会静默丢失，因此 route leave 也必须复用同一套离开确认。
+ */
+onBeforeRouteLeave((to) => {
+  if (syncingQuery.value || !queryStateHydrated.value) {
+    return true
   }
-  leaveConfirmCanSave.value = !currentValidationError()
-  leaveConfirmVisible.value = true
+  if (!hasUnsavedChanges()) {
+    return true
+  }
+
+  requestEditorLeave(async () => {
+    await router.push(to)
+  })
   return false
 })
 
@@ -354,40 +374,11 @@ function discardCurrentChanges() {
   discardRuleEdit()
 }
 
-function closeLeaveConfirm() {
-  leaveConfirmVisible.value = false
-  leaveConfirmCanSave.value = false
-  pendingLeaveAction.value = null
-}
-
 function closePostCreatePrompt() {
   postCreatePrompt.value = null
 }
 
-async function runPendingLeaveAction() {
-  const action = pendingLeaveAction.value
-  closeLeaveConfirm()
-  if (!action) return
-  await action()
-}
-
-function requestEditorLeave(action: () => void | Promise<void>) {
-  if (!hasUnsavedChanges()) {
-    void action()
-    return
-  }
-
-  pendingLeaveAction.value = action
-  leaveConfirmCanSave.value = !currentValidationError()
-  leaveConfirmVisible.value = true
-}
-
-async function confirmDiscardAndLeave() {
-  discardCurrentChanges()
-  await runPendingLeaveAction()
-}
-
-async function confirmSaveAndLeave() {
+async function saveCurrentChanges() {
   let saved = false
   if (showSnippetModal.value) {
     const payload = snippetFormRef.value?.getSubmitPayload()
@@ -405,10 +396,24 @@ async function confirmSaveAndLeave() {
     saved = activeTab.value === 'snippets' ? await saveSnippet() : await saveRule()
   }
   if (!saved) {
-    return
+    return false
   }
-  await runPendingLeaveAction()
+  return true
 }
+
+const {
+  leaveConfirmVisible,
+  leaveConfirmCanSave,
+  requestLeave: requestEditorLeave,
+  closeLeaveConfirm,
+  confirmDiscardAndLeave,
+  confirmSaveAndLeave,
+} = useLeaveConfirmation({
+  hasUnsavedChanges,
+  hasValidationError: () => !!currentValidationError(),
+  discardChanges: discardCurrentChanges,
+  saveChanges: saveCurrentChanges,
+})
 
 function resetCreateForm(tab: ActiveTab) {
   if (tab === 'snippets') {
