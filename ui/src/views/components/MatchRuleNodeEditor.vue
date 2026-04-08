@@ -289,11 +289,11 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
   >
     <div
       v-if="isDropBefore"
-      class=":uno: pointer-events-none absolute left-3 right-3 top-0 h-0.5 rounded-full bg-primary"
+      class=":uno: pointer-events-none absolute z-10 left-3 right-3 -top-1 h-0.5 rounded-full bg-primary"
     />
     <div
       v-if="isDropAfter"
-      class=":uno: pointer-events-none absolute left-3 right-3 bottom-0 h-0.5 rounded-full bg-primary"
+      class=":uno: pointer-events-none absolute z-10 left-3 right-3 -bottom-1 h-0.5 rounded-full bg-primary"
     />
 
     <template v-if="isGroup">
@@ -382,17 +382,11 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
 
         <div
           v-else
-          :class="
-            isDropInside ? ':uno: border-primary/50 bg-primary/[0.03]' : ':uno: border-gray-200'
-          "
-          class=":uno: rounded-md border border-dashed px-3 py-4"
+          :class="isDropInside ? ':uno: border-primary bg-primary/[0.04]' : ':uno: border-gray-200'"
+          class=":uno: rounded-md border border-dashed px-3 py-4 transition-colors"
           @dragover="handleDragOverIntoGroup"
           @drop="handleDropIntoGroup"
-        >
-          <div v-if="isDropInside" aria-hidden="true" class=":uno: pointer-events-none px-1">
-            <div class=":uno: h-0.5 rounded-full bg-primary" />
-          </div>
-        </div>
+        />
 
         <div class=":uno: flex flex-wrap gap-2">
           <VButton size="sm" @click="addPathRule">添加匹配规则</VButton>
