@@ -25,6 +25,11 @@ import { updateSelectByWheel } from '@/views/composables/selectWheel.ts'
 import FieldUndoButton from './FieldUndoButton.vue'
 import { useFieldUndo } from '@/views/composables/useFieldUndo.ts'
 import {
+  buildRuleUndoBaselineSnapshot,
+  resolveRuleUndoFieldCurrentValue,
+  type UndoableRuleField,
+} from '@/views/composables/ruleEditorUndo.ts'
+import {
   buildRuleTransfer,
   createTransferFileDraft,
   type TransferFileDraft,
@@ -82,16 +87,6 @@ const performanceWarning = computed(() =>
   currentRule.value ? getDomRulePerformanceWarning(currentRule.value) : null,
 )
 const undo = useFieldUndo()
-type UndoableRuleField =
-  | 'name'
-  | 'description'
-  | 'mode'
-  | 'match'
-  | 'position'
-  | 'wrapMarker'
-  | 'runtimeOrder'
-  | 'matchRule'
-  | 'snippetIds'
 
 function updateDragOverlayHeights() {
   dragOverlayTopHeight.value =
@@ -166,23 +161,7 @@ watch(
     if (!currentRule.value || props.dirty) {
       return
     }
-    undo.resetBaseline({
-      name: currentRule.value.name,
-      description: currentRule.value.description,
-      mode: currentRule.value.mode,
-      match: currentRule.value.match,
-      position: {
-        position: currentRule.value.position,
-        wrapMarker: currentRule.value.wrapMarker,
-      },
-      wrapMarker: currentRule.value.wrapMarker,
-      runtimeOrder: currentRule.value.runtimeOrder,
-      matchRule: {
-        matchRule: cloneMatchRule(currentRule.value.matchRule),
-        matchRuleSource: cloneCurrentMatchRuleSource(),
-      },
-      snippetIds: props.selectedSnippetIds,
-    })
+    undo.resetBaseline(buildRuleUndoBaselineSnapshot(currentRule.value, props.selectedSnippetIds))
   },
   { immediate: true },
 )
@@ -200,21 +179,7 @@ function updateField<K extends keyof TransformationRuleEditorDraft>(
   const trackHistory = options?.trackHistory ?? true
   const next = { ...currentRule.value, [key]: value }
   if (trackHistory && key !== 'matchRule') {
-    undo.trackChange(
-      key === 'position' ? 'position' : String(key),
-      key === 'position'
-        ? {
-            position: currentRule.value.position,
-            wrapMarker: currentRule.value.wrapMarker,
-          }
-        : currentRule.value[key],
-      key === 'position'
-        ? {
-            position: next.position,
-            wrapMarker: next.wrapMarker,
-          }
-        : next[key],
-    )
+    undo.trackChange(String(key), currentRule.value[key], next[key])
   }
   pendingRule.value = next
   emit('update:rule', next)
@@ -288,31 +253,24 @@ function commitMatchDraft() {
 
 function canUndo(field: UndoableRuleField) {
   if (!currentRule.value) return false
-  return undo.isModified(field, resolveUndoFieldCurrentValue(field))
+  return undo.isModified(
+    field,
+    resolveRuleUndoFieldCurrentValue(field, currentRule.value, props.selectedSnippetIds),
+  )
 }
 
 function undoField(field: UndoableRuleField) {
   if (!currentRule.value) return
-  const previous = undo.undo(field, resolveUndoFieldCurrentValue(field))
+  const previous = undo.undo(
+    field,
+    resolveRuleUndoFieldCurrentValue(field, currentRule.value, props.selectedSnippetIds),
+  )
   if (previous === undefined) return
   applyUndoFieldState(field, previous)
 }
 
 function applyUndoFieldState(field: UndoableRuleField, value: unknown) {
   if (!currentRule.value) return
-
-  if (field === 'position') {
-    const snapshot = value as {
-      position: TransformationRuleEditorDraft['position']
-      wrapMarker: boolean
-    }
-    updateRuleSnapshot({
-      ...currentRule.value,
-      position: snapshot.position,
-      wrapMarker: snapshot.wrapMarker,
-    })
-    return
-  }
 
   if (field === 'matchRule') {
     const snapshot = value as {
@@ -336,41 +294,10 @@ function applyUndoFieldState(field: UndoableRuleField, value: unknown) {
 
   updateField(field, value as TransformationRuleEditorDraft[typeof field], { trackHistory: false })
 }
-
-function resolveUndoFieldCurrentValue(field: UndoableRuleField) {
-  if (!currentRule.value) return undefined
-  return field === 'position'
-    ? {
-        position: currentRule.value.position,
-        wrapMarker: currentRule.value.wrapMarker,
-      }
-    : field === 'matchRule'
-      ? {
-          matchRule: cloneMatchRule(currentRule.value.matchRule),
-          matchRuleSource: cloneCurrentMatchRuleSource(),
-        }
-      : field === 'snippetIds'
-        ? props.selectedSnippetIds
-        : currentRule.value[field]
-}
-
 function resetField(field: UndoableRuleField) {
   if (!currentRule.value) return
   const baseline = undo.reset(field)
   if (baseline === undefined) return
-
-  if (field === 'position') {
-    const snapshot = baseline as {
-      position: TransformationRuleEditorDraft['position']
-      wrapMarker: boolean
-    }
-    updateRuleSnapshot({
-      ...currentRule.value,
-      position: snapshot.position,
-      wrapMarker: snapshot.wrapMarker,
-    })
-    return
-  }
 
   if (field === 'matchRule') {
     const snapshot = baseline as {
@@ -673,4 +600,3 @@ onBeforeUnmount(() => {
     </form>
   </div>
 </template>
-
