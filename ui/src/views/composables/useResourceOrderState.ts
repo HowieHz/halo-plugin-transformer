@@ -43,7 +43,18 @@ export function useResourceOrderState<T extends { id: string }>(
     applyOrderSnapshot(response.data)
   }
 
+  async function restoreOrdersAfterFailedSave(previousOrders: OrderMap, previousVersion: number | null) {
+    try {
+      await reloadOrders()
+    } catch {
+      orders.value = { ...previousOrders }
+      orderVersion.value = previousVersion
+    }
+  }
+
   async function saveOrderMap(nextItems: T[]) {
+    const previousOrders = { ...orders.value }
+    const previousVersion = orderVersion.value
     const nextOrders = buildExplicitOrderMap(nextItems)
     orders.value = { ...nextOrders }
     try {
@@ -51,6 +62,7 @@ export function useResourceOrderState<T extends { id: string }>(
       applyOrderSnapshot(response.data)
       return true
     } catch (error) {
+      await restoreOrdersAfterFailedSave(previousOrders, previousVersion)
       return getErrorMessage(error, `${options.resourceLabel}顺序保存失败`)
     }
   }
