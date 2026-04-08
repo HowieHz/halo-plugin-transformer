@@ -8,6 +8,14 @@ Halo 自带的代码注入更偏向全局场景；这个插件更适合：
 - 仅在特定模板 ID 下生效
 - 仅对 CSS 选择器命中的元素做插入 / 替换 / 移除
 
+它的重点不只是“能注入”，还包括尽量把运行时成本、规则可维护性和后台编辑体验一起收紧：
+
+- 运行时规则快照由 `watch` 驱动，并带自动重连与退避重试，减少请求路径上的临时回源
+- 正则表达式会复用编译结果，避免高频请求下重复 `Pattern.compile`
+- 匹配规则会先做布尔最小化，再参与路径预筛与实际匹配，尽量减少无效判断
+- 删除代码块走 `finalizer + reconciler` 收敛链路，避免把跨资源清理堆进同步接口
+- 前后端双重校验会尽量把问题拦在写入前，而不是等到运行时才“悄悄不生效”
+
 ## 功能特性
 
 - 支持三种注入模式：
@@ -28,7 +36,11 @@ Halo 自带的代码注入更偏向全局场景；这个插件更适合：
 - 支持按规则决定是否输出 `PluginInjector start/end` 注释标记
 - 支持在可能带来额外处理开销的规则上显示性能警告
 - 支持运行期高频正则表达式复用编译结果，减少重复 `Pattern.compile`
+- 支持 watch 驱动的运行时规则快照与自动自愈，降低缓存陈旧风险
+- 支持匹配规则布尔最小化与路径预筛，减少不必要的匹配和 HTML 改写
 - 支持前后端双重校验，避免非法规则落库后才在运行时“悄悄不生效”
+
+> 构建、贡献、spec 生成链路、架构约定与平台边界说明，请见 `CONTRIBUTING.md`。
 
 ![preview](assets/images/preview.png)
 
@@ -304,89 +316,12 @@ Halo 自带的代码注入更偏向全局场景；这个插件更适合：
 
 这样做的目的，是既让编辑体验更直接，也避免非法规则落库，最后在运行时只表现为“没有生效”。
 
-### Match-rule contract checklist
-
-为了避免“README 很长，但 contract fixture 很薄”，匹配规则现在额外拆成两层：
-
-- 共享 contract：
-    - 规范源：`specs/match-rule/contract.spec.jsonc`
-    - case 源：`specs/match-rule/contract.cases.jsonc`
-    - `match-rule` 的允许字段集合、相关错误文本模板与 schema，都从这份 spec 同步生成到前后端 helper 和导入导出 schema
-    - Java / TypeScript 会分别跑同一批 fixture，并额外校验：`shared_contract` 条目必须至少被一条 fixture 覆盖
-- 前端专属行为：
-    - 仍会写进 spec.checklist，但不会强制要求后端也共享同一语义
-    - 这类行为主要由前端单测锁住，例如模式切换确认、JSON 行高亮、导入后退到 `JSON_DRAFT` 等
-
-仓库级 contract tooling 入口：
-
-- `pnpm generate:spec-artifacts`
-    - 从仓库根的 `specs/match-rule/contract.spec.jsonc` 刷新所有 generated artifacts
-- `pnpm verify:spec-artifacts`
-    - 只校验 generated artifacts 是否与 spec 一致；CI 与本地提交前检查应优先跑这一项
-- `./gradlew verifyMatchRuleSpecArtifacts`
-    - 后端构建链路上的同义校验；避免只跑 Gradle 时跳过 spec 一致性检查
-
-当前 checklist 中，属于 **共享 contract** 的核心语义包括：
-
-- 写入期结构约束
-    - 根节点必须是 `GROUP`
-    - 每个节点都必须显式写出 `negate`
-    - `GROUP` 只能使用 `type`、`negate`、`operator`、`children`
-    - `GROUP` 必须带合法 `operator`
-    - `GROUP` 不能是空组
-    - 叶子节点不能携带 `operator` / `children`
-    - `PATH` / `TEMPLATE_ID` 只能使用各自允许字段
-    - `TEMPLATE_ID` 只支持 `REGEX`、`EXACT`
-    - 叶子节点 `value` 必须是非空字符串
-    - `REGEX` 必须能正常编译
-- 运行时路径预筛
-    - `AND` 下带路径条件时，模板条件只是附加收窄
-    - `OR` 混合路径分支与模板分支时，不能安全做路径预筛
-    - 否定模板条件不能安全做路径预筛
-    - 只有路径分支的 `OR` 仍可做路径预筛
-    - 只有模板分支的 `AND` 不能做路径预筛
-
-当前 checklist 中，属于 **前端专属行为** 的典型语义包括：
-
-- 简单模式会同时展示多个可定位错误
-- 高级模式会把 JSON 错误尽量映射到具体行
-- 坏掉的 JSON 切回简单模式时会被规则树覆盖
-- 性能提示必须基于当前 `matchRuleSource`
-- 导入时，对象形但字段错误的规则会退到 `JSON_DRAFT`；根节点不是对象时则直接拒绝
-
-### JSON Schema
-
-- 仓库内提供了一份统一 schema：`ui/public/injector.schema.json`
-- 这份 schema 现在只负责 transfer envelope：
-    - 顶层的 `version`
-    - `resourceType`
-    - `data` 外壳
-- `match-rule` 领域结构会从 `specs/match-rule/contract.spec.jsonc` 生成到 `ui/public/generated/match-rule.schema.json`
-- `ui/public/injector.schema.json` 会通过 `$ref` 引用这份生成的 `match-rule` schema，而不是再在 envelope 里手写一遍规则树结构
-- 它会根据顶层的 `version` 和 `resourceType`，自动切换到对应的数据结构
-- 当前 `version = 1` 时支持：
-    - `resourceType = "snippet"`
-    - `resourceType = "rule"`
-- 如果你手动编写导入内容，也可以带上 `$schema`；导出内容也会自动附带这一项
-
 ### 运行时性能
 
 - 运行时不再为“结构合法性检查”重复编译正则表达式
 - 正则表达式匹配会缓存编译结果，避免同一规则在高频请求下重复 `Pattern.compile`
 - `ANT` 风格的页面路径匹配复用统一的 `RouteMatcher`
-- 匹配规则在**运行时快照 / 分析期**会先做一轮内部布尔最小化，用更少的操作数参与路径预筛、表达式分析与实际匹配
-    - 恒等消去：`AND(true, x) -> x`
-    - 常量折叠：`AND(false, x) -> false`
-    - 补元律：`AND(x, NOT(x)) -> false`
-    - 幂等律：`AND(x, x) -> x`
-    - 双重否定消去：`NOT(NOT(x)) -> x`
-    - 吸收律：`AND(x, OR(x, y)) -> x`
-    - 反向分配律（因式分解）：`OR(AND(x, y), AND(x, z)) -> AND(x, OR(y, z))`
-    - 德摩根变换：`OR(NOT(x), NOT(y)) -> NOT(AND(x, y))`
-    - 德摩根变换：`AND(NOT(x), NOT(y)) -> NOT(OR(x, y))`
-- 这里选择的是“收缩表达式 / 减少操作数”的应用方向，而不是把表达式继续展开
-- 这批最小化规则也已经进入 `specs/match-rule/contract.spec.jsonc` 与 `specs/match-rule/contract.cases.jsonc`，前后端 contract test 会直接复用同一批样例锁住结果
-- 这轮最小化只服务于运行期与分析期，不会偷偷改写控制台里的编辑草稿或持久化存储的原始规则树
+- 匹配规则会先做布尔最小化，再参与路径预筛、表达式分析与实际匹配
 - 规则运行时快照由 Halo `watch` 驱动，并带自动重连与退避重试；启动期或连接短暂抖动后会自动自愈
 - 若 `CSS 选择器` 规则还不能先按页面路径缩小范围，插件仍会继续工作，但会带来一些额外处理开销
 
@@ -399,92 +334,6 @@ Halo 自带的代码注入更偏向全局场景；这个插件更适合：
 - 如果映射里还残留已删除资源的旧 id，后端会在下一次保存排序时自动清理掉
 - 规则、代码块、排序配置的写接口都会复用 Halo 自带的 `metadata.version` 做乐观并发控制
 - 如果别的管理员已经先保存了更新，当前这次保存会返回冲突，前端提示刷新后重试，而不是静默覆盖对方修改
-
-## 架构约定
-
-本插件优先复用 Halo CMS 的原生资源模型与控制面能力，而不是在业务层重复发明平台机制。
-
-- 并发写入优先使用 `metadata.version` 做乐观并发控制，而不是退回 silent last-write-wins
-- 涉及“删除前先清理引用”的资源生命周期，优先使用 `metadata.deletionTimestamp + finalizers`
-- 凡是异步收敛、失败可重试、事件驱动刷新这类后台流程，优先使用 `controller / reconciler / watch`
-- 运行时缓存优先做成 watch 驱动的内存快照，而不是请求路径上的 TTL 回源
-- 控制台读接口优先返回显式 projection / read model，而不是把存储实体直接暴露给 UI
-- 资源查询遵循平台模型：能 `fetch(name)` 就不用 `list + filter(name)`；能 `fieldQuery` 就不做全量扫描
-- `annotations / labels` 只用于轻量元信息、兼容标记与索引辅助，不承载结构化业务状态，也不替代独立资源建模
-- 业务语义校验仍由插件自己负责，例如 `unknownFields`、match-rule contract、导入导出约束；这些属于插件领域规则，不属于 Halo 通用扩展层职责
-
-若平台当前不提供对应索引、patch 或事务能力，就显式承认这个边界，并在单一 authoritative side 上保持最小、清晰、可恢复的写模型，而不是在前端或 endpoint 中堆叠补偿式分支逻辑。
-
-## 已知问题（PE）
-
-下面这些问题更接近 Halo 当前平台能力边界，或继续优化的收益/复杂度比暂时不划算，因此作为已知问题显式记录。
-
-### 删除代码块时，反向引用查询仍需全表扫规则
-
-- 当前删除协调器需要找出所有引用某个代码块的 `InjectionRule`
-- 关系真源已经收敛到 `InjectionRule.snippetIds`
-- 但 Halo 当前还没有直接提供“集合成员反向索引 / membership fieldQuery”这类查询能力
-- 因此这一步仍然需要基于规则列表做过滤，而不是按 `snippetId` 直接反查
-
-这不是当前插件建模错误，而是平台查询能力的已知边界。
-
-如果 Halo 后续支持：
-
-- 针对集合成员的反向索引查询
-- 更细粒度的 `fieldQuery`
-
-那么这里就应该切换到平台原生索引能力，而不是继续保留全表扫描。
-
-### 删除代码块是最终一致，不是跨资源原子事务
-
-- 删除代码块当前走 Halo `finalizer + reconciler` 生命周期
-- 删除请求本身只负责把 `CodeSnippet` 送入 deleting 状态
-- 后端协调器随后摘掉所有引用它的 `InjectionRule.snippetIds`
-- 全部清理完成后，才移除 finalizer，交还 Halo 完成真正删除
-
-这条链路已经是当前阶段的推荐实现，但它属于**最终一致**，不是跨多个 extension 资源的一笔原子事务。
-
-原因不是插件继续“没收口”，而是 Halo 当前并没有直接提供：
-
-- 跨多个 extension 资源的单事务原子提交
-- 字段级 partial update / merge patch
-
-因此这里的设计目标不是伪造事务语义，而是在 Halo 原生能力内做到“现在最好”：
-
-- 关系真源只保留在 `InjectionRule.snippetIds`
-- 删除收敛交给 `finalizer + reconciler`
-- 每次都基于最新资源读取后再更新
-- 失败时保留 finalizer，让平台后续继续重试
-
-如果 Halo 未来提供更细粒度 patch 或更强资源事务能力，这条链路再进一步收紧到“更小 patch 面 / 更强一致”会更自然。
-
-## 开发环境
-
-- Java 21+
-- Node.js 18+
-- pnpm
-
-## 开发
-
-```bash
-# 构建插件
-./gradlew build
-
-# 前端开发
-cd ui
-pnpm install
-pnpm dev
-```
-
-构建完成后，可在 `build/libs` 目录找到插件 jar。
-
-前端开发时，资源数据流按三层区分：
-
-- `ReadModel`：接口读取结果，只用于列表与已保存快照
-- `EditorDraft`：编辑器草稿，只用于右侧表单与导入态
-- `WritePayload`：提交给后端的最小持久化字段集合
-
-这样可以避免把 `id`、临时编辑状态、JSON 草稿等前端态字段混进写接口。
 
 ## 附录：常见模板 ID
 
@@ -520,7 +369,3 @@ pnpm dev
 > - 上面这些字符串本身就是要填写的模板 ID。
 > - 第三方插件是否能用于“模板 ID 匹配”，取决于它有没有正确提供 `_templateId`。
 > - 有些插件页面即使能访问，也可能拿不到模板 ID，这种情况下就无法用“模板 ID 匹配”限制范围。
-
-## 许可证
-
-[GPL-3.0](./LICENSE) © Erzbir
