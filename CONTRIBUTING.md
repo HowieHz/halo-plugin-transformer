@@ -33,6 +33,18 @@ pnpm dev
     - 面向贡献者
     - 说明构建链路、spec 生成链路、架构约定、平台边界与已知问题
 
+## GitHub 自动化
+
+- `.github/workflows/ci.yaml` / `.github/workflows/cd.yaml`
+    - 继续复用 Halo 官方 reusable workflows
+    - 不为了“像别的仓库”而重复发明同一套构建发布编排
+- `.github/dependabot.yml`
+    - 负责 Gradle / UI npm / GitHub Actions 的依赖更新
+- `.github/workflows/update-toolchain-versions.yml`
+    - 负责把 `package.json`、`ui/package.json` 与 workflow 里的 Node / pnpm 版本保持同步
+- `.github/scripts/update-toolchain-versions.js`
+    - 参考 `halo-plugin-extra-api` 的治理思路，但只管理本仓库真实存在的文件集合
+
 ## 前端数据流约定
 
 前端资源状态按三层区分：
