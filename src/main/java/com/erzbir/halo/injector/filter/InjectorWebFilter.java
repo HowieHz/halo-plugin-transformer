@@ -165,6 +165,15 @@ public class InjectorWebFilter implements AdditionalWebFilter {
         return Jsoup.parse(html);
     }
 
+    /**
+     * why: 下游响应体必须持有自己可用的 buffer；
+     * 即使这次无需注入，也不能把已 join 并即将 release 的原始 `DataBuffer` 继续透传出去。
+     */
+    DataBuffer createHtmlResponseBuffer(String html, ServerHttpResponse response) {
+        byte[] resultBytes = html.getBytes(StandardCharsets.UTF_8);
+        return response.bufferFactory().wrap(resultBytes);
+    }
+
     @Override
     public int getOrder() {
         return LOWEST_PRECEDENCE - 100;
@@ -199,15 +208,12 @@ public class InjectorWebFilter implements AdditionalWebFilter {
             var processedBody = DataBufferUtils.join(flattenedBody).flatMap(dataBuffer -> {
                 try {
                     String html = dataBuffer.toString(StandardCharsets.UTF_8);
-                    if (html.isBlank()) {
-                        return Mono.just(dataBuffer);
-                    }
                     String templateId = ContextUtil.getTemplateId(exchange);
+                    if (html.isBlank()) {
+                        return Mono.just(createHtmlResponseBuffer(html, response));
+                    }
                     return inject(html, path, templateId).onErrorResume(e -> Mono.just(html))
-                            .map(processedHtml -> {
-                                byte[] resultBytes = processedHtml.getBytes(StandardCharsets.UTF_8);
-                                return response.bufferFactory().wrap(resultBytes);
-                            });
+                            .map(processedHtml -> createHtmlResponseBuffer(processedHtml, response));
                 } finally {
                     DataBufferUtils.release(dataBuffer);
                 }

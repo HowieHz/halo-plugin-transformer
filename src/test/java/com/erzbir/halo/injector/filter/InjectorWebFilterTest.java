@@ -5,10 +5,13 @@ import com.erzbir.halo.injector.core.MatchRule;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import com.erzbir.halo.injector.util.InjectHelper;
 import org.jsoup.nodes.Document;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.io.buffer.DefaultDataBufferFactory;
+import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import run.halo.app.extension.Metadata;
@@ -26,11 +29,17 @@ class InjectorWebFilterTest {
     @Mock
     private InjectHelper injectHelper;
 
+    private CountingInjectorWebFilter filter;
+
+    @BeforeEach
+    void setUp() {
+        filter = new CountingInjectorWebFilter(injectHelper, new SelectorInjector());
+    }
+
     // why: 同一页同时命中多条 SELECTOR 规则时，应共享一次代码块解析和同一份 Jsoup Document，
     // 避免每条规则都重复 parse / serialize HTML，放大 DOM 注入链路开销。
     @Test
     void shouldResolveRuleCodesOnceAndParseHtmlOnlyOnceWhenApplyingMultipleDomRules() {
-        CountingInjectorWebFilter filter = new CountingInjectorWebFilter(injectHelper, new SelectorInjector());
         InjectionRule selectorRule = domRule("rule-selector", InjectionRule.Mode.SELECTOR, ".slot");
         InjectionRule secondSelectorRule = domRule("rule-selector-2", InjectionRule.Mode.SELECTOR, "main");
 
@@ -56,7 +65,6 @@ class InjectorWebFilterTest {
     // why: 没有任何 DOM 规则命中时，应直接返回原始 HTML，避免无意义的 Jsoup.parse。
     @Test
     void shouldSkipParsingWhenNoDomRulesMatch() {
-        CountingInjectorWebFilter filter = new CountingInjectorWebFilter(injectHelper, new SelectorInjector());
         String html = "<html><body><main id='root'>A</main></body></html>";
 
         when(injectHelper.getMatchedRules("/demo", "post", InjectionRule.Mode.SELECTOR))
@@ -66,6 +74,17 @@ class InjectorWebFilterTest {
 
         assertEquals(0, filter.parseCount.get());
         assertEquals(html, result);
+    }
+
+    // why: 空白 HTML 响应即使无需注入，也必须拷贝成新的响应 buffer；
+    // 否则 writeAndFlushWith 会把已 release 的 join buffer 继续往下游写出。
+    @Test
+    void shouldCreateFreshResponseBufferForBlankHtml() {
+        MockServerHttpResponse response = new MockServerHttpResponse(new DefaultDataBufferFactory());
+
+        var buffer = filter.createHtmlResponseBuffer("   ", response);
+
+        assertEquals("   ", buffer.toString(java.nio.charset.StandardCharsets.UTF_8));
     }
 
     private InjectionRule domRule(String id, InjectionRule.Mode mode, String match) {
