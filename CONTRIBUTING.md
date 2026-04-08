@@ -287,8 +287,9 @@ pnpm dev
 - 并发写入优先使用 `metadata.version` 做乐观并发控制，而不是退回 silent last-write-wins
 - 涉及“删除前先清理引用”的资源生命周期，优先使用 `metadata.deletionTimestamp + finalizers`
 - 凡是异步收敛、失败可重试、事件驱动刷新这类后台流程，优先使用 `controller / reconciler / watch`
-- 运行时缓存优先做成 watch 驱动的内存快照，而不是请求路径上的 TTL 回源
+- 运行时缓存优先做成“实时规则快照”，由 Halo `watch` 驱动的内存视图来维护，而不是请求路径上的 TTL 回源
 - 控制台读接口优先返回显式 projection / read model，而不是把存储实体直接暴露给 UI
+- 一旦资源进入 deleting 状态，控制台读接口、排序读模型和运行时装载都不应再把它当成“可见资源”；否则 `finalizer` 的最终一致删除会在 UI 上表现成滞后一拍
 - 运行时执行链路优先消费独立 runtime projection，而不是把 extension 存储实体继续透传到 filter / processor
 - 资源查询遵循平台模型：能 `fetch(name)` 就不用 `list + filter(name)`；能 `fieldQuery` 就不做全量扫描
 - `annotations / labels` 只用于轻量元信息、兼容标记与索引辅助，不承载结构化业务状态，也不替代独立资源建模
@@ -301,10 +302,11 @@ pnpm dev
 - 匹配规则在运行时会先做一轮布尔最小化，再参与路径预筛、表达式分析与实际匹配
     - 目标是尽量收缩表达式、减少操作数，而不是把表达式继续展开
     - 这样可以让路径预筛更早收窄范围，也减少真正进入 HTML 改写前的无效判断
-- 规则运行时快照由 Halo `watch` 驱动，并带自动重连与退避重试；启动期或连接短暂抖动后会自动自愈
+- 实时规则快照由 Halo `watch` 驱动，并带自动重连与退避重试；启动期或连接短暂抖动后会自动自愈
 - 若 `CSS 选择器` 规则还不能先按页面路径缩小范围，插件仍会继续工作，但会带来额外处理开销
 - 删除代码片段走 Halo `finalizer` 生命周期：先进入 deleting 状态，再由后端协调器摘掉规则引用，最后完成真正删除
 - 进入 deleting 的代码片段会被视为“当前无法关联”，运行时也不会再继续加载它
+- 同时，控制台列表读模型和排序清洗也必须过滤 deleting 资源；这不是 UI 小修补，而是 `finalizer` 生命周期在读侧的一致性约束
 
 ## 排序与并发语义
 
