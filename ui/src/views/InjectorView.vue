@@ -50,6 +50,7 @@ import BulkImportResultModal from './components/BulkImportResultModal.vue'
 import { useDragAutoScroll } from './composables/useDragAutoScroll'
 import { useLeaveConfirmation } from './composables/useLeaveConfirmation'
 import {
+  applyInjectorRouteSelection,
   buildInjectorRouteQuery,
   isSameInjectorRouteState,
   parseInjectorRouteState,
@@ -198,10 +199,18 @@ function applyRouteState(nextState: InjectorRouteState) {
   showRuleModal.value =
     nextState.viewMode !== 'bulk' && nextState.tab === 'rules' && nextState.action === 'create'
 
+  const nextSelection = applyInjectorRouteSelection(
+    {
+      snippets: selectedSnippetId.value,
+      rules: selectedRuleId.value,
+    },
+    nextState,
+  )
+  selectedSnippetId.value = nextSelection.snippets
+  selectedRuleId.value = nextSelection.rules
+
   if (nextState.viewMode === 'bulk') {
     bulkSelectionState.enterBulkMode()
-    selectedSnippetId.value = null
-    selectedRuleId.value = null
     queryStateHydrated.value = true
     return
   }
@@ -209,19 +218,8 @@ function applyRouteState(nextState: InjectorRouteState) {
   bulkSelectionState.exitBulkMode()
 
   if (nextState.action === 'create') {
-    if (nextState.tab === 'snippets') {
-      selectedSnippetId.value = null
-    } else {
-      selectedRuleId.value = null
-    }
     queryStateHydrated.value = true
     return
-  }
-
-  if (nextState.tab === 'snippets') {
-    selectedSnippetId.value = nextState.selectedId
-  } else {
-    selectedRuleId.value = nextState.selectedId
   }
   queryStateHydrated.value = true
 }

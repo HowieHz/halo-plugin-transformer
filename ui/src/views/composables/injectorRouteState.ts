@@ -11,6 +11,11 @@ export interface InjectorRouteState {
   viewMode: InjectorRouteViewMode
 }
 
+export interface InjectorRememberedSelection {
+  snippets: string | null
+  rules: string | null
+}
+
 /**
  * why: `tab / id / action / mode` 组合起来才真正描述 Injector 当前页面语义；
  * 把它们收成单一 route-state，才能避免 URL、局部 ref、批量模式之间再出现隐式漂移。
@@ -72,6 +77,27 @@ export function isSameInjectorRouteState(
     left.action === right.action &&
     left.viewMode === right.viewMode
   )
+}
+
+/**
+ * why: route 只表达“当前 tab 想进入什么页面语义”，
+ * 不应该顺手改掉另一个 tab 的 remembered selection；否则 URL intent 会越权覆盖本地记忆态。
+ */
+export function applyInjectorRouteSelection(
+  currentSelection: InjectorRememberedSelection,
+  state: InjectorRouteState,
+): InjectorRememberedSelection {
+  if (state.viewMode === 'bulk' || state.action === 'create') {
+    return {
+      ...currentSelection,
+      [state.tab]: null,
+    }
+  }
+
+  return {
+    ...currentSelection,
+    [state.tab]: state.selectedId,
+  }
 }
 
 function normalizeInjectorRouteTab(tab: unknown): ActiveTab {

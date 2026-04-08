@@ -57,6 +57,7 @@ pnpm dev
 - 当前 tab 只允许存在一份活动 `EditorDraft`
 - `tab -> selectedId` 可以按标签页分别记忆，方便路由恢复与面板跳转
 - 但未保存草稿不会在两个 tab 后面各藏一份；切换时总是重新 hydrate 当前 tab 的活动会话，避免共享一个 `dirty` 标记却同时维护两份隐式草稿
+- route intent 只改当前 tab 的页面语义；不要让 `mode=bulk`、`action=create` 这类 URL 状态顺手清掉另一个 tab 的 remembered selection
 
 ## Match-rule specs
 

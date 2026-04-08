@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  applyInjectorRouteSelection,
   buildInjectorRouteQuery,
   isSameInjectorRouteState,
   parseInjectorRouteState,
@@ -107,5 +108,45 @@ describe('injectorRouteState', () => {
         },
       ),
     ).toBe(false)
+  })
+
+  // why: URL intent 只描述当前 tab 的目标页面；
+  // 切到 bulk/create 时不能把另一个 tab 的 remembered selection 一起抹掉，否则会出现隐式状态丢失。
+  it('only rewrites the active tab selection when applying route intent', () => {
+    expect(
+      applyInjectorRouteSelection(
+        {
+          snippets: 'snippet-a',
+          rules: 'rule-a',
+        },
+        {
+          tab: 'snippets',
+          action: null,
+          viewMode: 'bulk',
+          selectedId: null,
+        },
+      ),
+    ).toEqual({
+      snippets: null,
+      rules: 'rule-a',
+    })
+
+    expect(
+      applyInjectorRouteSelection(
+        {
+          snippets: 'snippet-a',
+          rules: 'rule-a',
+        },
+        {
+          tab: 'rules',
+          action: 'create',
+          viewMode: 'single',
+          selectedId: null,
+        },
+      ),
+    ).toEqual({
+      snippets: 'snippet-a',
+      rules: null,
+    })
   })
 })
