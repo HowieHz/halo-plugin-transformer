@@ -1,4 +1,4 @@
-<script lang="ts" setup>
+﻿<script lang="ts" setup>
 import { VButton, VModal, VSpace } from '@halo-dev/components'
 import { IMPORT_SOURCE_ACTIONS, type ImportSourceAction } from './importSourceActions'
 
@@ -27,10 +27,10 @@ function emitAction(action: ImportSourceAction) {
 </script>
 
 <template>
-  <VModal title="导入" :width="520" @close="emit('close')">
+  <VModal :title="`导入${resourceLabel}`" :width="520" @close="emit('close')">
     <div class=":uno: space-y-3">
       <p class=":uno: text-sm leading-6 text-gray-700">
-        你可以直接读取当前剪贴板，或从本地 .json 文件导入。
+        你可以直接读取当前剪贴板，或从本地 <code>.json</code> 文件导入{{ resourceLabel }}。
       </p>
     </div>
 
