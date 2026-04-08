@@ -2,28 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { useFieldUndo } from '../useFieldUndo'
 
 describe('useFieldUndo', () => {
-  // why: Ctrl/Cmd+Z 走的是“最近一次字段操作”语义；
-  // 这里锁住跨字段时间线，避免后续又退回成“每个字段各撤各的”。
-  it('undoes the latest tracked field change across fields', () => {
-    const undo = useFieldUndo()
-    undo.resetBaseline({
-      name: 'rule-a',
-      description: 'first',
-    })
-
-    undo.trackChange('name', 'rule-a', 'rule-b')
-    undo.trackChange('description', 'first', 'second')
-
-    const latest = undo.undoLatest((field) => (field === 'name' ? 'rule-b' : 'second'))
-
-    expect(latest).toEqual({
-      field: 'description',
-      value: 'first',
-    })
-  })
-
-  // why: 同一字段连续修改后，最近撤销必须逐步回退，而不是直接跳回 baseline。
-  it('keeps per-field step-by-step undo when using the latest timeline', () => {
+  // why: 当前实现只承诺“字段级逐步撤销”，
+  // 这里锁住同一字段的回退语义，避免后续重构误伤按钮行为。
+  it('undoes one field step by step', () => {
     const undo = useFieldUndo()
     undo.resetBaseline({
       name: 'rule-a',
@@ -32,62 +13,21 @@ describe('useFieldUndo', () => {
     undo.trackChange('name', 'rule-a', 'rule-b')
     undo.trackChange('name', 'rule-b', 'rule-c')
 
-    const latest = undo.undoLatest(() => 'rule-c')
-    expect(latest).toEqual({
-      field: 'name',
-      value: 'rule-b',
-    })
-
-    const previous = undo.undoLatest(() => 'rule-b')
-    expect(previous).toEqual({
-      field: 'name',
-      value: 'rule-a',
-    })
+    expect(undo.undo('name', 'rule-c')).toBe('rule-b')
+    expect(undo.undo('name', 'rule-b')).toBe('rule-a')
   })
 
-  // why: 重做必须严格按“最近一次被撤销的操作”恢复，
-  // 否则 Ctrl/Cmd+Shift+Z 会和字段级历史脱节，产生错误回放顺序。
-  it('redos the latest undone field change across fields', () => {
+  // why: 长按按钮依赖 reset() 直接回到 baseline，
+  // 这里锁住“清空字段历史并恢复初始值”的职责边界。
+  it('resets a field back to baseline', () => {
     const undo = useFieldUndo()
     undo.resetBaseline({
-      name: 'rule-a',
-      description: 'first',
+      description: 'initial',
     })
 
-    undo.trackChange('name', 'rule-a', 'rule-b')
-    undo.trackChange('description', 'first', 'second')
+    undo.trackChange('description', 'initial', 'changed')
 
-    const undoneDescription = undo.undoLatest((field) => (field === 'name' ? 'rule-b' : 'second'))
-    expect(undoneDescription).toEqual({
-      field: 'description',
-      value: 'first',
-    })
-
-    const redoneDescription = undo.redoLatest((field) => (field === 'name' ? 'rule-b' : 'first'))
-    expect(redoneDescription).toEqual({
-      field: 'description',
-      value: 'second',
-    })
-  })
-
-  // why: 一旦用户在撤销后又继续编辑，旧 redo 链就必须失效；
-  // 否则会把已经分叉的历史重新写回，破坏当前草稿。
-  it('drops redo history after a new tracked change', () => {
-    const undo = useFieldUndo()
-    undo.resetBaseline({
-      name: 'rule-a',
-    })
-
-    undo.trackChange('name', 'rule-a', 'rule-b')
-
-    const undone = undo.undoLatest(() => 'rule-b')
-    expect(undone).toEqual({
-      field: 'name',
-      value: 'rule-a',
-    })
-
-    undo.trackChange('name', 'rule-a', 'rule-c')
-
-    expect(undo.redoLatest(() => 'rule-c')).toBeUndefined()
+    expect(undo.reset('description')).toBe('initial')
+    expect(undo.undo('description', 'initial')).toBeUndefined()
   })
 })

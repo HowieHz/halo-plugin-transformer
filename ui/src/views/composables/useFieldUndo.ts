@@ -18,16 +18,10 @@ function isEqual(a: unknown, b: unknown) {
 export function useFieldUndo() {
   const baseline = ref<Record<string, unknown>>({})
   const history = ref<Record<string, unknown[]>>({})
-  const timeline = ref<string[]>([])
-  const future = ref<Record<string, unknown[]>>({})
-  const redoTimeline = ref<string[]>([])
 
   function resetBaseline(snapshot: Record<string, unknown>) {
     baseline.value = cloneValue(snapshot)
     history.value = {}
-    timeline.value = []
-    future.value = {}
-    redoTimeline.value = []
   }
 
   function trackChange(field: string, previous: unknown, next: unknown) {
@@ -44,10 +38,6 @@ export function useFieldUndo() {
         [field]: stack,
       }
     }
-
-    timeline.value = [...timeline.value, field]
-    future.value = {}
-    redoTimeline.value = []
   }
 
   function isModified(field: string, current: unknown) {
@@ -57,13 +47,7 @@ export function useFieldUndo() {
   function undo(field: string, current: unknown) {
     const stack = [...(history.value[field] ?? [])]
     if (!stack.length) {
-      const fallback = isModified(field, current) ? cloneValue(baseline.value[field]) : undefined
-      if (fallback !== undefined) {
-        pushRedoValue(field, current)
-        timeline.value = removeLatestTimelineField(field)
-        redoTimeline.value = [...redoTimeline.value, field]
-      }
-      return fallback
+      return isModified(field, current) ? cloneValue(baseline.value[field]) : undefined
     }
 
     const previous = stack.pop()
@@ -71,9 +55,6 @@ export function useFieldUndo() {
       ...history.value,
       [field]: stack,
     }
-    pushRedoValue(field, current)
-    timeline.value = removeLatestTimelineField(field)
-    redoTimeline.value = [...redoTimeline.value, field]
     return cloneValue(previous)
   }
 
@@ -82,87 +63,7 @@ export function useFieldUndo() {
       ...history.value,
       [field]: [],
     }
-    timeline.value = timeline.value.filter((entry) => entry !== field)
-    future.value = {}
-    redoTimeline.value = []
     return cloneValue(baseline.value[field])
-  }
-
-  function undoLatest(resolveCurrent: (field: string) => unknown) {
-    for (let index = timeline.value.length - 1; index >= 0; index -= 1) {
-      const field = timeline.value[index]
-      const previous = undo(field, resolveCurrent(field))
-      if (previous !== undefined) {
-        return {
-          field,
-          value: previous,
-        }
-      }
-    }
-    return undefined
-  }
-
-  function redo(field: string, current: unknown) {
-    const stack = [...(future.value[field] ?? [])]
-    if (!stack.length) {
-      return undefined
-    }
-
-    const next = stack.pop()
-    future.value = {
-      ...future.value,
-      [field]: stack,
-    }
-    history.value = {
-      ...history.value,
-      [field]: [...(history.value[field] ?? []), cloneValue(current)],
-    }
-    redoTimeline.value = removeLatestRedoTimelineField(field)
-    timeline.value = [...timeline.value, field]
-    return cloneValue(next)
-  }
-
-  function redoLatest(resolveCurrent: (field: string) => unknown) {
-    for (let index = redoTimeline.value.length - 1; index >= 0; index -= 1) {
-      const field = redoTimeline.value[index]
-      const next = redo(field, resolveCurrent(field))
-      if (next !== undefined) {
-        return {
-          field,
-          value: next,
-        }
-      }
-    }
-    return undefined
-  }
-
-  function removeLatestTimelineField(field: string) {
-    const nextTimeline = [...timeline.value]
-    for (let index = nextTimeline.length - 1; index >= 0; index -= 1) {
-      if (nextTimeline[index] === field) {
-        nextTimeline.splice(index, 1)
-        break
-      }
-    }
-    return nextTimeline
-  }
-
-  function removeLatestRedoTimelineField(field: string) {
-    const nextTimeline = [...redoTimeline.value]
-    for (let index = nextTimeline.length - 1; index >= 0; index -= 1) {
-      if (nextTimeline[index] === field) {
-        nextTimeline.splice(index, 1)
-        break
-      }
-    }
-    return nextTimeline
-  }
-
-  function pushRedoValue(field: string, current: unknown) {
-    future.value = {
-      ...future.value,
-      [field]: [...(future.value[field] ?? []), cloneValue(current)],
-    }
   }
 
   return {
@@ -170,9 +71,6 @@ export function useFieldUndo() {
     trackChange,
     isModified,
     undo,
-    undoLatest,
-    redo,
-    redoLatest,
     reset,
   }
 }

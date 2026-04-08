@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { Toast } from '@halo-dev/components'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { CodeSnippetReadModel, InjectionRuleEditorDraft, MatchRuleSource } from '@/types'
 import { MODE_OPTIONS, POSITION_OPTIONS } from '@/types'
@@ -83,9 +82,6 @@ type UndoableRuleField =
   | 'runtimeOrder'
   | 'matchRule'
   | 'snippetIds'
-
-const editorShortcutHint =
-  '快捷键：Ctrl/Cmd+Z 撤销最近一次操作；Ctrl/Cmd+Shift+Z 重做最近一次撤销；Windows / Linux 也可用 Ctrl+Y 重做'
 
 function updateDragOverlayHeights() {
   dragOverlayTopHeight.value = editorToolbarShell.value?.offsetHeight ?? 48
@@ -325,34 +321,6 @@ function applyUndoFieldState(field: UndoableRuleField, value: unknown) {
   updateField(field, value as InjectionRuleEditorDraft[typeof field], { trackHistory: false })
 }
 
-function getUndoFieldLabel(field: UndoableRuleField) {
-  switch (field) {
-    case 'name':
-      return '名称'
-    case 'description':
-      return '描述'
-    case 'mode':
-      return '注入模式'
-    case 'match':
-      return 'CSS 选择器'
-    case 'position':
-      return '插入位置'
-    case 'wrapMarker':
-      return '输出注释标记'
-    case 'runtimeOrder':
-      return '运行顺序'
-    case 'matchRule':
-      return '匹配规则'
-    case 'snippetIds':
-      return '关联代码块'
-  }
-}
-
-function notifyHistoryAction(action: 'undo' | 'redo', field: UndoableRuleField) {
-  const fieldLabel = getUndoFieldLabel(field)
-  Toast.success(action === 'undo' ? `已撤销：${fieldLabel}` : `已重做：${fieldLabel}`)
-}
-
 function resolveUndoFieldCurrentValue(field: UndoableRuleField) {
   if (!currentRule.value) return undefined
   return field === 'position'
@@ -413,34 +381,6 @@ function resetField(field: UndoableRuleField) {
   })
 }
 
-function handleEditorKeydown(event: KeyboardEvent) {
-  if (!currentRule.value || event.altKey) {
-    return
-  }
-  const key = event.key.toLowerCase()
-  const modifierPressed = event.ctrlKey || event.metaKey
-  const isUndoShortcut = modifierPressed && !event.shiftKey && key === 'z'
-  const isRedoShortcut =
-    (modifierPressed && event.shiftKey && key === 'z') ||
-    (event.ctrlKey && !event.metaKey && key === 'y')
-
-  if (!isUndoShortcut && !isRedoShortcut) {
-    return
-  }
-
-  const snapshot = (isUndoShortcut ? undo.undoLatest : undo.redoLatest)((field) =>
-    resolveUndoFieldCurrentValue(field as UndoableRuleField),
-  )
-  if (!snapshot) {
-    return
-  }
-
-  event.preventDefault()
-  const field = snapshot.field as UndoableRuleField
-  applyUndoFieldState(field, snapshot.value)
-  notifyHistoryAction(isUndoShortcut ? 'undo' : 'redo', field)
-}
-
 async function exportRule() {
   if (!currentRule.value) {
     return
@@ -480,7 +420,6 @@ onBeforeUnmount(() => {
         :id-text="currentRule?.id"
         :show-export="!!currentRule"
         :show-actions="!!currentRule"
-        :shortcut-hint="editorShortcutHint"
         :title="currentRule ? '编辑规则' : '注入规则'"
         @delete="emit('delete')"
         @export="exportRule"
@@ -501,12 +440,7 @@ onBeforeUnmount(() => {
       <span class=":uno: text-sm text-gray-500">从左侧选择规则进行编辑</span>
     </div>
 
-    <form
-      v-else
-      class=":uno: min-h-0 flex flex-1 flex-col"
-      @keydown.capture="handleEditorKeydown"
-      @submit.prevent="emit('save')"
-    >
+    <form v-else class=":uno: min-h-0 flex flex-1 flex-col" @submit.prevent="emit('save')">
       <div
         ref="editorScrollContainer"
         class=":uno: relative min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-4"
