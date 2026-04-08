@@ -72,6 +72,16 @@ const performanceWarning = computed(() =>
   currentRule.value ? getDomRulePerformanceWarning(currentRule.value) : null,
 )
 const undo = useFieldUndo()
+type UndoableRuleField =
+  | 'name'
+  | 'description'
+  | 'mode'
+  | 'match'
+  | 'position'
+  | 'wrapMarker'
+  | 'runtimeOrder'
+  | 'matchRule'
+  | 'snippetIds'
 
 function updateDragOverlayHeights() {
   dragOverlayTopHeight.value = editorToolbarShell.value?.offsetHeight ?? 48
@@ -249,68 +259,23 @@ function commitMatchDraft() {
   undo.trackChange('match', matchInitialValue.value, matchDraft.value)
 }
 
-function canUndo(
-  field:
-    | 'name'
-    | 'description'
-    | 'mode'
-    | 'match'
-    | 'position'
-    | 'wrapMarker'
-    | 'runtimeOrder'
-    | 'matchRule'
-    | 'snippetIds',
-) {
+function canUndo(field: UndoableRuleField) {
   if (!currentRule.value) return false
-  const current =
-    field === 'position'
-      ? {
-          position: currentRule.value.position,
-          wrapMarker: currentRule.value.wrapMarker,
-        }
-      : field === 'matchRule'
-        ? {
-            matchRule: cloneMatchRule(currentRule.value.matchRule),
-            matchRuleSource: cloneCurrentMatchRuleSource(),
-          }
-        : field === 'snippetIds'
-          ? props.selectedSnippetIds
-          : currentRule.value[field]
-  return undo.isModified(field, current)
+  return undo.isModified(field, resolveUndoFieldCurrentValue(field))
 }
 
-function undoField(
-  field:
-    | 'name'
-    | 'description'
-    | 'mode'
-    | 'match'
-    | 'position'
-    | 'wrapMarker'
-    | 'runtimeOrder'
-    | 'matchRule'
-    | 'snippetIds',
-) {
+function undoField(field: UndoableRuleField) {
   if (!currentRule.value) return
-  const current =
-    field === 'position'
-      ? {
-          position: currentRule.value.position,
-          wrapMarker: currentRule.value.wrapMarker,
-        }
-      : field === 'matchRule'
-        ? {
-            matchRule: cloneMatchRule(currentRule.value.matchRule),
-            matchRuleSource: cloneCurrentMatchRuleSource(),
-          }
-        : field === 'snippetIds'
-          ? props.selectedSnippetIds
-          : currentRule.value[field]
-  const previous = undo.undo(field, current)
+  const previous = undo.undo(field, resolveUndoFieldCurrentValue(field))
   if (previous === undefined) return
+  applyUndoFieldState(field, previous)
+}
+
+function applyUndoFieldState(field: UndoableRuleField, value: unknown) {
+  if (!currentRule.value) return
 
   if (field === 'position') {
-    const snapshot = previous as {
+    const snapshot = value as {
       position: InjectionRuleEditorDraft['position']
       wrapMarker: boolean
     }
@@ -323,7 +288,7 @@ function undoField(
   }
 
   if (field === 'matchRule') {
-    const snapshot = previous as {
+    const snapshot = value as {
       matchRule: InjectionRuleEditorDraft['matchRule']
       matchRuleSource?: MatchRuleSource
     }
@@ -337,26 +302,32 @@ function undoField(
   }
 
   if (field === 'snippetIds') {
-    emit('replace-snippet-ids', previous as string[])
+    emit('replace-snippet-ids', value as string[])
     emit('field-change')
     return
   }
 
-  updateField(field, previous as InjectionRuleEditorDraft[typeof field], { trackHistory: false })
+  updateField(field, value as InjectionRuleEditorDraft[typeof field], { trackHistory: false })
 }
 
-function resetField(
-  field:
-    | 'name'
-    | 'description'
-    | 'mode'
-    | 'match'
-    | 'position'
-    | 'wrapMarker'
-    | 'runtimeOrder'
-    | 'matchRule'
-    | 'snippetIds',
-) {
+function resolveUndoFieldCurrentValue(field: UndoableRuleField) {
+  if (!currentRule.value) return undefined
+  return field === 'position'
+    ? {
+        position: currentRule.value.position,
+        wrapMarker: currentRule.value.wrapMarker,
+      }
+    : field === 'matchRule'
+      ? {
+          matchRule: cloneMatchRule(currentRule.value.matchRule),
+          matchRuleSource: cloneCurrentMatchRuleSource(),
+        }
+      : field === 'snippetIds'
+        ? props.selectedSnippetIds
+        : currentRule.value[field]
+}
+
+function resetField(field: UndoableRuleField) {
   if (!currentRule.value) return
   const baseline = undo.reset(field)
   if (baseline === undefined) return
@@ -397,6 +368,26 @@ function resetField(
   updateField(field, baseline as InjectionRuleEditorDraft[typeof field], {
     trackHistory: false,
   })
+}
+
+function handleEditorKeydown(event: KeyboardEvent) {
+  if (!currentRule.value || event.altKey || event.shiftKey) {
+    return
+  }
+  const isUndoShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z'
+  if (!isUndoShortcut) {
+    return
+  }
+
+  const latest = undo.undoLatest((field) =>
+    resolveUndoFieldCurrentValue(field as UndoableRuleField),
+  )
+  if (!latest) {
+    return
+  }
+
+  event.preventDefault()
+  applyUndoFieldState(latest.field as UndoableRuleField, latest.value)
 }
 
 async function exportRule() {
@@ -456,7 +447,12 @@ onBeforeUnmount(() => {
       <span class=":uno: text-sm text-gray-500">从左侧选择规则进行编辑</span>
     </div>
 
-    <form v-else class=":uno: min-h-0 flex flex-1 flex-col" @submit.prevent="emit('save')">
+    <form
+      v-else
+      class=":uno: min-h-0 flex flex-1 flex-col"
+      @keydown.capture="handleEditorKeydown"
+      @submit.prevent="emit('save')"
+    >
       <div
         ref="editorScrollContainer"
         class=":uno: relative min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-4"

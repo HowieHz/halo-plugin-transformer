@@ -31,6 +31,7 @@ const undo = useFieldUndo()
 const exportFallback = ref<TransferFileDraft | null>(null)
 const codeDraft = ref('')
 const codeScrollTop = ref(0)
+type UndoableSnippetField = 'name' | 'description' | 'code'
 
 const codeLines = computed(() => {
   const content = codeDraft.value.replace(/\r\n/g, '\n')
@@ -78,37 +79,60 @@ function updateField<K extends keyof CodeSnippetEditorDraft>(
   emit('field-change')
 }
 
-function canUndo(field: 'name' | 'description' | 'code') {
+function canUndo(field: UndoableSnippetField) {
   if (!props.snippet) return false
-  const current =
-    field === 'name'
-      ? props.snippet.name
-      : field === 'description'
-        ? props.snippet.description
-        : props.snippet.code
-  return undo.isModified(field, current)
+  return undo.isModified(field, resolveUndoFieldCurrentValue(field))
 }
 
-function undoField(field: 'name' | 'description' | 'code') {
+function undoField(field: UndoableSnippetField) {
   if (!props.snippet) return
-  const current =
-    field === 'name'
-      ? props.snippet.name
-      : field === 'description'
-        ? props.snippet.description
-        : props.snippet.code
-  const previous = undo.undo(field, current)
+  const previous = undo.undo(field, resolveUndoFieldCurrentValue(field))
   if (previous === undefined) return
-  updateField(field, previous as CodeSnippetEditorDraft[typeof field], { trackHistory: false })
+  applyUndoFieldState(field, previous)
 }
 
-function resetField(field: 'name' | 'description' | 'code') {
+function resetField(field: UndoableSnippetField) {
   if (!props.snippet) return
   const baseline = undo.reset(field)
   if (baseline === undefined) return
   updateField(field, baseline as CodeSnippetEditorDraft[typeof field], {
     trackHistory: false,
   })
+}
+
+function resolveUndoFieldCurrentValue(field: UndoableSnippetField) {
+  if (!props.snippet) {
+    return undefined
+  }
+  return field === 'name'
+    ? props.snippet.name
+    : field === 'description'
+      ? props.snippet.description
+      : props.snippet.code
+}
+
+function applyUndoFieldState(field: UndoableSnippetField, value: unknown) {
+  updateField(field, value as CodeSnippetEditorDraft[typeof field], { trackHistory: false })
+}
+
+function handleEditorKeydown(event: KeyboardEvent) {
+  if (!props.snippet || event.altKey || event.shiftKey) {
+    return
+  }
+  const isUndoShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z'
+  if (!isUndoShortcut) {
+    return
+  }
+
+  const latest = undo.undoLatest((field) =>
+    resolveUndoFieldCurrentValue(field as UndoableSnippetField),
+  )
+  if (!latest) {
+    return
+  }
+
+  event.preventDefault()
+  applyUndoFieldState(latest.field as UndoableSnippetField, latest.value)
 }
 
 function syncCodeScroll(event: Event) {
@@ -158,7 +182,12 @@ async function exportSnippet() {
       <span class=":uno: text-sm text-gray-500">从左侧选择代码块进行编辑</span>
     </div>
 
-    <form v-else class=":uno: min-h-0 flex flex-1 flex-col" @submit.prevent="emit('save')">
+    <form
+      v-else
+      class=":uno: min-h-0 flex flex-1 flex-col"
+      @keydown.capture="handleEditorKeydown"
+      @submit.prevent="emit('save')"
+    >
       <div class=":uno: min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-4">
         <FormField label="名称">
           <template v-if="canUndo('name')" #actions>
