@@ -3,7 +3,8 @@ import { computed, onBeforeUnmount, ref, watch, type Ref } from 'vue'
 export type DragAutoScrollDirection = 'up' | 'down'
 
 interface UseDragAutoScrollOptions {
-  stepPx?: number
+  minStepPx?: number
+  maxStepPx?: number
 }
 
 /**
@@ -14,11 +15,13 @@ export function useDragAutoScroll(
   containerRef: Ref<HTMLElement | null>,
   options: UseDragAutoScrollOptions = {},
 ) {
-  const scrollStepPx = options.stepPx ?? 14
+  const minScrollStepPx = options.minStepPx ?? 6
+  const maxScrollStepPx = options.maxStepPx ?? 28
   const isDragActive = ref(false)
   const activeDirection = ref<DragAutoScrollDirection | null>(null)
   const scrollTop = ref(0)
   const maxScrollTop = ref(0)
+  const currentStepPx = ref(minScrollStepPx)
   let animationFrameId: number | null = null
 
   const canScrollUp = computed(() => scrollTop.value > 0)
@@ -37,6 +40,7 @@ export function useDragAutoScroll(
 
   function stopAutoScroll() {
     activeDirection.value = null
+    currentStepPx.value = minScrollStepPx
     if (animationFrameId !== null) {
       cancelAnimationFrame(animationFrameId)
       animationFrameId = null
@@ -51,7 +55,7 @@ export function useDragAutoScroll(
     }
 
     updateScrollBounds()
-    const nextOffset = activeDirection.value === 'up' ? -scrollStepPx : scrollStepPx
+    const nextOffset = activeDirection.value === 'up' ? -currentStepPx.value : currentStepPx.value
     const canScroll = activeDirection.value === 'up' ? canScrollUp.value : canScrollDown.value
 
     if (canScroll) {
@@ -72,6 +76,7 @@ export function useDragAutoScroll(
       event.dataTransfer.dropEffect = 'move'
     }
     activeDirection.value = direction
+    currentStepPx.value = resolveScrollStepPx(direction, event)
     updateScrollBounds()
     if (animationFrameId === null) {
       animationFrameId = requestAnimationFrame(tickAutoScroll)
@@ -99,6 +104,27 @@ export function useDragAutoScroll(
 
   function resetOnGlobalDragEnd() {
     setDragActive(false)
+  }
+
+  function resolveScrollStepPx(direction: DragAutoScrollDirection, event: DragEvent) {
+    const currentTarget = event.currentTarget
+    if (!(currentTarget instanceof HTMLElement)) {
+      return minScrollStepPx
+    }
+
+    const rect = currentTarget.getBoundingClientRect()
+    if (!rect.height) {
+      return minScrollStepPx
+    }
+
+    const pointerRatio = clamp((event.clientY - rect.top) / rect.height, 0, 1)
+    const edgeIntensity = direction === 'up' ? 1 - pointerRatio : pointerRatio
+    const easedIntensity = edgeIntensity ** 1.6
+    return minScrollStepPx + (maxScrollStepPx - minScrollStepPx) * easedIntensity
+  }
+
+  function clamp(value: number, min: number, max: number) {
+    return Math.min(max, Math.max(min, value))
   }
 
   watch(

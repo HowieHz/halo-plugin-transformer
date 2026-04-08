@@ -12,56 +12,64 @@ const emit = defineEmits<{
   (e: 'zone-dragover', direction: DragAutoScrollDirection, event: DragEvent): void
   (e: 'zone-dragleave', direction: DragAutoScrollDirection): void
 }>()
-
-function zoneHint(direction: DragAutoScrollDirection, canScroll: boolean, isHot: boolean) {
-  if (!isHot) {
-    return direction === 'up' ? '拖到这里向上滚动' : '拖到这里向下滚动'
-  }
-  if (!canScroll) {
-    return direction === 'up' ? '已经到顶部' : '已经到底部'
-  }
-  return direction === 'up' ? '继续拖住以向上滚动' : '继续拖住以向下滚动'
-}
 </script>
 
 <template>
   <template v-if="active">
     <div
       aria-hidden="true"
-      :class="[
-        activeDirection === 'up' && canScrollUp
-          ? ':uno: bg-primary/8 text-primary'
-          : activeDirection === 'up' && !canScrollUp
-            ? ':uno: bg-amber-50/95 text-amber-600'
-            : ':uno: bg-white/82 text-gray-400',
-      ]"
-      class=":uno: absolute left-3 right-3 top-2 z-20 flex h-11 items-center justify-center rounded-md border border-white/80 px-3 shadow-sm backdrop-blur-sm transition-colors"
+      class=":uno: absolute inset-x-0 top-0 z-20 h-16"
       @dragover="emit('zone-dragover', 'up', $event)"
       @dragleave="emit('zone-dragleave', 'up')"
     >
-      <div class=":uno: pointer-events-none flex items-center gap-2 text-xs font-medium">
-        <span class=":uno: text-sm leading-none">↑</span>
-        <span>{{ zoneHint('up', canScrollUp, activeDirection === 'up') }}</span>
-      </div>
+      <div
+        :class="
+          activeDirection === 'up'
+            ? canScrollUp
+              ? ':uno: opacity-100 from-primary/22 via-primary/8 to-transparent'
+              : ':uno: opacity-100 from-amber-300/35 via-amber-200/12 to-transparent'
+            : ':uno: opacity-0'
+        "
+        class=":uno: pointer-events-none absolute inset-x-0 top-0 h-full bg-gradient-to-b transition-opacity"
+      />
+      <div
+        :class="
+          activeDirection === 'up'
+            ? canScrollUp
+              ? ':uno: opacity-100 bg-primary/45'
+              : ':uno: opacity-100 bg-amber-400/60'
+            : ':uno: opacity-0'
+        "
+        class=":uno: pointer-events-none absolute left-4 right-4 top-1 h-0.5 rounded-full transition-opacity"
+      />
     </div>
 
     <div
       aria-hidden="true"
-      :class="[
-        activeDirection === 'down' && canScrollDown
-          ? ':uno: bg-primary/8 text-primary'
-          : activeDirection === 'down' && !canScrollDown
-            ? ':uno: bg-amber-50/95 text-amber-600'
-            : ':uno: bg-white/82 text-gray-400',
-      ]"
-      class=":uno: absolute left-3 right-3 bottom-2 z-20 flex h-11 items-center justify-center rounded-md border border-white/80 px-3 shadow-sm backdrop-blur-sm transition-colors"
+      class=":uno: absolute inset-x-0 bottom-0 z-20 h-16"
       @dragover="emit('zone-dragover', 'down', $event)"
       @dragleave="emit('zone-dragleave', 'down')"
     >
-      <div class=":uno: pointer-events-none flex items-center gap-2 text-xs font-medium">
-        <span class=":uno: text-sm leading-none">↓</span>
-        <span>{{ zoneHint('down', canScrollDown, activeDirection === 'down') }}</span>
-      </div>
+      <div
+        :class="
+          activeDirection === 'down'
+            ? canScrollDown
+              ? ':uno: opacity-100 from-transparent via-primary/8 to-primary/22'
+              : ':uno: opacity-100 from-transparent via-amber-200/12 to-amber-300/35'
+            : ':uno: opacity-0'
+        "
+        class=":uno: pointer-events-none absolute inset-x-0 bottom-0 h-full bg-gradient-to-b transition-opacity"
+      />
+      <div
+        :class="
+          activeDirection === 'down'
+            ? canScrollDown
+              ? ':uno: opacity-100 bg-primary/45'
+              : ':uno: opacity-100 bg-amber-400/60'
+            : ':uno: opacity-0'
+        "
+        class=":uno: pointer-events-none absolute left-4 right-4 bottom-1 h-0.5 rounded-full transition-opacity"
+      />
     </div>
   </template>
 </template>
