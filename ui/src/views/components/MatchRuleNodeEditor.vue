@@ -195,6 +195,7 @@ function handleDragOverNode(event: DragEvent) {
   }
 
   event.preventDefault()
+  event.stopPropagation()
   if (event.dataTransfer) {
     event.dataTransfer.dropEffect = 'move'
   }
@@ -211,6 +212,7 @@ function handleDropOnNode(event: DragEvent) {
   const target = rawPlacement
     ? dragContext.normalizeDropTarget(currentNodePath.value, rawPlacement)
     : null
+  event.stopPropagation()
   dragContext.clearDragState()
   if (!target || !dragContext.canDrop(sourcePath, target.path, target.placement)) {
     return

@@ -7,6 +7,11 @@ interface UseDragAutoScrollOptions {
   maxStepPx?: number
 }
 
+interface DragAutoScrollZoneBounds {
+  topZoneHeight?: number
+  bottomZoneHeight?: number
+}
+
 /**
  * why: 列表拖拽与规则树拖拽都需要同一套“拖到边缘就自动滚动”的交互，
  * 用共享状态机可以避免每个组件各自维护一套定时器与边界判断，减少后续漂移。
@@ -66,25 +71,60 @@ export function useDragAutoScroll(
     animationFrameId = requestAnimationFrame(tickAutoScroll)
   }
 
-  function startAutoScroll(direction: DragAutoScrollDirection, event: DragEvent) {
+  /**
+   * why: 自动滚动的热区应该只是“感知边缘位置”，不能再靠覆盖层自己接管 drop；
+   * 否则一旦提示层和真实落点重叠，就会出现高亮正确但松手失败的错觉。
+   */
+  function handleContainerDragOver(event: DragEvent, zoneBounds: DragAutoScrollZoneBounds = {}) {
     if (!isDragActive.value) {
       return
     }
+
+    const currentTarget = event.currentTarget
+    if (!(currentTarget instanceof HTMLElement)) {
+      stopAutoScroll()
+      return
+    }
+
+    const direction = resolveAutoScrollDirection(currentTarget, event, zoneBounds)
+    if (!direction) {
+      stopAutoScroll()
+      return
+    }
+
     event.preventDefault()
-    event.stopPropagation()
     if (event.dataTransfer) {
       event.dataTransfer.dropEffect = 'move'
     }
+
     activeDirection.value = direction
-    currentStepPx.value = resolveScrollStepPx(direction, event)
+    currentStepPx.value = resolveScrollStepPxWithinBounds(
+      currentTarget,
+      direction,
+      event,
+      zoneBounds,
+    )
     updateScrollBounds()
     if (animationFrameId === null) {
       animationFrameId = requestAnimationFrame(tickAutoScroll)
     }
   }
 
-  function handleZoneLeave(direction: DragAutoScrollDirection) {
-    if (activeDirection.value === direction) {
+  function handleContainerDragLeave(event: DragEvent) {
+    const currentTarget = event.currentTarget
+    if (!(currentTarget instanceof HTMLElement)) {
+      stopAutoScroll()
+      return
+    }
+
+    const rect = currentTarget.getBoundingClientRect()
+    const isOutside =
+      event.clientX < rect.left ||
+      event.clientX > rect.right ||
+      event.clientY < rect.top ||
+      event.clientY > rect.bottom
+
+    if (isOutside) {
       stopAutoScroll()
     }
   }
@@ -106,21 +146,61 @@ export function useDragAutoScroll(
     setDragActive(false)
   }
 
-  function resolveScrollStepPx(direction: DragAutoScrollDirection, event: DragEvent) {
-    const currentTarget = event.currentTarget
-    if (!(currentTarget instanceof HTMLElement)) {
+  function resolveScrollStepPxWithinBounds(
+    currentTarget: HTMLElement,
+    direction: DragAutoScrollDirection,
+    event: DragEvent,
+    zoneBounds: DragAutoScrollZoneBounds = {},
+  ) {
+    const zoneRect = resolveZoneRect(currentTarget, direction, zoneBounds)
+    if (!zoneRect.height) {
       return minScrollStepPx
     }
 
-    const rect = currentTarget.getBoundingClientRect()
-    if (!rect.height) {
-      return minScrollStepPx
-    }
-
-    const pointerRatio = clamp((event.clientY - rect.top) / rect.height, 0, 1)
+    const pointerRatio = clamp((event.clientY - zoneRect.top) / zoneRect.height, 0, 1)
     const edgeIntensity = direction === 'up' ? 1 - pointerRatio : pointerRatio
     const easedIntensity = edgeIntensity ** 1.6
     return minScrollStepPx + (maxScrollStepPx - minScrollStepPx) * easedIntensity
+  }
+
+  function resolveAutoScrollDirection(
+    currentTarget: HTMLElement,
+    event: DragEvent,
+    zoneBounds: DragAutoScrollZoneBounds,
+  ) {
+    const rect = currentTarget.getBoundingClientRect()
+    const topZoneHeight = clamp(zoneBounds.topZoneHeight ?? 0, 0, rect.height)
+    const bottomZoneHeight = clamp(zoneBounds.bottomZoneHeight ?? 0, 0, rect.height)
+
+    if (topZoneHeight > 0 && event.clientY <= rect.top + topZoneHeight) {
+      return 'up'
+    }
+    if (bottomZoneHeight > 0 && event.clientY >= rect.bottom - bottomZoneHeight) {
+      return 'down'
+    }
+    return null
+  }
+
+  function resolveZoneRect(
+    currentTarget: HTMLElement,
+    direction: DragAutoScrollDirection,
+    zoneBounds: DragAutoScrollZoneBounds,
+  ) {
+    const rect = currentTarget.getBoundingClientRect()
+    const topZoneHeight = clamp(zoneBounds.topZoneHeight ?? rect.height, 0, rect.height)
+    const bottomZoneHeight = clamp(zoneBounds.bottomZoneHeight ?? rect.height, 0, rect.height)
+
+    if (direction === 'up') {
+      return {
+        top: rect.top,
+        height: topZoneHeight,
+      }
+    }
+
+    return {
+      top: rect.bottom - bottomZoneHeight,
+      height: bottomZoneHeight,
+    }
   }
 
   function clamp(value: number, min: number, max: number) {
@@ -162,8 +242,8 @@ export function useDragAutoScroll(
     canScrollDown,
     setDragActive,
     handleContainerScroll,
-    startAutoScroll,
-    handleZoneLeave,
+    handleContainerDragOver,
+    handleContainerDragLeave,
     stopAutoScroll,
   }
 }

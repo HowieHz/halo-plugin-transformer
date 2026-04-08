@@ -90,6 +90,17 @@ const leaveConfirmCanSave = ref(false)
 const pendingLeaveAction = ref<null | (() => void | Promise<void>)>(null)
 const postCreatePrompt = ref<null | { tab: ActiveTab; id: string }>(null)
 
+function handleLeftPaneDragOver(event: DragEvent) {
+  leftPaneAutoScroll.handleContainerDragOver(event, {
+    topZoneHeight: 48,
+    bottomZoneHeight: 48,
+  })
+}
+
+function handleLeftPaneDragLeave(event: DragEvent) {
+  leftPaneAutoScroll.handleContainerDragLeave(event)
+}
+
 function normalizeTab(tab: unknown): ActiveTab {
   return tab === 'rules' ? 'rules' : 'snippets'
 }
@@ -508,7 +519,11 @@ function jumpToSnippet(id: string) {
     <div class=":uno: m-0 md:m-4">
       <VCard :body-class="['injector-view-card-body']" style="height: calc(100vh - 5.5rem)">
         <div class=":uno: h-full flex divide-x divide-gray-100">
-          <div class=":uno: relative aside h-full flex-none flex flex-col overflow-hidden">
+          <div
+            class=":uno: relative aside h-full flex-none flex flex-col overflow-hidden"
+            @dragover.capture="handleLeftPaneDragOver"
+            @dragleave.capture="handleLeftPaneDragLeave"
+          >
             <div
               class=":uno: sticky top-0 z-10 h-12 flex items-center gap-4 border-b bg-white px-4 shrink-0"
             >
@@ -536,8 +551,6 @@ function jumpToSnippet(id: string) {
               :active-direction="leftPaneAutoScroll.activeDirection.value"
               :can-scroll-up="leftPaneAutoScroll.canScrollUp.value"
               :can-scroll-down="leftPaneAutoScroll.canScrollDown.value"
-              @zone-dragleave="leftPaneAutoScroll.handleZoneLeave"
-              @zone-dragover="leftPaneAutoScroll.startAutoScroll"
             />
 
             <VLoading v-if="loading" />

@@ -92,6 +92,17 @@ function updateDragOverlayHeights() {
   dragOverlayBottomHeight.value = editorFooterShell.value?.offsetHeight ?? 52
 }
 
+function handleEditorContainerDragOver(event: DragEvent) {
+  autoScroll.handleContainerDragOver(event, {
+    topZoneHeight: dragOverlayTopHeight.value,
+    bottomZoneHeight: dragOverlayBottomHeight.value,
+  })
+}
+
+function handleEditorContainerDragLeave(event: DragEvent) {
+  autoScroll.handleContainerDragLeave(event)
+}
+
 function observeDragOverlayShell() {
   dragOverlayResizeObserver?.disconnect()
   if (typeof ResizeObserver === 'undefined') {
@@ -451,7 +462,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class=":uno: relative h-full flex flex-col injector-editor-container">
+  <div
+    class=":uno: relative h-full flex flex-col injector-editor-container"
+    @dragover.capture="handleEditorContainerDragOver"
+    @dragleave.capture="handleEditorContainerDragLeave"
+  >
     <ExportJsonFallbackModal
       v-if="exportFallback"
       :content="exportFallback.content"
@@ -480,8 +495,6 @@ onBeforeUnmount(() => {
       :can-scroll-down="autoScroll.canScrollDown.value"
       :top-zone-height="dragOverlayTopHeight"
       :bottom-zone-height="dragOverlayBottomHeight"
-      @zone-dragleave="autoScroll.handleZoneLeave"
-      @zone-dragover="autoScroll.startAutoScroll"
     />
 
     <div v-if="!currentRule" class=":uno: flex flex-1 items-center justify-center">
