@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { Toast, VButton } from '@halo-dev/components'
 import { computed, nextTick, onMounted, ref } from 'vue'
-import type { CodeSnippetEditorDraft } from '@/types'
+import type { TransformationSnippetEditorDraft } from '@/types'
 import { makeSnippetEditorDraft } from '@/types'
 import BaseFormModal from './BaseFormModal.vue'
 import EnabledSwitch from './EnabledSwitch.vue'
@@ -15,10 +15,10 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'close'): void
-  (e: 'submit', snippet: CodeSnippetEditorDraft): void
+  (e: 'submit', snippet: TransformationSnippetEditorDraft): void
 }>()
 
-const snippet = ref<CodeSnippetEditorDraft>(makeSnippetEditorDraft())
+const snippet = ref<TransformationSnippetEditorDraft>(makeSnippetEditorDraft())
 const fileInput = ref<HTMLInputElement | null>(null)
 const importSourceVisible = ref(false)
 const initialSnippet = makeSnippetEditorDraft()
@@ -59,9 +59,9 @@ function closeImportSourceModal() {
 async function applyImportedSnippet(raw: string, sourceLabel: '剪贴板' | '文件') {
   snippet.value = parseSnippetTransfer(raw)
   if (!snippet.value.code.trim()) {
-    Toast.warning(`已从${sourceLabel}导入代码块 JSON，但当前内容仍有错误：代码内容不能为空`)
+    Toast.warning(`已从${sourceLabel}导入代码片段 JSON，但当前内容仍有错误：代码内容不能为空`)
   } else {
-    Toast.success(`已从${sourceLabel}导入代码块 JSON`)
+    Toast.success(`已从${sourceLabel}导入代码片段 JSON`)
   }
 }
 
@@ -139,7 +139,7 @@ defineExpose({
     hide-default-title
     :saving="props.saving"
     :show-picker="false"
-    title="新建代码块"
+    title="新建代码片段"
     @close="emit('close')"
     @submit="handleSubmit"
   >
@@ -154,7 +154,7 @@ defineExpose({
         />
         <EnabledSwitch
           :enabled="snippet.enabled"
-          label="切换新建代码块的启用状态"
+          label="切换新建代码片段的启用状态"
           title-when-disabled="当前新建后会保持禁用，点击改为启用"
           title-when-enabled="当前新建后会直接启用，点击改为禁用"
           @toggle="snippet.enabled = !snippet.enabled"
@@ -178,7 +178,7 @@ defineExpose({
           :id="inputId"
           v-model="snippet.description"
           class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
-          placeholder="说明此代码块的用途"
+          placeholder="说明此代码片段的用途"
         />
       </FormField>
 
@@ -236,9 +236,10 @@ defineExpose({
 
   <ImportSourceModal
     v-if="importSourceVisible"
-    resource-label="代码块"
+    resource-label="代码片段"
     @close="closeImportSourceModal"
     @import-from-clipboard="importFromClipboard"
     @import-from-file="importFromFile"
   />
 </template>
+

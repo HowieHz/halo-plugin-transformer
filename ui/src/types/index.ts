@@ -13,9 +13,9 @@ export interface ResourceReadMetadata {
  * why: 写接口只应承载后端真正接受的持久化字段；
  * 像 `id` 这类前端展示态派生字段，不应混进写入模型。
  */
-export interface CodeSnippetWritePayload {
-  apiVersion: 'injector.erzbir.com/v1alpha1'
-  kind: 'CodeSnippet'
+export interface TransformationSnippetWritePayload {
+  apiVersion: 'transformer.howiehz.top/v1alpha1'
+  kind: 'TransformationSnippet'
   metadata: ResourceWriteMetadata
   name: string
   code: string
@@ -23,9 +23,9 @@ export interface CodeSnippetWritePayload {
   enabled: boolean
 }
 
-export interface CodeSnippetReadModel {
-  apiVersion: 'injector.erzbir.com/v1alpha1'
-  kind: 'CodeSnippet'
+export interface TransformationSnippetReadModel {
+  apiVersion: 'transformer.howiehz.top/v1alpha1'
+  kind: 'TransformationSnippet'
   metadata: ResourceReadMetadata
   id: string
   name: string
@@ -34,12 +34,18 @@ export interface CodeSnippetReadModel {
   enabled: boolean
 }
 
-export interface CodeSnippetEditorDraft extends CodeSnippetWritePayload {
+export interface TransformationSnippetEditorDraft extends TransformationSnippetWritePayload {
   id: string
 }
 
-export type InjectionMode = 'HEAD' | 'FOOTER' | 'SELECTOR'
-export type InjectionPosition = 'APPEND' | 'PREPEND' | 'BEFORE' | 'AFTER' | 'REPLACE' | 'REMOVE'
+export type TransformationMode = 'HEAD' | 'FOOTER' | 'SELECTOR'
+export type TransformationPosition =
+  | 'APPEND'
+  | 'PREPEND'
+  | 'BEFORE'
+  | 'AFTER'
+  | 'REPLACE'
+  | 'REMOVE'
 export type MatchRuleType = 'GROUP' | 'PATH' | 'TEMPLATE_ID'
 export type MatchRuleOperator = 'AND' | 'OR'
 export type MatchRuleMatcher = 'ANT' | 'REGEX' | 'EXACT'
@@ -60,45 +66,45 @@ export interface MatchRuleSource {
   data: MatchRule | string
 }
 
-export interface InjectionRuleWritePayload {
-  apiVersion: 'injector.erzbir.com/v1alpha1'
-  kind: 'InjectionRule'
+export interface TransformationRuleWritePayload {
+  apiVersion: 'transformer.howiehz.top/v1alpha1'
+  kind: 'TransformationRule'
   metadata: ResourceWriteMetadata
   name: string
   description: string
   enabled: boolean
-  mode: InjectionMode
+  mode: TransformationMode
   match: string
   matchRule: MatchRule
-  position: InjectionPosition
+  position: TransformationPosition
   wrapMarker: boolean
   runtimeOrder: number
   snippetIds: string[]
 }
 
-export interface InjectionRuleReadModel {
-  apiVersion: 'injector.erzbir.com/v1alpha1'
-  kind: 'InjectionRule'
+export interface TransformationRuleReadModel {
+  apiVersion: 'transformer.howiehz.top/v1alpha1'
+  kind: 'TransformationRule'
   metadata: ResourceReadMetadata
   id: string
   name: string
   description: string
   enabled: boolean
-  mode: InjectionMode
+  mode: TransformationMode
   match: string
   matchRule: MatchRule
-  position: InjectionPosition
+  position: TransformationPosition
   wrapMarker: boolean
   runtimeOrder: number
   snippetIds: string[]
 }
 
-export interface InjectionRuleEditorState {
+export interface TransformationRuleEditorState {
   matchRuleSource?: MatchRuleSource
 }
 
-export interface InjectionRuleEditorDraft
-  extends InjectionRuleWritePayload, InjectionRuleEditorState {
+export interface TransformationRuleEditorDraft
+  extends TransformationRuleWritePayload, TransformationRuleEditorState {
   id: string
 }
 
@@ -121,13 +127,13 @@ export interface RuntimeOrderStep {
 
 export type ActiveTab = 'snippets' | 'rules'
 
-export const MODE_OPTIONS: { value: InjectionMode; label: string }[] = [
+export const MODE_OPTIONS: { value: TransformationMode; label: string }[] = [
   { value: 'HEAD', label: '<head>' },
   { value: 'FOOTER', label: '<footer>' },
   { value: 'SELECTOR', label: 'CSS 选择器' },
 ]
 
-export const POSITION_OPTIONS: { value: InjectionPosition; label: string }[] = [
+export const POSITION_OPTIONS: { value: TransformationPosition; label: string }[] = [
   { value: 'APPEND', label: '内部末尾 (append)' },
   { value: 'PREPEND', label: '内部开头 (prepend)' },
   { value: 'BEFORE', label: '元素之前 (before)' },
@@ -201,12 +207,12 @@ export function makeMatchRuleGroup(override: Partial<MatchRule> = {}): MatchRule
  * why: 新建与导入流程都应围绕编辑草稿工作，而不是把只读返回模型直接塞进表单。
  */
 export function makeSnippetEditorDraft(
-  override: Partial<CodeSnippetEditorDraft> = {},
-): CodeSnippetEditorDraft {
+  override: Partial<TransformationSnippetEditorDraft> = {},
+): TransformationSnippetEditorDraft {
   return {
-    apiVersion: 'injector.erzbir.com/v1alpha1',
-    kind: 'CodeSnippet',
-    metadata: { name: '', generateName: 'CodeSnippet-' },
+    apiVersion: 'transformer.howiehz.top/v1alpha1',
+    kind: 'TransformationSnippet',
+    metadata: { name: '', generateName: 'TransformationSnippet-' },
     id: '',
     name: '',
     code: '',
@@ -221,15 +227,15 @@ export function makeSnippetEditorDraft(
  * 这样简单模式、JSON 模式、导入导出都能共享同一份编辑态模型。
  */
 export function makeRuleEditorDraft(
-  override: Partial<InjectionRuleEditorDraft> = {},
-): InjectionRuleEditorDraft {
+  override: Partial<TransformationRuleEditorDraft> = {},
+): TransformationRuleEditorDraft {
   const matchRule = makeMatchRuleGroup({
     children: [makePathMatchRule({ value: '' })],
   })
   return {
-    apiVersion: 'injector.erzbir.com/v1alpha1',
-    kind: 'InjectionRule',
-    metadata: { name: '', generateName: 'InjectionRule-' },
+    apiVersion: 'transformer.howiehz.top/v1alpha1',
+    kind: 'TransformationRule',
+    metadata: { name: '', generateName: 'TransformationRule-' },
     id: '',
     name: '',
     description: '',

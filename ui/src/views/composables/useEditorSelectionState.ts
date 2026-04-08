@@ -1,33 +1,33 @@
 import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
 import type {
   ActiveTab,
-  CodeSnippetEditorDraft,
-  CodeSnippetReadModel,
-  InjectionRuleEditorDraft,
-  InjectionRuleReadModel,
+  TransformationSnippetEditorDraft,
+  TransformationSnippetReadModel,
+  TransformationRuleEditorDraft,
+  TransformationRuleReadModel,
   ItemList,
 } from '@/types'
 import { hydrateRuleEditorDraft } from './ruleDraft'
 import { hydrateSnippetEditorDraft } from './snippetDraft'
-import { mergeSavedMetadata } from './injectorShared'
+import { mergeSavedMetadata } from './transformerShared'
 
 interface UseEditorSelectionStateOptions {
   activeTab: Ref<ActiveTab>
-  snippetsResp: Ref<ItemList<CodeSnippetReadModel>>
-  rulesResp: Ref<ItemList<InjectionRuleReadModel>>
-  snippets: ComputedRef<CodeSnippetReadModel[]>
-  rules: ComputedRef<InjectionRuleReadModel[]>
+  snippetsResp: Ref<ItemList<TransformationSnippetReadModel>>
+  rulesResp: Ref<ItemList<TransformationRuleReadModel>>
+  snippets: ComputedRef<TransformationSnippetReadModel[]>
+  rules: ComputedRef<TransformationRuleReadModel[]>
 }
 
 interface SnippetEditorSession {
   tab: 'snippets'
-  draft: CodeSnippetEditorDraft | null
+  draft: TransformationSnippetEditorDraft | null
   dirty: boolean
 }
 
 interface RuleEditorSession {
   tab: 'rules'
-  draft: InjectionRuleEditorDraft | null
+  draft: TransformationRuleEditorDraft | null
   snippetIds: string[]
   dirty: boolean
 }
@@ -73,7 +73,7 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
 
   const editSnippet = computed({
     get: () => (editorSession.value.tab === 'snippets' ? editorSession.value.draft : null),
-    set: (draft: CodeSnippetEditorDraft | null) => {
+    set: (draft: TransformationSnippetEditorDraft | null) => {
       if (editorSession.value.tab !== 'snippets') {
         return
       }
@@ -86,7 +86,7 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
 
   const editRule = computed({
     get: () => (editorSession.value.tab === 'rules' ? editorSession.value.draft : null),
-    set: (draft: InjectionRuleEditorDraft | null) => {
+    set: (draft: TransformationRuleEditorDraft | null) => {
       if (editorSession.value.tab !== 'rules') {
         return
       }
@@ -134,7 +134,7 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
     if (!rule?.snippetIds?.length) return []
     return rule.snippetIds
       .map((id) => options.snippets.value.find((snippet) => snippet.id === id))
-      .filter((snippet): snippet is CodeSnippetReadModel => !!snippet)
+      .filter((snippet): snippet is TransformationSnippetReadModel => !!snippet)
   })
 
   function filterExistingSnippetIds(snippetIds: string[]) {
@@ -192,7 +192,7 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
    * why: 启停接口现在只返回最新已保存资源；
    * 这里仅把列表里的已保存快照替换掉，避免再用整页 reload 把右侧未保存草稿整体冲掉。
    */
-  function applySavedSnippetSnapshot(snippet: CodeSnippetReadModel) {
+  function applySavedSnippetSnapshot(snippet: TransformationSnippetReadModel) {
     options.snippetsResp.value = replaceItemInList(options.snippetsResp.value, snippet)
     if (editorSession.value.tab === 'snippets' && editorSession.value.draft?.id === snippet.id) {
       editorSession.value.draft.enabled = snippet.enabled
@@ -207,7 +207,7 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
    * why: 规则启停属于资源级动作，不应顺带重置当前编辑中的 matchRule / snippetIds 草稿；
    * 这里只同步最新的已保存启停状态，其余编辑态原样保留。
    */
-  function applySavedRuleSnapshot(rule: InjectionRuleReadModel) {
+  function applySavedRuleSnapshot(rule: TransformationRuleReadModel) {
     options.rulesResp.value = replaceItemInList(options.rulesResp.value, rule)
     if (editorSession.value.tab === 'rules' && editorSession.value.draft?.id === rule.id) {
       editorSession.value.draft.enabled = rule.enabled
@@ -272,7 +272,7 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
 }
 
 function createSnippetEditorSession(
-  draft: CodeSnippetEditorDraft | null = null,
+  draft: TransformationSnippetEditorDraft | null = null,
 ): SnippetEditorSession {
   return {
     tab: 'snippets',
@@ -282,7 +282,7 @@ function createSnippetEditorSession(
 }
 
 function createRuleEditorSession(
-  draft: InjectionRuleEditorDraft | null = null,
+  draft: TransformationRuleEditorDraft | null = null,
   snippetIds: string[] = [],
 ): RuleEditorSession {
   return {

@@ -347,7 +347,7 @@ describe('parseRuleTransfer', () => {
 })
 
 describe('parseSnippetTransfer', () => {
-  // why: 代码块导入若缺少可补默认值的字段，应直接补默认值，让用户先导入再继续编辑。
+  // why: 代码片段导入若缺少可补默认值的字段，应直接补默认值，让用户先导入再继续编辑。
   it('fills missing snippet fields with defaults during import', () => {
     const raw = JSON.stringify({
       version: 1,
@@ -365,7 +365,7 @@ describe('parseSnippetTransfer', () => {
     })
   })
 
-  // why: 代码块导入也不应静默吞掉未知字段，否则用户会以为自己导入成功了完整模板。
+  // why: 代码片段导入也不应静默吞掉未知字段，否则用户会以为自己导入成功了完整模板。
   it('rejects unknown snippet fields during import', () => {
     const raw = JSON.stringify({
       version: 1,
@@ -378,11 +378,11 @@ describe('parseSnippetTransfer', () => {
     })
 
     expect(() => parseSnippetTransfer(raw)).toThrow(
-      '导入失败：`extraField` 不支持；代码块仅支持 "enabled"、"name"、"description"、"code"',
+      '导入失败：`extraField` 不支持；代码片段仅支持 "enabled"、"name"、"description"、"code"',
     )
   })
 
-  // why: 代码块布尔字段也要和注入规则导入一样，给出 true / false 提示。
+  // why: 代码片段布尔字段也要和转换规则导入一样，给出 true / false 提示。
   it('reports allowed boolean values for snippet import booleans', () => {
     const raw = JSON.stringify({
       version: 1,
@@ -565,3 +565,4 @@ describe('batch transfer', () => {
     expect(payload.data.items[0].runtimeOrder).toBe(42)
   })
 })
+

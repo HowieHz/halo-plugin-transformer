@@ -1,9 +1,13 @@
 import { computed, ref } from 'vue'
-import type { ActiveTab, CodeSnippetEditorDraft, InjectionRuleEditorDraft } from '@/types'
+import type {
+  ActiveTab,
+  TransformationSnippetEditorDraft,
+  TransformationRuleEditorDraft,
+} from '@/types'
 
 export type BulkImportPayload =
-  | { tab: 'snippets'; items: CodeSnippetEditorDraft[] }
-  | { tab: 'rules'; items: InjectionRuleEditorDraft[] }
+  | { tab: 'snippets'; items: TransformationSnippetEditorDraft[] }
+  | { tab: 'rules'; items: TransformationRuleEditorDraft[] }
 
 export interface BulkImportResultState {
   count: number

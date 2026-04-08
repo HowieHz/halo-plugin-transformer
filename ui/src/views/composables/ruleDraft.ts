@@ -1,7 +1,7 @@
 import type {
-  InjectionRuleEditorDraft,
-  InjectionRuleReadModel,
-  InjectionRuleWritePayload,
+  TransformationRuleEditorDraft,
+  TransformationRuleReadModel,
+  TransformationRuleWritePayload,
 } from '@/types'
 import { RUNTIME_ORDER_DEFAULT } from '@/types'
 import { normalizeMatchRule, resolveRuleMatchRule, makeRuleTreeSource } from './matchRule'
@@ -10,7 +10,9 @@ import { normalizeMatchRule, resolveRuleMatchRule, makeRuleTreeSource } from './
  * why: 规则读模型进入编辑器前，需要显式补齐规则树与来源状态；
  * 否则简单模式、JSON 模式、撤销与导入导出会围绕不同状态源漂移。
  */
-export function hydrateRuleEditorDraft(rule: InjectionRuleReadModel): InjectionRuleEditorDraft {
+export function hydrateRuleEditorDraft(
+  rule: TransformationRuleReadModel,
+): TransformationRuleEditorDraft {
   const matchRule = normalizeMatchRule(rule.matchRule)
   return {
     apiVersion: rule.apiVersion,
@@ -36,12 +38,12 @@ export function hydrateRuleEditorDraft(rule: InjectionRuleReadModel): InjectionR
 
 /**
  * why: 规则写模型必须只包含后端真正接受的持久化字段；
- * 这里统一把编辑态收敛成 `InjectionRuleWritePayload`，避免 UI 草稿细节泄漏到 API。
+ * 这里统一把编辑态收敛成 `TransformationRuleWritePayload`，避免 UI 草稿细节泄漏到 API。
  */
 export function buildRuleWritePayload(
-  rule: InjectionRuleEditorDraft,
+  rule: TransformationRuleEditorDraft,
   snippetIds: string[],
-): InjectionRuleWritePayload | null {
+): TransformationRuleWritePayload | null {
   const result = resolveRuleMatchRule(rule)
   if (!result.rule) {
     return null

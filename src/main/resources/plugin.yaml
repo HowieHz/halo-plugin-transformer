@@ -3,21 +3,21 @@
 apiVersion: plugin.halo.run/v1alpha1
 kind: Plugin
 metadata:
-  name: injector
+  name: transformer
   annotations:
-    "store.halo.run/app-id": "app-5sauowct"
+    "store.halo.run/app-id": "app-xxxxxxxx"
 spec:
   enabled: true
-  requires: ">=2.22.0"
+  requires: ">=2.23.2"
   author:
-    name: Erzbir
-    website: https://github.com/Erzbir
+    name: HowieHz
+    website: https://github.com/HowieHz
   logo: logo.svg
-  homepage: https://github.com/Erzbir/halo-plugin-injector#readme
-  repo: https://github.com/Erzbir/halo-plugin-injector
-  issues: https://github.com/Erzbir/halo-plugin-injector/issues
-  displayName: "Injector"
-  description: "支持根据规则向指定页面的指定位置注入 HTML 代码"
+  homepage: https://github.com/HowieHz/halo-plugin-transformer#readme
+  repo: https://github.com/HowieHz/halo-plugin-transformer
+  issues: https://github.com/HowieHz/halo-plugin-transformer/issues
+  displayName: "页面转换器"
+  description: "支持根据规则修改指定页面内容"
   license:
     - name: "GPL-3.0"
-      url: "https://github.com/Erzbir/halo-plugin-injector/blob/main/LICENSE"
+      url: "https://github.com/HowieHz/halo-plugin-transformer/blob/main/LICENSE"

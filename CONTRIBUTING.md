@@ -1,6 +1,6 @@
 ## Contributing
 
-感谢你为 `halo-plugin-injector` 做贡献。
+感谢你为 `halo-plugin-transformer` 做贡献。
 
 `README.md` 面向插件使用者，重点讲“能做什么、怎么配置、有什么运行时表现”；这份文档面向贡献者，重点讲“怎么构建、哪些是规范源、架构边界在哪里、修改后该验证什么”。
 
@@ -97,13 +97,13 @@ pnpm dev
 
 ### JSON Schema
 
-- `ui/public/injector.schema.json`
+- `ui/public/transformer.schema.json`
     - 负责 transfer envelope
     - 描述顶层 `version`、`resourceType`、`data`
 - `ui/public/generated/match-rule.schema.json`
     - 从 `specs/match-rule/contract.spec.jsonc` 生成
     - 负责 `match-rule` 领域结构
-- `ui/public/injector.schema.json` 会通过 `$ref` 引用 `match-rule` generated schema，而不是在 envelope 中手写一遍规则树结构
+- `ui/public/transformer.schema.json` 会通过 `$ref` 引用 `match-rule` generated schema，而不是在 envelope 中手写一遍规则树结构
 
 ### Runtime boolean simplification
 
@@ -139,7 +139,7 @@ pnpm dev
 
 若平台当前不提供对应索引、patch 或事务能力，就显式承认这个边界，并在单一 authoritative side 上保持最小、清晰、可恢复的写模型，而不是在前端或 endpoint 中堆叠补偿式分支逻辑。
 
-## 已知问题（PE）
+## 已知问题
 
 下面这些问题更接近 Halo 当前平台能力边界，或继续优化的收益/复杂度比暂时不划算，因此作为已知问题显式记录。
 
@@ -149,10 +149,10 @@ pnpm dev
 - 保持单一 authoritative source，不为了绕过限制重新引入双真源
 - 如果 Halo 后续补齐原生能力，再顺势切换到平台能力，而不是在插件里长期堆过渡方案
 
-### 删除代码块时，反向引用查询仍需全表扫规则
+### 删除代码片段时，反向引用查询仍需全表扫规则
 
-- 当前删除协调器需要找出所有引用某个代码块的 `InjectionRule`
-- 关系真源已经收敛到 `InjectionRule.snippetIds`
+- 当前删除协调器需要找出所有引用某个代码片段的 `TransformationRule`
+- 关系真源已经收敛到 `TransformationRule.snippetIds`
 - 但 Halo 当前还没有直接提供“集合成员反向索引 / membership fieldQuery”这类查询能力
 - 因此这一步仍然需要基于规则列表做过滤，而不是按 `snippetId` 直接反查
 
@@ -171,11 +171,11 @@ pnpm dev
 - endpoint 同步补写另一侧资源
 - annotations / labels 承载结构化关系真源
 
-### 删除代码块是最终一致，不是跨资源原子事务
+### 删除代码片段是最终一致，不是跨资源原子事务
 
-- 删除代码块当前走 Halo `finalizer + reconciler` 生命周期
-- 删除请求本身只负责把 `CodeSnippet` 送入 deleting 状态
-- 后端协调器随后摘掉所有引用它的 `InjectionRule.snippetIds`
+- 删除代码片段当前走 Halo `finalizer + reconciler` 生命周期
+- 删除请求本身只负责把 `TransformationSnippet` 送入 deleting 状态
+- 后端协调器随后摘掉所有引用它的 `TransformationRule.snippetIds`
 - 全部清理完成后，才移除 finalizer，交还 Halo 完成真正删除
 
 这条链路已经是当前阶段的推荐实现，但它属于**最终一致**，不是跨多个 extension 资源的一笔原子事务。
@@ -187,7 +187,7 @@ pnpm dev
 
 因此这里的设计目标不是伪造事务语义，而是在 Halo 原生能力内做到“现在最好”：
 
-- 关系真源只保留在 `InjectionRule.snippetIds`
+- 关系真源只保留在 `TransformationRule.snippetIds`
 - 删除收敛交给 `finalizer + reconciler`
 - 每次都基于最新资源读取后再更新
 - 失败时保留 finalizer，让平台后续继续重试
@@ -206,7 +206,7 @@ pnpm dev
 - 对 Halo 自带页面或正确接入该上下文的插件页面，这条链路可以稳定工作
 - 但如果第三方页面没有暴露 `_templateId`，插件就拿不到可靠的模板身份
 
-这不是 Injector 自己还能“再猜一次”就能稳定补齐的问题，而是页面集成是否正确暴露模板上下文的边界。
+这不是 Transformer 自己还能“再猜一次”就能稳定补齐的问题，而是页面集成是否正确暴露模板上下文的边界。
 
 因此当前推荐做法是：
 
@@ -234,3 +234,4 @@ pnpm --dir ui test:unit
 ```
 
 如果改动涉及 spec、schema、contract helper 或导入导出结构，先运行 `pnpm generate:spec-artifacts`，再提交生成物。
+

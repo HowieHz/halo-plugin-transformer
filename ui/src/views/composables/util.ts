@@ -1,4 +1,4 @@
-import { type InjectionRuleReadModel, MODE_OPTIONS, POSITION_OPTIONS } from '@/types'
+import { type TransformationRuleReadModel, MODE_OPTIONS, POSITION_OPTIONS } from '@/types'
 import type { OrderMap } from '@/apis'
 
 export function modeLabel(mode: string) {
@@ -9,7 +9,7 @@ export function positionLabel(pos?: string) {
   if (!pos) return ''
   return POSITION_OPTIONS.find((o) => o.value === pos)?.label ?? pos
 }
-export function rulePreview(rule: InjectionRuleReadModel) {
+export function rulePreview(rule: TransformationRuleReadModel) {
   return `${modeLabel(rule.mode)} · ${positionLabel(rule.position)}`
 }
 
@@ -72,7 +72,7 @@ export function buildExplicitOrderMap<T extends { id: string }>(items: T[]): Ord
 
 /**
  * why: 批量导入后的新增资源需要稳定落在当前列表末尾，且保持“用户导入时的成功创建顺序”；
- * 这样排序持久化只关心一个 authoritative list，不必在规则与代码块两侧各自再维护一套拼接语义。
+ * 这样排序持久化只关心一个 authoritative list，不必在规则与代码片段两侧各自再维护一套拼接语义。
  */
 export function appendCreatedResourcesInOrder<T extends { id: string }>(
   items: T[],
@@ -95,3 +95,4 @@ export function sortSelectedFirst<T extends { id: string }>(items: T[], selected
     return aSelected ? -1 : 1
   })
 }
+

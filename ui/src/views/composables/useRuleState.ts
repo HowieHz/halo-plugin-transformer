@@ -1,38 +1,38 @@
 import { computed, type ComputedRef, type Ref } from 'vue'
 import { Dialog, Toast } from '@halo-dev/components'
 import { ruleApi } from '@/apis'
-import type { InjectionRuleEditorDraft, InjectionRuleReadModel } from '@/types'
+import type { TransformationRuleEditorDraft, TransformationRuleReadModel } from '@/types'
 import { formatMatchRuleError, isValidMatchRule, resolveRuleMatchRule } from './matchRule'
 import { buildRuleWritePayload } from './ruleDraft'
-import { getErrorMessage } from './injectorShared'
+import { getErrorMessage } from './transformerShared'
 import { appendCreatedResourcesInOrder, uniqueStrings } from './util'
 
 interface UseRuleStateOptions {
   creating: Ref<boolean>
   savingEditor: Ref<boolean>
   processingBulk: Ref<boolean>
-  rules: ComputedRef<InjectionRuleReadModel[]>
-  editRule: Ref<InjectionRuleEditorDraft | null>
+  rules: ComputedRef<TransformationRuleReadModel[]>
+  editRule: Ref<TransformationRuleEditorDraft | null>
   editRuleSnippetIds: Ref<string[]>
   editDirty: Ref<boolean>
   selectedRuleId: Ref<string | null>
   refreshRuleList: () => Promise<void>
   refreshAllResources: () => Promise<void>
-  saveRuleOrderMap: (items: InjectionRuleReadModel[]) => Promise<true | string>
-  applySavedRuleSnapshot: (rule: InjectionRuleReadModel) => void
+  saveRuleOrderMap: (items: TransformationRuleReadModel[]) => Promise<true | string>
+  applySavedRuleSnapshot: (rule: TransformationRuleReadModel) => void
 }
 
 /**
- * why: 规则上下文本身比代码块更复杂，包含 match-rule 校验、snippet 关系归一化与 CRUD；
+ * why: 规则上下文本身比代码片段更复杂，包含 match-rule 校验、snippet 关系归一化与 CRUD；
  * 独立拆出后，规则写语义不再和列表装载、选中态、排序队列挤在同一个 500+ 行模块里。
  */
 export function useRuleState(options: UseRuleStateOptions) {
   /**
-   * why: 代码块关联属于写入语义，不应直接复用编辑器里“看起来像已选”的临时状态；
+   * why: 代码片段关联属于写入语义，不应直接复用编辑器里“看起来像已选”的临时状态；
    * 这里集中收口 REMOVE 等模式差异，保证所有写路径都走同一套规则。
    */
   function resolvePersistedSnippetIdsForRule(
-    rule: Pick<InjectionRuleEditorDraft, 'position'>,
+    rule: Pick<TransformationRuleEditorDraft, 'position'>,
     snippetIds: string[],
   ) {
     return rule.position === 'REMOVE' ? [] : uniqueStrings(snippetIds)
@@ -42,7 +42,7 @@ export function useRuleState(options: UseRuleStateOptions) {
    * why: 前端先做一层用户可读的快速校验，把大部分编辑态错误拦在保存前；
    * 后端仍会复核，但这里要尽量把错误定位成用户能直接修的提示。
    */
-  function validateRuleDraft(rule: InjectionRuleEditorDraft): string | null {
+  function validateRuleDraft(rule: TransformationRuleEditorDraft): string | null {
     if (rule.mode === 'SELECTOR' && !rule.match.trim()) {
       return '请填写匹配内容'
     }
@@ -62,7 +62,7 @@ export function useRuleState(options: UseRuleStateOptions) {
   })
 
   async function addRule(
-    rule: InjectionRuleEditorDraft,
+    rule: TransformationRuleEditorDraft,
     snippetIds: string[],
   ): Promise<string | null> {
     const error = validateRuleDraft(rule)
@@ -97,7 +97,7 @@ export function useRuleState(options: UseRuleStateOptions) {
   }
 
   async function importRules(
-    rules: InjectionRuleEditorDraft[],
+    rules: TransformationRuleEditorDraft[],
     enabled: boolean,
   ): Promise<string[]> {
     if (!rules.length) {
@@ -145,9 +145,9 @@ export function useRuleState(options: UseRuleStateOptions) {
       }
 
       if (createdIds.length > 0 && failures.length === 0) {
-        Toast.success(`已导入 ${createdIds.length} 个注入规则`)
+        Toast.success(`已导入 ${createdIds.length} 个转换规则`)
       } else if (createdIds.length > 0) {
-        Toast.warning(`已导入 ${createdIds.length} 个注入规则，另有 ${failures.length} 项失败`)
+        Toast.warning(`已导入 ${createdIds.length} 个转换规则，另有 ${failures.length} 项失败`)
       } else {
         Toast.error(failures[0] ?? '导入失败')
       }
@@ -210,7 +210,7 @@ export function useRuleState(options: UseRuleStateOptions) {
   async function setRulesEnabled(ids: string[], enabled: boolean) {
     const targetRules = options.rules.value.filter((rule) => ids.includes(rule.id))
     if (!targetRules.length) {
-      Toast.warning('请先选择注入规则')
+      Toast.warning('请先选择转换规则')
       return
     }
 
@@ -229,10 +229,10 @@ export function useRuleState(options: UseRuleStateOptions) {
       await options.refreshRuleList()
 
       if (successCount === targetRules.length) {
-        Toast.success(`已${enabled ? '启用' : '禁用'} ${successCount} 个注入规则`)
+        Toast.success(`已${enabled ? '启用' : '禁用'} ${successCount} 个转换规则`)
       } else if (successCount > 0) {
         Toast.warning(
-          `已${enabled ? '启用' : '禁用'} ${successCount} 个注入规则，另有 ${
+          `已${enabled ? '启用' : '禁用'} ${successCount} 个转换规则，另有 ${
             targetRules.length - successCount
           } 个失败`,
         )
@@ -275,13 +275,13 @@ export function useRuleState(options: UseRuleStateOptions) {
   function confirmDeleteRules(ids: string[]) {
     const targetRules = options.rules.value.filter((rule) => ids.includes(rule.id))
     if (!targetRules.length) {
-      Toast.warning('请先选择注入规则')
+      Toast.warning('请先选择转换规则')
       return
     }
 
     Dialog.warning({
-      title: '批量删除注入规则',
-      description: `确认删除已选择的 ${targetRules.length} 个注入规则？删除后无法恢复。`,
+      title: '批量删除转换规则',
+      description: `确认删除已选择的 ${targetRules.length} 个转换规则？删除后无法恢复。`,
       confirmType: 'danger',
       async onConfirm() {
         options.processingBulk.value = true
@@ -307,11 +307,11 @@ export function useRuleState(options: UseRuleStateOptions) {
           const orderResult = await options.saveRuleOrderMap(options.rules.value)
 
           if (successCount === targetRules.length && orderResult === true) {
-            Toast.success(`已删除 ${successCount} 个注入规则`)
+            Toast.success(`已删除 ${successCount} 个转换规则`)
           } else if (successCount > 0) {
             const suffix = orderResult === true ? '' : `；顺序保存失败：${orderResult}`
             Toast.warning(
-              `已删除 ${successCount} 个注入规则，另有 ${
+              `已删除 ${successCount} 个转换规则，另有 ${
                 targetRules.length - successCount
               } 个失败${suffix}`,
             )
@@ -336,3 +336,4 @@ export function useRuleState(options: UseRuleStateOptions) {
     confirmDeleteRules,
   }
 }
+

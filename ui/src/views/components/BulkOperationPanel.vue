@@ -21,12 +21,12 @@ const emit = defineEmits<{
   (e: 'delete'): void
 }>()
 
-const resourceLabel = computed(() => (props.tab === 'snippets' ? '代码块' : '注入规则'))
+const resourceLabel = computed(() => (props.tab === 'snippets' ? '代码片段' : '转换规则'))
 const hasSelection = computed(() => props.selectedCount > 0)
 </script>
 
 <template>
-  <div class=":uno: h-full flex flex-col injector-editor-container">
+  <div class=":uno: h-full flex flex-col transformer-editor-container">
     <EditorToolbar :show-actions="false" :show-default-actions="false" title="批量操作">
       <template #actions>
         <VButton size="sm" @click="emit('exit')">退出批量操作</VButton>
@@ -71,3 +71,4 @@ const hasSelection = computed(() => props.selectedCount > 0)
     </div>
   </div>
 </template>
+

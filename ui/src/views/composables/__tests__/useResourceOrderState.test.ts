@@ -48,7 +48,7 @@ describe('useResourceOrderState', () => {
     const state = useResourceOrderState({
       itemsResp,
       api,
-      resourceLabel: '注入规则',
+      resourceLabel: '转换规则',
     })
     state.applyOrderSnapshot({
       orders: { 'rule-a': 1, 'rule-b': 2 },
@@ -60,7 +60,7 @@ describe('useResourceOrderState', () => {
       { id: 'rule-a', name: 'Rule A' },
     ])
 
-    expect(result).toBe('注入规则顺序保存失败')
+    expect(result).toBe('转换规则顺序保存失败')
     expect(api.getOrder).toHaveBeenCalledTimes(1)
     expect(state.orders.value).toEqual({ 'rule-a': 10, 'rule-b': 20 })
     expect(state.orderVersion.value).toBe(3)
@@ -88,7 +88,7 @@ describe('useResourceOrderState', () => {
     const state = useResourceOrderState({
       itemsResp,
       api,
-      resourceLabel: '注入规则',
+      resourceLabel: '转换规则',
     })
     state.applyOrderSnapshot({
       orders: { 'rule-a': 1, 'rule-b': 2 },

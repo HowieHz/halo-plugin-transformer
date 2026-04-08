@@ -1,7 +1,11 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { VButton } from '@halo-dev/components'
-import type { CodeSnippetReadModel, InjectionRuleEditorDraft, MatchRuleSource } from '@/types'
+import type {
+  TransformationSnippetReadModel,
+  TransformationRuleEditorDraft,
+  MatchRuleSource,
+} from '@/types'
 import { MODE_OPTIONS, POSITION_OPTIONS } from '@/types'
 import {
   cloneMatchRule,
@@ -29,8 +33,8 @@ import DragAutoScrollOverlay from './DragAutoScrollOverlay.vue'
 import { useDragAutoScroll } from '@/views/composables/useDragAutoScroll'
 
 const props = defineProps<{
-  rule: InjectionRuleEditorDraft | null
-  snippets: CodeSnippetReadModel[]
+  rule: TransformationRuleEditorDraft | null
+  snippets: TransformationSnippetReadModel[]
   selectedSnippetIds: string[]
   saving: boolean
   dirty: boolean
@@ -44,11 +48,11 @@ const emit = defineEmits<{
   (e: 'replace-snippet-ids', snippetIds: string[]): void
   (e: 'toggle-snippet', snippetId: string): void
   (e: 'field-change'): void
-  (e: 'update:rule', rule: InjectionRuleEditorDraft): void
+  (e: 'update:rule', rule: TransformationRuleEditorDraft): void
 }>()
 
 const sortedSnippets = computed(() => sortSelectedFirst(props.snippets, props.selectedSnippetIds))
-const pendingRule = ref<InjectionRuleEditorDraft | null>(null)
+const pendingRule = ref<TransformationRuleEditorDraft | null>(null)
 const currentRule = computed(() => pendingRule.value ?? props.rule)
 const exportFallback = ref<TransferFileDraft | null>(null)
 const editorScrollContainer = ref<HTMLElement | null>(null)
@@ -187,9 +191,9 @@ watch(
  * why: 正常编辑需要记录撤销历史，但撤销/重置本身不能再次入栈，
  * 否则会把“当前值”重新压回历史，导致连续撤销时来回跳动。
  */
-function updateField<K extends keyof InjectionRuleEditorDraft>(
+function updateField<K extends keyof TransformationRuleEditorDraft>(
   key: K,
-  value: InjectionRuleEditorDraft[K],
+  value: TransformationRuleEditorDraft[K],
   options?: { trackHistory?: boolean },
 ) {
   if (!currentRule.value) return
@@ -217,7 +221,7 @@ function updateField<K extends keyof InjectionRuleEditorDraft>(
   emit('field-change')
 }
 
-function updateRuleSnapshot(next: InjectionRuleEditorDraft) {
+function updateRuleSnapshot(next: TransformationRuleEditorDraft) {
   pendingRule.value = next
   emit('update:rule', next)
   emit('field-change')
@@ -239,7 +243,7 @@ function cloneCurrentMatchRuleSource() {
   )
 }
 
-function updateMatchRuleField(patch: Partial<InjectionRuleEditorDraft>) {
+function updateMatchRuleField(patch: Partial<TransformationRuleEditorDraft>) {
   if (!currentRule.value) return
   const previous = currentMatchRuleSnapshot()
   const next = {
@@ -272,7 +276,7 @@ function beginMatchEdit() {
 function handleMatchInput(event: Event) {
   const value = (event.target as HTMLInputElement).value
   matchDraft.value = value
-  updateField('match', value as InjectionRuleEditorDraft['match'], { trackHistory: false })
+  updateField('match', value as TransformationRuleEditorDraft['match'], { trackHistory: false })
 }
 
 function commitMatchDraft() {
@@ -299,7 +303,7 @@ function applyUndoFieldState(field: UndoableRuleField, value: unknown) {
 
   if (field === 'position') {
     const snapshot = value as {
-      position: InjectionRuleEditorDraft['position']
+      position: TransformationRuleEditorDraft['position']
       wrapMarker: boolean
     }
     updateRuleSnapshot({
@@ -312,7 +316,7 @@ function applyUndoFieldState(field: UndoableRuleField, value: unknown) {
 
   if (field === 'matchRule') {
     const snapshot = value as {
-      matchRule: InjectionRuleEditorDraft['matchRule']
+      matchRule: TransformationRuleEditorDraft['matchRule']
       matchRuleSource?: MatchRuleSource
     }
     const next = {
@@ -330,7 +334,7 @@ function applyUndoFieldState(field: UndoableRuleField, value: unknown) {
     return
   }
 
-  updateField(field, value as InjectionRuleEditorDraft[typeof field], { trackHistory: false })
+  updateField(field, value as TransformationRuleEditorDraft[typeof field], { trackHistory: false })
 }
 
 function resolveUndoFieldCurrentValue(field: UndoableRuleField) {
@@ -357,7 +361,7 @@ function resetField(field: UndoableRuleField) {
 
   if (field === 'position') {
     const snapshot = baseline as {
-      position: InjectionRuleEditorDraft['position']
+      position: TransformationRuleEditorDraft['position']
       wrapMarker: boolean
     }
     updateRuleSnapshot({
@@ -370,7 +374,7 @@ function resetField(field: UndoableRuleField) {
 
   if (field === 'matchRule') {
     const snapshot = baseline as {
-      matchRule: InjectionRuleEditorDraft['matchRule']
+      matchRule: TransformationRuleEditorDraft['matchRule']
       matchRuleSource?: MatchRuleSource
     }
     const next = {
@@ -388,7 +392,7 @@ function resetField(field: UndoableRuleField) {
     return
   }
 
-  updateField(field, baseline as InjectionRuleEditorDraft[typeof field], {
+  updateField(field, baseline as TransformationRuleEditorDraft[typeof field], {
     trackHistory: false,
   })
 }
@@ -399,7 +403,7 @@ async function exportRule() {
   }
   exportFallback.value = createTransferFileDraft(
     buildRuleTransfer(currentRule.value),
-    currentRule.value.name || currentRule.value.id || 'injection-rule',
+    currentRule.value.name || currentRule.value.id || 'transformation-rule',
   )
 }
 
@@ -415,7 +419,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div
-    class=":uno: relative h-full flex flex-col injector-editor-container"
+    class=":uno: relative h-full flex flex-col transformer-editor-container"
     @dragover.capture="handleEditorContainerDragOver"
     @dragleave.capture="handleEditorContainerDragLeave"
     @drop.capture="handleEditorContainerDropCapture"
@@ -434,7 +438,7 @@ onBeforeUnmount(() => {
         :show-export="!!currentRule"
         :show-actions="!!currentRule"
         :show-default-actions="true"
-        :title="currentRule ? '编辑规则' : '注入规则'"
+        :title="currentRule ? '编辑规则' : '转换规则'"
         @delete="emit('delete')"
         @export="exportRule"
         @toggle-enabled="emit('toggle-enabled')"
@@ -524,7 +528,8 @@ onBeforeUnmount(() => {
               @change="
                 updateField(
                   'mode',
-                  ($event.target as HTMLSelectElement).value as InjectionRuleEditorDraft['mode'],
+                  ($event.target as HTMLSelectElement)
+                    .value as TransformationRuleEditorDraft['mode'],
                 )
               "
             >
@@ -583,7 +588,7 @@ onBeforeUnmount(() => {
                   updateField(
                     'position',
                     ($event.target as HTMLSelectElement)
-                      .value as InjectionRuleEditorDraft['position'],
+                      .value as TransformationRuleEditorDraft['position'],
                   )
                 "
               >
@@ -612,7 +617,7 @@ onBeforeUnmount(() => {
           </template>
         </FormField>
 
-        <FormField v-if="needsSnippets" label="关联代码块">
+        <FormField v-if="needsSnippets" label="关联代码片段">
           <template #actions>
             <div class=":uno: flex items-center gap-2">
               <span aria-live="polite" class=":uno: text-xs text-gray-400">
@@ -628,9 +633,9 @@ onBeforeUnmount(() => {
           <template #default>
             <ItemPicker
               :items="sortedSnippets"
-              label="关联代码块选择列表"
+              label="关联代码片段选择列表"
               :selected-ids="selectedSnippetIds"
-              empty-text="暂无代码块, 请先创建"
+              empty-text="暂无代码片段, 请先创建"
               @toggle="handleToggleSnippet"
             />
           </template>
@@ -668,3 +673,4 @@ onBeforeUnmount(() => {
     </form>
   </div>
 </template>
+

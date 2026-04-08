@@ -3,7 +3,7 @@ export type BatchTransferResourceType = 'snippet-batch' | 'rule-batch'
 export type TransferResourceType = SingleTransferResourceType | BatchTransferResourceType
 
 export const TRANSFER_SCHEMA_URL =
-  'https://raw.githubusercontent.com/Erzbir/halo-plugin-injector/main/ui/public/injector.schema.json'
+  'https://raw.githubusercontent.com/HowieHz/halo-plugin-transformer/main/ui/public/transformer.schema.json'
 
 export interface TransferEnvelope<TType extends TransferResourceType, TData> {
   $schema?: string
@@ -43,13 +43,13 @@ export function parseTransferEnvelope<
 function resolveTransferTypeMismatchMessage(expectedType: TransferResourceType) {
   switch (expectedType) {
     case 'snippet':
-      return '导入失败：当前只能导入代码块 JSON'
+      return '导入失败：当前只能导入代码片段 JSON'
     case 'rule':
-      return '导入失败：当前只能导入注入规则 JSON'
+      return '导入失败：当前只能导入转换规则 JSON'
     case 'snippet-batch':
-      return '导入失败：当前只能导入批量代码块 JSON'
+      return '导入失败：当前只能导入批量代码片段 JSON'
     case 'rule-batch':
-      return '导入失败：当前只能导入批量注入规则 JSON'
+      return '导入失败：当前只能导入批量转换规则 JSON'
   }
 }
 
@@ -96,3 +96,4 @@ export function ensureAllowedFields(
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
 }
+

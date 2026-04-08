@@ -9,7 +9,7 @@ const managedWorkflowPaths = [
 ];
 const dryRun = process.argv.includes("--dry-run");
 const releaseDelayMs = 24 * 60 * 60 * 1000;
-const userAgent = "halo-plugin-injector-toolchain-updater";
+const userAgent = "halo-plugin-transformer-toolchain-updater";
 
 const appendGitHubOutput = async (name, value) => {
   const outputPath = process.env.GITHUB_OUTPUT;

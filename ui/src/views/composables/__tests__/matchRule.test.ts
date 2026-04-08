@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it } from 'vitest'
-import { makeRuleEditorDraft, type InjectionRuleReadModel } from '@/types'
+import { makeRuleEditorDraft, type TransformationRuleReadModel } from '@/types'
 import {
   buildMatchRuleEditorSourceForMode,
   getDomRulePerformanceWarning,
@@ -15,9 +15,9 @@ import { hydrateRuleEditorDraft } from '../ruleDraft'
 describe('matchRule editor state', () => {
   // why: 刷新页面应回到已保存内容；不应再恢复本地未保存草稿或编辑模式。
   it('hydrates editor from saved rule only', () => {
-    const savedRule: InjectionRuleReadModel = {
-      apiVersion: 'injector.erzbir.com/v1alpha1',
-      kind: 'InjectionRule',
+    const savedRule: TransformationRuleReadModel = {
+      apiVersion: 'transformer.howiehz.top/v1alpha1',
+      kind: 'TransformationRule',
       metadata: { name: 'rule-a', version: 1 },
       id: 'rule-a',
       name: 'Rule A',
@@ -181,7 +181,7 @@ describe('matchRule editor state', () => {
     })
   })
 
-  // why: 新建注入规则时，首个匹配条件应留空等待用户填写，而不是偷偷预填默认路径。
+  // why: 新建转换规则时，首个匹配条件应留空等待用户填写，而不是偷偷预填默认路径。
   it('starts new rules with an empty first match value', () => {
     const rule = makeRuleEditorDraft()
 

@@ -9,9 +9,9 @@
  *
  * Generated files:
  * - `ui/src/views/composables/matchRuleContract.generated.ts`
- * - `src/main/java/com/erzbir/halo/injector/core/MatchRuleContractMessages.java`
+ * - `src/main/java/top/howiehz/halo/transformer/core/MatchRuleContractMessages.java`
  * - `ui/public/generated/match-rule.schema.json`
- * - `ui/public/injector.schema.json`
+ * - `ui/public/transformer.schema.json`
  *
  * Modes:
  * - default: 写回所有 generated artifacts
@@ -46,10 +46,10 @@ const artifacts = [
       "src",
       "main",
       "java",
-      "com",
-      "erzbir",
+      "top",
+      "howiehz",
       "halo",
-      "injector",
+      "transformer",
       "core",
       "MatchRuleContractMessages.java",
     ),
@@ -60,7 +60,7 @@ const artifacts = [
     content: buildJsonArtifact(buildMatchRuleSchema(spec)),
   },
   {
-    path: path.join(repoRoot, "ui", "public", "injector.schema.json"),
+    path: path.join(repoRoot, "ui", "public", "transformer.schema.json"),
     content: buildJsonArtifact(buildTransferEnvelopeSchema()),
   },
 ];
@@ -314,7 +314,7 @@ function buildJavaArtifact(data) {
     )
     .join("\n");
 
-  return `package com.erzbir.halo.injector.core;
+  return `package top.howiehz.halo.transformer.core;
 
 import java.util.List;
 
@@ -425,9 +425,9 @@ function buildMatchRuleSchema(data) {
 
   return {
     $schema: "https://json-schema.org/draft/2020-12/schema",
-    $id: "https://raw.githubusercontent.com/Erzbir/halo-plugin-injector/main/ui/public/generated/match-rule.schema.json",
-    title: "Halo Plugin Injector Match Rule",
-    description: "Generated schema for Halo Plugin Injector match-rule trees and transfer sources.",
+    $id: "https://raw.githubusercontent.com/HowieHz/halo-plugin-transformer/main/ui/public/generated/match-rule.schema.json",
+    title: "Halo Plugin Transformer Match Rule",
+    description: "Generated schema for Halo Plugin Transformer match-rule trees and transfer sources.",
     $defs: {
       matchRuleSource: {
         oneOf: [
@@ -527,9 +527,9 @@ function toPascalCase(value) {
 function buildTransferEnvelopeSchema() {
   return {
     $schema: "https://json-schema.org/draft/2020-12/schema",
-    $id: "https://raw.githubusercontent.com/Erzbir/halo-plugin-injector/main/ui/public/injector.schema.json",
-    title: "Halo Plugin Injector Transfer",
-    description: "JSON import/export schema for Halo Plugin Injector resources.",
+    $id: "https://raw.githubusercontent.com/HowieHz/halo-plugin-transformer/main/ui/public/transformer.schema.json",
+    title: "Halo Plugin Transformer Transfer",
+    description: "JSON import/export schema for Halo Plugin Transformer resources.",
     type: "object",
     required: ["version", "resourceType", "data"],
     properties: {

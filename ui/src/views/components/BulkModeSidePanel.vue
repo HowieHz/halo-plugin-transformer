@@ -7,7 +7,7 @@ const props = defineProps<{
   selectedCount: number
 }>()
 
-const resourceLabel = computed(() => (props.tab === 'snippets' ? '代码块' : '注入规则'))
+const resourceLabel = computed(() => (props.tab === 'snippets' ? '代码片段' : '转换规则'))
 </script>
 
 <template>
@@ -25,3 +25,4 @@ const resourceLabel = computed(() => (props.tab === 'snippets' ? '代码块' : '
     </div>
   </div>
 </template>
+

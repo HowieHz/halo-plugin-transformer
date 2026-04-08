@@ -3,7 +3,7 @@ import { Toast } from '@halo-dev/components'
 import type { PersistedOrderState, OrderMap } from '@/apis'
 import type { ItemList } from '@/types'
 import { buildExplicitOrderMap, sortByOrderMap } from './util'
-import { getErrorMessage, type ReorderPlacement } from './injectorShared'
+import { getErrorMessage, type ReorderPlacement } from './transformerShared'
 
 interface OrderApi {
   getOrder: () => Promise<{ data: PersistedOrderState }>

@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/HowieHz/halo-plugin-transformer/main/ui/public/transformer.schema.json",
+  "title": "Halo Plugin Transformer Transfer",
+  "description": "JSON import/export schema for Halo Plugin Transformer resources.",
+  "type": "object",
+  "required": [
+    "version",
+    "resourceType",
+    "data"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "type": "integer"
+    },
+    "resourceType": {
+      "type": "string",
+      "enum": [
+        "snippet",
+        "rule",
+        "snippet-batch",
+        "rule-batch"
+      ]
+    },
+    "data": true
+  },
+  "additionalProperties": false,
+  "oneOf": [
+    {
+      "title": "Snippet Transfer v1",
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "resourceType": {
+          "const": "snippet"
+        },
+        "data": {
+          "$ref": "#/$defs/snippetDataV1"
+        }
+      }
+    },
+    {
+      "title": "Rule Transfer v1",
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "resourceType": {
+          "const": "rule"
+        },
+        "data": {
+          "$ref": "#/$defs/ruleDataV1"
+        }
+      }
+    },
+    {
+      "title": "Snippet Batch Transfer v1",
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "resourceType": {
+          "const": "snippet-batch"
+        },
+        "data": {
+          "$ref": "#/$defs/snippetBatchDataV1"
+        }
+      }
+    },
+    {
+      "title": "Rule Batch Transfer v1",
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "resourceType": {
+          "const": "rule-batch"
+        },
+        "data": {
+          "$ref": "#/$defs/ruleBatchDataV1"
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "snippetDataV1": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "snippetBatchDataV1": {
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/snippetDataV1"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ruleDataV1": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "name",
+        "description",
+        "mode",
+        "match",
+        "position",
+        "wrapMarker",
+        "matchRuleSource"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "HEAD",
+            "FOOTER",
+            "SELECTOR"
+          ]
+        },
+        "match": {
+          "type": "string"
+        },
+        "position": {
+          "type": "string",
+          "enum": [
+            "APPEND",
+            "PREPEND",
+            "BEFORE",
+            "AFTER",
+            "REPLACE",
+            "REMOVE"
+          ]
+        },
+        "wrapMarker": {
+          "type": "boolean"
+        },
+        "runtimeOrder": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "matchRuleSource": {
+          "$ref": "./generated/match-rule.schema.json#/$defs/matchRuleSource"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ruleBatchDataV1": {
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/ruleDataV1"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

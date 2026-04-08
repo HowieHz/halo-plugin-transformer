@@ -2,7 +2,7 @@ import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
 import type { ActiveTab } from '@/types'
 import { uniqueStrings } from './util'
 
-export type InjectorViewMode = 'single' | 'bulk'
+export type TransformerViewMode = 'single' | 'bulk'
 
 interface BulkSelectableResource {
   id: string
@@ -19,7 +19,7 @@ interface UseBulkSelectionStateOptions {
  * 否则会把单资源编辑 URL、草稿、批量勾选三套语义揉成一团。
  */
 export function useBulkSelectionState(options: UseBulkSelectionStateOptions) {
-  const viewMode = ref<InjectorViewMode>('single')
+  const viewMode = ref<TransformerViewMode>('single')
   const bulkSnippetIds = ref<string[]>([])
   const bulkRuleIds = ref<string[]>([])
 

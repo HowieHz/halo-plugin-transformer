@@ -172,9 +172,7 @@ export function useDragAutoScroll(
       activeDirectionStartedAt > 0
         ? clamp((performance.now() - activeDirectionStartedAt) / warmupDurationMs, 0, 1)
         : 0
-    return (
-      initialScrollStepPx + (spatialStep - initialScrollStepPx) * easeOutQuad(warmupProgress)
-    )
+    return initialScrollStepPx + (spatialStep - initialScrollStepPx) * easeOutQuad(warmupProgress)
   }
 
   function resolveAutoScrollDirection(

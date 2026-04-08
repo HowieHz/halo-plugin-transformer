@@ -4,7 +4,7 @@ plugins {
     id "run.halo.plugin.devtools" version "0.6.2"
 }
 
-group 'com.erzbir.halo.injector'
+group 'top.howiehz.halo.transformer'
 
 def nodeCommand = System.getProperty('os.name').toLowerCase().contains('windows') ? 'node.exe' : 'node'
 

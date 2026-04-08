@@ -1,4 +1,8 @@
-import type { InjectionRuleEditorDraft, InjectionRuleEditorState, MatchRule } from '@/types'
+import type {
+  TransformationRuleEditorDraft,
+  TransformationRuleEditorState,
+  MatchRule,
+} from '@/types'
 import { resolveRuleMatchRule } from './matchRuleSource'
 
 type AnalysisExpression =
@@ -43,7 +47,8 @@ export function supportsDomPathPrecheck(rule: MatchRule | null): boolean {
  * 不能在 JSON_DRAFT 已经变坏时还继续读取旧的 `matchRule`，否则就会出现状态错位。
  */
 export function getDomRulePerformanceWarning(
-  rule: Pick<InjectionRuleEditorDraft, 'mode' | 'matchRule'> & Partial<InjectionRuleEditorState>,
+  rule: Pick<TransformationRuleEditorDraft, 'mode' | 'matchRule'> &
+    Partial<TransformationRuleEditorState>,
 ): string | null {
   const result = resolveRuleMatchRule(rule)
   if (!result.rule || result.error) {

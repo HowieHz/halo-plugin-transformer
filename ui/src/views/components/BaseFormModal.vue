@@ -18,7 +18,7 @@ const emit = defineEmits<{
 <template>
   <VModal :title="hideDefaultTitle ? '' : title" :width="1000" @close="emit('close')">
     <div
-      class=":uno: flex injector-editor-container"
+      class=":uno: flex transformer-editor-container"
       :class="showPicker === false ? '' : 'divide-x divide-gray-100'"
       style="min-height: 400px"
     >

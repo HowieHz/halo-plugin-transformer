@@ -1,35 +1,35 @@
 import { computed, type ComputedRef, type Ref } from 'vue'
 import { Dialog, Toast } from '@halo-dev/components'
 import { snippetApi } from '@/apis'
-import type { CodeSnippetEditorDraft, CodeSnippetReadModel } from '@/types'
+import type { TransformationSnippetEditorDraft, TransformationSnippetReadModel } from '@/types'
 import { buildSnippetWritePayload } from './snippetDraft'
-import { getErrorMessage } from './injectorShared'
+import { getErrorMessage } from './transformerShared'
 import { appendCreatedResourcesInOrder } from './util'
 
 interface UseSnippetStateOptions {
   creating: Ref<boolean>
   savingEditor: Ref<boolean>
   processingBulk: Ref<boolean>
-  snippets: ComputedRef<CodeSnippetReadModel[]>
-  editSnippet: Ref<CodeSnippetEditorDraft | null>
+  snippets: ComputedRef<TransformationSnippetReadModel[]>
+  editSnippet: Ref<TransformationSnippetEditorDraft | null>
   editDirty: Ref<boolean>
   selectedSnippetId: Ref<string | null>
   refreshSnippetList: () => Promise<void>
   refreshAllResources: () => Promise<void>
-  saveSnippetOrderMap: (items: CodeSnippetReadModel[]) => Promise<true | string>
-  applySavedSnippetSnapshot: (snippet: CodeSnippetReadModel) => void
+  saveSnippetOrderMap: (items: TransformationSnippetReadModel[]) => Promise<true | string>
+  applySavedSnippetSnapshot: (snippet: TransformationSnippetReadModel) => void
 }
 
 /**
- * why: 代码块的 CRUD / 启停 / 删除语义应集中在 snippet 上下文里；
- * 这样总控层只负责组合，而不会继续同时理解“代码块怎么保存”和“规则怎么保存”两套细节。
+ * why: 代码片段的 CRUD / 启停 / 删除语义应集中在 snippet 上下文里；
+ * 这样总控层只负责组合，而不会继续同时理解“代码片段怎么保存”和“规则怎么保存”两套细节。
  */
 export function useSnippetState(options: UseSnippetStateOptions) {
   const snippetEditorError = computed(() =>
     options.editSnippet.value ? validateSnippetDraft(options.editSnippet.value) : null,
   )
 
-  async function addSnippet(snippet: CodeSnippetEditorDraft): Promise<string | null> {
+  async function addSnippet(snippet: TransformationSnippetEditorDraft): Promise<string | null> {
     const validationError = validateSnippetDraft(snippet)
     if (validationError) {
       Toast.error(validationError)
@@ -43,9 +43,9 @@ export function useSnippetState(options: UseSnippetStateOptions) {
       const orderResult = await options.saveSnippetOrderMap(options.snippets.value)
       options.selectedSnippetId.value = id
       if (orderResult === true) {
-        Toast.success('代码块已创建')
+        Toast.success('代码片段已创建')
       } else {
-        Toast.warning(`代码块已创建，但顺序保存失败：${orderResult}`)
+        Toast.warning(`代码片段已创建，但顺序保存失败：${orderResult}`)
       }
       return id
     } catch (error) {
@@ -57,7 +57,7 @@ export function useSnippetState(options: UseSnippetStateOptions) {
   }
 
   async function importSnippets(
-    snippets: CodeSnippetEditorDraft[],
+    snippets: TransformationSnippetEditorDraft[],
     enabled: boolean,
   ): Promise<string[]> {
     if (!snippets.length) {
@@ -99,9 +99,9 @@ export function useSnippetState(options: UseSnippetStateOptions) {
       }
 
       if (createdIds.length > 0 && failures.length === 0) {
-        Toast.success(`已导入 ${createdIds.length} 个代码块`)
+        Toast.success(`已导入 ${createdIds.length} 个代码片段`)
       } else if (createdIds.length > 0) {
-        Toast.warning(`已导入 ${createdIds.length} 个代码块，另有 ${failures.length} 项失败`)
+        Toast.warning(`已导入 ${createdIds.length} 个代码片段，另有 ${failures.length} 项失败`)
       } else {
         Toast.error(failures[0] ?? '导入失败')
       }
@@ -149,7 +149,7 @@ export function useSnippetState(options: UseSnippetStateOptions) {
         options.editSnippet.value.metadata.version,
       )
       options.applySavedSnippetSnapshot(response.data)
-      Toast.success(nextEnabled ? '代码块已启用' : '代码块已停用')
+      Toast.success(nextEnabled ? '代码片段已启用' : '代码片段已停用')
     } catch (error) {
       options.editSnippet.value.enabled = previousEnabled
       Toast.error(getErrorMessage(error, nextEnabled ? '启用失败' : '停用失败'))
@@ -159,7 +159,7 @@ export function useSnippetState(options: UseSnippetStateOptions) {
   async function setSnippetsEnabled(ids: string[], enabled: boolean) {
     const targetSnippets = options.snippets.value.filter((snippet) => ids.includes(snippet.id))
     if (!targetSnippets.length) {
-      Toast.warning('请先选择代码块')
+      Toast.warning('请先选择代码片段')
       return
     }
 
@@ -178,10 +178,10 @@ export function useSnippetState(options: UseSnippetStateOptions) {
       await options.refreshSnippetList()
 
       if (successCount === targetSnippets.length) {
-        Toast.success(`已${enabled ? '启用' : '禁用'} ${successCount} 个代码块`)
+        Toast.success(`已${enabled ? '启用' : '禁用'} ${successCount} 个代码片段`)
       } else if (successCount > 0) {
         Toast.warning(
-          `已${enabled ? '启用' : '禁用'} ${successCount} 个代码块，另有 ${
+          `已${enabled ? '启用' : '禁用'} ${successCount} 个代码片段，另有 ${
             targetSnippets.length - successCount
           } 个失败`,
         )
@@ -197,8 +197,8 @@ export function useSnippetState(options: UseSnippetStateOptions) {
     if (!options.editSnippet.value) return
     const id = options.editSnippet.value.id
     Dialog.warning({
-      title: '删除代码块',
-      description: `确认删除代码块 ${id}？删除后无法恢复。`,
+      title: '删除代码片段',
+      description: `确认删除代码片段 ${id}？删除后无法恢复。`,
       confirmType: 'danger',
       async onConfirm() {
         try {
@@ -209,9 +209,9 @@ export function useSnippetState(options: UseSnippetStateOptions) {
           await options.refreshAllResources()
           const orderResult = await options.saveSnippetOrderMap(options.snippets.value)
           if (orderResult === true) {
-            Toast.success('代码块已删除')
+            Toast.success('代码片段已删除')
           } else {
-            Toast.warning(`代码块已删除，但顺序保存失败：${orderResult}`)
+            Toast.warning(`代码片段已删除，但顺序保存失败：${orderResult}`)
           }
         } catch (error) {
           Toast.error(getErrorMessage(error, '删除失败'))
@@ -223,13 +223,13 @@ export function useSnippetState(options: UseSnippetStateOptions) {
   function confirmDeleteSnippets(ids: string[]) {
     const targetSnippets = options.snippets.value.filter((snippet) => ids.includes(snippet.id))
     if (!targetSnippets.length) {
-      Toast.warning('请先选择代码块')
+      Toast.warning('请先选择代码片段')
       return
     }
 
     Dialog.warning({
-      title: '批量删除代码块',
-      description: `确认删除已选择的 ${targetSnippets.length} 个代码块？删除后无法恢复。`,
+      title: '批量删除代码片段',
+      description: `确认删除已选择的 ${targetSnippets.length} 个代码片段？删除后无法恢复。`,
       confirmType: 'danger',
       async onConfirm() {
         options.processingBulk.value = true
@@ -254,11 +254,11 @@ export function useSnippetState(options: UseSnippetStateOptions) {
           const orderResult = await options.saveSnippetOrderMap(options.snippets.value)
 
           if (successCount === targetSnippets.length && orderResult === true) {
-            Toast.success(`已删除 ${successCount} 个代码块`)
+            Toast.success(`已删除 ${successCount} 个代码片段`)
           } else if (successCount > 0) {
             const suffix = orderResult === true ? '' : `；顺序保存失败：${orderResult}`
             Toast.warning(
-              `已删除 ${successCount} 个代码块，另有 ${
+              `已删除 ${successCount} 个代码片段，另有 ${
                 targetSnippets.length - successCount
               } 个失败${suffix}`,
             )
@@ -284,9 +284,10 @@ export function useSnippetState(options: UseSnippetStateOptions) {
   }
 }
 
-function validateSnippetDraft(snippet: Pick<CodeSnippetEditorDraft, 'code'>) {
+function validateSnippetDraft(snippet: Pick<TransformationSnippetEditorDraft, 'code'>) {
   if (!snippet.code.trim()) {
     return '代码内容不能为空'
   }
   return null
 }
+

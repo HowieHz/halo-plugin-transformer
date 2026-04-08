@@ -1,5 +1,5 @@
 {
-    "name": "halo-plugin-injector",
+    "name": "halo-plugin-transformer",
     "private": true,
     "type": "module",
     "engines": {

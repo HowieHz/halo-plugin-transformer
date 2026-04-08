@@ -1,6 +1,6 @@
 import {
-  type CodeSnippetEditorDraft,
-  type InjectionRuleEditorDraft,
+  type TransformationSnippetEditorDraft,
+  type TransformationRuleEditorDraft,
   type MatchRuleSource,
 } from '@/types'
 import { makeJsonDraftSource, makeRuleTreeSource, parseMatchRuleDraft } from './matchRule'
@@ -17,9 +17,9 @@ export interface RuleTransferData {
   enabled: boolean
   name: string
   description: string
-  mode: InjectionRuleEditorDraft['mode']
+  mode: TransformationRuleEditorDraft['mode']
   match: string
-  position: InjectionRuleEditorDraft['position']
+  position: TransformationRuleEditorDraft['position']
   wrapMarker: boolean
   runtimeOrder: number
   matchRuleSource: MatchRuleSource
@@ -40,7 +40,9 @@ export type RuleBatchTransferEnvelope = TransferEnvelope<
  * why: 导入导出只面向用户可编辑内容；像 id、排序、metadata、关联关系这类系统字段
  * 不应跟着资源模板流转，避免“导入即复制脏状态”。
  */
-export function buildSnippetTransfer(snippet: CodeSnippetEditorDraft): SnippetTransferEnvelope {
+export function buildSnippetTransfer(
+  snippet: TransformationSnippetEditorDraft,
+): SnippetTransferEnvelope {
   return {
     $schema: TRANSFER_SCHEMA_URL,
     version: 1,
@@ -53,7 +55,7 @@ export function buildSnippetTransfer(snippet: CodeSnippetEditorDraft): SnippetTr
  * why: 规则导出保留当前编辑器可见的业务内容，但不会把编辑器内部状态原样透传；
  * 对可成功解析的 `JSON_DRAFT`，这里会收敛成规范的 `RULE_TREE`，只有仍然无效的 JSON 草稿才继续按 `JSON_DRAFT` 导出。
  */
-export function buildRuleTransfer(rule: InjectionRuleEditorDraft): RuleTransferEnvelope {
+export function buildRuleTransfer(rule: TransformationRuleEditorDraft): RuleTransferEnvelope {
   return {
     $schema: TRANSFER_SCHEMA_URL,
     version: 1,
@@ -67,7 +69,7 @@ export function buildRuleTransfer(rule: InjectionRuleEditorDraft): RuleTransferE
  * 这里直接复用单资源 transfer data，确保单个导出与批量导出共享同一条契约。
  */
 export function buildSnippetBatchTransfer(
-  snippets: CodeSnippetEditorDraft[],
+  snippets: TransformationSnippetEditorDraft[],
 ): SnippetBatchTransferEnvelope {
   return {
     $schema: TRANSFER_SCHEMA_URL,
@@ -84,7 +86,7 @@ export function buildSnippetBatchTransfer(
  * 这样导入校验、schema 与未来迁移都只维护一套规则 item 语义。
  */
 export function buildRuleBatchTransfer(
-  rules: InjectionRuleEditorDraft[],
+  rules: TransformationRuleEditorDraft[],
 ): RuleBatchTransferEnvelope {
   return {
     $schema: TRANSFER_SCHEMA_URL,
@@ -117,7 +119,7 @@ export function createTransferFileDraft(
   }
 }
 
-function buildSnippetTransferData(snippet: CodeSnippetEditorDraft): SnippetTransferData {
+function buildSnippetTransferData(snippet: TransformationSnippetEditorDraft): SnippetTransferData {
   return {
     enabled: snippet.enabled,
     name: snippet.name,
@@ -126,7 +128,7 @@ function buildSnippetTransferData(snippet: CodeSnippetEditorDraft): SnippetTrans
   }
 }
 
-function buildRuleTransferData(rule: InjectionRuleEditorDraft): RuleTransferData {
+function buildRuleTransferData(rule: TransformationRuleEditorDraft): RuleTransferData {
   const matchRuleSource = buildRuleTransferMatchRuleSource(rule)
   return {
     enabled: rule.enabled,
@@ -141,7 +143,7 @@ function buildRuleTransferData(rule: InjectionRuleEditorDraft): RuleTransferData
   }
 }
 
-function buildRuleTransferMatchRuleSource(rule: InjectionRuleEditorDraft): MatchRuleSource {
+function buildRuleTransferMatchRuleSource(rule: TransformationRuleEditorDraft): MatchRuleSource {
   const source = rule.matchRuleSource ?? makeRuleTreeSource(rule.matchRule)
   if (source.kind !== 'JSON_DRAFT') {
     return makeRuleTreeSource(rule.matchRule)
@@ -159,7 +161,7 @@ function buildRuleTransferMatchRuleSource(rule: InjectionRuleEditorDraft): Match
 function sanitizeFileName(name: string) {
   const trimmed = name.trim()
   if (!trimmed) {
-    return 'injector-export'
+    return 'transformer-export'
   }
   return trimmed.replace(/[\\/:*?"<>|]+/g, '-')
 }

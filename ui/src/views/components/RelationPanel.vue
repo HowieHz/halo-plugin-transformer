@@ -1,6 +1,10 @@
 <script lang="ts" setup>
 import { computed } from 'vue'
-import type { CodeSnippetReadModel, InjectionPosition, InjectionRuleReadModel } from '@/types'
+import type {
+  TransformationPosition,
+  TransformationRuleReadModel,
+  TransformationSnippetReadModel,
+} from '@/types'
 import ResourceList from './ResourceList.vue'
 import { rulePreview } from '@/views/composables/util'
 import { matchRuleSummary } from '@/views/composables/matchRule'
@@ -9,9 +13,9 @@ const props = defineProps<{
   mode: 'snippets' | 'rules'
   selectedSnippetId: string | null
   selectedRuleId: string | null
-  selectedRulePosition?: InjectionPosition | null
-  rulesUsingSnippet: InjectionRuleReadModel[]
-  snippetsInRule: CodeSnippetReadModel[]
+  selectedRulePosition?: TransformationPosition | null
+  rulesUsingSnippet: TransformationRuleReadModel[]
+  snippetsInRule: TransformationSnippetReadModel[]
 }>()
 
 const emit = defineEmits<{
@@ -21,8 +25,8 @@ const emit = defineEmits<{
 
 const ruleSnippetsEmptyText = computed(() =>
   props.selectedRulePosition === 'REMOVE'
-    ? '该规则无需关联代码块'
-    : '该规则暂未关联代码块，请在规则编辑器中添加',
+    ? '该规则无需关联代码片段'
+    : '该规则暂未关联代码片段，请在规则编辑器中添加',
 )
 </script>
 
@@ -33,11 +37,11 @@ const ruleSnippetsEmptyText = computed(() =>
         <h2 v-if="selectedSnippetId" class=":uno: text-sm font-semibold text-gray-900">
           被 <span class=":uno: text-primary">{{ rulesUsingSnippet.length }}</span> 个规则引用
         </h2>
-        <span v-else class=":uno: text-sm text-gray-400">选择一个代码块</span>
+        <span v-else class=":uno: text-sm text-gray-400">选择一个代码片段</span>
       </template>
       <template v-else>
         <h2 v-if="selectedRuleId" class=":uno: text-sm font-semibold text-gray-900">
-          关联 <span class=":uno: text-primary">{{ snippetsInRule.length }}</span> 个代码块
+          关联 <span class=":uno: text-primary">{{ snippetsInRule.length }}</span> 个代码片段
         </h2>
         <span v-else class=":uno: text-sm text-gray-400">选择一个规则</span>
       </template>
@@ -48,8 +52,8 @@ const ruleSnippetsEmptyText = computed(() =>
         <ResourceList
           v-if="selectedSnippetId"
           :items="rulesUsingSnippet"
-          list-label="引用当前代码块的规则列表"
-          empty-text="该代码块暂未被任何规则引用，请到规则编辑器中关联"
+          list-label="引用当前代码片段的规则列表"
+          empty-text="该代码片段暂未被任何规则引用，请到规则编辑器中关联"
           @select="emit('jump-to-rule', $event)"
         >
           <template #meta="{ item: rule }">
@@ -76,7 +80,7 @@ const ruleSnippetsEmptyText = computed(() =>
         <ResourceList
           v-if="selectedRuleId"
           :items="snippetsInRule"
-          list-label="当前规则关联的代码块列表"
+          list-label="当前规则关联的代码片段列表"
           :empty-text="ruleSnippetsEmptyText"
           @select="emit('jump-to-snippet', $event)"
         >
@@ -84,7 +88,7 @@ const ruleSnippetsEmptyText = computed(() =>
             <span
               class=":uno: text-xs text-primary opacity-0 mt-0.5 group-hover:opacity-100 transition-opacity"
             >
-              点击跳转到代码块 →
+              点击跳转到代码片段 →
             </span>
           </template>
         </ResourceList>
@@ -92,3 +96,4 @@ const ruleSnippetsEmptyText = computed(() =>
     </div>
   </div>
 </template>
+

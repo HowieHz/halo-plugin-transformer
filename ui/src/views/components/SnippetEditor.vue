@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { CodeSnippetEditorDraft } from '@/types'
+import type { TransformationSnippetEditorDraft } from '@/types'
 import EditorToolbar from './EditorToolbar.vue'
 import EditorFooter from './EditorFooter.vue'
 import ExportContentModal from './ExportContentModal.vue'
@@ -15,7 +15,7 @@ import {
 } from '@/views/composables/transfer'
 
 const props = defineProps<{
-  snippet: CodeSnippetEditorDraft | null
+  snippet: TransformationSnippetEditorDraft | null
   saving: boolean
   dirty: boolean
 }>()
@@ -26,7 +26,7 @@ const emit = defineEmits<{
   (e: 'toggle-enabled'): void
   (e: 'toggle-bulk-mode'): void
   (e: 'field-change'): void
-  (e: 'update:snippet', snippet: CodeSnippetEditorDraft): void
+  (e: 'update:snippet', snippet: TransformationSnippetEditorDraft): void
 }>()
 
 const undo = useFieldUndo()
@@ -68,9 +68,9 @@ watch(
   { immediate: true },
 )
 
-function updateField<K extends keyof CodeSnippetEditorDraft>(
+function updateField<K extends keyof TransformationSnippetEditorDraft>(
   key: K,
-  value: CodeSnippetEditorDraft[K],
+  value: TransformationSnippetEditorDraft[K],
   options?: { trackHistory?: boolean },
 ) {
   if (!props.snippet) return
@@ -97,7 +97,7 @@ function resetField(field: UndoableSnippetField) {
   if (!props.snippet) return
   const baseline = undo.reset(field)
   if (baseline === undefined) return
-  updateField(field, baseline as CodeSnippetEditorDraft[typeof field], {
+  updateField(field, baseline as TransformationSnippetEditorDraft[typeof field], {
     trackHistory: false,
   })
 }
@@ -114,7 +114,9 @@ function resolveUndoFieldCurrentValue(field: UndoableSnippetField) {
 }
 
 function applyUndoFieldState(field: UndoableSnippetField, value: unknown) {
-  updateField(field, value as CodeSnippetEditorDraft[typeof field], { trackHistory: false })
+  updateField(field, value as TransformationSnippetEditorDraft[typeof field], {
+    trackHistory: false,
+  })
 }
 
 function syncCodeScroll(event: Event) {
@@ -141,7 +143,7 @@ async function exportSnippet() {
 </script>
 
 <template>
-  <div class=":uno: h-full flex flex-col injector-editor-container">
+  <div class=":uno: h-full flex flex-col transformer-editor-container">
     <ExportContentModal
       v-if="exportFallback"
       :content="exportFallback.content"
@@ -155,7 +157,7 @@ async function exportSnippet() {
       :show-export="!!snippet"
       :show-actions="!!snippet"
       :show-default-actions="true"
-      :title="snippet ? '编辑代码块' : '代码块'"
+      :title="snippet ? '编辑代码片段' : '代码片段'"
       @delete="emit('delete')"
       @export="exportSnippet"
       @toggle-enabled="emit('toggle-enabled')"
@@ -166,7 +168,7 @@ async function exportSnippet() {
     </EditorToolbar>
 
     <div v-if="!snippet" class=":uno: flex flex-1 items-center justify-center">
-      <span class=":uno: text-sm text-gray-500">从左侧选择代码块进行编辑</span>
+      <span class=":uno: text-sm text-gray-500">从左侧选择代码片段进行编辑</span>
     </div>
 
     <form v-else class=":uno: min-h-0 flex flex-1 flex-col" @submit.prevent="emit('save')">
@@ -195,7 +197,7 @@ async function exportSnippet() {
               :id="inputId"
               :value="snippet.description"
               class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
-              placeholder="说明此代码块的用途"
+              placeholder="说明此代码片段的用途"
               @change="updateField('description', ($event.target as HTMLInputElement).value)"
             />
           </template>
@@ -262,3 +264,4 @@ async function exportSnippet() {
     </form>
   </div>
 </template>
+

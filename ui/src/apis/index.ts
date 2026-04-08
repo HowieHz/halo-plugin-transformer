@@ -1,18 +1,18 @@
 import { axiosInstance } from '@halo-dev/api-client'
 import type {
-  CodeSnippetReadModel,
-  CodeSnippetWritePayload,
-  InjectionRuleReadModel,
-  InjectionRuleWritePayload,
+  TransformationSnippetReadModel,
+  TransformationSnippetWritePayload,
+  TransformationRuleReadModel,
+  TransformationRuleWritePayload,
   ItemList,
 } from '@/types'
 
-const CONSOLE_BASE = '/apis/console.api.injector.erzbir.com/v1alpha1'
-const SNIPPETS = `${CONSOLE_BASE}/codeSnippets`
-const SNIPPETS_WRITE = `${CONSOLE_BASE}/codeSnippets`
+const CONSOLE_BASE = '/apis/console.api.transformer.howiehz.top/v1alpha1'
+const SNIPPETS = `${CONSOLE_BASE}/transformationSnippets`
+const SNIPPETS_WRITE = `${CONSOLE_BASE}/transformationSnippets`
 const SNIPPET_ORDER = `${CONSOLE_BASE}/snippet-order`
-const RULES = `${CONSOLE_BASE}/injectionRules`
-const RULES_WRITE = `${CONSOLE_BASE}/injectionRules`
+const RULES = `${CONSOLE_BASE}/transformationRules`
+const RULES_WRITE = `${CONSOLE_BASE}/transformationRules`
 const RULE_ORDER = `${CONSOLE_BASE}/rule-order`
 
 export type OrderMap = Record<string, number>
@@ -23,19 +23,19 @@ export interface PersistedOrderState {
 
 export const snippetApi = {
   list() {
-    return axiosInstance.get<ItemList<CodeSnippetReadModel>>(SNIPPETS)
+    return axiosInstance.get<ItemList<TransformationSnippetReadModel>>(SNIPPETS)
   },
 
-  add(snippet: CodeSnippetWritePayload) {
-    return axiosInstance.post<CodeSnippetReadModel>(SNIPPETS_WRITE, snippet)
+  add(snippet: TransformationSnippetWritePayload) {
+    return axiosInstance.post<TransformationSnippetReadModel>(SNIPPETS_WRITE, snippet)
   },
 
-  update(id: string, snippet: CodeSnippetWritePayload) {
-    return axiosInstance.put<CodeSnippetReadModel>(`${SNIPPETS_WRITE}/${id}`, snippet)
+  update(id: string, snippet: TransformationSnippetWritePayload) {
+    return axiosInstance.put<TransformationSnippetReadModel>(`${SNIPPETS_WRITE}/${id}`, snippet)
   },
 
   updateEnabled(id: string, enabled: boolean, version: number | null | undefined) {
-    return axiosInstance.put<CodeSnippetReadModel>(`${SNIPPETS_WRITE}/${id}/enabled`, {
+    return axiosInstance.put<TransformationSnippetReadModel>(`${SNIPPETS_WRITE}/${id}/enabled`, {
       enabled,
       metadata: { version: version ?? null },
     })
@@ -59,19 +59,19 @@ export const snippetApi = {
 
 export const ruleApi = {
   list() {
-    return axiosInstance.get<ItemList<InjectionRuleReadModel>>(RULES)
+    return axiosInstance.get<ItemList<TransformationRuleReadModel>>(RULES)
   },
 
-  add(rule: InjectionRuleWritePayload) {
-    return axiosInstance.post<InjectionRuleReadModel>(RULES_WRITE, rule)
+  add(rule: TransformationRuleWritePayload) {
+    return axiosInstance.post<TransformationRuleReadModel>(RULES_WRITE, rule)
   },
 
-  update(id: string, rule: InjectionRuleWritePayload) {
-    return axiosInstance.put<InjectionRuleReadModel>(`${RULES_WRITE}/${id}`, rule)
+  update(id: string, rule: TransformationRuleWritePayload) {
+    return axiosInstance.put<TransformationRuleReadModel>(`${RULES_WRITE}/${id}`, rule)
   },
 
   updateEnabled(id: string, enabled: boolean, version: number | null | undefined) {
-    return axiosInstance.put<InjectionRuleReadModel>(`${RULES_WRITE}/${id}/enabled`, {
+    return axiosInstance.put<TransformationRuleReadModel>(`${RULES_WRITE}/${id}/enabled`, {
       enabled,
       metadata: { version: version ?? null },
     })

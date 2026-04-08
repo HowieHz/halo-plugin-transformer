@@ -3,8 +3,8 @@ import {
   makeSnippetEditorDraft,
   RUNTIME_ORDER_DEFAULT,
   RUNTIME_ORDER_MAX,
-  type CodeSnippetEditorDraft,
-  type InjectionRuleEditorDraft,
+  type TransformationSnippetEditorDraft,
+  type TransformationRuleEditorDraft,
   type MatchRuleSource,
 } from '@/types'
 import {
@@ -29,28 +29,28 @@ import type {
   SnippetTransferEnvelope,
 } from './transferExportBuilder'
 
-export function parseSnippetTransfer(raw: string): CodeSnippetEditorDraft {
+export function parseSnippetTransfer(raw: string): TransformationSnippetEditorDraft {
   const envelope = parseTransferEnvelope<SnippetTransferEnvelope>(raw, 'snippet')
   return parseSnippetTransferData(envelope.data)
 }
 
-export function parseSnippetBatchTransfer(raw: string): CodeSnippetEditorDraft[] {
+export function parseSnippetBatchTransfer(raw: string): TransformationSnippetEditorDraft[] {
   const envelope = parseTransferEnvelope<SnippetBatchTransferEnvelope>(raw, 'snippet-batch')
-  return parseTransferItemList(envelope.data, '批量代码块', parseSnippetTransferData)
+  return parseTransferItemList(envelope.data, '批量代码片段', parseSnippetTransferData)
 }
 
-export function parseRuleTransfer(raw: string): InjectionRuleEditorDraft {
+export function parseRuleTransfer(raw: string): TransformationRuleEditorDraft {
   const envelope = parseTransferEnvelope<RuleTransferEnvelope>(raw, 'rule')
   return parseRuleTransferData(envelope.data)
 }
 
-export function parseRuleBatchTransfer(raw: string): InjectionRuleEditorDraft[] {
+export function parseRuleBatchTransfer(raw: string): TransformationRuleEditorDraft[] {
   const envelope = parseTransferEnvelope<RuleBatchTransferEnvelope>(raw, 'rule-batch')
-  return parseTransferItemList(envelope.data, '批量注入规则', parseRuleTransferData)
+  return parseTransferItemList(envelope.data, '批量转换规则', parseRuleTransferData)
 }
 
-function parseSnippetTransferData(data: SnippetTransferData): CodeSnippetEditorDraft {
-  ensureAllowedFields(data, ['enabled', 'name', 'description', 'code'], '代码块')
+function parseSnippetTransferData(data: SnippetTransferData): TransformationSnippetEditorDraft {
+  ensureAllowedFields(data, ['enabled', 'name', 'description', 'code'], '代码片段')
   if (data.enabled !== undefined && typeof data.enabled !== 'boolean') {
     throw new Error('导入失败：`enabled` 必须是布尔值；仅支持 true 或 false')
   }
@@ -71,7 +71,7 @@ function parseSnippetTransferData(data: SnippetTransferData): CodeSnippetEditorD
   })
 }
 
-function parseRuleTransferData(data: RuleTransferData): InjectionRuleEditorDraft {
+function parseRuleTransferData(data: RuleTransferData): TransformationRuleEditorDraft {
   ensureAllowedFields(
     data,
     [
@@ -85,7 +85,7 @@ function parseRuleTransferData(data: RuleTransferData): InjectionRuleEditorDraft
       'runtimeOrder',
       'matchRuleSource',
     ],
-    '注入规则',
+    '转换规则',
   )
   if (typeof data.enabled !== 'boolean') {
     throw new Error('导入失败：`enabled` 必须是布尔值；仅支持 true 或 false')
@@ -169,7 +169,7 @@ function stripImportFailurePrefix(message: string) {
 }
 
 function parseImportedMatchRuleSource(source: unknown): {
-  matchRule: InjectionRuleEditorDraft['matchRule']
+  matchRule: TransformationRuleEditorDraft['matchRule']
   matchRuleSource: MatchRuleSource
 } {
   if (!isPlainObject(source)) {
@@ -214,3 +214,4 @@ function parseImportedMatchRuleSource(source: unknown): {
     matchRuleSource: makeRuleTreeSource(matchRule),
   }
 }
+

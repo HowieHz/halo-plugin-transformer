@@ -5,11 +5,11 @@
 //   -> `ui/src/views/composables/matchRuleContract.generated.ts`
 //   -> `ui/src/views/composables/matchRule.ts`、前端 contract test
 // - `contract.spec.jsonc`
-//   -> `src/main/java/com/erzbir/halo/injector/core/MatchRuleContractMessages.java`
-//   -> `src/main/java/com/erzbir/halo/injector/core/MatchRule.java`、Java contract test
+//   -> `src/main/java/top/howiehz/halo/transformer/core/MatchRuleContractMessages.java`
+//   -> `src/main/java/top/howiehz/halo/transformer/core/MatchRule.java`、Java contract test
 // - `contract.spec.jsonc`
 //   -> `ui/public/generated/match-rule.schema.json`
-//   -> `ui/public/injector.schema.json`
+//   -> `ui/public/transformer.schema.json`
 // - `contract.cases.jsonc`
 //   -> 不生成其他文件
 //   -> Java / TypeScript contract tests 直接消费

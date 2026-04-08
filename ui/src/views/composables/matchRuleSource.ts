@@ -1,6 +1,6 @@
 import type {
-  InjectionRuleEditorDraft,
-  InjectionRuleEditorState,
+  TransformationRuleEditorDraft,
+  TransformationRuleEditorState,
   MatchRuleSource,
   MatchRule,
   MatchRuleEditorMode,
@@ -71,7 +71,7 @@ export function buildMatchRuleEditorSourceForMode(
 }
 
 export function resolveRuleMatchRule(
-  rule: Pick<InjectionRuleEditorDraft, 'matchRule'> & Partial<InjectionRuleEditorState>,
+  rule: Pick<TransformationRuleEditorDraft, 'matchRule'> & Partial<TransformationRuleEditorState>,
 ): MatchRuleParseResult {
   if (rule.matchRuleSource?.kind === 'JSON_DRAFT') {
     return parseMatchRuleDraft(String(rule.matchRuleSource.data ?? ''))

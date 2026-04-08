@@ -2,8 +2,8 @@
 import { Toast, VButton } from '@halo-dev/components'
 import { computed, nextTick, onMounted, ref } from 'vue'
 import {
-  type CodeSnippetReadModel,
-  type InjectionRuleEditorDraft,
+  type TransformationSnippetReadModel,
+  type TransformationRuleEditorDraft,
   makeRuleEditorDraft,
   MODE_OPTIONS,
   POSITION_OPTIONS,
@@ -25,16 +25,16 @@ import { updateSelectByWheel } from '@/views/composables/selectWheel.ts'
 import { parseRuleTransfer } from '@/views/composables/transfer.ts'
 
 defineProps<{
-  snippets: CodeSnippetReadModel[]
+  snippets: TransformationSnippetReadModel[]
   saving: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'close'): void
-  (e: 'submit', rule: InjectionRuleEditorDraft, snippetIds: string[]): void
+  (e: 'submit', rule: TransformationRuleEditorDraft, snippetIds: string[]): void
 }>()
 
-const rule = ref<InjectionRuleEditorDraft>(makeRuleEditorDraft())
+const rule = ref<TransformationRuleEditorDraft>(makeRuleEditorDraft())
 const selectedSnippetIds = ref<string[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
 const importSourceVisible = ref(false)
@@ -82,10 +82,10 @@ async function applyImportedRule(raw: string, sourceLabel: '剪贴板' | '文件
   const importedValidationError = resolveImportedRuleValidationError(rule.value)
   if (importedValidationError) {
     Toast.warning(
-      `已从${sourceLabel}导入注入规则 JSON，但当前内容仍有错误：${importedValidationError}`,
+      `已从${sourceLabel}导入转换规则 JSON，但当前内容仍有错误：${importedValidationError}`,
     )
   } else {
-    Toast.success(`已从${sourceLabel}导入注入规则 JSON`)
+    Toast.success(`已从${sourceLabel}导入转换规则 JSON`)
   }
 }
 
@@ -124,7 +124,7 @@ async function handleImportFile(event: Event) {
   }
 }
 
-function resolveImportedRuleValidationError(importedRule: InjectionRuleEditorDraft) {
+function resolveImportedRuleValidationError(importedRule: TransformationRuleEditorDraft) {
   if (importedRule.mode === 'SELECTOR' && !importedRule.match.trim()) {
     return '请填写匹配内容'
   }
@@ -204,7 +204,7 @@ defineExpose({
     hide-default-title
     :saving="saving"
     :show-picker="needsSnippets"
-    title="新建注入规则"
+    title="新建转换规则"
     @close="emit('close')"
     @submit="handleSubmit"
   >
@@ -219,7 +219,7 @@ defineExpose({
         />
         <EnabledSwitch
           :enabled="rule.enabled"
-          label="切换新建注入规则的启用状态"
+          label="切换新建转换规则的启用状态"
           title-when-disabled="当前新建后会保持禁用，点击改为启用"
           title-when-enabled="当前新建后会直接启用，点击改为禁用"
           @toggle="rule.enabled = !rule.enabled"
@@ -332,14 +332,14 @@ defineExpose({
 
     <template v-if="needsSnippets" #picker>
       <div class=":uno: flex items-center justify-between">
-        <label class=":uno: text-xs font-medium text-gray-600">关联代码块</label>
+        <label class=":uno: text-xs font-medium text-gray-600">关联代码片段</label>
         <span class=":uno: text-xs text-gray-400"> {{ selectedSnippetIds.length }} 个已选 </span>
       </div>
       <ItemPicker
         :items="snippets"
-        label="关联代码块选择列表"
+        label="关联代码片段选择列表"
         :selected-ids="selectedSnippetIds"
-        empty-text="暂无代码块, 请先创建"
+        empty-text="暂无代码片段, 请先创建"
         @toggle="toggleSnippet"
       />
     </template>
@@ -347,9 +347,10 @@ defineExpose({
 
   <ImportSourceModal
     v-if="importSourceVisible"
-    resource-label="注入规则"
+    resource-label="转换规则"
     @close="closeImportSourceModal"
     @import-from-clipboard="importFromClipboard"
     @import-from-file="importFromFile"
   />
 </template>
+

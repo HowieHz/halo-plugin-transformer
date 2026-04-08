@@ -1,4 +1,4 @@
-﻿<script lang="ts" setup>
+<script lang="ts" setup>
 import { computed, ref, watch } from 'vue'
 import { RUNTIME_ORDER_MAX, RUNTIME_ORDER_STEPS } from '@/types'
 import {
