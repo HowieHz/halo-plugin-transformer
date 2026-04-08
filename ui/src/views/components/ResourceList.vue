@@ -4,7 +4,9 @@
   setup
 >
 import { ref } from 'vue'
+import DragAutoScrollOverlay from './DragAutoScrollOverlay.vue'
 import StatusDot from './StatusDot.vue'
+import { useDragAutoScroll } from '@/views/composables/useDragAutoScroll'
 
 type ReorderPlacement = 'before' | 'after'
 
@@ -26,11 +28,14 @@ const emit = defineEmits<{
 const draggingId = ref<string | null>(null)
 const dropTargetId = ref<string | null>(null)
 const dropPlacement = ref<ReorderPlacement | null>(null)
+const scrollContainer = ref<HTMLElement | null>(null)
+const autoScroll = useDragAutoScroll(scrollContainer)
 
 function clearDragState() {
   draggingId.value = null
   dropTargetId.value = null
   dropPlacement.value = null
+  autoScroll.setDragActive(false)
 }
 
 function resolveDropPlacement(event: DragEvent, id: string): ReorderPlacement | null {
@@ -58,6 +63,7 @@ function handleDragStart(event: DragEvent, id: string) {
   draggingId.value = id
   dropTargetId.value = null
   dropPlacement.value = null
+  autoScroll.setDragActive(true)
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'move'
     event.dataTransfer.setData('text/plain', id)
@@ -115,7 +121,21 @@ function handleReorderButtonKeydown(event: KeyboardEvent, index: number) {
 </script>
 
 <template>
-  <div :class="stretch ? ':uno: flex-1 overflow-y-auto' : ''">
+  <div
+    ref="scrollContainer"
+    :class="stretch ? ':uno: min-h-0 flex-1 overflow-y-auto' : ''"
+    class=":uno: relative"
+    @scroll="autoScroll.handleContainerScroll"
+  >
+    <DragAutoScrollOverlay
+      :active="autoScroll.isDragActive.value"
+      :active-direction="autoScroll.activeDirection.value"
+      :can-scroll-up="autoScroll.canScrollUp.value"
+      :can-scroll-down="autoScroll.canScrollDown.value"
+      @zone-dragleave="autoScroll.handleZoneLeave"
+      @zone-dragover="autoScroll.startAutoScroll"
+    />
+
     <slot name="placeholder" />
 
     <ul

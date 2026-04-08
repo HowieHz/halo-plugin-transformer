@@ -24,6 +24,8 @@ import {
   createTransferFileDraft,
   type TransferFileDraft,
 } from '@/views/composables/transfer.ts'
+import DragAutoScrollOverlay from './DragAutoScrollOverlay.vue'
+import { useDragAutoScroll } from '@/views/composables/useDragAutoScroll'
 
 const props = defineProps<{
   rule: InjectionRuleEditorDraft | null
@@ -47,6 +49,8 @@ const sortedSnippets = computed(() => sortSelectedFirst(props.snippets, props.se
 const pendingRule = ref<InjectionRuleEditorDraft | null>(null)
 const currentRule = computed(() => pendingRule.value ?? props.rule)
 const exportFallback = ref<TransferFileDraft | null>(null)
+const editorScrollContainer = ref<HTMLElement | null>(null)
+const autoScroll = useDragAutoScroll(editorScrollContainer)
 
 const needsTarget = computed(() => currentRule.value?.mode === 'SELECTOR')
 const needsSnippets = computed(() => currentRule.value?.position !== 'REMOVE')
@@ -391,7 +395,20 @@ async function exportRule() {
     </div>
 
     <form v-else class=":uno: min-h-0 flex flex-1 flex-col" @submit.prevent="emit('save')">
-      <div class=":uno: min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div
+        ref="editorScrollContainer"
+        class=":uno: relative min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-4"
+        @scroll="autoScroll.handleContainerScroll"
+      >
+        <DragAutoScrollOverlay
+          :active="autoScroll.isDragActive.value"
+          :active-direction="autoScroll.activeDirection.value"
+          :can-scroll-up="autoScroll.canScrollUp.value"
+          :can-scroll-down="autoScroll.canScrollDown.value"
+          @zone-dragleave="autoScroll.handleZoneLeave"
+          @zone-dragover="autoScroll.startAutoScroll"
+        />
+
         <FormField label="名称">
           <template v-if="canUndo('name')" #actions>
             <FieldUndoButton @reset="resetField('name')" @undo="undoField('name')" />
@@ -574,6 +591,7 @@ async function exportRule() {
                 :model-value="currentRule.matchRule"
                 :source="currentRule.matchRuleSource"
                 @change="emit('field-change')"
+                @drag-state-change="autoScroll.setDragActive"
                 @update:state="updateMatchRuleField($event)"
               />
             </div>

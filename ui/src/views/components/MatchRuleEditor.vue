@@ -39,6 +39,7 @@ const emit = defineEmits<{
     }>,
   ): void
   (e: 'change'): void
+  (e: 'drag-state-change', active: boolean): void
 }>()
 
 const jsonDraft = ref(
@@ -235,12 +236,14 @@ function clearDragState() {
   draggingPath.value = null
   dropTargetPath.value = null
   dropPlacement.value = null
+  emit('drag-state-change', false)
 }
 
 function startDrag(path: MatchRuleNodePath, event: DragEvent) {
   draggingPath.value = [...path]
   dropTargetPath.value = null
   dropPlacement.value = null
+  emit('drag-state-change', true)
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'move'
     event.dataTransfer.setData('text/plain', path.join('.'))
