@@ -647,6 +647,7 @@ function jumpToSnippet(id: string) {
               :mode="activeTab"
               :rules-using-snippet="rulesUsingSnippet"
               :selected-rule-id="selectedRuleId"
+              :selected-rule-position="editRule?.position ?? null"
               :selected-snippet-id="selectedSnippetId"
               :snippets-in-rule="snippetsInRule"
               @jump-to-rule="jumpToRule"

@@ -1,13 +1,15 @@
 <script lang="ts" setup>
-import type { CodeSnippetReadModel, InjectionRuleReadModel } from '@/types'
+import { computed } from 'vue'
+import type { CodeSnippetReadModel, InjectionPosition, InjectionRuleReadModel } from '@/types'
 import ResourceList from './ResourceList.vue'
 import { rulePreview } from '@/views/composables/util'
 import { matchRuleSummary } from '@/views/composables/matchRule'
 
-defineProps<{
+const props = defineProps<{
   mode: 'snippets' | 'rules'
   selectedSnippetId: string | null
   selectedRuleId: string | null
+  selectedRulePosition?: InjectionPosition | null
   rulesUsingSnippet: InjectionRuleReadModel[]
   snippetsInRule: CodeSnippetReadModel[]
 }>()
@@ -16,6 +18,12 @@ const emit = defineEmits<{
   (e: 'jump-to-rule', id: string): void
   (e: 'jump-to-snippet', id: string): void
 }>()
+
+const ruleSnippetsEmptyText = computed(() =>
+  props.selectedRulePosition === 'REMOVE'
+    ? '该规则无需关联代码块'
+    : '该规则暂未关联代码块，请在规则编辑器中添加',
+)
 </script>
 
 <template>
@@ -69,7 +77,7 @@ const emit = defineEmits<{
           v-if="selectedRuleId"
           :items="snippetsInRule"
           list-label="当前规则关联的代码块列表"
-          empty-text="该规则暂未关联代码块，请在规则编辑器中添加"
+          :empty-text="ruleSnippetsEmptyText"
           @select="emit('jump-to-snippet', $event)"
         >
           <template #hint>
