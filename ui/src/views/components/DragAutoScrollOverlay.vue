@@ -25,12 +25,9 @@ function zoneHint(direction: DragAutoScrollDirection, canScroll: boolean, isHot:
 </script>
 
 <template>
-  <div
-    v-if="active"
-    aria-hidden="true"
-    class=":uno: pointer-events-none absolute inset-x-0 top-0 bottom-0 z-20 flex flex-col justify-between"
-  >
+  <template v-if="active">
     <div
+      aria-hidden="true"
       :class="[
         activeDirection === 'up' && canScrollUp
           ? ':uno: bg-primary/8 text-primary'
@@ -38,7 +35,7 @@ function zoneHint(direction: DragAutoScrollDirection, canScroll: boolean, isHot:
             ? ':uno: bg-amber-50/95 text-amber-600'
             : ':uno: bg-white/82 text-gray-400',
       ]"
-      class=":uno: pointer-events-auto mx-3 mt-2 flex h-11 items-center justify-center rounded-md border border-white/80 px-3 shadow-sm backdrop-blur-sm transition-colors"
+      class=":uno: absolute left-3 right-3 top-2 z-20 flex h-11 items-center justify-center rounded-md border border-white/80 px-3 shadow-sm backdrop-blur-sm transition-colors"
       @dragover="emit('zone-dragover', 'up', $event)"
       @dragleave="emit('zone-dragleave', 'up')"
     >
@@ -49,6 +46,7 @@ function zoneHint(direction: DragAutoScrollDirection, canScroll: boolean, isHot:
     </div>
 
     <div
+      aria-hidden="true"
       :class="[
         activeDirection === 'down' && canScrollDown
           ? ':uno: bg-primary/8 text-primary'
@@ -56,7 +54,7 @@ function zoneHint(direction: DragAutoScrollDirection, canScroll: boolean, isHot:
             ? ':uno: bg-amber-50/95 text-amber-600'
             : ':uno: bg-white/82 text-gray-400',
       ]"
-      class=":uno: pointer-events-auto mx-3 mb-2 flex h-11 items-center justify-center rounded-md border border-white/80 px-3 shadow-sm backdrop-blur-sm transition-colors"
+      class=":uno: absolute left-3 right-3 bottom-2 z-20 flex h-11 items-center justify-center rounded-md border border-white/80 px-3 shadow-sm backdrop-blur-sm transition-colors"
       @dragover="emit('zone-dragover', 'down', $event)"
       @dragleave="emit('zone-dragleave', 'down')"
     >
@@ -65,5 +63,5 @@ function zoneHint(direction: DragAutoScrollDirection, canScroll: boolean, isHot:
         <span>{{ zoneHint('down', canScrollDown, activeDirection === 'down') }}</span>
       </div>
     </div>
-  </div>
+  </template>
 </template>

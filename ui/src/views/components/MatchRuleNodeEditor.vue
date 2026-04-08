@@ -85,16 +85,6 @@ const hasGroupChildren = computed(() => (rule.value.children?.length ?? 0) > 0)
 const isDraggingNode = computed(() =>
   isSamePath(dragContext?.draggingPath.value ?? null, currentNodePath.value),
 )
-const isDropBefore = computed(
-  () =>
-    pathKey(dragContext?.dropTargetPath.value ?? null) === pathKey(currentNodePath.value) &&
-    dragContext?.dropPlacement.value === 'before',
-)
-const isDropAfter = computed(
-  () =>
-    pathKey(dragContext?.dropTargetPath.value ?? null) === pathKey(currentNodePath.value) &&
-    dragContext?.dropPlacement.value === 'after',
-)
 const isDropInside = computed(
   () =>
     pathKey(dragContext?.dropTargetPath.value ?? null) === pathKey(currentNodePath.value) &&
@@ -346,15 +336,6 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
     @dragover="handleDragOverNode"
     @drop="handleDropOnNode"
   >
-    <div
-      v-if="isDropBefore"
-      class=":uno: pointer-events-none absolute left-3 right-3 top-0 h-0.5 rounded-full bg-primary"
-    />
-    <div
-      v-if="isDropAfter"
-      class=":uno: pointer-events-none absolute left-3 right-3 bottom-0 h-0.5 rounded-full bg-primary"
-    />
-
     <template v-if="isGroup">
       <div class=":uno: flex flex-wrap items-center gap-2">
         <span class=":uno: text-sm font-medium text-gray-700">
