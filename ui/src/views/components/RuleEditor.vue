@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { CodeSnippetReadModel, InjectionRuleEditorDraft, MatchRuleSource } from '@/types'
 import { MODE_OPTIONS, POSITION_OPTIONS } from '@/types'
 import {
@@ -50,7 +50,12 @@ const pendingRule = ref<InjectionRuleEditorDraft | null>(null)
 const currentRule = computed(() => pendingRule.value ?? props.rule)
 const exportFallback = ref<TransferFileDraft | null>(null)
 const editorScrollContainer = ref<HTMLElement | null>(null)
+const editorToolbarShell = ref<HTMLElement | null>(null)
+const editorFooterShell = ref<HTMLElement | null>(null)
+const dragOverlayTopHeight = ref(48)
+const dragOverlayBottomHeight = ref(52)
 const autoScroll = useDragAutoScroll(editorScrollContainer)
+let dragOverlayResizeObserver: ResizeObserver | null = null
 
 const needsTarget = computed(() => currentRule.value?.mode === 'SELECTOR')
 const needsSnippets = computed(() => currentRule.value?.position !== 'REMOVE')
@@ -68,11 +73,46 @@ const performanceWarning = computed(() =>
 )
 const undo = useFieldUndo()
 
+function updateDragOverlayHeights() {
+  dragOverlayTopHeight.value = editorToolbarShell.value?.offsetHeight ?? 48
+  dragOverlayBottomHeight.value = editorFooterShell.value?.offsetHeight ?? 52
+}
+
+function observeDragOverlayShell() {
+  dragOverlayResizeObserver?.disconnect()
+  if (typeof ResizeObserver === 'undefined') {
+    updateDragOverlayHeights()
+    return
+  }
+
+  dragOverlayResizeObserver = new ResizeObserver(() => {
+    updateDragOverlayHeights()
+  })
+
+  if (editorToolbarShell.value) {
+    dragOverlayResizeObserver.observe(editorToolbarShell.value)
+  }
+  if (editorFooterShell.value) {
+    dragOverlayResizeObserver.observe(editorFooterShell.value)
+  }
+
+  updateDragOverlayHeights()
+}
+
 watch(
   () => props.rule,
   () => {
     pendingRule.value = null
   },
+)
+
+watch(
+  () => currentRule.value?.id ?? null,
+  async () => {
+    await nextTick()
+    observeDragOverlayShell()
+  },
+  { immediate: true },
 )
 
 watch(
@@ -368,6 +408,15 @@ async function exportRule() {
     currentRule.value.name || currentRule.value.id || 'injection-rule',
   )
 }
+
+onMounted(async () => {
+  await nextTick()
+  observeDragOverlayShell()
+})
+
+onBeforeUnmount(() => {
+  dragOverlayResizeObserver?.disconnect()
+})
 </script>
 
 <template>
@@ -379,22 +428,26 @@ async function exportRule() {
       @close="exportFallback = null"
     />
 
-    <EditorToolbar
-      :enabled="currentRule?.enabled"
-      :id-text="currentRule?.id"
-      :show-export="!!currentRule"
-      :show-actions="!!currentRule"
-      :title="currentRule ? '编辑规则' : '注入规则'"
-      @delete="emit('delete')"
-      @export="exportRule"
-      @toggle-enabled="emit('toggle-enabled')"
-    />
+    <div ref="editorToolbarShell">
+      <EditorToolbar
+        :enabled="currentRule?.enabled"
+        :id-text="currentRule?.id"
+        :show-export="!!currentRule"
+        :show-actions="!!currentRule"
+        :title="currentRule ? '编辑规则' : '注入规则'"
+        @delete="emit('delete')"
+        @export="exportRule"
+        @toggle-enabled="emit('toggle-enabled')"
+      />
+    </div>
 
     <DragAutoScrollOverlay
       :active="autoScroll.isDragActive.value"
       :active-direction="autoScroll.activeDirection.value"
       :can-scroll-up="autoScroll.canScrollUp.value"
       :can-scroll-down="autoScroll.canScrollDown.value"
+      :top-zone-height="dragOverlayTopHeight"
+      :bottom-zone-height="dragOverlayBottomHeight"
       @zone-dragleave="autoScroll.handleZoneLeave"
       @zone-dragover="autoScroll.startAutoScroll"
     />
@@ -606,7 +659,9 @@ async function exportRule() {
         </FormField>
       </div>
 
-      <EditorFooter :dirty="dirty" :saving="saving" @save="emit('save')" />
+      <div ref="editorFooterShell">
+        <EditorFooter :dirty="dirty" :saving="saving" @save="emit('save')" />
+      </div>
     </form>
   </div>
 </template>

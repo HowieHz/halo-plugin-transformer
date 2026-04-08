@@ -6,6 +6,8 @@ defineProps<{
   activeDirection: DragAutoScrollDirection | null
   canScrollUp: boolean
   canScrollDown: boolean
+  topZoneHeight?: number
+  bottomZoneHeight?: number
 }>()
 
 const emit = defineEmits<{
@@ -18,7 +20,8 @@ const emit = defineEmits<{
   <template v-if="active">
     <div
       aria-hidden="true"
-      class=":uno: absolute inset-x-0 top-0 z-20 h-16"
+      :style="{ height: `${topZoneHeight ?? 64}px` }"
+      class=":uno: absolute inset-x-0 top-0 z-20"
       @dragover="emit('zone-dragover', 'up', $event)"
       @dragleave="emit('zone-dragleave', 'up')"
     >
@@ -46,7 +49,8 @@ const emit = defineEmits<{
 
     <div
       aria-hidden="true"
-      class=":uno: absolute inset-x-0 bottom-0 z-20 h-16"
+      :style="{ height: `${bottomZoneHeight ?? 64}px` }"
+      class=":uno: absolute inset-x-0 bottom-0 z-20"
       @dragover="emit('zone-dragover', 'down', $event)"
       @dragleave="emit('zone-dragleave', 'down')"
     >
