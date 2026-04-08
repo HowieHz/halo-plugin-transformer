@@ -1,5 +1,6 @@
 package com.erzbir.halo.injector.process;
 
+import com.erzbir.halo.injector.core.RuntimeInjectionRule;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import com.erzbir.halo.injector.util.ContextUtil;
 import com.erzbir.halo.injector.util.InjectHelper;
@@ -33,11 +34,11 @@ public abstract class AbstractTemplateProcessor {
                 .flatMap(injectHelper::resolveRuleCodes)
                 .flatMapMany(reactor.core.publisher.Flux::fromIterable)
                 .doOnNext(resolved -> {
-                                    InjectionRule rule = resolved.rule();
-                                    doProcess(context, model, resolved.code(), rule.getWrapMarker());
+                                    RuntimeInjectionRule rule = resolved.rule();
+                                    doProcess(context, model, resolved.code(), rule.wrapMarker());
                                 })
                 .doOnNext(resolved -> log.debug("Injected rule: [{}] into [{}]",
-                        resolved.rule().getId(),
+                        resolved.rule().resourceName(),
                         path))
                 .then();
     }

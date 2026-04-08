@@ -1,6 +1,7 @@
 package com.erzbir.halo.injector.manager;
 
 import com.erzbir.halo.injector.core.MatchRule;
+import com.erzbir.halo.injector.core.RuntimeInjectionRule;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,11 +51,11 @@ class InjectionRuleRuntimeStoreTest {
                 .collectList()
                 .block()
                 .isEmpty());
-        List<InjectionRule> rules = manager.listActiveByMode(InjectionRule.Mode.SELECTOR)
+        List<RuntimeInjectionRule> rules = manager.listActiveByMode(InjectionRule.Mode.SELECTOR)
                 .collectList()
                 .block();
 
-        assertEquals(List.of("rule-a"), rules.stream().map(InjectionRule::getId).toList());
+        assertEquals(List.of("rule-a"), rules.stream().map(RuntimeInjectionRule::resourceName).toList());
         verify(client).watch(any(Watcher.class));
     }
 
@@ -66,8 +67,8 @@ class InjectionRuleRuntimeStoreTest {
         when(client.list(InjectionRule.class, null, null)).thenAnswer(invocation -> {
             int round = fetchCount.incrementAndGet();
             return round == 1
-                    ? Flux.just(namedRule("rule-a", "Before", InjectionRule.Mode.SELECTOR, true, "main"))
-                    : Flux.just(namedRule("rule-a", "After", InjectionRule.Mode.SELECTOR, true, "main"));
+                    ? Flux.just(namedRule("rule-a", "Before", InjectionRule.Mode.SELECTOR, true, ".before"))
+                    : Flux.just(namedRule("rule-a", "After", InjectionRule.Mode.SELECTOR, true, ".after"));
         });
 
         ArgumentCaptor<Watcher> watcherCaptor = ArgumentCaptor.forClass(Watcher.class);
@@ -78,22 +79,22 @@ class InjectionRuleRuntimeStoreTest {
                 .collectList()
                 .block()
                 .stream()
-                .map(InjectionRule::getName)
+                .map(RuntimeInjectionRule::match)
                 .toList()
-                .equals(List.of("Before")));
+                .equals(List.of(".before")));
 
         watcherCaptor.getValue().onUpdate(
-                namedRule("rule-a", "Before", InjectionRule.Mode.SELECTOR, true, "main"),
-                namedRule("rule-a", "After", InjectionRule.Mode.SELECTOR, true, "main")
+                namedRule("rule-a", "Before", InjectionRule.Mode.SELECTOR, true, ".before"),
+                namedRule("rule-a", "After", InjectionRule.Mode.SELECTOR, true, ".after")
         );
 
         waitUntil(() -> manager.listActiveByMode(InjectionRule.Mode.SELECTOR)
                 .collectList()
                 .block()
                 .stream()
-                .map(InjectionRule::getName)
+                .map(RuntimeInjectionRule::match)
                 .toList()
-                .equals(List.of("After")));
+                .equals(List.of(".after")));
 
         assertEquals(1, fetchCount.get());
     }
@@ -126,7 +127,7 @@ class InjectionRuleRuntimeStoreTest {
                 .collectList()
                 .block()
                 .stream()
-                .map(InjectionRule::getId)
+                .map(RuntimeInjectionRule::resourceName)
                 .toList()
                 .equals(List.of("rule-a")));
 
@@ -191,7 +192,7 @@ class InjectionRuleRuntimeStoreTest {
                 .collectList()
                 .block()
                 .stream()
-                .map(InjectionRule::getId)
+                .map(RuntimeInjectionRule::resourceName)
                 .toList()
                 .equals(List.of("rule-a")));
 
@@ -255,7 +256,9 @@ class InjectionRuleRuntimeStoreTest {
 
         assertEquals(
                 List.of("rule-a", "rule-b", "rule-z", "rule-low"),
-                snapshot.activeRules(InjectionRule.Mode.SELECTOR).stream().map(InjectionRule::getId).toList()
+                snapshot.activeRules(InjectionRule.Mode.SELECTOR).stream()
+                        .map(RuntimeInjectionRule::resourceName)
+                        .toList()
         );
     }
 

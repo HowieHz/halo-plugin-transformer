@@ -2,6 +2,7 @@ package com.erzbir.halo.injector.filter;
 
 import com.erzbir.halo.injector.core.HTMLInjector;
 import com.erzbir.halo.injector.core.SelectorInjector;
+import com.erzbir.halo.injector.core.RuntimeInjectionRule;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import com.erzbir.halo.injector.util.ContextUtil;
 import com.erzbir.halo.injector.util.InjectHelper;
@@ -113,7 +114,7 @@ public class InjectorWebFilter implements AdditionalWebFilter {
      * why: 先收集当前请求命中的 DOM 规则，
      * 再在同一份 Document 上顺序执行，避免每命中一条规则就重复 Jsoup.parse / doc.html。
      */
-    private Mono<List<InjectionRule>> collectRules(String path, String templateId, InjectionRule.Mode mode) {
+    private Mono<List<RuntimeInjectionRule>> collectRules(String path, String templateId, InjectionRule.Mode mode) {
         return injectHelper.getMatchedRules(path, templateId, mode)
                 .collectList();
     }
@@ -129,15 +130,15 @@ public class InjectorWebFilter implements AdditionalWebFilter {
                 });
     }
 
-    private List<DomInjectionPlan> toDomInjectionPlans(List<InjectionRule> selectorRules,
+    private List<DomInjectionPlan> toDomInjectionPlans(List<RuntimeInjectionRule> selectorRules,
                                                        List<InjectHelper.ResolvedRuleCode> resolvedCodes) {
         Map<String, String> codeByRuleId = new LinkedHashMap<>();
         for (InjectHelper.ResolvedRuleCode resolvedCode : resolvedCodes) {
-            codeByRuleId.put(resolvedCode.rule().getId(), resolvedCode.code());
+            codeByRuleId.put(resolvedCode.rule().resourceName(), resolvedCode.code());
         }
         List<DomInjectionPlan> plans = new java.util.ArrayList<>(selectorRules.size());
-        for (InjectionRule rule : selectorRules) {
-            plans.add(new DomInjectionPlan(selectorInjector, rule, codeByRuleId.getOrDefault(rule.getId(), "")));
+        for (RuntimeInjectionRule rule : selectorRules) {
+            plans.add(new DomInjectionPlan(selectorInjector, rule, codeByRuleId.getOrDefault(rule.resourceName(), "")));
         }
         return plans;
     }
@@ -151,11 +152,11 @@ public class InjectorWebFilter implements AdditionalWebFilter {
         boolean modified = false;
         for (DomInjectionPlan plan : plans) {
             boolean applied = plan.injector()
-                    .inject(document, plan.rule().getMatch(), plan.code(),
-                            plan.rule().getPosition(), plan.rule().getWrapMarker());
+                    .inject(document, plan.rule().match(), plan.code(),
+                            plan.rule().position(), plan.rule().wrapMarker());
             if (applied) {
                 modified = true;
-                log.debug("Injected rule: [{}] into [{}]", plan.rule().getId(), path);
+                log.debug("Injected rule: [{}] into [{}]", plan.rule().resourceName(), path);
             }
         }
         return modified ? document.html() : html;
@@ -245,7 +246,7 @@ public class InjectorWebFilter implements AdditionalWebFilter {
         }
     }
 
-    record DomInjectionPlan(HTMLInjector injector, InjectionRule rule, String code) {
+    record DomInjectionPlan(HTMLInjector injector, RuntimeInjectionRule rule, String code) {
     }
 
     private boolean isHtmlResponse(ServerHttpResponse response) {

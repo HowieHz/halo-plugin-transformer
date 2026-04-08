@@ -2,6 +2,7 @@ package com.erzbir.halo.injector.filter;
 
 import com.erzbir.halo.injector.core.SelectorInjector;
 import com.erzbir.halo.injector.core.MatchRule;
+import com.erzbir.halo.injector.core.RuntimeInjectionRule;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import com.erzbir.halo.injector.util.InjectHelper;
 import org.jsoup.nodes.Document;
@@ -47,13 +48,17 @@ class InjectorWebFilterTest {
     void shouldResolveRuleCodesOnceAndParseHtmlOnlyOnceWhenApplyingMultipleDomRules() {
         InjectionRule selectorRule = domRule("rule-selector", InjectionRule.Mode.SELECTOR, ".slot");
         InjectionRule secondSelectorRule = domRule("rule-selector-2", InjectionRule.Mode.SELECTOR, "main");
+        RuntimeInjectionRule runtimeSelectorRule = runtimeRule(selectorRule);
+        RuntimeInjectionRule runtimeSecondSelectorRule = runtimeRule(secondSelectorRule);
 
         when(injectHelper.getMatchedRules("/demo", "post", InjectionRule.Mode.SELECTOR))
-                .thenReturn(Flux.just(selectorRule, secondSelectorRule));
-        when(injectHelper.resolveRuleCodes(List.of(selectorRule, secondSelectorRule))).thenReturn(Mono.just(List.of(
-                new InjectHelper.ResolvedRuleCode(selectorRule, "<span class='selector'>S</span>"),
-                new InjectHelper.ResolvedRuleCode(secondSelectorRule, "<span class='second'>I</span>")
-        )));
+                .thenReturn(Flux.just(runtimeSelectorRule, runtimeSecondSelectorRule));
+        when(injectHelper.resolveRuleCodes(List.of(runtimeSelectorRule, runtimeSecondSelectorRule))).thenReturn(
+                Mono.just(List.of(
+                        new InjectHelper.ResolvedRuleCode(runtimeSelectorRule, "<span class='selector'>S</span>"),
+                        new InjectHelper.ResolvedRuleCode(runtimeSecondSelectorRule, "<span class='second'>I</span>")
+                ))
+        );
 
         String result = filter.inject(
                 "<html><body><main id='root'><div class='slot'>A</div></main></body></html>",
@@ -62,7 +67,7 @@ class InjectorWebFilterTest {
         ).block();
 
         assertEquals(1, filter.parseCount.get());
-        verify(injectHelper).resolveRuleCodes(List.of(selectorRule, secondSelectorRule));
+        verify(injectHelper).resolveRuleCodes(List.of(runtimeSelectorRule, runtimeSecondSelectorRule));
         assertTrue(result.contains("<div class=\"slot\">A<span class=\"selector\">S</span></div>"));
         assertTrue(result.contains("<main id=\"root\"><div class=\"slot\">A<span class=\"selector\">S</span></div><span class=\"second\">I</span></main>"));
     }
@@ -98,12 +103,13 @@ class InjectorWebFilterTest {
     @Test
     void shouldDecorateRequestBeforeResponseStatusIsCommitted() {
         InjectionRule selectorRule = domRule("rule-selector", InjectionRule.Mode.SELECTOR, ".slot");
+        RuntimeInjectionRule runtimeSelectorRule = runtimeRule(selectorRule);
         when(injectHelper.hasDomProcessCandidate("/demo", InjectionRule.Mode.SELECTOR))
                 .thenReturn(Mono.just(true));
         when(injectHelper.getMatchedRules("/demo", "", InjectionRule.Mode.SELECTOR))
-                .thenReturn(Flux.just(selectorRule));
-        when(injectHelper.resolveRuleCodes(List.of(selectorRule))).thenReturn(Mono.just(List.of(
-                new InjectHelper.ResolvedRuleCode(selectorRule, "<span class='selector'>S</span>")
+                .thenReturn(Flux.just(runtimeSelectorRule));
+        when(injectHelper.resolveRuleCodes(List.of(runtimeSelectorRule))).thenReturn(Mono.just(List.of(
+                new InjectHelper.ResolvedRuleCode(runtimeSelectorRule, "<span class='selector'>S</span>")
         )));
 
         MockServerWebExchange exchange = MockServerWebExchange.from(
@@ -133,12 +139,13 @@ class InjectorWebFilterTest {
     @Test
     void shouldRewriteImplicitOkHtmlResponsesWithoutExplicitStatus() {
         InjectionRule selectorRule = domRule("rule-selector", InjectionRule.Mode.SELECTOR, ".slot");
+        RuntimeInjectionRule runtimeSelectorRule = runtimeRule(selectorRule);
         when(injectHelper.hasDomProcessCandidate("/demo", InjectionRule.Mode.SELECTOR))
                 .thenReturn(Mono.just(true));
         when(injectHelper.getMatchedRules("/demo", "", InjectionRule.Mode.SELECTOR))
-                .thenReturn(Flux.just(selectorRule));
-        when(injectHelper.resolveRuleCodes(List.of(selectorRule))).thenReturn(Mono.just(List.of(
-                new InjectHelper.ResolvedRuleCode(selectorRule, "<span class='selector'>S</span>")
+                .thenReturn(Flux.just(runtimeSelectorRule));
+        when(injectHelper.resolveRuleCodes(List.of(runtimeSelectorRule))).thenReturn(Mono.just(List.of(
+                new InjectHelper.ResolvedRuleCode(runtimeSelectorRule, "<span class='selector'>S</span>")
         )));
 
         MockServerWebExchange exchange = MockServerWebExchange.from(
@@ -167,12 +174,13 @@ class InjectorWebFilterTest {
     @Test
     void shouldNotRequireHtmlAcceptHeaderBeforeDecoratingResponse() {
         InjectionRule selectorRule = domRule("rule-selector", InjectionRule.Mode.SELECTOR, ".slot");
+        RuntimeInjectionRule runtimeSelectorRule = runtimeRule(selectorRule);
         when(injectHelper.hasDomProcessCandidate("/demo", InjectionRule.Mode.SELECTOR))
                 .thenReturn(Mono.just(true));
         when(injectHelper.getMatchedRules("/demo", "", InjectionRule.Mode.SELECTOR))
-                .thenReturn(Flux.just(selectorRule));
-        when(injectHelper.resolveRuleCodes(List.of(selectorRule))).thenReturn(Mono.just(List.of(
-                new InjectHelper.ResolvedRuleCode(selectorRule, "<span class='selector'>S</span>")
+                .thenReturn(Flux.just(runtimeSelectorRule));
+        when(injectHelper.resolveRuleCodes(List.of(runtimeSelectorRule))).thenReturn(Mono.just(List.of(
+                new InjectHelper.ResolvedRuleCode(runtimeSelectorRule, "<span class='selector'>S</span>")
         )));
 
         MockServerWebExchange exchange = MockServerWebExchange.from(
@@ -200,12 +208,13 @@ class InjectorWebFilterTest {
     @Test
     void shouldRewriteHtmlResponsesWrittenViaWriteWith() {
         InjectionRule selectorRule = domRule("rule-selector", InjectionRule.Mode.SELECTOR, ".slot");
+        RuntimeInjectionRule runtimeSelectorRule = runtimeRule(selectorRule);
         when(injectHelper.hasDomProcessCandidate("/demo", InjectionRule.Mode.SELECTOR))
                 .thenReturn(Mono.just(true));
         when(injectHelper.getMatchedRules("/demo", "", InjectionRule.Mode.SELECTOR))
-                .thenReturn(Flux.just(selectorRule));
-        when(injectHelper.resolveRuleCodes(List.of(selectorRule))).thenReturn(Mono.just(List.of(
-                new InjectHelper.ResolvedRuleCode(selectorRule, "<span class='selector'>S</span>")
+                .thenReturn(Flux.just(runtimeSelectorRule));
+        when(injectHelper.resolveRuleCodes(List.of(runtimeSelectorRule))).thenReturn(Mono.just(List.of(
+                new InjectHelper.ResolvedRuleCode(runtimeSelectorRule, "<span class='selector'>S</span>")
         )));
 
         MockServerWebExchange exchange = MockServerWebExchange.from(
@@ -301,6 +310,10 @@ class InjectorWebFilterTest {
         rule.setPosition(InjectionRule.Position.APPEND);
         rule.setMatchRule(MatchRule.defaultRule());
         return rule;
+    }
+
+    private RuntimeInjectionRule runtimeRule(InjectionRule rule) {
+        return RuntimeInjectionRule.fromStoredRule(rule, rule.getMatchRule());
     }
 
     private static class CountingInjectorWebFilter extends InjectorWebFilter {

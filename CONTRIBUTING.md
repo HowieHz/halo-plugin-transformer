@@ -110,6 +110,7 @@ pnpm dev
 - 凡是异步收敛、失败可重试、事件驱动刷新这类后台流程，优先使用 `controller / reconciler / watch`
 - 运行时缓存优先做成 watch 驱动的内存快照，而不是请求路径上的 TTL 回源
 - 控制台读接口优先返回显式 projection / read model，而不是把存储实体直接暴露给 UI
+- 运行时执行链路优先消费独立 runtime projection，而不是把 extension 存储实体继续透传到 filter / processor
 - 资源查询遵循平台模型：能 `fetch(name)` 就不用 `list + filter(name)`；能 `fieldQuery` 就不做全量扫描
 - `annotations / labels` 只用于轻量元信息、兼容标记与索引辅助，不承载结构化业务状态，也不替代独立资源建模
 - 业务语义校验仍由插件自己负责，例如 `unknownFields`、match-rule contract、导入导出约束；这些属于插件领域规则，不属于 Halo 通用扩展层职责

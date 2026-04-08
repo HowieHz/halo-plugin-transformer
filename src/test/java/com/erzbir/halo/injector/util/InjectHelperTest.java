@@ -2,6 +2,7 @@ package com.erzbir.halo.injector.util;
 
 import com.erzbir.halo.injector.manager.CodeSnippetManager;
 import com.erzbir.halo.injector.manager.InjectionRuleRuntimeStore;
+import com.erzbir.halo.injector.core.RuntimeInjectionRule;
 import com.erzbir.halo.injector.scheme.CodeSnippet;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import com.erzbir.halo.injector.core.MatchRule;
@@ -42,14 +43,15 @@ class InjectHelperTest {
         InjectionRule rule = createRule(group(MatchRule.Operator.AND,
                 MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
                 MatchRule.templateRule(MatchRule.Matcher.EXACT, "post")));
-        when(ruleRuntimeStore.listActiveByMode(InjectionRule.Mode.SELECTOR)).thenReturn(Flux.just(rule));
+        RuntimeInjectionRule runtimeRule = runtimeRule(rule);
+        when(ruleRuntimeStore.listActiveByMode(InjectionRule.Mode.SELECTOR)).thenReturn(Flux.just(runtimeRule));
 
-        List<InjectionRule> rules = injectHelper
+        List<RuntimeInjectionRule> rules = injectHelper
                 .getMatchedRules("/posts/demo", "post", InjectionRule.Mode.SELECTOR)
                 .collectList()
                 .block();
 
-        assertEquals(List.of(rule), rules);
+        assertEquals(List.of(runtimeRule), rules);
     }
 
     // why: 模板 ID 不匹配时必须淘汰规则，避免把仅路径命中的规则错误放行。
@@ -58,9 +60,10 @@ class InjectHelperTest {
         InjectionRule rule = createRule(group(MatchRule.Operator.AND,
                 MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
                 MatchRule.templateRule(MatchRule.Matcher.EXACT, "post")));
-        when(ruleRuntimeStore.listActiveByMode(InjectionRule.Mode.SELECTOR)).thenReturn(Flux.just(rule));
+        when(ruleRuntimeStore.listActiveByMode(InjectionRule.Mode.SELECTOR))
+                .thenReturn(Flux.just(runtimeRule(rule)));
 
-        List<InjectionRule> rules = injectHelper
+        List<RuntimeInjectionRule> rules = injectHelper
                 .getMatchedRules("/posts/demo", "page", InjectionRule.Mode.SELECTOR)
                 .collectList()
                 .block();
@@ -74,14 +77,15 @@ class InjectHelperTest {
         InjectionRule rule = createRule(group(MatchRule.Operator.AND,
                 MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
                 MatchRule.templateRule(MatchRule.Matcher.EXACT, "post")));
-        when(ruleRuntimeStore.listActiveByMode(InjectionRule.Mode.SELECTOR)).thenReturn(Flux.just(rule));
+        RuntimeInjectionRule runtimeRule = runtimeRule(rule);
+        when(ruleRuntimeStore.listActiveByMode(InjectionRule.Mode.SELECTOR)).thenReturn(Flux.just(runtimeRule));
 
-        List<InjectionRule> rules = injectHelper
+        List<RuntimeInjectionRule> rules = injectHelper
                 .getPathMatchedRules("/posts/demo", InjectionRule.Mode.SELECTOR)
                 .collectList()
                 .block();
 
-        assertEquals(List.of(rule), rules);
+        assertEquals(List.of(runtimeRule), rules);
     }
 
     // why: 路径已明确不命中时应尽早淘汰规则，减少后续无意义处理。
@@ -90,9 +94,10 @@ class InjectHelperTest {
         InjectionRule rule = createRule(group(MatchRule.Operator.AND,
                 MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
                 MatchRule.templateRule(MatchRule.Matcher.EXACT, "post")));
-        when(ruleRuntimeStore.listActiveByMode(InjectionRule.Mode.SELECTOR)).thenReturn(Flux.just(rule));
+        when(ruleRuntimeStore.listActiveByMode(InjectionRule.Mode.SELECTOR))
+                .thenReturn(Flux.just(runtimeRule(rule)));
 
-        List<InjectionRule> rules = injectHelper
+        List<RuntimeInjectionRule> rules = injectHelper
                 .getPathMatchedRules("/archives/demo", InjectionRule.Mode.SELECTOR)
                 .collectList()
                 .block();
@@ -124,7 +129,8 @@ class InjectHelperTest {
         setMatchRuleDirectly(rule, group(MatchRule.Operator.OR,
                 MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
                 MatchRule.templateRule(MatchRule.Matcher.EXACT, "post")));
-        when(ruleRuntimeStore.listActiveByMode(InjectionRule.Mode.SELECTOR)).thenReturn(Flux.just(rule));
+        when(ruleRuntimeStore.listActiveByMode(InjectionRule.Mode.SELECTOR))
+                .thenReturn(Flux.just(runtimeRule(rule)));
 
         Boolean shouldProcess = injectHelper
                 .hasDomProcessCandidate("/archives/demo", InjectionRule.Mode.SELECTOR)
@@ -139,19 +145,20 @@ class InjectHelperTest {
         CountingInjectHelper helper = new CountingInjectHelper(ruleRuntimeStore, snippetManager);
         InjectionRule rule = createRule(group(MatchRule.Operator.AND,
                 MatchRule.pathRule(MatchRule.Matcher.REGEX, "^/posts/\\d+$")));
-        when(ruleRuntimeStore.listActiveByMode(InjectionRule.Mode.SELECTOR)).thenReturn(Flux.just(rule));
+        RuntimeInjectionRule runtimeRule = runtimeRule(rule);
+        when(ruleRuntimeStore.listActiveByMode(InjectionRule.Mode.SELECTOR)).thenReturn(Flux.just(runtimeRule));
 
-        List<InjectionRule> first = helper
+        List<RuntimeInjectionRule> first = helper
                 .getMatchedRules("/posts/1", InjectionRule.Mode.SELECTOR)
                 .collectList()
                 .block();
-        List<InjectionRule> second = helper
+        List<RuntimeInjectionRule> second = helper
                 .getMatchedRules("/posts/2", InjectionRule.Mode.SELECTOR)
                 .collectList()
                 .block();
 
-        assertEquals(List.of(rule), first);
-        assertEquals(List.of(rule), second);
+        assertEquals(List.of(runtimeRule), first);
+        assertEquals(List.of(runtimeRule), second);
         assertEquals(1, helper.compileCount.get());
     }
 
@@ -164,13 +171,14 @@ class InjectHelperTest {
         rule.setMode(InjectionRule.Mode.FOOTER);
         setMatchRuleDirectly(rule, group(MatchRule.Operator.AND,
                 MatchRule.pathRule(MatchRule.Matcher.REGEX, "[")));
-        when(ruleRuntimeStore.listActiveByMode(InjectionRule.Mode.FOOTER)).thenReturn(Flux.just(rule));
+        when(ruleRuntimeStore.listActiveByMode(InjectionRule.Mode.FOOTER))
+                .thenReturn(Flux.just(runtimeRule(rule)));
 
-        List<InjectionRule> first = helper
+        List<RuntimeInjectionRule> first = helper
                 .getMatchedRules("/posts/1", InjectionRule.Mode.FOOTER)
                 .collectList()
                 .block();
-        List<InjectionRule> second = helper
+        List<RuntimeInjectionRule> second = helper
                 .getMatchedRules("/posts/2", InjectionRule.Mode.FOOTER)
                 .collectList()
                 .block();
@@ -198,7 +206,7 @@ class InjectHelperTest {
         });
 
         List<InjectHelper.ResolvedRuleCode> resolved = injectHelper
-                .resolveRuleCodes(List.of(firstRule, secondRule))
+                .resolveRuleCodes(List.of(runtimeRule(firstRule), runtimeRule(secondRule)))
                 .block();
 
         assertEquals(3, fetchCount.get());
@@ -215,14 +223,15 @@ class InjectHelperTest {
                 group(MatchRule.Operator.OR,
                         MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/demo"),
                         MatchRule.pathRule(MatchRule.Matcher.ANT, "/archives/**"))));
-        when(ruleRuntimeStore.listActiveByMode(InjectionRule.Mode.SELECTOR)).thenReturn(Flux.just(rule));
+        RuntimeInjectionRule runtimeRule = runtimeRule(rule);
+        when(ruleRuntimeStore.listActiveByMode(InjectionRule.Mode.SELECTOR)).thenReturn(Flux.just(runtimeRule));
 
-        List<InjectionRule> matched = helper
+        List<RuntimeInjectionRule> matched = helper
                 .getMatchedRules("/posts/demo", "post", InjectionRule.Mode.SELECTOR)
                 .collectList()
                 .block();
 
-        assertEquals(List.of(rule), matched);
+        assertEquals(List.of(runtimeRule), matched);
         assertEquals(1, helper.routeParseCount.get());
     }
 
@@ -262,6 +271,10 @@ class InjectHelperTest {
         snippet.setEnabled(true);
         snippet.setCode(code);
         return snippet;
+    }
+
+    private RuntimeInjectionRule runtimeRule(InjectionRule rule) {
+        return RuntimeInjectionRule.fromStoredRule(rule, rule.getMatchRule());
     }
 
     private static class CountingInjectHelper extends InjectHelper {

@@ -1,5 +1,6 @@
 package com.erzbir.halo.injector.util;
 
+import com.erzbir.halo.injector.core.RuntimeInjectionRule;
 import com.erzbir.halo.injector.manager.CodeSnippetManager;
 import com.erzbir.halo.injector.manager.InjectionRuleRuntimeStore;
 import com.erzbir.halo.injector.scheme.CodeSnippet;
@@ -38,11 +39,11 @@ public class InjectHelper {
     protected final RouteMatcher routeMatcher = createRouteMatcher();
     protected final Map<String, RegexPatternHolder> regexPatternCache = new ConcurrentHashMap<>();
 
-    public Flux<InjectionRule> getRulesByMode(InjectionRule.Mode mode) {
+    public Flux<RuntimeInjectionRule> getRulesByMode(InjectionRule.Mode mode) {
         return ruleRuntimeStore.listActiveByMode(mode);
     }
 
-    public Flux<InjectionRule> getMatchedRules(String targetPath,
+    public Flux<RuntimeInjectionRule> getMatchedRules(String targetPath,
                                                InjectionRule.Mode mode) {
         return getMatchedRules(targetPath, "", mode);
     }
@@ -51,12 +52,12 @@ public class InjectHelper {
      * why: 模板注入和 DOM 注入最终都走同一套规则求值，
      * 这样路径、模板 ID、取反与分组语义只维护一份，避免前后两条链路出现行为漂移。
      */
-    public Flux<InjectionRule> getMatchedRules(String targetPath,
+    public Flux<RuntimeInjectionRule> getMatchedRules(String targetPath,
                                                String templateId,
                                                InjectionRule.Mode mode) {
         MatchContext context = new MatchContext(targetPath, templateId, parseCurrentPathRoute(targetPath));
         return getRulesByMode(mode)
-                .filter(rule -> evaluate(rule.getMatchRule(), context) == MatchState.MATCH)
+                .filter(rule -> evaluate(rule.matchRule(), context) == MatchState.MATCH)
                 .onErrorResume(e -> {
                     log.error("Failed to get matched rules for mode: {}", mode, e);
                     return Flux.empty();
@@ -67,7 +68,7 @@ public class InjectHelper {
      * why: WebFilter 还拿不到模板上下文，先做一次“仅按路径”的低成本预筛，
      * 只有可能命中的 DOM 规则才值得进入整页 HTML 缓冲链路。
      */
-    public Flux<InjectionRule> getPathMatchedRules(String targetPath,
+    public Flux<RuntimeInjectionRule> getPathMatchedRules(String targetPath,
                                                    InjectionRule.Mode mode) {
         if (targetPath.isEmpty()) {
             return Flux.empty();
@@ -75,8 +76,8 @@ public class InjectHelper {
         RouteMatcher.Route currentRoute = parseCurrentPathRoute(targetPath);
 
         return getRulesByMode(mode)
-                .filter(rule -> MatchRule.supportsDomPathPrecheck(rule.getMatchRule()))
-                .filter(rule -> pathPrecheckMatches(rule.getMatchRule(), targetPath, currentRoute))
+                .filter(rule -> MatchRule.supportsDomPathPrecheck(rule.matchRule()))
+                .filter(rule -> pathPrecheckMatches(rule.matchRule(), targetPath, currentRoute))
                 .onErrorResume(e -> {
                     log.error("Failed to get matched rules for mode: {}", mode, e);
                     return Flux.empty();
@@ -95,8 +96,8 @@ public class InjectHelper {
         RouteMatcher.Route currentRoute = parseCurrentPathRoute(targetPath);
 
         return getRulesByMode(mode)
-                .any(rule -> !MatchRule.supportsDomPathPrecheck(rule.getMatchRule())
-                        || pathPrecheckMatches(rule.getMatchRule(), targetPath, currentRoute))
+                .any(rule -> !MatchRule.supportsDomPathPrecheck(rule.matchRule())
+                        || pathPrecheckMatches(rule.matchRule(), targetPath, currentRoute))
                 .defaultIfEmpty(false);
     }
 
@@ -104,7 +105,7 @@ public class InjectHelper {
      * why: 同一次注入流程里，多条规则可能复用同一个代码块；
      * 这里先按唯一 snippetId 批量拉取，再按各规则自己的顺序回拼，避免重复 `get` 同一条代码块。
      */
-    public Mono<List<ResolvedRuleCode>> resolveRuleCodes(List<InjectionRule> rules) {
+    public Mono<List<ResolvedRuleCode>> resolveRuleCodes(List<RuntimeInjectionRule> rules) {
         if (rules == null || rules.isEmpty()) {
             return Mono.just(List.of());
         }
@@ -123,23 +124,23 @@ public class InjectHelper {
                 .collectMap(Map.Entry::getKey, Map.Entry::getValue, LinkedHashMap::new);
     }
 
-    List<String> collectUniqueSnippetIds(List<InjectionRule> rules) {
+    List<String> collectUniqueSnippetIds(List<RuntimeInjectionRule> rules) {
         LinkedHashSet<String> uniqueIds = new LinkedHashSet<>();
-        for (InjectionRule rule : rules) {
-            if (rule == null || rule.getSnippetIds() == null || rule.getSnippetIds().isEmpty()) {
+        for (RuntimeInjectionRule rule : rules) {
+            if (rule == null || rule.snippetIds() == null || rule.snippetIds().isEmpty()) {
                 continue;
             }
-            uniqueIds.addAll(rule.getSnippetIds());
+            uniqueIds.addAll(rule.snippetIds());
         }
         return List.copyOf(uniqueIds);
     }
 
-    String concatCode(InjectionRule rule, Map<String, CodeSnippet> snippetsById) {
-        if (rule == null || rule.getSnippetIds() == null || rule.getSnippetIds().isEmpty()) {
+    String concatCode(RuntimeInjectionRule rule, Map<String, CodeSnippet> snippetsById) {
+        if (rule == null || rule.snippetIds() == null || rule.snippetIds().isEmpty()) {
             return "";
         }
         StringBuilder builder = new StringBuilder();
-        for (String snippetId : rule.getSnippetIds()) {
+        for (String snippetId : rule.snippetIds()) {
             CodeSnippet snippet = snippetsById.get(snippetId);
             if (snippet == null || !snippet.isEnabled() || !snippet.isValid()) {
                 continue;
@@ -334,7 +335,7 @@ public class InjectHelper {
     private record RegexPatternHolder(Pattern pattern, String errorMessage) {
     }
 
-    public record ResolvedRuleCode(InjectionRule rule, String code) {
+    public record ResolvedRuleCode(RuntimeInjectionRule rule, String code) {
     }
 
     private enum MatchState {

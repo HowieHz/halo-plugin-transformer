@@ -1,6 +1,7 @@
 package com.erzbir.halo.injector.manager;
 
 import com.erzbir.halo.injector.core.MatchRuleBooleanMinimizer;
+import com.erzbir.halo.injector.core.RuntimeInjectionRule;
 import com.erzbir.halo.injector.scheme.InjectionRule;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -75,7 +76,7 @@ public class InjectionRuleRuntimeStore {
      * why: 运行时读路径应该只消费内存里的不可变快照；
      * 快照刷新由 Halo watch 事件和显式 refresh 触发，而不是请求线程自己回源拉整表。
      */
-    public Flux<InjectionRule> listActiveByMode(InjectionRule.Mode mode) {
+    public Flux<RuntimeInjectionRule> listActiveByMode(InjectionRule.Mode mode) {
         return Flux.fromIterable(cachedSnapshot.activeRules(mode));
     }
 
@@ -151,11 +152,11 @@ public class InjectionRuleRuntimeStore {
 
     RuleSnapshot buildSnapshot(List<InjectionRule> rules) {
         Map<String, InjectionRule> rulesById = new LinkedHashMap<>();
-        Map<InjectionRule.Mode, List<InjectionRule>> rulesByMode =
+        Map<InjectionRule.Mode, List<InjectionRule>> activeSourceRulesByMode =
                 new EnumMap<>(InjectionRule.Mode.class);
         Map<String, SkippedEnabledRule> skippedEnabledRulesById = new LinkedHashMap<>();
         for (InjectionRule.Mode mode : InjectionRule.Mode.values()) {
-            rulesByMode.put(mode, new ArrayList<>());
+            activeSourceRulesByMode.put(mode, new ArrayList<>());
         }
         for (InjectionRule rule : rules) {
             if (rule == null) {
@@ -177,13 +178,13 @@ public class InjectionRuleRuntimeStore {
                 ));
                 continue;
             }
-            rulesByMode.get(rule.getMode()).add(toRuntimeRule(rule));
+            activeSourceRulesByMode.get(rule.getMode()).add(rule);
         }
-        Map<InjectionRule.Mode, List<InjectionRule>> immutableByMode =
+        Map<InjectionRule.Mode, List<RuntimeInjectionRule>> immutableByMode =
                 new EnumMap<>(InjectionRule.Mode.class);
-        for (var entry : rulesByMode.entrySet()) {
+        for (var entry : activeSourceRulesByMode.entrySet()) {
             entry.getValue().sort(runtimeOrderComparator());
-            immutableByMode.put(entry.getKey(), List.copyOf(entry.getValue()));
+            immutableByMode.put(entry.getKey(), entry.getValue().stream().map(this::toRuntimeRule).toList());
         }
         RuleSnapshot snapshot = new RuleSnapshot(
                 new LinkedHashMap<>(rulesById),
@@ -237,7 +238,7 @@ public class InjectionRuleRuntimeStore {
     private RuleSnapshot applyIncrementalSnapshotEvent(RuleSnapshot currentSnapshot, RuleEventType eventType,
                                                        String ruleId, InjectionRule rule) {
         Map<String, InjectionRule> nextRulesById = new LinkedHashMap<>(currentSnapshot.rulesById());
-        Map<InjectionRule.Mode, List<InjectionRule>> nextRulesByMode =
+        Map<InjectionRule.Mode, List<RuntimeInjectionRule>> nextRulesByMode =
                 copyRulesByMode(currentSnapshot.rulesByMode());
         Map<String, SkippedEnabledRule> nextSkippedEnabledRulesById =
                 new LinkedHashMap<>(currentSnapshot.skippedEnabledRulesById());
@@ -277,24 +278,27 @@ public class InjectionRuleRuntimeStore {
         return snapshot;
     }
 
-    private Map<InjectionRule.Mode, List<InjectionRule>> copyRulesByMode(
-            Map<InjectionRule.Mode, List<InjectionRule>> sourceRulesByMode) {
-        Map<InjectionRule.Mode, List<InjectionRule>> copied = new EnumMap<>(InjectionRule.Mode.class);
+    private Map<InjectionRule.Mode, List<RuntimeInjectionRule>> copyRulesByMode(
+            Map<InjectionRule.Mode, List<RuntimeInjectionRule>> sourceRulesByMode) {
+        Map<InjectionRule.Mode, List<RuntimeInjectionRule>> copied = new EnumMap<>(InjectionRule.Mode.class);
         for (InjectionRule.Mode mode : InjectionRule.Mode.values()) {
             copied.put(mode, new ArrayList<>(sourceRulesByMode.getOrDefault(mode, List.of())));
         }
         return copied;
     }
 
-    private List<InjectionRule> rebuildActiveRulesForMode(Iterable<InjectionRule> rules, InjectionRule.Mode mode) {
-        List<InjectionRule> activeRules = new ArrayList<>();
+    private List<RuntimeInjectionRule> rebuildActiveRulesForMode(Iterable<InjectionRule> rules,
+                                                                 InjectionRule.Mode mode) {
+        List<InjectionRule> matchingRules = new ArrayList<>();
         for (InjectionRule rule : rules) {
             if (activeMode(rule) == mode) {
-                activeRules.add(toRuntimeRule(rule));
+                matchingRules.add(rule);
             }
         }
-        activeRules.sort(runtimeOrderComparator());
-        return List.copyOf(activeRules);
+        matchingRules.sort(runtimeOrderComparator());
+        return matchingRules.stream()
+                .map(this::toRuntimeRule)
+                .toList();
     }
 
     /**
@@ -302,22 +306,11 @@ public class InjectionRuleRuntimeStore {
      * 这里单独生成一份 runtime copy，把最小化后的 `matchRule` 放进内存快照，
      * 既避免请求期重复化简，也不污染持久化层和控制台编辑态。
      */
-    private InjectionRule toRuntimeRule(InjectionRule rule) {
-        InjectionRule runtimeRule = new InjectionRule();
-        runtimeRule.setMetadata(rule.getMetadata());
-        runtimeRule.setName(rule.getName());
-        runtimeRule.setDescription(rule.getDescription());
-        runtimeRule.setEnabled(rule.isEnabled());
-        runtimeRule.setMode(rule.getMode());
-        runtimeRule.setMatch(rule.getMatch());
-        runtimeRule.setMatchRule(MatchRuleBooleanMinimizer.minimizeForRuntime(rule.getMatchRule()));
-        runtimeRule.setPosition(rule.getPosition());
-        runtimeRule.setWrapMarker(rule.getWrapMarker());
-        runtimeRule.setRuntimeOrder(rule.getRuntimeOrder());
-        runtimeRule.setSnippetIds(rule.getSnippetIds() == null
-                ? new LinkedHashSet<>()
-                : new LinkedHashSet<>(rule.getSnippetIds()));
-        return runtimeRule;
+    private RuntimeInjectionRule toRuntimeRule(InjectionRule rule) {
+        return RuntimeInjectionRule.fromStoredRule(
+                rule,
+                MatchRuleBooleanMinimizer.minimizeForRuntime(rule.getMatchRule())
+        );
     }
 
     List<SkippedEnabledRule> skippedEnabledRules() {
@@ -590,10 +583,10 @@ public class InjectionRuleRuntimeStore {
     }
 
     record RuleSnapshot(Map<String, InjectionRule> rulesById,
-                        Map<InjectionRule.Mode, List<InjectionRule>> rulesByMode,
+                        Map<InjectionRule.Mode, List<RuntimeInjectionRule>> rulesByMode,
                         Map<String, SkippedEnabledRule> skippedEnabledRulesById) {
         static RuleSnapshot empty() {
-            Map<InjectionRule.Mode, List<InjectionRule>> emptyByMode =
+            Map<InjectionRule.Mode, List<RuntimeInjectionRule>> emptyByMode =
                     new EnumMap<>(InjectionRule.Mode.class);
             for (InjectionRule.Mode mode : InjectionRule.Mode.values()) {
                 emptyByMode.put(mode, List.of());
@@ -605,7 +598,7 @@ public class InjectionRuleRuntimeStore {
             return List.copyOf(rulesById.values());
         }
 
-        List<InjectionRule> activeRules(InjectionRule.Mode mode) {
+        List<RuntimeInjectionRule> activeRules(InjectionRule.Mode mode) {
             return rulesByMode.getOrDefault(mode, List.of());
         }
 
