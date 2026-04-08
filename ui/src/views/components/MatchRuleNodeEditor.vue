@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed } from 'vue'
+import { computed, inject } from 'vue'
 import { VButton } from '@halo-dev/components'
 import type { MatchRule } from '@/types'
 import type { MatchRuleValidationError } from '@/views/composables/matchRule'
@@ -12,6 +12,13 @@ import {
   makeTemplateMatchRule,
 } from '@/types'
 import { cloneMatchRule, normalizeMatchRule } from '@/views/composables/matchRule'
+import {
+  isSamePath,
+  MATCH_RULE_DRAG_CONTEXT_KEY,
+  pathKey,
+  type MatchRuleDropPlacement,
+  type MatchRuleNodePath,
+} from '@/views/composables/matchRuleTreeMove'
 import { updateSelectByWheel } from '@/views/composables/selectWheel.ts'
 
 defineOptions({
@@ -22,23 +29,22 @@ const props = defineProps<{
   modelValue: MatchRule
   root?: boolean
   canRemove?: boolean
-  canMoveUp?: boolean
-  canMoveDown?: boolean
   path?: string
+  nodePath?: MatchRuleNodePath
   validationErrors?: MatchRuleValidationError[] | null
 }>()
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: MatchRule): void
   (e: 'remove'): void
-  (e: 'move-up'): void
-  (e: 'move-down'): void
   (e: 'change'): void
 }>()
 
 const rule = computed(() => normalizeMatchRule(props.modelValue))
 const isGroup = computed(() => rule.value.type === 'GROUP')
 const currentPath = computed(() => props.path ?? '$')
+const currentNodePath = computed<MatchRuleNodePath>(() => props.nodePath ?? [])
+const dragContext = inject(MATCH_RULE_DRAG_CONTEXT_KEY, null)
 const matcherOptions = computed(() =>
   rule.value.type === 'TEMPLATE_ID' ? TEMPLATE_MATCHER_OPTIONS : PATH_MATCHER_OPTIONS,
 )
@@ -75,6 +81,24 @@ const ownErrors = computed(() => {
 const ownErrorPaths = computed(() => new Set(ownErrors.value.map((error) => error.path)))
 const ownErrorMessages = computed(() => ownErrors.value.map((error) => error.message))
 const hasNodeError = computed(() => ownErrors.value.length > 0)
+const isDraggingNode = computed(() =>
+  isSamePath(dragContext?.draggingPath.value ?? null, currentNodePath.value),
+)
+const isDropBefore = computed(
+  () =>
+    pathKey(dragContext?.dropTargetPath.value ?? null) === pathKey(currentNodePath.value) &&
+    dragContext?.dropPlacement.value === 'before',
+)
+const isDropAfter = computed(
+  () =>
+    pathKey(dragContext?.dropTargetPath.value ?? null) === pathKey(currentNodePath.value) &&
+    dragContext?.dropPlacement.value === 'after',
+)
+const isDropInside = computed(
+  () =>
+    pathKey(dragContext?.dropTargetPath.value ?? null) === pathKey(currentNodePath.value) &&
+    dragContext?.dropPlacement.value === 'inside',
+)
 
 function updateRule(next: MatchRule) {
   emit('update:modelValue', next)
@@ -100,16 +124,6 @@ function updateChild(index: number, child: MatchRule) {
 function removeChild(index: number) {
   const next = cloneMatchRule(rule.value)
   const children = (next.children ?? []).filter((_, idx) => idx !== index)
-  next.children = children
-  updateRule(next)
-}
-
-function moveChild(index: number, direction: -1 | 1) {
-  const next = cloneMatchRule(rule.value)
-  const children = [...(next.children ?? [])]
-  const targetIndex = index + direction
-  if (targetIndex < 0 || targetIndex >= children.length) return
-  ;[children[index], children[targetIndex]] = [children[targetIndex], children[index]]
   next.children = children
   updateRule(next)
 }
@@ -153,15 +167,128 @@ function switchLeafType(type: 'PATH' | 'TEMPLATE_ID') {
 function hasFieldError(field: 'children' | 'operator' | 'negate' | 'type' | 'matcher' | 'value') {
   return ownErrorPaths.value.has(`${currentPath.value}.${field}`)
 }
+
+function startDrag(event: DragEvent) {
+  if (!dragContext || props.root) {
+    return
+  }
+  dragContext.startDrag(currentNodePath.value, event)
+}
+
+function clearDragState() {
+  dragContext?.clearDragState()
+}
+
+function handleDragOverNode(event: DragEvent) {
+  if (!dragContext?.draggingPath.value) {
+    return
+  }
+
+  const placement = resolveNodeDropPlacement(event)
+  if (
+    !placement ||
+    !dragContext.canDrop(dragContext.draggingPath.value, currentNodePath.value, placement)
+  ) {
+    dragContext.setDropTarget(null, null)
+    return
+  }
+
+  event.preventDefault()
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move'
+  }
+  dragContext.setDropTarget(currentNodePath.value, placement)
+}
+
+function handleDropOnNode(event: DragEvent) {
+  const sourcePath = dragContext?.draggingPath.value
+  if (!dragContext || !sourcePath) {
+    return
+  }
+
+  const placement = resolveNodeDropPlacement(event)
+  dragContext.clearDragState()
+  if (!placement || !dragContext.canDrop(sourcePath, currentNodePath.value, placement)) {
+    return
+  }
+
+  event.preventDefault()
+  dragContext.moveNode(sourcePath, currentNodePath.value, placement)
+}
+
+function handleDragOverIntoGroup(event: DragEvent) {
+  if (!dragContext?.draggingPath.value || !isGroup.value) {
+    return
+  }
+  if (!dragContext.canDrop(dragContext.draggingPath.value, currentNodePath.value, 'inside')) {
+    dragContext.setDropTarget(null, null)
+    return
+  }
+
+  event.preventDefault()
+  event.stopPropagation()
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move'
+  }
+  dragContext.setDropTarget(currentNodePath.value, 'inside')
+}
+
+function handleDropIntoGroup(event: DragEvent) {
+  const sourcePath = dragContext?.draggingPath.value
+  if (!dragContext || !sourcePath || !isGroup.value) {
+    return
+  }
+
+  event.preventDefault()
+  event.stopPropagation()
+  dragContext.clearDragState()
+  if (!dragContext.canDrop(sourcePath, currentNodePath.value, 'inside')) {
+    return
+  }
+  dragContext.moveNode(sourcePath, currentNodePath.value, 'inside')
+}
+
+function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | null {
+  const currentTarget = event.currentTarget
+  if (!(currentTarget instanceof HTMLElement)) {
+    return null
+  }
+
+  const rect = currentTarget.getBoundingClientRect()
+  const ratio = rect.height > 0 ? (event.clientY - rect.top) / rect.height : 0.5
+
+  if (isGroup.value) {
+    if (ratio < 0.25) return 'before'
+    if (ratio > 0.75) return 'after'
+    return 'inside'
+  }
+
+  return ratio < 0.5 ? 'before' : 'after'
+}
 </script>
 
 <template>
   <div
-    :class="hasNodeError ? ':uno: border-red-300 bg-red-50/40' : ':uno: border-gray-200 bg-white'"
+    :class="[
+      hasNodeError ? ':uno: border-red-300 bg-red-50/40' : ':uno: border-gray-200 bg-white',
+      isDraggingNode ? ':uno: opacity-60' : '',
+      isDropInside && !root ? ':uno: border-primary bg-primary/5' : '',
+    ]"
     :aria-invalid="hasNodeError"
-    class=":uno: rounded-md border p-3 space-y-3"
+    class=":uno: relative rounded-md border p-3 space-y-3"
     role="group"
+    @dragover="handleDragOverNode"
+    @drop="handleDropOnNode"
   >
+    <div
+      v-if="isDropBefore"
+      class=":uno: pointer-events-none absolute left-3 right-3 top-0 h-0.5 rounded-full bg-primary"
+    />
+    <div
+      v-if="isDropAfter"
+      class=":uno: pointer-events-none absolute left-3 right-3 bottom-0 h-0.5 rounded-full bg-primary"
+    />
+
     <template v-if="isGroup">
       <div class=":uno: flex flex-wrap items-center gap-2">
         <span class=":uno: text-sm font-medium text-gray-700">
@@ -205,26 +332,19 @@ function hasFieldError(field: 'children' | 'operator' | 'negate' | 'type' | 'mat
           不满足本组（NOT）
         </label>
         <div v-if="!root" class=":uno: inline-flex items-center gap-1">
-          <VButton
-            v-if="canMoveUp"
-            aria-label="上移当前条件组"
-            class=":uno: min-w-0 px-2"
-            size="sm"
-            title="上移"
-            @click="emit('move-up')"
+          <button
+            aria-label="拖动当前条件组"
+            class=":uno: inline-flex h-7 w-7 shrink-0 cursor-grab active:cursor-grabbing items-center justify-center rounded text-sm leading-none tracking-[-0.2em] text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+            draggable="true"
+            title="按住拖动；拖到条件组中部可放入该组"
+            type="button"
+            @click.stop
+            @dragend="clearDragState"
+            @dragstart.stop="startDrag"
+            @mousedown.stop
           >
-            ↑
-          </VButton>
-          <VButton
-            v-if="canMoveDown"
-            aria-label="下移当前条件组"
-            class=":uno: min-w-0 px-2"
-            size="sm"
-            title="下移"
-            @click="emit('move-down')"
-          >
-            ↓
-          </VButton>
+            ⋮⋮
+          </button>
         </div>
         <VButton
           v-if="!root && canRemove !== false"
@@ -237,19 +357,21 @@ function hasFieldError(field: 'children' | 'operator' | 'negate' | 'type' | 'mat
         </VButton>
       </div>
 
-      <div class=":uno: space-y-2">
+      <div
+        :class="isDropInside ? ':uno: rounded-md border border-dashed border-primary/50 p-2' : ''"
+        class=":uno: space-y-2"
+        @dragover="handleDragOverIntoGroup"
+        @drop="handleDropIntoGroup"
+      >
         <MatchRuleNodeEditor
           v-for="(child, index) in rule.children ?? []"
           :key="index"
-          :can-move-down="index < (rule.children?.length ?? 0) - 1"
-          :can-move-up="index > 0"
           :can-remove="true"
           :model-value="child"
+          :node-path="[...currentNodePath, index]"
           :path="`${currentPath}.children[${index}]`"
           :validation-errors="validationErrors"
           @change="emit('change')"
-          @move-down="moveChild(index, 1)"
-          @move-up="moveChild(index, -1)"
           @remove="removeChild(index)"
           @update:model-value="updateChild(index, $event)"
         />
@@ -318,26 +440,19 @@ function hasFieldError(field: 'children' | 'operator' | 'negate' | 'type' | 'mat
         </label>
 
         <div v-if="!root" class=":uno: inline-flex items-center gap-1">
-          <VButton
-            v-if="canMoveUp"
-            aria-label="上移当前匹配条件"
-            class=":uno: min-w-0 px-2"
-            size="sm"
-            title="上移"
-            @click="emit('move-up')"
+          <button
+            aria-label="拖动当前匹配条件"
+            class=":uno: inline-flex h-7 w-7 shrink-0 cursor-grab active:cursor-grabbing items-center justify-center rounded text-sm leading-none tracking-[-0.2em] text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+            draggable="true"
+            title="按住拖动排序"
+            type="button"
+            @click.stop
+            @dragend="clearDragState"
+            @dragstart.stop="startDrag"
+            @mousedown.stop
           >
-            ↑
-          </VButton>
-          <VButton
-            v-if="canMoveDown"
-            aria-label="下移当前匹配条件"
-            class=":uno: min-w-0 px-2"
-            size="sm"
-            title="下移"
-            @click="emit('move-down')"
-          >
-            ↓
-          </VButton>
+            ⋮⋮
+          </button>
         </div>
 
         <VButton

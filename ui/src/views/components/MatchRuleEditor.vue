@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, useId, watch } from 'vue'
+import { computed, provide, ref, useId, watch } from 'vue'
 import { Dialog, VButton } from '@halo-dev/components'
 import type { MatchRule, MatchRuleEditorMode, MatchRuleSource } from '@/types'
 import { makeMatchRuleGroup } from '@/types'
@@ -14,6 +14,13 @@ import {
   parseMatchRuleDraft,
   validateSimpleMatchRuleTree,
 } from '@/views/composables/matchRule'
+import {
+  canMoveMatchRuleNode,
+  MATCH_RULE_DRAG_CONTEXT_KEY,
+  moveMatchRuleNode,
+  type MatchRuleDropPlacement,
+  type MatchRuleNodePath,
+} from '@/views/composables/matchRuleTreeMove'
 import MatchRuleNodeEditor from './MatchRuleNodeEditor.vue'
 
 const props = defineProps<{
@@ -108,6 +115,9 @@ const jsonHighlightStyle = computed(() => {
 const jsonLineNumberStyle = computed(() => ({
   transform: `translateY(-${jsonScrollTop.value}px)`,
 }))
+const draggingPath = ref<MatchRuleNodePath | null>(null)
+const dropTargetPath = ref<MatchRuleNodePath | null>(null)
+const dropPlacement = ref<MatchRuleDropPlacement | null>(null)
 
 function isEqualValue(a: unknown, b: unknown) {
   return JSON.stringify(a) === JSON.stringify(b)
@@ -191,6 +201,7 @@ function applyModeSwitch(mode: MatchRuleEditorMode) {
 
 function updateSimple(value: MatchRule) {
   const normalized = normalizeMatchRule(value)
+  clearDragState()
   emitStatePatch({
     matchRule: normalized,
     matchRuleSource: makeRuleTreeSource(normalized),
@@ -198,6 +209,7 @@ function updateSimple(value: MatchRule) {
 }
 
 function updateJsonDraft(value: string) {
+  clearDragState()
   jsonDraft.value = value
   const patch: Partial<{ matchRule: MatchRule; matchRuleSource: MatchRuleSource }> = {
     matchRuleSource: makeJsonDraftSource(value),
@@ -212,11 +224,75 @@ function formatJson() {
   const parsed = parseResult.value.rule ?? normalizeMatchRule(props.modelValue)
   const next = formatMatchRule(parsed || makeMatchRuleGroup())
   jsonDraft.value = next
+  clearDragState()
   emitStatePatch({
     matchRule: parsed || makeMatchRuleGroup(),
     matchRuleSource: makeJsonDraftSource(next),
   })
 }
+
+function clearDragState() {
+  draggingPath.value = null
+  dropTargetPath.value = null
+  dropPlacement.value = null
+}
+
+function startDrag(path: MatchRuleNodePath, event: DragEvent) {
+  draggingPath.value = [...path]
+  dropTargetPath.value = null
+  dropPlacement.value = null
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', path.join('.'))
+  }
+}
+
+function setDropTarget(path: MatchRuleNodePath | null, placement: MatchRuleDropPlacement | null) {
+  dropTargetPath.value = path ? [...path] : null
+  dropPlacement.value = placement
+}
+
+function canDrop(
+  sourcePath: MatchRuleNodePath,
+  targetPath: MatchRuleNodePath,
+  placement: MatchRuleDropPlacement,
+) {
+  return canMoveMatchRuleNode(
+    normalizeMatchRule(props.modelValue),
+    sourcePath,
+    targetPath,
+    placement,
+  )
+}
+
+function moveNode(
+  sourcePath: MatchRuleNodePath,
+  targetPath: MatchRuleNodePath,
+  placement: MatchRuleDropPlacement,
+) {
+  const nextRule = moveMatchRuleNode(
+    normalizeMatchRule(props.modelValue),
+    sourcePath,
+    targetPath,
+    placement,
+  )
+  clearDragState()
+  if (!nextRule) {
+    return
+  }
+  updateSimple(nextRule)
+}
+
+provide(MATCH_RULE_DRAG_CONTEXT_KEY, {
+  draggingPath,
+  dropTargetPath,
+  dropPlacement,
+  startDrag,
+  setDropTarget,
+  clearDragState,
+  canDrop,
+  moveNode,
+})
 
 function syncJsonScroll(event: Event) {
   jsonScrollTop.value = (event.target as HTMLTextAreaElement).scrollTop
@@ -431,6 +507,7 @@ function tokenizeJson(text: string) {
         :id="simplePanelId"
         :aria-labelledby="`${simplePanelId}-tab`"
         :model-value="normalizeMatchRule(modelValue)"
+        :node-path="[]"
         :validation-errors="simpleValidationErrors"
         root
         role="tabpanel"
