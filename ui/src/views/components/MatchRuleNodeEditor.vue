@@ -392,7 +392,6 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
           <div v-if="isDropInside" aria-hidden="true" class=":uno: pointer-events-none px-1">
             <div class=":uno: h-0.5 rounded-full bg-primary" />
           </div>
-          <p class=":uno: text-xs text-gray-400">拖到这里，放入此条件组</p>
         </div>
 
         <div class=":uno: flex flex-wrap gap-2">
