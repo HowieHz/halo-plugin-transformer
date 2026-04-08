@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { onMounted, ref, watch } from 'vue'
+import { nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router'
 import {
   IconPlug,
@@ -17,12 +17,14 @@ import { rulePreview } from './composables/util.ts'
 import { matchRuleSummary } from './composables/matchRule.ts'
 
 import ResourceList from './components/ResourceList.vue'
+import DragAutoScrollOverlay from './components/DragAutoScrollOverlay.vue'
 import SnippetEditor from './components/SnippetEditor.vue'
 import RuleEditor from './components/RuleEditor.vue'
 import RelationPanel from './components/RelationPanel.vue'
 import SnippetFormModal from './components/SnippetFormModal.vue'
 import RuleFormModal from './components/RuleFormModal.vue'
 import type { CodeSnippetEditorDraft, InjectionRuleEditorDraft } from '@/types'
+import { useDragAutoScroll } from './composables/useDragAutoScroll'
 
 const activeTab = ref<ActiveTab>('snippets')
 const route = useRoute()
@@ -43,6 +45,11 @@ const ruleFormRef = ref<{
   getValidationError: () => string | null
   getSubmitPayload: () => { rule: InjectionRuleEditorDraft; snippetIds: string[] }
 } | null>(null)
+const resourceListRef = ref<{
+  getScrollContainer: () => HTMLElement | null
+} | null>(null)
+const resourceListScrollContainer = ref<HTMLElement | null>(null)
+const leftPaneAutoScroll = useDragAutoScroll(resourceListScrollContainer)
 
 const {
   loading,
@@ -385,6 +392,11 @@ watch([snippets, rules], () => {
   validateSelection()
 })
 
+watch([activeTab, loading], async () => {
+  await nextTick()
+  resourceListScrollContainer.value = resourceListRef.value?.getScrollContainer() ?? null
+})
+
 async function handleAddSnippet(...args: Parameters<typeof addSnippet>) {
   const id = await addSnippet(...args)
   if (id) {
@@ -496,7 +508,7 @@ function jumpToSnippet(id: string) {
     <div class=":uno: m-0 md:m-4">
       <VCard :body-class="['injector-view-card-body']" style="height: calc(100vh - 5.5rem)">
         <div class=":uno: h-full flex divide-x divide-gray-100">
-          <div class=":uno: aside h-full flex-none flex flex-col overflow-hidden">
+          <div class=":uno: relative aside h-full flex-none flex flex-col overflow-hidden">
             <div
               class=":uno: sticky top-0 z-10 h-12 flex items-center gap-4 border-b bg-white px-4 shrink-0"
             >
@@ -519,30 +531,45 @@ function jumpToSnippet(id: string) {
               </button>
             </div>
 
+            <DragAutoScrollOverlay
+              :active="leftPaneAutoScroll.isDragActive.value"
+              :active-direction="leftPaneAutoScroll.activeDirection.value"
+              :can-scroll-up="leftPaneAutoScroll.canScrollUp.value"
+              :can-scroll-down="leftPaneAutoScroll.canScrollDown.value"
+              @zone-dragleave="leftPaneAutoScroll.handleZoneLeave"
+              @zone-dragover="leftPaneAutoScroll.startAutoScroll"
+            />
+
             <VLoading v-if="loading" />
 
             <ResourceList
               v-else-if="activeTab === 'snippets'"
+              ref="resourceListRef"
               :items="snippets"
               list-label="代码块列表"
               :reorderable="true"
               :selected-id="selectedSnippetId"
               :stretch="true"
               empty-text="暂无代码块"
+              @drag-state-change="leftPaneAutoScroll.setDragActive"
               @reorder="reorderSnippet"
+              @scroll-container="leftPaneAutoScroll.handleContainerScroll"
               @create="handleOpenCreateModal('snippets')"
               @select="handleSnippetSelect"
             />
 
             <ResourceList
               v-else
+              ref="resourceListRef"
               :items="rules"
               list-label="注入规则列表"
               :reorderable="true"
               :selected-id="selectedRuleId"
               :stretch="true"
               empty-text="暂无注入规则"
+              @drag-state-change="leftPaneAutoScroll.setDragActive"
               @reorder="reorderRule"
+              @scroll-container="leftPaneAutoScroll.handleContainerScroll"
               @create="handleOpenCreateModal('rules')"
               @select="handleRuleSelect"
             >

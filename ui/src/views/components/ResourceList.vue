@@ -4,9 +4,7 @@
   setup
 >
 import { ref } from 'vue'
-import DragAutoScrollOverlay from './DragAutoScrollOverlay.vue'
 import StatusDot from './StatusDot.vue'
-import { useDragAutoScroll } from '@/views/composables/useDragAutoScroll'
 
 type ReorderPlacement = 'before' | 'after'
 
@@ -23,19 +21,26 @@ const emit = defineEmits<{
   (e: 'select', id: string): void
   (e: 'create'): void
   (e: 'reorder', payload: { sourceId: string; targetId: string; placement: ReorderPlacement }): void
+  (e: 'drag-state-change', active: boolean): void
+  (e: 'scroll-container'): void
 }>()
 
 const draggingId = ref<string | null>(null)
 const dropTargetId = ref<string | null>(null)
 const dropPlacement = ref<ReorderPlacement | null>(null)
 const scrollContainer = ref<HTMLElement | null>(null)
-const autoScroll = useDragAutoScroll(scrollContainer)
+
+defineExpose({
+  getScrollContainer() {
+    return scrollContainer.value
+  },
+})
 
 function clearDragState() {
   draggingId.value = null
   dropTargetId.value = null
   dropPlacement.value = null
-  autoScroll.setDragActive(false)
+  emit('drag-state-change', false)
 }
 
 function resolveDropPlacement(event: DragEvent, id: string): ReorderPlacement | null {
@@ -63,7 +68,7 @@ function handleDragStart(event: DragEvent, id: string) {
   draggingId.value = id
   dropTargetId.value = null
   dropPlacement.value = null
-  autoScroll.setDragActive(true)
+  emit('drag-state-change', true)
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'move'
     event.dataTransfer.setData('text/plain', id)
@@ -125,17 +130,8 @@ function handleReorderButtonKeydown(event: KeyboardEvent, index: number) {
     ref="scrollContainer"
     :class="stretch ? ':uno: min-h-0 flex-1 overflow-y-auto' : ''"
     class=":uno: relative"
-    @scroll="autoScroll.handleContainerScroll"
+    @scroll="emit('scroll-container')"
   >
-    <DragAutoScrollOverlay
-      :active="autoScroll.isDragActive.value"
-      :active-direction="autoScroll.activeDirection.value"
-      :can-scroll-up="autoScroll.canScrollUp.value"
-      :can-scroll-down="autoScroll.canScrollDown.value"
-      @zone-dragleave="autoScroll.handleZoneLeave"
-      @zone-dragover="autoScroll.startAutoScroll"
-    />
-
     <slot name="placeholder" />
 
     <ul
