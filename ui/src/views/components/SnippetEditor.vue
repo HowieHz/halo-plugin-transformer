@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { Toast } from '@halo-dev/components'
 import type { CodeSnippetEditorDraft } from '@/types'
 import EditorToolbar from './EditorToolbar.vue'
 import EditorFooter from './EditorFooter.vue'
@@ -32,6 +33,9 @@ const exportFallback = ref<TransferFileDraft | null>(null)
 const codeDraft = ref('')
 const codeScrollTop = ref(0)
 type UndoableSnippetField = 'name' | 'description' | 'code'
+
+const editorShortcutHint =
+  '快捷键：Ctrl/Cmd+Z 撤销最近一次操作；Ctrl/Cmd+Shift+Z 重做最近一次撤销；Windows / Linux 也可用 Ctrl+Y 重做'
 
 const codeLines = computed(() => {
   const content = codeDraft.value.replace(/\r\n/g, '\n')
@@ -115,6 +119,22 @@ function applyUndoFieldState(field: UndoableSnippetField, value: unknown) {
   updateField(field, value as CodeSnippetEditorDraft[typeof field], { trackHistory: false })
 }
 
+function getUndoFieldLabel(field: UndoableSnippetField) {
+  switch (field) {
+    case 'name':
+      return '名称'
+    case 'description':
+      return '描述'
+    case 'code':
+      return '代码内容'
+  }
+}
+
+function notifyHistoryAction(action: 'undo' | 'redo', field: UndoableSnippetField) {
+  const fieldLabel = getUndoFieldLabel(field)
+  Toast.success(action === 'undo' ? `已撤销：${fieldLabel}` : `已重做：${fieldLabel}`)
+}
+
 function handleEditorKeydown(event: KeyboardEvent) {
   if (!props.snippet || event.altKey) {
     return
@@ -138,7 +158,9 @@ function handleEditorKeydown(event: KeyboardEvent) {
   }
 
   event.preventDefault()
-  applyUndoFieldState(snapshot.field as UndoableSnippetField, snapshot.value)
+  const field = snapshot.field as UndoableSnippetField
+  applyUndoFieldState(field, snapshot.value)
+  notifyHistoryAction(isUndoShortcut ? 'undo' : 'redo', field)
 }
 
 function syncCodeScroll(event: Event) {
@@ -178,6 +200,7 @@ async function exportSnippet() {
       :id-text="snippet?.id"
       :show-export="!!snippet"
       :show-actions="!!snippet"
+      :shortcut-hint="editorShortcutHint"
       :title="snippet ? '编辑代码块' : '代码块'"
       @delete="emit('delete')"
       @export="exportSnippet"

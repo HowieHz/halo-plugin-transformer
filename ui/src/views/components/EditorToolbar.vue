@@ -7,6 +7,7 @@ defineProps<{
   enabled?: boolean
   showActions?: boolean
   showExport?: boolean
+  shortcutHint?: string
 }>()
 
 const emit = defineEmits<{
@@ -18,6 +19,7 @@ const emit = defineEmits<{
 
 <template>
   <div
+    :title="shortcutHint"
     class=":uno: sticky top-0 z-10 h-12 flex items-center justify-between border-b bg-white px-4 shrink-0"
   >
     <div class=":uno: min-w-0 flex items-center gap-2">
