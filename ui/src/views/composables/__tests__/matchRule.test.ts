@@ -5,6 +5,7 @@ import { makeRuleEditorDraft, type InjectionRuleReadModel } from '@/types'
 import {
   buildMatchRuleEditorSourceForMode,
   getDomRulePerformanceWarning,
+  matchRuleSummary,
   parseMatchRuleDraft,
   resolveRuleMatchRule,
   validateSimpleMatchRuleTree,
@@ -251,5 +252,21 @@ describe('matchRule editor state', () => {
         { path: '$.children[1].children', message: '不能有空组' },
       ]),
     )
+  })
+
+  // why: 列表与关联面板只需要更紧凑的摘要文案；
+  // 这里单独锁住 UI 缩写格式，避免把 shared contract 的规范表达式也一起改短。
+  it('formats compact rule summaries for ui display', () => {
+    expect(
+      matchRuleSummary({
+        type: 'GROUP',
+        negate: false,
+        operator: 'AND',
+        children: [
+          { type: 'PATH', negate: false, matcher: 'REGEX', value: '^/posts' },
+          { type: 'TEMPLATE_ID', negate: false, matcher: 'REGEX', value: '^(post|page)$' },
+        ],
+      }),
+    ).toBe('path:re:^/posts & id:re:^(post|page)$')
   })
 })

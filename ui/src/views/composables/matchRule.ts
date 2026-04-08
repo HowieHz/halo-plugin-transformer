@@ -288,6 +288,10 @@ export function matchRuleExpression(rule: MatchRule): string {
   return formatAnalysisExpression(minimizeMatchRuleForAnalysis(rule), true)
 }
 
+export function matchRuleSummary(rule: MatchRule): string {
+  return formatAnalysisExpression(minimizeMatchRuleForAnalysis(rule), true, 'compact')
+}
+
 type AnalysisExpression =
   | { kind: 'CONST'; value: boolean }
   | {
@@ -680,27 +684,38 @@ function analysisExpressionKey(expression: AnalysisExpression): string {
   }
 }
 
-function formatAnalysisExpression(expression: AnalysisExpression, root = false): string {
+function formatAnalysisExpression(
+  expression: AnalysisExpression,
+  root = false,
+  format: 'canonical' | 'compact' = 'canonical',
+): string {
   switch (expression.kind) {
     case 'CONST':
       return expression.value ? 'TRUE' : 'FALSE'
     case 'LEAF': {
-      const subject = expression.type === 'PATH' ? 'path' : 'template_id'
+      const subject =
+        expression.type === 'PATH' ? 'path' : format === 'compact' ? 'id' : 'template_id'
       const matcher =
-        expression.matcher === 'REGEX' ? 'regex' : expression.matcher === 'EXACT' ? '=' : 'ant'
+        expression.matcher === 'REGEX'
+          ? format === 'compact'
+            ? 're'
+            : 'regex'
+          : expression.matcher === 'EXACT'
+            ? '='
+            : 'ant'
       return `${subject}:${matcher}:${expression.value}`
     }
     case 'NOT': {
       const needsGrouping = isGroupExpression(expression.child)
       const child = needsGrouping
-        ? formatAnalysisExpression(expression.child, true)
-        : formatAnalysisExpression(expression.child)
+        ? formatAnalysisExpression(expression.child, true, format)
+        : formatAnalysisExpression(expression.child, false, format)
       return needsGrouping ? `!(${child})` : `!${child}`
     }
     case 'GROUP': {
       const operator = expression.operator === 'OR' ? ' | ' : ' & '
       const content = expression.children
-        .map((child) => formatAnalysisExpression(child))
+        .map((child) => formatAnalysisExpression(child, false, format))
         .join(operator)
       return root ? content : `(${content})`
     }

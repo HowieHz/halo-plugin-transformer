@@ -2,7 +2,7 @@
 import type { CodeSnippetReadModel, InjectionRuleReadModel } from '@/types'
 import ResourceList from './ResourceList.vue'
 import { rulePreview } from '@/views/composables/util'
-import { matchRuleExpression } from '@/views/composables/matchRule'
+import { matchRuleSummary } from '@/views/composables/matchRule'
 
 defineProps<{
   mode: 'snippets' | 'rules'
@@ -48,9 +48,9 @@ const emit = defineEmits<{
             <span class=":uno: text-xs text-gray-500">{{ rulePreview(rule) }}</span>
             <span
               class=":uno: mt-0.5 block overflow-hidden text-ellipsis whitespace-nowrap text-xs text-gray-400"
-              :title="matchRuleExpression(rule.matchRule)"
+              :title="matchRuleSummary(rule.matchRule)"
             >
-              {{ matchRuleExpression(rule.matchRule) }}
+              {{ matchRuleSummary(rule.matchRule) }}
             </span>
           </template>
 

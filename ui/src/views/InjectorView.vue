@@ -14,7 +14,7 @@ import {
 import type { ActiveTab } from '@/types'
 import { useInjectorData } from './composables/useInjectorData.ts'
 import { rulePreview } from './composables/util.ts'
-import { matchRuleExpression } from './composables/matchRule.ts'
+import { matchRuleSummary } from './composables/matchRule.ts'
 
 import ResourceList from './components/ResourceList.vue'
 import SnippetEditor from './components/SnippetEditor.vue'
@@ -550,9 +550,9 @@ function jumpToSnippet(id: string) {
                 <span class=":uno: text-xs text-gray-500">{{ rulePreview(r) }}</span>
                 <span
                   class=":uno: mt-0.5 block overflow-hidden text-ellipsis whitespace-nowrap text-xs text-gray-400"
-                  :title="matchRuleExpression(r.matchRule)"
+                  :title="matchRuleSummary(r.matchRule)"
                 >
-                  {{ matchRuleExpression(r.matchRule) }}
+                  {{ matchRuleSummary(r.matchRule) }}
                 </span>
               </template>
             </ResourceList>
