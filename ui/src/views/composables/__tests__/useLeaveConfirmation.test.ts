@@ -12,7 +12,7 @@ describe('useLeaveConfirmation', () => {
       saveChanges: vi.fn(async () => true),
     })
 
-    const allowed = state.requestLeave(action)
+    const allowed = state.requestActionLeave(action)
 
     expect(allowed).toBe(true)
     expect(action).toHaveBeenCalledTimes(1)
@@ -28,7 +28,7 @@ describe('useLeaveConfirmation', () => {
       saveChanges: vi.fn(async () => true),
     })
 
-    const allowed = state.requestLeave(vi.fn())
+    const allowed = state.requestActionLeave(vi.fn())
 
     expect(allowed).toBe(false)
     expect(state.leaveConfirmVisible.value).toBe(true)
@@ -46,7 +46,7 @@ describe('useLeaveConfirmation', () => {
       saveChanges: vi.fn(async () => true),
     })
 
-    state.requestLeave(leaveAction)
+    state.requestActionLeave(leaveAction)
     await state.confirmDiscardAndLeave()
 
     expect(discardChanges).toHaveBeenCalledTimes(1)
@@ -66,13 +66,49 @@ describe('useLeaveConfirmation', () => {
       saveChanges,
     })
 
-    state.requestLeave(leaveAction)
+    state.requestActionLeave(leaveAction)
     await state.confirmSaveAndLeave()
     expect(leaveAction).not.toHaveBeenCalled()
     expect(state.leaveConfirmVisible.value).toBe(true)
 
     await state.confirmSaveAndLeave()
     expect(leaveAction).toHaveBeenCalledTimes(1)
+    expect(state.leaveConfirmVisible.value).toBe(false)
+  })
+
+  // why: 路由守卫应等待当前这次导航本身的确认结果，而不是先取消再手工 `push` 一次，
+  // 否则浏览器返回/前进与 replace 语义都会被错误重放成新的 push。
+  it('keeps the original navigation pending until confirmation resolves', async () => {
+    const state = useLeaveConfirmation({
+      hasUnsavedChanges: () => true,
+      hasValidationError: () => false,
+      discardChanges: vi.fn(),
+      saveChanges: vi.fn(async () => true),
+    })
+
+    const pendingNavigation = state.requestNavigationLeave()
+    expect(state.leaveConfirmVisible.value).toBe(true)
+
+    await state.confirmDiscardAndLeave()
+
+    await expect(pendingNavigation).resolves.toBe(true)
+    expect(state.leaveConfirmVisible.value).toBe(false)
+  })
+
+  // why: 用户取消离开时，挂起的路由导航必须显式收到 `false`，这样原导航才能保持被取消，
+  // 不会在 modal 关闭后又被错误继续。
+  it('resolves pending navigation as cancelled when the dialog closes', async () => {
+    const state = useLeaveConfirmation({
+      hasUnsavedChanges: () => true,
+      hasValidationError: () => false,
+      discardChanges: vi.fn(),
+      saveChanges: vi.fn(async () => true),
+    })
+
+    const pendingNavigation = state.requestNavigationLeave()
+    state.closeLeaveConfirm()
+
+    await expect(pendingNavigation).resolves.toBe(false)
     expect(state.leaveConfirmVisible.value).toBe(false)
   })
 })

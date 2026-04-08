@@ -264,34 +264,18 @@ onBeforeRouteUpdate((to) => {
   if (isSameInjectorRouteState(currentLocalRouteState(), nextState)) {
     return true
   }
-  if (!hasUnsavedChanges()) {
-    return true
-  }
-
-  requestEditorLeave(async () => {
-    await router.push({
-      query: buildInjectorRouteQuery(to.query, nextState),
-    })
-  })
-  return false
+  return requestNavigationLeave()
 })
 
 /**
  * why: 只拦住页内 query 变化还不够；如果整页导航能直接离开，
  * 草稿一样会静默丢失，因此 route leave 也必须复用同一套离开确认。
  */
-onBeforeRouteLeave((to) => {
+onBeforeRouteLeave(() => {
   if (syncingQuery.value || !queryStateHydrated.value) {
     return true
   }
-  if (!hasUnsavedChanges()) {
-    return true
-  }
-
-  requestEditorLeave(async () => {
-    await router.push(to)
-  })
-  return false
+  return requestNavigationLeave()
 })
 
 function validateSelection() {
@@ -404,7 +388,8 @@ async function saveCurrentChanges() {
 const {
   leaveConfirmVisible,
   leaveConfirmCanSave,
-  requestLeave: requestEditorLeave,
+  requestActionLeave: requestEditorLeave,
+  requestNavigationLeave,
   closeLeaveConfirm,
   confirmDiscardAndLeave,
   confirmSaveAndLeave,

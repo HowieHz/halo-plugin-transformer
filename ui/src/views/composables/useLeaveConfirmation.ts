@@ -7,6 +7,16 @@ interface UseLeaveConfirmationOptions {
   saveChanges: () => Promise<boolean>
 }
 
+type PendingLeaveTarget =
+  | {
+      kind: 'action'
+      run: () => void | Promise<void>
+    }
+  | {
+      kind: 'navigation'
+      resolve: (allowed: boolean) => void
+    }
+
 /**
  * why: 离开确认需要同时服务于页内切换、整页路由离开和本地按钮动作；
  * 把它收成单一会话原语，才能避免这些入口各自复制一套“是否脏、能否保存、怎么继续”的分支。
@@ -14,38 +24,70 @@ interface UseLeaveConfirmationOptions {
 export function useLeaveConfirmation(options: UseLeaveConfirmationOptions) {
   const leaveConfirmVisible = ref(false)
   const leaveConfirmCanSave = ref(false)
-  const pendingLeaveAction = ref<null | (() => void | Promise<void>)>(null)
+  const pendingLeaveTarget = ref<PendingLeaveTarget | null>(null)
 
-  function closeLeaveConfirm() {
+  function clearPendingLeaveState() {
     leaveConfirmVisible.value = false
     leaveConfirmCanSave.value = false
-    pendingLeaveAction.value = null
+    pendingLeaveTarget.value = null
   }
 
-  async function runPendingLeaveAction() {
-    const action = pendingLeaveAction.value
-    closeLeaveConfirm()
-    if (!action) {
+  function closeLeaveConfirm() {
+    const target = pendingLeaveTarget.value
+    clearPendingLeaveState()
+    if (target?.kind === 'navigation') {
+      target.resolve(false)
+    }
+  }
+
+  async function continuePendingLeave() {
+    const target = pendingLeaveTarget.value
+    clearPendingLeaveState()
+    if (!target) {
       return
     }
-    await action()
+    if (target.kind === 'navigation') {
+      target.resolve(true)
+      return
+    }
+    await target.run()
   }
 
-  function requestLeave(action: () => void | Promise<void>) {
+  function queueLeaveConfirmation(target: PendingLeaveTarget) {
+    pendingLeaveTarget.value = target
+    leaveConfirmCanSave.value = !options.hasValidationError()
+    leaveConfirmVisible.value = true
+  }
+
+  function requestActionLeave(action: () => void | Promise<void>) {
     if (!options.hasUnsavedChanges()) {
       void action()
       return true
     }
 
-    pendingLeaveAction.value = action
-    leaveConfirmCanSave.value = !options.hasValidationError()
-    leaveConfirmVisible.value = true
+    queueLeaveConfirmation({
+      kind: 'action',
+      run: action,
+    })
     return false
+  }
+
+  function requestNavigationLeave() {
+    if (!options.hasUnsavedChanges()) {
+      return Promise.resolve(true)
+    }
+
+    return new Promise<boolean>((resolve) => {
+      queueLeaveConfirmation({
+        kind: 'navigation',
+        resolve,
+      })
+    })
   }
 
   async function confirmDiscardAndLeave() {
     await options.discardChanges()
-    await runPendingLeaveAction()
+    await continuePendingLeave()
   }
 
   async function confirmSaveAndLeave() {
@@ -53,14 +95,15 @@ export function useLeaveConfirmation(options: UseLeaveConfirmationOptions) {
     if (!saved) {
       return false
     }
-    await runPendingLeaveAction()
+    await continuePendingLeave()
     return true
   }
 
   return {
     leaveConfirmVisible,
     leaveConfirmCanSave,
-    requestLeave,
+    requestActionLeave,
+    requestNavigationLeave,
     closeLeaveConfirm,
     confirmDiscardAndLeave,
     confirmSaveAndLeave,
