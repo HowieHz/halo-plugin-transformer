@@ -56,32 +56,14 @@ Halo 自带的全局页面注入更偏向站点级场景；这个插件更适合
     - 匹配规则布尔最小化与路径预筛
     - 前后端双重校验，尽量避免坏规则落库
 
-## 文档目录
-
-- [Halo CMS 页面转换器](#halo-cms-页面转换器)
-    - [简介](#简介)
-    - [核心理念](#核心理念)
-    - [功能介绍](#功能介绍)
-    - [文档目录](#文档目录)
-    - [配置入口](#配置入口)
-    - [转换模式](#转换模式)
-    - [转换位置选项](#转换位置选项)
-    - [规则级附加选项](#规则级附加选项)
-    - [匹配规则](#匹配规则)
-    - [导入与导出](#导入与导出)
-    - [配置页体验](#配置页体验)
-    - [校验与性能](#校验与性能)
-    - [已知限制](#已知限制)
-    - [常见模板 ID](#常见模板-id)
-    - [开发指南 / 贡献指南](#开发指南--贡献指南)
-    - [许可证](#许可证)
-
 ## 配置入口
 
 管理后台 -> 工具 -> `页面转换器`
 
-![code](assets/images/config_code.png)
-![rule](assets/images/config_rule.png)
+![config_snippet](assets/images/config_snippet.jpeg)
+![create_rule](assets/images/create_rule.jpeg)
+![mode_bulk](assets/images/mode_bulk.jpeg)
+![config_rule](assets/images/config_rule.jpeg)
 
 ## 转换模式
 

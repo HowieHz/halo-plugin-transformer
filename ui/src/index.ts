@@ -1,7 +1,7 @@
 import { definePlugin } from '@halo-dev/ui-shared'
 import TransformerView from './views/TransformerView.vue'
-import { IconPlug } from '@halo-dev/components'
 import { markRaw } from 'vue'
+import PluginLogoIcon from './components/PluginLogoIcon.vue'
 import './styles/main.scss'
 import 'uno.css'
 
@@ -21,7 +21,7 @@ export default definePlugin({
           permissions: ['plugin:transformer:manage'],
           menu: {
             name: '页面转换器',
-            icon: markRaw(IconPlug),
+            icon: markRaw(PluginLogoIcon),
             priority: 0,
           },
         },

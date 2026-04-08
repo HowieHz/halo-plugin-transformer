@@ -7,16 +7,8 @@ import {
   useRouter,
   type LocationQueryRaw,
 } from 'vue-router'
-import {
-  IconPlug,
-  Toast,
-  VButton,
-  VCard,
-  VLoading,
-  VModal,
-  VPageHeader,
-  VSpace,
-} from '@halo-dev/components'
+import { Toast, VButton, VCard, VLoading, VModal, VPageHeader, VSpace } from '@halo-dev/components'
+import PluginLogoIcon from '@/components/PluginLogoIcon.vue'
 
 import type {
   ActiveTab,
@@ -786,7 +778,7 @@ function jumpToSnippet(id: string) {
     </VModal>
 
     <VPageHeader title="页面转换器">
-      <template #icon><IconPlug /></template>
+      <template #icon><PluginLogoIcon /></template>
     </VPageHeader>
 
     <div class=":uno: m-0 md:m-4">
@@ -967,4 +959,3 @@ function jumpToSnippet(id: string) {
     </div>
   </div>
 </template>
-
