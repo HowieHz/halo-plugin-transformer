@@ -1,3 +1,4 @@
+import { Toast } from '@halo-dev/components'
 import { describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import type { ItemList } from '@/types'
@@ -63,5 +64,46 @@ describe('useResourceOrderState', () => {
     expect(api.getOrder).toHaveBeenCalledTimes(1)
     expect(state.orders.value).toEqual({ 'rule-a': 10, 'rule-b': 20 })
     expect(state.orderVersion.value).toBe(3)
+  })
+
+  // why: 拖拽重排和创建/删除后的补写，本质上是同一条排序持久化语义；
+  // 拖拽失败时也必须回到服务端权威顺序，不能和 saveOrderMap 漂移成两套恢复逻辑。
+  it('reloads authoritative orders when reorder persistence fails', async () => {
+    const itemsResp = ref(
+      listOf([
+        { id: 'rule-a', name: 'Rule A' },
+        { id: 'rule-b', name: 'Rule B' },
+      ]),
+    )
+    const api = {
+      getOrder: vi.fn().mockResolvedValue({
+        data: {
+          orders: { 'rule-a': 10, 'rule-b': 20 },
+          version: 3,
+        },
+      }),
+      updateOrder: vi.fn().mockRejectedValue(new Error('boom')),
+    }
+
+    const state = useResourceOrderState({
+      itemsResp,
+      api,
+      resourceLabel: '注入规则',
+    })
+    state.applyOrderSnapshot({
+      orders: { 'rule-a': 1, 'rule-b': 2 },
+      version: 2,
+    })
+
+    await state.reorder({
+      sourceId: 'rule-b',
+      targetId: 'rule-a',
+      placement: 'before',
+    })
+
+    expect(api.getOrder).toHaveBeenCalledTimes(1)
+    expect(state.orders.value).toEqual({ 'rule-a': 10, 'rule-b': 20 })
+    expect(state.orderVersion.value).toBe(3)
+    expect(Toast.error).toHaveBeenCalledWith('更新顺序失败')
   })
 })

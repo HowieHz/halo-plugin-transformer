@@ -55,18 +55,48 @@ export function useResourceOrderState<T extends { id: string }>(
     }
   }
 
-  async function saveOrderMap(nextItems: T[]) {
+  async function persistOrderSnapshot(
+    nextOrders: OrderMap,
+    persistOptions: {
+      errorMessage: string
+    },
+  ) {
     const previousOrders = { ...orders.value }
     const previousVersion = orderVersion.value
-    const nextOrders = buildExplicitOrderMap(nextItems)
     orders.value = { ...nextOrders }
     try {
-      const response = await options.api.updateOrder(nextOrders, orderVersion.value)
+      const response = await options.api.updateOrder(nextOrders, previousVersion)
       applyOrderSnapshot(response.data)
       return true
     } catch (error) {
       await restoreOrdersAfterFailedSave(previousOrders, previousVersion)
-      return getErrorMessage(error, `${options.resourceLabel}顺序保存失败`)
+      return getErrorMessage(error, persistOptions.errorMessage)
+    }
+  }
+
+  async function saveOrderMap(nextItems: T[]) {
+    const nextOrders = buildExplicitOrderMap(nextItems)
+    return persistOrderSnapshot(nextOrders, {
+      errorMessage: `${options.resourceLabel}顺序保存失败`,
+    })
+  }
+
+  async function flushPendingReorders() {
+    let updatedOnce = false
+    while (pendingOrders.value) {
+      const snapshot = pendingOrders.value
+      pendingOrders.value = null
+      const result = await persistOrderSnapshot(snapshot, {
+        errorMessage: '更新顺序失败',
+      })
+      if (result !== true) {
+        Toast.error(result)
+        return
+      }
+      updatedOnce = true
+    }
+    if (updatedOnce) {
+      Toast.success(`${options.resourceLabel}顺序保存成功`)
     }
   }
 
@@ -87,26 +117,11 @@ export function useResourceOrderState<T extends { id: string }>(
     }
 
     syncingReorder.value = true
-    let updatedOnce = false
     try {
-      while (pendingOrders.value) {
-        const snapshot = pendingOrders.value
-        pendingOrders.value = null
-        const response = await options.api.updateOrder(snapshot, orderVersion.value)
-        applyOrderSnapshot(response.data)
-        updatedOnce = true
-      }
-      if (updatedOnce) {
-        Toast.success(`${options.resourceLabel}顺序保存成功`)
-      }
+      await flushPendingReorders()
     } catch (error) {
-      Toast.error(getErrorMessage(error, '更新顺序失败'))
       pendingOrders.value = null
-      try {
-        await reloadOrders()
-      } catch (reloadError) {
-        Toast.error(getErrorMessage(reloadError, `重新加载${options.resourceLabel}顺序失败`))
-      }
+      Toast.error(getErrorMessage(error, '更新顺序失败'))
     } finally {
       syncingReorder.value = false
     }
