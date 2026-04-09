@@ -88,9 +88,9 @@ pnpm dev
 - `tab -> selectedId` 可以按标签页分别记忆当前选中项，方便路由恢复与面板跳转
 - 未保存草稿不会在两个标签页（tab）后面各藏一份；切换时总是重新恢复当前标签页的活动会话（hydrate），避免共享一个“已修改”标记（`dirty`），却同时维护两份隐式草稿
 - 中间编辑器与右侧关系面板在当前标签页（tab）下都必须从同一份活动编辑草稿（`EditorDraft`）派生；不能让“右侧关系”偷偷回退到已保存内容列表（saved list），变成左边看到的是当前草稿，右边看到的却是已保存内容，前后对不上
-- `bulk / create` 只会隐藏当前可见选中项（visible selection），不会顺手清掉之前记住的选中项（remembered selection）；退出这些页面语义后应能回到该标签页（tab）上次打开的资源
+- `bulk / create` 只会隐藏当前可见选中项（visible selection），不会顺手清掉之前记住的选中项（remembered selection）；退出这些页面语义后，应该还能回到该标签页（tab）上次打开的资源
 - 新建弹窗用单一当前活动标签（`ActiveTab | null`）表达状态，不再维护两颗互斥布尔；避免出现代码片段 / 规则弹窗同时为真，或者两边都没收好口的隐式组合态
-- 多步流程弹窗（例如批量导入）用单一流程状态对象（flow-state）表达 `source/options/result`，不要再并列维护多颗“是否显示 / 结果 / 进行中”状态去手动拼阶段
+- 多步流程弹窗（例如批量导入）只用一个流程状态对象（flow-state）表达 `source/options/result`，不要再并列维护多颗“是否显示 / 结果 / 进行中”状态去手动拼阶段
 - 路由意图（route intent）只改当前标签页（tab）的页面语义；不要让 `mode=bulk`、`action=create` 这类 URL 状态顺手清掉另一个标签页里之前记住的选中项（remembered selection）
 
 ### 配置页交互语义
@@ -318,12 +318,12 @@ pnpm dev
 
 这样做的好处不是“显得高级”，而是后面更稳、更容易维护，也更不容易偷偷长出第二套状态和补丁逻辑。
 
-- 并发写入优先使用 `metadata.version` 做乐观并发控制，而不是退回“静默地以最后一次写入为准”（silent last-write-wins）
+- 并发写入优先使用 `metadata.version` 做乐观并发控制，而不是退回“谁最后写进去就算谁的”（silent last-write-wins）
 - 涉及“删除前先清理引用”的资源生命周期，优先使用 `metadata.deletionTimestamp + finalizers`（删除时间戳 + 终结器）
-- 凡是异步收敛、失败可重试、事件驱动刷新这类后台流程，优先使用 `controller / reconciler / watch`（控制器 / 协调器 / 监听）
+- 凡是异步收敛、失败可重试、事件驱动刷新这类后台流程，优先使用 `controller / reconciler / watch`（控制器 / 协调器 / 监听）这套平台原语
 - 插件主生命周期只应管理自己显式聚合的控制器（controllers）；不要直接注入容器里的全量 `Controller` 列表去统一 start/stop
 - 运行时缓存优先做成“运行时内存快照”，由 Halo `watch`（监听）驱动维护，而不是在请求进来时再按 TTL 回源重查
-- 控制台读接口优先返回明确的响应模型（read model），而不是把存储实体原样暴露给前端界面（UI）
+- 控制台读接口优先返回明确的响应模型（read model），而不是把存储实体原样丢给前端界面（UI）
 - 一旦资源进入“删除中”（deleting）状态，控制台读接口、单项写接口、排序读模型和运行时装载都不应再把它当成“可见资源”；否则 `finalizer`（终结器）的最终一致删除会在前端界面（UI）上表现成滞后一拍
 - 运行时执行链路优先消费独立的运行时模型，而不是把 extension（扩展资源）存储实体继续直接传给过滤器 / 处理器（`filter / processor`）
 - 资源查询遵循平台模型：能 `fetch(name)`（按名称直接取）就不用 `list + filter(name)`（先列全表再过滤）；能 `fieldQuery`（字段查询）就不做全量扫描
