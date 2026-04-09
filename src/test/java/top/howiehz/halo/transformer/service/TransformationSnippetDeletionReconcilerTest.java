@@ -158,6 +158,57 @@ class TransformationSnippetDeletionReconcilerTest {
         assertEquals(new LinkedHashSet<>(Set.of("snippet-b")), updatedRule.getSnippetIds());
     }
 
+    // why: 规则一旦进入“删除中”生命周期，就已经退出当前可写资源集合；
+    // 协调器不应再尝试改写它的 snippet 引用，否则 finalizer 清理会被无意义的写失败打断。
+    @Test
+    void shouldIgnoreRulesThatAreAlreadyDeletingWhenDetachingReferences() {
+        TransformationSnippet deletingSnippet = deletingSnippet("snippet-a");
+        TransformationRule deletingRule = rule("rule-a", Set.of("snippet-a", "snippet-b"));
+        deletingRule.getMetadata().setDeletionTimestamp(Instant.now());
+
+        when(client.fetch(TransformationSnippet.class, "snippet-a"))
+            .thenReturn(Optional.of(deletingSnippet))
+            .thenReturn(Optional.of(deletingSnippet("snippet-a")));
+        doAnswer(invocation -> {
+            java.util.function.Predicate<TransformationRule> predicate = invocation.getArgument(1);
+            return List.of(deletingRule).stream().filter(predicate).toList();
+        }).when(client).list(eq(TransformationRule.class), any(), eq(null));
+
+        reconciler.reconcile(new Reconciler.Request("snippet-a"));
+
+        verify(client, never()).fetch(TransformationRule.class, "rule-a");
+        verify(client, never()).update(any(TransformationRule.class));
+        verify(client).update(any(TransformationSnippet.class));
+        verify(ruleRuntimeStore, never()).invalidateAndWarmUpAsync();
+    }
+
+    // why: 扫描到规则名后，它也可能在真正 update 前被别处删除；
+    // 这种“目标已不可见”的状态不该卡住 snippet finalizer，而应被视为引用已无需再清理。
+    @Test
+    void shouldIgnoreMissingRuleDuringDetachUpdateAndStillClearSnippetFinalizer() {
+        TransformationSnippet deletingSnippet = deletingSnippet("snippet-a");
+        TransformationRule listedRule = rule("rule-a", Set.of("snippet-a", "snippet-b"));
+        TransformationSnippet latestSnippet = deletingSnippet("snippet-a");
+
+        when(client.fetch(TransformationSnippet.class, "snippet-a"))
+            .thenReturn(Optional.of(deletingSnippet))
+            .thenReturn(Optional.of(latestSnippet));
+        when(client.list(eq(TransformationRule.class), any(), eq(null))).thenReturn(
+            List.of(listedRule));
+        when(client.fetch(TransformationRule.class, "rule-a"))
+            .thenReturn(Optional.of(rule("rule-a", Set.of("snippet-a", "snippet-b"))));
+        doThrow(notFound())
+            .when(client).update(any(TransformationRule.class));
+        doAnswer(invocation -> invocation.getArgument(0))
+            .when(client).update(any(TransformationSnippet.class));
+
+        reconciler.reconcile(new Reconciler.Request("snippet-a"));
+
+        verify(client).update(any(TransformationRule.class));
+        verify(client).update(any(TransformationSnippet.class));
+        verify(ruleRuntimeStore, never()).invalidateAndWarmUpAsync();
+    }
+
     private TransformationSnippet deletingSnippet(String id) {
         TransformationSnippet snippet = new TransformationSnippet();
         Metadata metadata = new Metadata();
@@ -180,5 +231,9 @@ class TransformationSnippetDeletionReconcilerTest {
 
     private ResponseStatusException conflict() {
         return new ResponseStatusException(HttpStatus.CONFLICT, "conflict");
+    }
+
+    private ResponseStatusException notFound() {
+        return new ResponseStatusException(HttpStatus.NOT_FOUND, "not found");
     }
 }

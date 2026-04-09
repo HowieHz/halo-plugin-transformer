@@ -2,6 +2,7 @@ package top.howiehz.halo.transformer.service;
 
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -74,7 +75,8 @@ public class TransformationSnippetDeletionReconciler implements Reconciler<Recon
         boolean detachedAnyRule = false;
         List<String> referencingRuleNames = client.list(
                 TransformationRule.class,
-                rule -> TransformationSnippetReferenceIds.normalize(rule.getSnippetIds())
+                rule -> isVisibleRule(rule)
+                    && TransformationSnippetReferenceIds.normalize(rule.getSnippetIds())
                     .contains(normalizedSnippetId),
                 null
             ).stream()
@@ -94,10 +96,10 @@ public class TransformationSnippetDeletionReconciler implements Reconciler<Recon
      * 这里显式建模 `conflict -> refetch -> retry`，把最终一致过程写清楚。
      */
     private boolean detachSnippetReferenceWithRetry(String ruleName, String snippetId) {
-        return retryOnConflict(
+        return retryOnConflictOrVisibilityLoss(
             "从规则 [" + ruleName + "] 中摘除处于“删除中”状态的代码片段 [" + snippetId + "]",
             () -> {
-                var latestRuleOptional = client.fetch(TransformationRule.class, ruleName);
+                var latestRuleOptional = fetchVisibleRule(ruleName);
                 if (latestRuleOptional.isEmpty()) {
                     return false;
                 }
@@ -112,6 +114,15 @@ public class TransformationSnippetDeletionReconciler implements Reconciler<Recon
                 return true;
             }
         );
+    }
+
+    private Optional<TransformationRule> fetchVisibleRule(String ruleName) {
+        return client.fetch(TransformationRule.class, ruleName)
+            .filter(this::isVisibleRule);
+    }
+
+    private boolean isVisibleRule(TransformationRule rule) {
+        return rule != null && !ExtensionUtil.isDeleted(rule);
     }
 
     private void removeSnippetDeletionFinalizerWithRetry(String snippetName) {
@@ -153,6 +164,25 @@ public class TransformationSnippetDeletionReconciler implements Reconciler<Recon
             ? new IllegalStateException(
             "Conflict retry exhausted without captured conflict for " + operationLabel)
             : lastConflict;
+    }
+
+    private boolean retryOnConflictOrVisibilityLoss(String operationLabel,
+        ConflictRetriableOperation operation) {
+        try {
+            return retryOnConflict(operationLabel, operation);
+        } catch (ResponseStatusException exception) {
+            if (isVisibilityLoss(exception)) {
+                log.info("Skipping {} because the target resource is no longer visible: {}",
+                    operationLabel, exception.getReason());
+                return false;
+            }
+            throw exception;
+        }
+    }
+
+    private boolean isVisibilityLoss(ResponseStatusException exception) {
+        HttpStatus status = HttpStatus.resolve(exception.getStatusCode().value());
+        return HttpStatus.NOT_FOUND.equals(status) || HttpStatus.GONE.equals(status);
     }
 
     @FunctionalInterface
