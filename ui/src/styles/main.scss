@@ -96,7 +96,7 @@ $main-width: 60%;
   white-space: pre-line;
 }
 
-@media (width < 768px) {
+@media (width < 1250px) {
   #transformer-view {
     .transformer-workspace {
       overflow: hidden;

@@ -149,9 +149,7 @@ const selectedBulkResources = computed(() => {
 });
 const canBulkEnable = computed(() => selectedBulkResources.value.some((item) => !item.enabled));
 const canBulkDisable = computed(() => selectedBulkResources.value.some((item) => item.enabled));
-const mobileLeftDrawerLabel = computed(() =>
-  activeTab.value === "snippets" ? "代码片段列表" : "转换规则列表",
-);
+const mobileLeftDrawerLabel = computed(() => "选择列表");
 const mobileRightDrawerLabel = computed(() =>
   bulkSelectionState.isBulkMode.value ? "批量信息" : "关联关系",
 );
@@ -438,7 +436,6 @@ function handleTabSwitch(tab: ActiveTab) {
   requestEditorLeave(() => {
     createSession.close();
     activeTab.value = tab;
-    mobileDrawer.closeDrawer();
   });
 }
 
@@ -997,7 +994,7 @@ function jumpToSnippet(id: string) {
 
               <div
                 v-if="!bulkSelectionState.isBulkMode.value"
-                class="transformer-mobile-pane-footer :uno: flex shrink-0 items-center justify-center border-t bg-white px-4"
+                class="transformer-mobile-pane-footer :uno: flex shrink-0 items-center justify-center border-t bg-white px-4 py-2"
               >
                 <VButton size="sm" type="secondary" @click="handleOpenCreateModal(activeTab)">
                   {{ activeTab === "snippets" ? "新建代码片段" : "新建转换规则" }}

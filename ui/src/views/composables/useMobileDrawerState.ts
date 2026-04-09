@@ -62,7 +62,7 @@ export function useMobileDrawerState() {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
       return;
     }
-    mediaQueryList = window.matchMedia("(width < 768px)");
+    mediaQueryList = window.matchMedia("(width < 1250px)");
     controller.syncViewport(mediaQueryList.matches);
 
     handleChange = (event) => {

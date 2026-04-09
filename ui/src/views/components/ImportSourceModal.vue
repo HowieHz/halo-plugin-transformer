@@ -1,4 +1,4 @@
-﻿<script lang="ts" setup>
+<script lang="ts" setup>
 import { VButton, VModal, VSpace } from "@halo-dev/components";
 
 import { IMPORT_SOURCE_ACTIONS, type ImportSourceAction } from "./importSourceActions";
