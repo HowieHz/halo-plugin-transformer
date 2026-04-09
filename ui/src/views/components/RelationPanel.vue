@@ -70,7 +70,7 @@ const ruleSnippetsEmptyText = computed(() =>
 
           <template #hint>
             <span
-              class=":uno: text-primary mt-0.5 text-xs opacity-0 transition-opacity group-hover:opacity-100"
+              class=":uno: text-primary mt-0.5 text-xs opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
             >
               点击跳转到规则 →
             </span>
@@ -88,7 +88,7 @@ const ruleSnippetsEmptyText = computed(() =>
         >
           <template #hint>
             <span
-              class=":uno: text-primary mt-0.5 text-xs opacity-0 transition-opacity group-hover:opacity-100"
+              class=":uno: text-primary mt-0.5 text-xs opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
             >
               点击跳转到代码片段 →
             </span>

@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { Toast, VButton } from "@halo-dev/components";
-import { computed, nextTick, ref } from "vue";
+import { computed, nextTick, ref, useId } from "vue";
 
 import {
   type TransformationSnippetReadModel,
@@ -38,6 +38,8 @@ const emit = defineEmits<{
 const createDraft = useRuleCreateDraft();
 const fileInput = ref<HTMLInputElement | null>(null);
 const importSourceVisible = ref(false);
+const formId = useId();
+const matchFieldErrorId = `rule-form-match-error-${formId}`;
 
 function reset() {
   createDraft.reset();
@@ -218,6 +220,7 @@ defineExpose({
           <div class=":uno: space-y-1">
             <input
               :id="inputId"
+              :aria-describedby="matchFieldError ? matchFieldErrorId : undefined"
               v-model="createDraft.draft.value.match"
               :aria-invalid="!!matchFieldError"
               placeholder="例如：#main-content、.post-card、div[data-role=banner]"
@@ -230,6 +233,7 @@ defineExpose({
             />
             <p
               v-if="matchFieldError"
+              :id="matchFieldErrorId"
               aria-live="polite"
               class=":uno: text-xs text-red-500"
               role="alert"

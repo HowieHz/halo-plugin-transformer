@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { Toast, VButton } from "@halo-dev/components";
-import { computed, nextTick, ref } from "vue";
+import { computed, nextTick, ref, useId } from "vue";
 
 import type { TransformationSnippetEditorDraft } from "@/types";
 import { validateSnippetDraft } from "@/views/composables/snippetValidation";
@@ -24,6 +24,8 @@ const createDraft = useSnippetCreateDraft();
 const fileInput = ref<HTMLInputElement | null>(null);
 const importSourceVisible = ref(false);
 const codeScrollTop = ref(0);
+const formId = useId();
+const codeFieldErrorId = `snippet-form-code-error-${formId}`;
 
 const codeLines = computed(() => {
   const content = createDraft.draft.value.code.replace(/\r\n/g, "\n");
@@ -198,6 +200,7 @@ defineExpose({
               </div>
               <textarea
                 :id="inputId"
+                :aria-describedby="codeFieldError ? codeFieldErrorId : undefined"
                 v-model="createDraft.draft.value.code"
                 :aria-invalid="!!codeFieldError"
                 autofocus
@@ -211,6 +214,7 @@ defineExpose({
           </div>
           <p
             v-if="codeFieldError"
+            :id="codeFieldErrorId"
             aria-live="polite"
             class=":uno: text-xs text-red-500"
             role="alert"

@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { VButton } from "@halo-dev/components";
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from "vue";
 
 import type {
   TransformationSnippetReadModel,
@@ -70,6 +70,8 @@ const sortedSnippets = computed(() =>
 const pendingRule = ref<TransformationRuleEditorDraft | null>(null);
 const currentRule = computed(() => pendingRule.value ?? props.rule);
 const exportFallback = ref<TransferFileDraft | null>(null);
+const editorId = useId();
+const matchFieldErrorId = `rule-editor-match-error-${editorId}`;
 const editorScrollContainer = ref<HTMLElement | null>(null);
 const editorToolbarShell = ref<HTMLElement | null>(null);
 const editorFooterShell = ref<HTMLElement | null>(null);
@@ -528,6 +530,7 @@ onBeforeUnmount(() => {
               <div class=":uno: space-y-1">
                 <input
                   :id="inputId"
+                  :aria-describedby="matchFieldError ? matchFieldErrorId : undefined"
                   :aria-invalid="!!matchFieldError"
                   placeholder="例如：#main-content、.post-card、div[data-role=banner]"
                   :value="matchDraft"
@@ -543,6 +546,7 @@ onBeforeUnmount(() => {
                 />
                 <p
                   v-if="matchFieldError"
+                  :id="matchFieldErrorId"
                   aria-live="polite"
                   class=":uno: text-xs text-red-500"
                   role="alert"

@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { VButton } from "@halo-dev/components";
-import { computed, ref, watch } from "vue";
+import { computed, ref, useId, watch } from "vue";
 
 import type { TransformationSnippetEditorDraft } from "@/types";
 import {
@@ -39,6 +39,8 @@ const emit = defineEmits<{
 const undo = useFieldUndo();
 const exportFallback = ref<TransferFileDraft | null>(null);
 const codeScrollTop = ref(0);
+const editorId = useId();
+const codeFieldErrorId = `snippet-editor-code-error-${editorId}`;
 type UndoableSnippetField = "name" | "description" | "code";
 const fieldInitialValue = ref<Record<UndoableSnippetField, string>>({
   name: "",
@@ -261,6 +263,7 @@ async function exportSnippet() {
                   </div>
                   <textarea
                     :id="inputId"
+                    :aria-describedby="codeFieldError ? codeFieldErrorId : undefined"
                     :aria-invalid="!!codeFieldError"
                     :value="snippet.code"
                     class=":uno: h-full min-h-0 w-full flex-1 resize-none border-0 bg-transparent px-3 pt-2 pb-0 font-mono text-sm leading-6 focus:outline-none"
@@ -276,6 +279,7 @@ async function exportSnippet() {
               </div>
               <p
                 v-if="codeFieldError"
+                :id="codeFieldErrorId"
                 aria-live="polite"
                 class=":uno: text-xs text-red-500"
                 role="alert"

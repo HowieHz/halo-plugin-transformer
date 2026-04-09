@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { Dialog, VButton } from "@halo-dev/components";
-import { computed, provide, ref, useId, watch } from "vue";
+import { computed, nextTick, provide, ref, useId, watch } from "vue";
 
 import type { MatchRule, MatchRuleEditorMode, MatchRuleSource } from "@/types";
 import { makeMatchRuleGroup } from "@/types";
@@ -52,6 +52,8 @@ const jsonDraft = ref(
 const editorId = useId();
 const simplePanelId = `match-rule-simple-${editorId}`;
 const jsonPanelId = `match-rule-json-${editorId}`;
+const simpleTabId = `${simplePanelId}-tab`;
+const jsonTabId = `${jsonPanelId}-tab`;
 const jsonErrorId = `match-rule-json-error-${editorId}`;
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
 const jsonScrollTop = ref(0);
@@ -199,6 +201,38 @@ function applyModeSwitch(mode: MatchRuleEditorMode) {
   emitStatePatch({
     matchRule: nextState.matchRule,
     matchRuleSource: nextState.matchRuleSource,
+  });
+}
+
+function focusModeTab(mode: MatchRuleEditorMode) {
+  const tabId = mode === "SIMPLE" ? simpleTabId : jsonTabId;
+  document.getElementById(tabId)?.focus();
+}
+
+/**
+ * why: 两个模式切换按钮既然声明成 `tab`，就要补齐页签键盘契约；
+ * 这样读屏和纯键盘用户才能按左右方向键在简单/高级模式之间切换，而不是只能依赖鼠标点击。
+ */
+function handleModeTabKeydown(event: KeyboardEvent, activeMode: MatchRuleEditorMode) {
+  let nextMode: MatchRuleEditorMode | null = null;
+  if (event.key === "ArrowLeft") {
+    nextMode = activeMode === "SIMPLE" ? "JSON" : "SIMPLE";
+  } else if (event.key === "ArrowRight") {
+    nextMode = activeMode === "SIMPLE" ? "JSON" : "SIMPLE";
+  } else if (event.key === "Home") {
+    nextMode = "SIMPLE";
+  } else if (event.key === "End") {
+    nextMode = "JSON";
+  }
+
+  if (!nextMode || nextMode === activeMode) {
+    return;
+  }
+
+  event.preventDefault();
+  switchMode(nextMode);
+  void nextTick(() => {
+    focusModeTab(currentMode.value);
   });
 }
 
@@ -533,13 +567,14 @@ function tokenizeJson(text: string) {
     <div class=":uno: flex flex-wrap items-center justify-between gap-2">
       <div
         aria-label="匹配规则编辑模式"
+        aria-orientation="horizontal"
         class=":uno: inline-flex rounded-md border border-gray-200 bg-gray-50 p-0.5"
         role="tablist"
       >
         <button
           :aria-controls="simplePanelId"
-          :aria-pressed="currentMode === 'SIMPLE'"
-          :id="`${simplePanelId}-tab`"
+          :aria-selected="currentMode === 'SIMPLE'"
+          :id="simpleTabId"
           :tabindex="currentMode === 'SIMPLE' ? 0 : -1"
           :class="
             currentMode === 'SIMPLE'
@@ -550,13 +585,14 @@ function tokenizeJson(text: string) {
           role="tab"
           type="button"
           @click="switchMode('SIMPLE')"
+          @keydown="handleModeTabKeydown($event, 'SIMPLE')"
         >
           简单模式
         </button>
         <button
           :aria-controls="jsonPanelId"
-          :aria-pressed="currentMode === 'JSON'"
-          :id="`${jsonPanelId}-tab`"
+          :aria-selected="currentMode === 'JSON'"
+          :id="jsonTabId"
           :tabindex="currentMode === 'JSON' ? 0 : -1"
           :class="
             currentMode === 'JSON' ? ':uno: text-primary bg-white shadow-sm' : ':uno: text-gray-500'
@@ -565,6 +601,7 @@ function tokenizeJson(text: string) {
           role="tab"
           type="button"
           @click="switchMode('JSON')"
+          @keydown="handleModeTabKeydown($event, 'JSON')"
         >
           高级模式
         </button>
@@ -585,7 +622,7 @@ function tokenizeJson(text: string) {
     <template v-if="currentMode === 'SIMPLE'">
       <MatchRuleNodeEditor
         :id="simplePanelId"
-        :aria-labelledby="`${simplePanelId}-tab`"
+        :aria-labelledby="simpleTabId"
         :model-value="normalizeMatchRule(modelValue)"
         :node-path="[]"
         :validation-errors="simpleValidationErrors"
@@ -599,7 +636,7 @@ function tokenizeJson(text: string) {
     <div
       v-else
       :id="jsonPanelId"
-      :aria-labelledby="`${jsonPanelId}-tab`"
+      :aria-labelledby="jsonTabId"
       class=":uno: space-y-2"
       role="tabpanel"
     >

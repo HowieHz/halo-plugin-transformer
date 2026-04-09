@@ -156,6 +156,10 @@ pnpm dev
 - 在高级模式下：
     - JSON 合法时可执行“格式化 JSON”
     - JSON 非法时可执行“重建 JSON”，按当前简单模式配置重新生成
+- 无障碍约束：
+    - 声明成 `tablist / tab / tabpanel` 的控件，必须同时提供 `aria-selected`、方向键 / Home / End 键盘导航，以及和面板一一对应的 `aria-controls / aria-labelledby`
+    - 字段错误不能只把红字渲染出来；输入控件本身必须通过 `aria-describedby` 指向对应错误消息，让读屏能知道“这条错误属于哪个字段”
+    - 只在鼠标悬停时出现的提示，键盘聚焦时也必须可见；不要把操作指引做成 hover-only
 
 ## 匹配规则规范
 
