@@ -107,27 +107,8 @@ public class TransformationRuleRuntimeStore extends AbstractWatchDrivenExtension
             return;
         }
         synchronized (snapshotMonitor) {
-            Map<String, TransformationRule> nextRulesById =
-                new LinkedHashMap<>(cachedSnapshot.rulesById());
-            Map<TransformationRule.Mode, List<RuntimeTransformationRule>> nextRulesByMode =
-                copyRulesByMode(cachedSnapshot.rulesByMode());
-            Map<String, SkippedEnabledRule> nextSkippedEnabledRulesById =
-                new LinkedHashMap<>(cachedSnapshot.skippedEnabledRulesById());
-
-            TransformationRule previousRule = nextRulesById.remove(ruleId);
-            nextSkippedEnabledRulesById.remove(ruleId);
-            TransformationRule.Mode previousActiveMode = activeMode(previousRule);
-            if (previousActiveMode != null) {
-                nextRulesByMode.put(previousActiveMode,
-                    rebuildActiveRulesForMode(nextRulesById.values(), previousActiveMode));
-            }
-            List<TransformationRule> nextVisibleRules = nextRulesById.values().stream()
-                .filter(this::isConsoleVisibleRule)
-                .toList();
-            RuleSnapshot snapshot = new RuleSnapshot(nextRulesById, nextVisibleRules,
-                nextRulesByMode, nextSkippedEnabledRulesById);
-            logSkippedEnabledRules(snapshot.skippedEnabledRules());
-            cachedSnapshot = snapshot;
+            cachedSnapshot = applyIncrementalSnapshotEvent(cachedSnapshot, WatchEventType.DELETE,
+                ruleId, null);
         }
     }
 
