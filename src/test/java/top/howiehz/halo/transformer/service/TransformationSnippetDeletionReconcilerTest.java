@@ -131,6 +131,33 @@ class TransformationSnippetDeletionReconcilerTest {
         verify(ruleRuntimeStore).invalidateAndWarmUpAsync();
     }
 
+    // why: 历史规则里即使残留了带空格的 snippet 引用，删除协调器也必须沿用后端同一份规范化语义，
+    // 否则“删除中”代码片段会因为字符串脏形状不同而摘不掉引用。
+    @Test
+    void shouldDetachWhitespacePaddedHistoricalSnippetReference() {
+        TransformationSnippet deletingSnippet = deletingSnippet("snippet-a");
+        TransformationRule listedRule =
+            rule("rule-a", new LinkedHashSet<>(List.of(" snippet-a ", "snippet-b")));
+        TransformationRule latestRule =
+            rule("rule-a", new LinkedHashSet<>(List.of(" snippet-a ", "snippet-b")));
+
+        when(client.fetch(TransformationSnippet.class, "snippet-a"))
+            .thenReturn(Optional.of(deletingSnippet))
+            .thenReturn(Optional.of(deletingSnippet("snippet-a")));
+        when(client.list(eq(TransformationRule.class), any(), eq(null))).thenReturn(
+            List.of(listedRule));
+        when(client.fetch(TransformationRule.class, "rule-a")).thenReturn(Optional.of(latestRule));
+
+        reconciler.reconcile(new Reconciler.Request("snippet-a"));
+
+        var updateCaptor = org.mockito.ArgumentCaptor.forClass(Extension.class);
+        verify(client, atLeastOnce()).update(updateCaptor.capture());
+        TransformationRule updatedRule =
+            assertInstanceOf(TransformationRule.class, updateCaptor.getAllValues().get(0));
+
+        assertEquals(new LinkedHashSet<>(Set.of("snippet-b")), updatedRule.getSnippetIds());
+    }
+
     private TransformationSnippet deletingSnippet(String id) {
         TransformationSnippet snippet = new TransformationSnippet();
         Metadata metadata = new Metadata();

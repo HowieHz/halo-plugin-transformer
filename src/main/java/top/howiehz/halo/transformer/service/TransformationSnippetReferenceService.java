@@ -9,6 +9,7 @@ import reactor.core.publisher.Mono;
 import run.halo.app.extension.ExtensionUtil;
 import run.halo.app.extension.ReactiveExtensionClient;
 import top.howiehz.halo.transformer.scheme.TransformationSnippet;
+import top.howiehz.halo.transformer.util.TransformationSnippetReferenceIds;
 import top.howiehz.halo.transformer.util.TransformationRuleValidationException;
 
 @Component
@@ -24,7 +25,7 @@ public class TransformationSnippetReferenceService {
      * “去重/去空 + 目标存在性 + 目标可用性” 校验，避免把坏引用写进规则。
      */
     public Mono<LinkedHashSet<String>> normalizeAndValidateSnippetIds(Set<String> snippetIds) {
-        LinkedHashSet<String> normalized = normalizeIds(snippetIds);
+        LinkedHashSet<String> normalized = TransformationSnippetReferenceIds.normalize(snippetIds);
         if (normalized.isEmpty()) {
             return Mono.just(normalized);
         }
@@ -38,8 +39,10 @@ public class TransformationSnippetReferenceService {
     public Mono<LinkedHashSet<String>> normalizeAndValidateAddedSnippetIds(
         Set<String> existingSnippetIds,
         Set<String> nextSnippetIds) {
-        LinkedHashSet<String> normalizedExisting = normalizeIds(existingSnippetIds);
-        LinkedHashSet<String> normalizedNext = normalizeIds(nextSnippetIds);
+        LinkedHashSet<String> normalizedExisting =
+            TransformationSnippetReferenceIds.normalize(existingSnippetIds);
+        LinkedHashSet<String> normalizedNext =
+            TransformationSnippetReferenceIds.normalize(nextSnippetIds);
         LinkedHashSet<String> addedSnippetIds = new LinkedHashSet<>(normalizedNext);
         addedSnippetIds.removeAll(normalizedExisting);
         if (addedSnippetIds.isEmpty()) {
@@ -85,15 +88,6 @@ public class TransformationSnippetReferenceService {
         return Mono.empty();
     }
 
-    private LinkedHashSet<String> normalizeIds(Set<String> ids) {
-        LinkedHashSet<String> normalized = new LinkedHashSet<>();
-        if (ids == null) {
-            return normalized;
-        }
-        ids.stream().filter(id -> id != null && !id.isBlank()).forEach(normalized::add);
-        return normalized;
-    }
-
     private record SnippetTargetLookup(String snippetId, TransformationSnippet snippet) {
         private static SnippetTargetLookup missing(String snippetId) {
             return new SnippetTargetLookup(snippetId, null);
@@ -108,4 +102,3 @@ public class TransformationSnippetReferenceService {
         }
     }
 }
-

@@ -18,6 +18,7 @@ import run.halo.app.extension.index.query.Queries;
 import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
 import top.howiehz.halo.transformer.scheme.TransformationRule;
 import top.howiehz.halo.transformer.scheme.TransformationSnippet;
+import top.howiehz.halo.transformer.util.TransformationSnippetReferenceIds;
 
 @Slf4j
 @Component
@@ -67,17 +68,22 @@ public class TransformationSnippetDeletionReconciler implements Reconciler<Recon
     }
 
     private boolean detachSnippetFromReferencingRules(String snippetId) {
+        String normalizedSnippetId = TransformationSnippetReferenceIds.normalizeSingle(snippetId);
+        if (normalizedSnippetId == null) {
+            return false;
+        }
         boolean detachedAnyRule = false;
         List<String> referencingRuleNames = client.list(
                 TransformationRule.class,
-                rule -> normalizeSnippetIds(rule.getSnippetIds()).contains(snippetId),
+                rule -> TransformationSnippetReferenceIds.normalize(rule.getSnippetIds())
+                    .contains(normalizedSnippetId),
                 null
             ).stream()
             .map(rule -> rule.getMetadata() == null ? null : rule.getMetadata().getName())
             .filter(name -> name != null && !name.isBlank())
             .toList();
         for (String ruleName : referencingRuleNames) {
-            if (detachSnippetReferenceWithRetry(ruleName, snippetId)) {
+            if (detachSnippetReferenceWithRetry(ruleName, normalizedSnippetId)) {
                 detachedAnyRule = true;
             }
         }
@@ -98,7 +104,7 @@ public class TransformationSnippetDeletionReconciler implements Reconciler<Recon
                 }
                 TransformationRule latestRule = latestRuleOptional.get();
                 LinkedHashSet<String> nextSnippetIds =
-                    normalizeSnippetIds(latestRule.getSnippetIds());
+                    TransformationSnippetReferenceIds.normalize(latestRule.getSnippetIds());
                 if (!nextSnippetIds.remove(snippetId)) {
                     return false;
                 }
@@ -148,17 +154,6 @@ public class TransformationSnippetDeletionReconciler implements Reconciler<Recon
             ? new IllegalStateException(
             "Conflict retry exhausted without captured conflict for " + operationLabel)
             : lastConflict;
-    }
-
-    private LinkedHashSet<String> normalizeSnippetIds(Set<String> snippetIds) {
-        LinkedHashSet<String> normalized = new LinkedHashSet<>();
-        if (snippetIds == null) {
-            return normalized;
-        }
-        snippetIds.stream()
-            .filter(id -> id != null && !id.isBlank())
-            .forEach(normalized::add);
-        return normalized;
     }
 
     @FunctionalInterface

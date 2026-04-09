@@ -10,6 +10,7 @@ import run.halo.app.extension.ExtensionUtil;
 import run.halo.app.extension.GroupVersionKind;
 import run.halo.app.extension.ReactiveExtensionClient;
 import top.howiehz.halo.transformer.scheme.TransformationSnippet;
+import top.howiehz.halo.transformer.util.TransformationSnippetReferenceIds;
 
 @Component
 public class TransformationSnippetRuntimeStore extends AbstractWatchDrivenExtensionStore<
@@ -60,10 +61,7 @@ public class TransformationSnippetRuntimeStore extends AbstractWatchDrivenExtens
         }
         Map<String, TransformationSnippet> resolved = new LinkedHashMap<>();
         Map<String, TransformationSnippet> snapshot = cachedSnippetsById;
-        for (String snippetId : snippetIds) {
-            if (snippetId == null || snippetId.isBlank()) {
-                continue;
-            }
+        for (String snippetId : TransformationSnippetReferenceIds.normalize(snippetIds)) {
             TransformationSnippet snippet = snapshot.get(snippetId);
             if (snippet != null) {
                 resolved.put(snippetId, snippet);

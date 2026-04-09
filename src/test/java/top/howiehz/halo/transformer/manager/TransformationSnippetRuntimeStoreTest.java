@@ -153,6 +153,24 @@ class TransformationSnippetRuntimeStoreTest {
         assertTrue(listCount.get() >= 2);
     }
 
+    // why: 运行时解析不该依赖“调用方一定已经 trim 过 snippetIds”这种隐式前提；
+    // 只要规则真源经过后端规范化，快照读取也必须沿用同一语义，才能兜住历史脏引用。
+    @Test
+    void shouldResolveSnippetsUsingTrimmedCanonicalIds() {
+        when(client.list(TransformationSnippet.class, null, null))
+            .thenReturn(Flux.just(snippet("snippet-a", "before")));
+
+        store.startWatching();
+
+        waitUntil(() -> store.getByIds(List.of(" snippet-a ")).block().containsKey("snippet-a"));
+
+        Map<String, TransformationSnippet> resolved =
+            store.getByIds(List.of(" snippet-a ", "", "snippet-a")).block();
+
+        assertEquals(List.of("snippet-a"), List.copyOf(resolved.keySet()));
+        assertEquals("before", resolved.get("snippet-a").getCode());
+    }
+
     private void waitUntil(BooleanSupplier condition) {
         long deadline = System.currentTimeMillis() + 2_000;
         while (System.currentTimeMillis() < deadline) {

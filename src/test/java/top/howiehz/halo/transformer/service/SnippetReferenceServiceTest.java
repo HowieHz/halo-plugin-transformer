@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,26 @@ class TransformationSnippetReferenceServiceTest {
     void shouldAllowEmptySnippetIds() {
         assertEquals(new LinkedHashSet<>(),
             service.normalizeAndValidateSnippetIds(Set.of()).block());
+    }
+
+    // why: 前端可以为了交互先 trim，但真正的 canonicalization 必须以后端为权威；
+    // 否则历史脏数据或手工 API 写入的空格 id 仍会在后端继续漂移。
+    @Test
+    void shouldTrimBlankAndDeduplicateSnippetIdsBeforeValidation() {
+        when(client.fetch(TransformationSnippet.class, "snippet-a")).thenReturn(
+            Mono.just(snippet("snippet-a")));
+        when(client.fetch(TransformationSnippet.class, "snippet-b")).thenReturn(
+            Mono.just(snippet("snippet-b")));
+
+        LinkedHashSet<String> result = service.normalizeAndValidateSnippetIds(
+            new LinkedHashSet<>(List.of(" snippet-a ", "", "snippet-a", "snippet-b ")))
+            .block();
+
+        assertEquals(new LinkedHashSet<>(List.of("snippet-a", "snippet-b")), result);
+        verify(client).fetch(TransformationSnippet.class, "snippet-a");
+        verify(client).fetch(TransformationSnippet.class, "snippet-b");
+        verify(client, never()).fetch(TransformationSnippet.class, " snippet-a ");
+        verify(client, never()).fetch(TransformationSnippet.class, "snippet-b ");
     }
 
     // why: 规则现在是唯一真源，因此写入前必须明确拒绝不存在的代码片段 id，避免悬挂引用落库。
