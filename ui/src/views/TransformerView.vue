@@ -55,6 +55,7 @@ import {
 import { useBulkSelectionState } from "./composables/useBulkSelectionState";
 import { useDragAutoScroll } from "./composables/useDragAutoScroll";
 import { useLeaveConfirmation } from "./composables/useLeaveConfirmation";
+import { useMobileDrawerState } from "./composables/useMobileDrawerState";
 import { useTransformerData } from "./composables/useTransformerData.ts";
 import { rulePreview } from "./composables/util.ts";
 
@@ -88,10 +89,13 @@ const resourceListScrollContainer = ref<HTMLElement | null>(null);
 const leftPaneAutoScroll = useDragAutoScroll(resourceListScrollContainer);
 const LEFT_PANE_EDGE_OVERLAP_PX = 5;
 const tabGroupId = useId();
+const mobileLeftDrawerId = `transformer-mobile-left-${tabGroupId}`;
+const mobileRightDrawerId = `transformer-mobile-right-${tabGroupId}`;
 const TAB_DEFINITIONS = [
   { key: "snippets", label: "代码片段" },
   { key: "rules", label: "转换规则" },
 ] as const satisfies ReadonlyArray<{ key: ActiveTab; label: string }>;
+const mobileDrawer = useMobileDrawerState();
 
 const {
   loading,
@@ -145,6 +149,19 @@ const selectedBulkResources = computed(() => {
 });
 const canBulkEnable = computed(() => selectedBulkResources.value.some((item) => !item.enabled));
 const canBulkDisable = computed(() => selectedBulkResources.value.some((item) => item.enabled));
+const mobileLeftDrawerLabel = computed(() =>
+  activeTab.value === "snippets" ? "代码片段列表" : "转换规则列表",
+);
+const mobileRightDrawerLabel = computed(() =>
+  bulkSelectionState.isBulkMode.value ? "批量信息" : "关联关系",
+);
+const mobileMainLabel = computed(() =>
+  bulkSelectionState.isBulkMode.value
+    ? "批量操作"
+    : activeTab.value === "snippets"
+      ? "代码片段编辑区"
+      : "转换规则编辑区",
+);
 
 onMounted(fetchAll);
 
@@ -441,6 +458,7 @@ function handleTabSwitch(tab: ActiveTab) {
   }
   requestEditorLeave(() => {
     activeTab.value = tab;
+    mobileDrawer.closeDrawer();
   });
 }
 
@@ -483,6 +501,7 @@ function handleSnippetSelect(id: string) {
   }
   requestEditorLeave(() => {
     selectedSnippetId.value = id;
+    mobileDrawer.closeDrawer();
   });
 }
 
@@ -492,12 +511,14 @@ function handleRuleSelect(id: string) {
   }
   requestEditorLeave(() => {
     selectedRuleId.value = id;
+    mobileDrawer.closeDrawer();
   });
 }
 
 function handleOpenCreateModal(tab: ActiveTab) {
   requestEditorLeave(() => {
     openCreateModal(tab);
+    mobileDrawer.closeDrawer();
   });
 }
 
@@ -505,11 +526,13 @@ function enterBulkMode() {
   requestEditorLeave(() => {
     createModalTab.value = null;
     bulkSelectionState.enterBulkMode();
+    mobileDrawer.closeDrawer();
   });
 }
 
 function exitBulkMode() {
   bulkSelectionState.exitBulkMode();
+  mobileDrawer.closeDrawer();
 }
 
 function handleBulkItemToggle(id: string) {
@@ -715,6 +738,7 @@ function jumpToRule(id: string) {
     activeTab.value = "rules";
     createModalTab.value = null;
     selectedRuleId.value = id;
+    mobileDrawer.closeDrawer();
   });
 }
 
@@ -723,6 +747,7 @@ function jumpToSnippet(id: string) {
     activeTab.value = "snippets";
     createModalTab.value = null;
     selectedSnippetId.value = id;
+    mobileDrawer.closeDrawer();
   });
 }
 </script>
@@ -844,179 +869,233 @@ function jumpToSnippet(id: string) {
       />
 
       <VCard :body-class="['transformer-view-card-body']" style="height: calc(100vh - 5.5rem)">
-        <div class=":uno: flex h-full divide-x divide-gray-100">
-          <div
-            class=":uno: aside relative flex h-full flex-none flex-col overflow-hidden"
-            @dragover.capture="handleLeftPaneDragOver"
-            @dragleave.capture="handleLeftPaneDragLeave"
-            @drop.capture="handleLeftPaneDropCapture"
-          >
-            <div
-              aria-label="资源类型"
-              class=":uno: sticky top-0 z-10 flex h-12 shrink-0 items-center gap-4 border-b bg-white px-4"
-              role="tablist"
+        <div class="transformer-workspace :uno: relative h-full">
+          <div class="mobile-drawer-toolbar">
+            <VButton
+              :aria-controls="mobileLeftDrawerId"
+              :aria-expanded="mobileDrawer.showLeftDrawer.value"
+              size="sm"
+              type="secondary"
+              @click="mobileDrawer.toggleDrawer('left')"
             >
-              <button
-                v-for="tab in TAB_DEFINITIONS.map((tab) => ({
-                  ...tab,
-                  count: tab.key === 'snippets' ? snippets.length : rules.length,
-                }))"
-                :key="tab.key"
-                :id="tabButtonId(tab.key)"
-                :aria-controls="tabPanelId(tab.key)"
-                :aria-selected="activeTab === tab.key"
-                :class="
-                  activeTab === tab.key
-                    ? ':uno: text-primary'
-                    : ':uno: text-gray-500 hover:text-gray-800'
-                "
-                :data-transformer-tab="tab.key"
-                class=":uno: text-sm font-medium whitespace-nowrap transition-colors"
-                role="tab"
-                :tabindex="activeTab === tab.key ? 0 : -1"
-                type="button"
-                @click="handleTabSwitch(tab.key as ActiveTab)"
-                @keydown="handleTabKeydown($event, tab.key as ActiveTab)"
+              {{ mobileLeftDrawerLabel }}
+            </VButton>
+            <span class="mobile-drawer-toolbar-title">{{ mobileMainLabel }}</span>
+            <VButton
+              :aria-controls="mobileRightDrawerId"
+              :aria-expanded="mobileDrawer.showRightDrawer.value"
+              size="sm"
+              type="secondary"
+              @click="mobileDrawer.toggleDrawer('right')"
+            >
+              {{ mobileRightDrawerLabel }}
+            </VButton>
+          </div>
+
+          <button
+            v-if="mobileDrawer.backdropVisible.value"
+            aria-label="关闭侧边栏"
+            class="mobile-drawer-backdrop"
+            type="button"
+            @click="mobileDrawer.closeDrawer()"
+          />
+
+          <div class="transformer-layout :uno: flex h-full divide-x divide-gray-100">
+            <div
+              :id="mobileLeftDrawerId"
+              :aria-hidden="
+                mobileDrawer.isMobileViewport.value ? !mobileDrawer.showLeftDrawer.value : undefined
+              "
+              :class="{ 'mobile-drawer-open': mobileDrawer.showLeftDrawer.value }"
+              class=":uno: aside left-aside relative flex h-full flex-none flex-col overflow-hidden"
+              @dragover.capture="handleLeftPaneDragOver"
+              @dragleave.capture="handleLeftPaneDragLeave"
+              @drop.capture="handleLeftPaneDropCapture"
+            >
+              <div class="mobile-drawer-header">
+                <span>{{ mobileLeftDrawerLabel }}</span>
+                <button type="button" @click="mobileDrawer.closeDrawer()">关闭</button>
+              </div>
+              <div
+                aria-label="资源类型"
+                class=":uno: sticky top-0 z-10 flex h-12 shrink-0 items-center gap-4 border-b bg-white px-4"
+                role="tablist"
               >
-                {{ tab.label }}
-                <span class=":uno: ml-0.5 text-xs">({{ tab.count }})</span>
-              </button>
+                <button
+                  v-for="tab in TAB_DEFINITIONS.map((tab) => ({
+                    ...tab,
+                    count: tab.key === 'snippets' ? snippets.length : rules.length,
+                  }))"
+                  :key="tab.key"
+                  :id="tabButtonId(tab.key)"
+                  :aria-controls="tabPanelId(tab.key)"
+                  :aria-selected="activeTab === tab.key"
+                  :class="
+                    activeTab === tab.key
+                      ? ':uno: text-primary'
+                      : ':uno: text-gray-500 hover:text-gray-800'
+                  "
+                  :data-transformer-tab="tab.key"
+                  class=":uno: text-sm font-medium whitespace-nowrap transition-colors"
+                  role="tab"
+                  :tabindex="activeTab === tab.key ? 0 : -1"
+                  type="button"
+                  @click="handleTabSwitch(tab.key as ActiveTab)"
+                  @keydown="handleTabKeydown($event, tab.key as ActiveTab)"
+                >
+                  {{ tab.label }}
+                  <span class=":uno: ml-0.5 text-xs">({{ tab.count }})</span>
+                </button>
+              </div>
+
+              <DragAutoScrollOverlay
+                :active="leftPaneAutoScroll.isDragActive.value"
+                :active-direction="leftPaneAutoScroll.activeDirection.value"
+                :can-scroll-up="leftPaneAutoScroll.canScrollUp.value"
+                :can-scroll-down="leftPaneAutoScroll.canScrollDown.value"
+                :top-zone-height="48 + LEFT_PANE_EDGE_OVERLAP_PX"
+                :bottom-zone-height="48 + LEFT_PANE_EDGE_OVERLAP_PX"
+              />
+
+              <VLoading v-if="loading" />
+
+              <ResourceList
+                v-else-if="activeTab === 'snippets'"
+                ref="resourceListRef"
+                :bulk-mode="bulkSelectionState.isBulkMode.value"
+                :bulk-selected-ids="bulkSelectionState.bulkSnippetIds.value"
+                :items="snippets"
+                list-label="代码片段列表"
+                :panel-id="tabPanelId('snippets')"
+                :reorderable="!bulkSelectionState.isBulkMode.value"
+                :selected-id="currentSelectedId('snippets')"
+                :stretch="true"
+                :tab-labelledby="tabButtonId('snippets')"
+                empty-text="暂无代码片段"
+                @drag-state-change="leftPaneAutoScroll.setDragActive"
+                @reorder="reorderSnippet"
+                @scroll-container="leftPaneAutoScroll.handleContainerScroll"
+                @create="handleOpenCreateModal('snippets')"
+                @select="handleSnippetSelect"
+                @toggle-bulk-all="handleBulkToggleAll"
+                @toggle-bulk-item="handleBulkItemToggle"
+              />
+
+              <ResourceList
+                v-else
+                ref="resourceListRef"
+                :bulk-mode="bulkSelectionState.isBulkMode.value"
+                :bulk-selected-ids="bulkSelectionState.bulkRuleIds.value"
+                :items="rules"
+                list-label="转换规则列表"
+                :panel-id="tabPanelId('rules')"
+                :reorderable="!bulkSelectionState.isBulkMode.value"
+                :selected-id="currentSelectedId('rules')"
+                :stretch="true"
+                :tab-labelledby="tabButtonId('rules')"
+                empty-text="暂无转换规则"
+                @drag-state-change="leftPaneAutoScroll.setDragActive"
+                @reorder="reorderRule"
+                @scroll-container="leftPaneAutoScroll.handleContainerScroll"
+                @create="handleOpenCreateModal('rules')"
+                @select="handleRuleSelect"
+                @toggle-bulk-all="handleBulkToggleAll"
+                @toggle-bulk-item="handleBulkItemToggle"
+              >
+                <template #meta="{ item: r }">
+                  <span class=":uno: text-xs text-gray-500">{{ rulePreview(r) }}</span>
+                  <span
+                    class=":uno: mt-0.5 block overflow-hidden text-xs text-ellipsis whitespace-nowrap text-gray-400"
+                    :title="matchRuleSummary(r.matchRule)"
+                  >
+                    {{ matchRuleSummary(r.matchRule) }}
+                  </span>
+                </template>
+              </ResourceList>
+
+              <div
+                v-if="!bulkSelectionState.isBulkMode.value"
+                class=":uno: flex h-12 shrink-0 items-center justify-center border-t bg-white"
+              >
+                <VButton size="sm" type="secondary" @click="handleOpenCreateModal(activeTab)">
+                  {{ activeTab === "snippets" ? "新建代码片段" : "新建转换规则" }}
+                </VButton>
+              </div>
             </div>
 
-            <DragAutoScrollOverlay
-              :active="leftPaneAutoScroll.isDragActive.value"
-              :active-direction="leftPaneAutoScroll.activeDirection.value"
-              :can-scroll-up="leftPaneAutoScroll.canScrollUp.value"
-              :can-scroll-down="leftPaneAutoScroll.canScrollDown.value"
-              :top-zone-height="48 + LEFT_PANE_EDGE_OVERLAP_PX"
-              :bottom-zone-height="48 + LEFT_PANE_EDGE_OVERLAP_PX"
-            />
-
-            <VLoading v-if="loading" />
-
-            <ResourceList
-              v-else-if="activeTab === 'snippets'"
-              ref="resourceListRef"
-              :bulk-mode="bulkSelectionState.isBulkMode.value"
-              :bulk-selected-ids="bulkSelectionState.bulkSnippetIds.value"
-              :items="snippets"
-              list-label="代码片段列表"
-              :panel-id="tabPanelId('snippets')"
-              :reorderable="!bulkSelectionState.isBulkMode.value"
-              :selected-id="currentSelectedId('snippets')"
-              :stretch="true"
-              :tab-labelledby="tabButtonId('snippets')"
-              empty-text="暂无代码片段"
-              @drag-state-change="leftPaneAutoScroll.setDragActive"
-              @reorder="reorderSnippet"
-              @scroll-container="leftPaneAutoScroll.handleContainerScroll"
-              @create="handleOpenCreateModal('snippets')"
-              @select="handleSnippetSelect"
-              @toggle-bulk-all="handleBulkToggleAll"
-              @toggle-bulk-item="handleBulkItemToggle"
-            />
-
-            <ResourceList
-              v-else
-              ref="resourceListRef"
-              :bulk-mode="bulkSelectionState.isBulkMode.value"
-              :bulk-selected-ids="bulkSelectionState.bulkRuleIds.value"
-              :items="rules"
-              list-label="转换规则列表"
-              :panel-id="tabPanelId('rules')"
-              :reorderable="!bulkSelectionState.isBulkMode.value"
-              :selected-id="currentSelectedId('rules')"
-              :stretch="true"
-              :tab-labelledby="tabButtonId('rules')"
-              empty-text="暂无转换规则"
-              @drag-state-change="leftPaneAutoScroll.setDragActive"
-              @reorder="reorderRule"
-              @scroll-container="leftPaneAutoScroll.handleContainerScroll"
-              @create="handleOpenCreateModal('rules')"
-              @select="handleRuleSelect"
-              @toggle-bulk-all="handleBulkToggleAll"
-              @toggle-bulk-item="handleBulkItemToggle"
-            >
-              <template #meta="{ item: r }">
-                <span class=":uno: text-xs text-gray-500">{{ rulePreview(r) }}</span>
-                <span
-                  class=":uno: mt-0.5 block overflow-hidden text-xs text-ellipsis whitespace-nowrap text-gray-400"
-                  :title="matchRuleSummary(r.matchRule)"
-                >
-                  {{ matchRuleSummary(r.matchRule) }}
-                </span>
-              </template>
-            </ResourceList>
+            <div class=":uno: main flex h-full flex-none flex-col overflow-hidden">
+              <BulkOperationPanel
+                v-if="bulkSelectionState.isBulkMode.value"
+                :can-disable="canBulkDisable"
+                :can-enable="canBulkEnable"
+                :processing="processingBulk"
+                :selected-count="bulkSelectionState.currentBulkSelectionCount.value"
+                :tab="activeTab"
+                @delete="handleBulkDelete"
+                @disable="handleBulkDisable"
+                @enable="handleBulkEnable"
+                @exit="exitBulkMode"
+                @export="handleBulkExport"
+                @import="openBulkImportSourceModal"
+              />
+              <SnippetEditor
+                v-else-if="activeTab === 'snippets'"
+                :dirty="editDirty"
+                :saving="savingEditor"
+                :snippet="editSnippet"
+                @delete="confirmDeleteSnippet"
+                @save="saveSnippet"
+                @field-change="editDirty = true"
+                @toggle-bulk-mode="enterBulkMode"
+                @toggle-enabled="toggleSnippetEnabled"
+                @update:snippet="editSnippet = $event"
+              />
+              <RuleEditor
+                v-else
+                :dirty="editDirty"
+                :rule="editRule"
+                :saving="savingEditor"
+                :snippets="snippets"
+                @delete="confirmDeleteRule"
+                @save="saveRule"
+                @field-change="editDirty = true"
+                @toggle-bulk-mode="enterBulkMode"
+                @toggle-enabled="toggleRuleEnabled"
+                @update:rule="editRule = $event"
+              />
+            </div>
 
             <div
-              v-if="!bulkSelectionState.isBulkMode.value"
-              class=":uno: flex h-12 shrink-0 items-center justify-center border-t bg-white"
+              :id="mobileRightDrawerId"
+              :aria-hidden="
+                mobileDrawer.isMobileViewport.value
+                  ? !mobileDrawer.showRightDrawer.value
+                  : undefined
+              "
+              :class="{ 'mobile-drawer-open': mobileDrawer.showRightDrawer.value }"
+              class=":uno: aside right-aside flex h-full flex-none flex-col overflow-hidden"
             >
-              <VButton size="sm" type="secondary" @click="handleOpenCreateModal(activeTab)">
-                {{ activeTab === "snippets" ? "新建代码片段" : "新建转换规则" }}
-              </VButton>
+              <div class="mobile-drawer-header">
+                <span>{{ mobileRightDrawerLabel }}</span>
+                <button type="button" @click="mobileDrawer.closeDrawer()">关闭</button>
+              </div>
+              <BulkModeSidePanel
+                v-if="bulkSelectionState.isBulkMode.value"
+                :selected-count="bulkSelectionState.currentBulkSelectionCount.value"
+                :tab="activeTab"
+              />
+              <RelationPanel
+                v-else
+                :mode="activeTab"
+                :rules-using-snippet="rulesUsingSnippet"
+                :selected-rule-id="currentSelectedId('rules')"
+                :selected-rule-position="editRule?.position ?? null"
+                :selected-snippet-id="currentSelectedId('snippets')"
+                :snippets-in-rule="snippetsInRule"
+                @jump-to-rule="jumpToRule"
+                @jump-to-snippet="jumpToSnippet"
+              />
             </div>
-          </div>
-
-          <div class=":uno: main flex h-full flex-none flex-col overflow-hidden">
-            <BulkOperationPanel
-              v-if="bulkSelectionState.isBulkMode.value"
-              :can-disable="canBulkDisable"
-              :can-enable="canBulkEnable"
-              :processing="processingBulk"
-              :selected-count="bulkSelectionState.currentBulkSelectionCount.value"
-              :tab="activeTab"
-              @delete="handleBulkDelete"
-              @disable="handleBulkDisable"
-              @enable="handleBulkEnable"
-              @exit="exitBulkMode"
-              @export="handleBulkExport"
-              @import="openBulkImportSourceModal"
-            />
-            <SnippetEditor
-              v-else-if="activeTab === 'snippets'"
-              :dirty="editDirty"
-              :saving="savingEditor"
-              :snippet="editSnippet"
-              @delete="confirmDeleteSnippet"
-              @save="saveSnippet"
-              @field-change="editDirty = true"
-              @toggle-bulk-mode="enterBulkMode"
-              @toggle-enabled="toggleSnippetEnabled"
-              @update:snippet="editSnippet = $event"
-            />
-            <RuleEditor
-              v-else
-              :dirty="editDirty"
-              :rule="editRule"
-              :saving="savingEditor"
-              :snippets="snippets"
-              @delete="confirmDeleteRule"
-              @save="saveRule"
-              @field-change="editDirty = true"
-              @toggle-bulk-mode="enterBulkMode"
-              @toggle-enabled="toggleRuleEnabled"
-              @update:rule="editRule = $event"
-            />
-          </div>
-
-          <div class=":uno: aside flex h-full flex-none flex-col overflow-hidden">
-            <BulkModeSidePanel
-              v-if="bulkSelectionState.isBulkMode.value"
-              :selected-count="bulkSelectionState.currentBulkSelectionCount.value"
-              :tab="activeTab"
-            />
-            <RelationPanel
-              v-else
-              :mode="activeTab"
-              :rules-using-snippet="rulesUsingSnippet"
-              :selected-rule-id="currentSelectedId('rules')"
-              :selected-rule-position="editRule?.position ?? null"
-              :selected-snippet-id="currentSelectedId('snippets')"
-              :snippets-in-rule="snippetsInRule"
-              @jump-to-rule="jumpToRule"
-              @jump-to-snippet="jumpToSnippet"
-            />
           </div>
         </div>
       </VCard>

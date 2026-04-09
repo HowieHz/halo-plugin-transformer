@@ -2,12 +2,28 @@ $aside-width: 20%;
 $main-width: 60%;
 
 #transformer-view {
+  .transformer-workspace {
+    height: 100%;
+    position: relative;
+  }
+
+  .transformer-layout {
+    height: 100%;
+    position: relative;
+  }
+
   .aside {
     width: $aside-width;
   }
 
   .main {
     width: $main-width;
+  }
+
+  .mobile-drawer-toolbar,
+  .mobile-drawer-header,
+  .mobile-drawer-backdrop {
+    display: none;
   }
 
   .transformer-editor-container {
@@ -38,4 +54,101 @@ $main-width: 60%;
 // 让多行确认文案按用户看到的换行正常展示。
 .dialog-container .break-all.text-sm.text-gray-700 {
   white-space: pre-line;
+}
+
+@media (width < 768px) {
+  #transformer-view {
+    .transformer-workspace {
+      overflow: hidden;
+    }
+
+    .transformer-layout {
+      display: block;
+    }
+
+    .mobile-drawer-toolbar {
+      align-items: center;
+      border-bottom: 1px solid rgb(229, 231, 235);
+      display: flex;
+      gap: 0.75rem;
+      justify-content: space-between;
+      padding: 0.75rem;
+    }
+
+    .mobile-drawer-toolbar-title {
+      color: rgb(107, 114, 128);
+      flex: 1;
+      font-size: 0.75rem;
+      min-width: 0;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .mobile-drawer-backdrop {
+      background: rgb(17 24 39 / 0.38);
+      border: 0;
+      display: block;
+      inset: 3.75rem 0 0;
+      position: absolute;
+      width: 100%;
+      z-index: 15;
+    }
+
+    .main {
+      width: 100%;
+    }
+
+    .aside {
+      background: white;
+      bottom: 0;
+      box-shadow: 0 20px 48px rgb(15 23 42 / 0.18);
+      max-width: min(88vw, 26rem);
+      position: absolute;
+      top: 3.75rem;
+      transition:
+        transform 180ms ease,
+        visibility 180ms ease;
+      visibility: hidden;
+      width: min(88vw, 26rem);
+      z-index: 20;
+    }
+
+    .left-aside {
+      left: 0;
+      transform: translateX(-100%);
+    }
+
+    .right-aside {
+      right: 0;
+      transform: translateX(100%);
+    }
+
+    .mobile-drawer-open {
+      transform: translateX(0);
+      visibility: visible;
+    }
+
+    .mobile-drawer-header {
+      align-items: center;
+      border-bottom: 1px solid rgb(229, 231, 235);
+      display: flex;
+      justify-content: space-between;
+      padding: 0.75rem 1rem;
+    }
+
+    .mobile-drawer-header span {
+      color: rgb(17, 24, 39);
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+
+    .mobile-drawer-header button {
+      background: transparent;
+      border: 0;
+      color: rgb(107, 114, 128);
+      cursor: pointer;
+      font-size: 0.875rem;
+      padding: 0;
+    }
+  }
 }
