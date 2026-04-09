@@ -15,13 +15,8 @@ import {
 import {
   cloneMatchRule,
   cloneMatchRuleSource,
-  getDomRulePerformanceWarning,
   makeRuleTreeSource,
 } from "@/views/composables/matchRule";
-import {
-  getEmptySnippetAssociationWarning,
-  getRuleCapabilities,
-} from "@/views/composables/ruleCapabilities";
 import {
   buildRuleUndoBaselineSnapshot,
   resolveRuleUndoFieldCurrentValue,
@@ -35,6 +30,7 @@ import {
 } from "@/views/composables/transfer.ts";
 import { useDragAutoScroll } from "@/views/composables/useDragAutoScroll";
 import { useFieldUndo } from "@/views/composables/useFieldUndo.ts";
+import { useRuleFormSemantics } from "@/views/composables/useRuleFormSemantics";
 import { sortSelectedFirst } from "@/views/composables/util.ts";
 
 import DragAutoScrollOverlay from "./DragAutoScrollOverlay.vue";
@@ -83,26 +79,20 @@ const dragOverlayBottomHeight = ref(52 + RULE_EDITOR_EDGE_OVERLAP_PX);
 const autoScroll = useDragAutoScroll(editorScrollContainer);
 let dragOverlayResizeObserver: ResizeObserver | null = null;
 
-const ruleCapabilities = computed(() =>
-  currentRule.value ? getRuleCapabilities(currentRule.value) : null,
-);
-const needsTarget = computed(() => ruleCapabilities.value?.showsTargetField ?? false);
-const needsSnippets = computed(() => ruleCapabilities.value?.showsSnippetPicker ?? false);
-const needsWrapMarker = computed(() => ruleCapabilities.value?.allowsWrapMarker ?? false);
 const matchDraft = ref("");
 const matchInitialValue = ref("");
-const matchFieldError = computed(() => {
-  if (!needsTarget.value || !currentRule.value) {
-    return null;
-  }
-  return matchDraft.value.trim() ? null : "请填写匹配内容";
+const {
+  buildToggledSnippetIds,
+  emptySnippetAssociationWarning,
+  matchFieldError,
+  needsSnippets,
+  needsTarget,
+  needsWrapMarker,
+  performanceWarning,
+} = useRuleFormSemantics({
+  rule: currentRule,
+  matchValue: matchDraft,
 });
-const performanceWarning = computed(() =>
-  currentRule.value ? getDomRulePerformanceWarning(currentRule.value) : null,
-);
-const emptySnippetAssociationWarning = computed(() =>
-  currentRule.value ? getEmptySnippetAssociationWarning(currentRule.value) : null,
-);
 const undo = useFieldUndo();
 const textFieldInitialValue = ref<Record<"name" | "description", string>>({
   name: "",
@@ -248,9 +238,7 @@ function handleToggleSnippet(snippetId: string) {
     return;
   }
   const previous = currentRule.value.snippetIds;
-  const next = previous.includes(snippetId)
-    ? previous.filter((id) => id !== snippetId)
-    : [...previous, snippetId];
+  const next = buildToggledSnippetIds(snippetId);
   undo.trackChange("snippetIds", previous, next);
   updateField("snippetIds", next as TransformationRuleEditorDraft["snippetIds"], {
     trackHistory: false,

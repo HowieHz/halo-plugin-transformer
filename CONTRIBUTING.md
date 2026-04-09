@@ -91,6 +91,7 @@ pnpm dev
 - 跨环境关系迁移如果以后要支持，应单独设计显式协议，而不是把关系字段偷偷塞回当前导入导出内容（transfer）
 - 新建 / 编辑 / 导入（create / edit / import）这三条写路径必须复用同一份前端校验器（validator）；不要让弹窗、右侧编辑器和导入提示各自复制一套校验条件
 - 新建弹窗同样要复用共享草稿控制器（draft controller），把默认草稿（`baseline`）、是否已修改（`dirty`）和提交快照（`submit snapshot`）统一起来；不要把这些逻辑重新塞回组件本身
+- 转换规则的 create / edit 表单语义（例如 `REMOVE` 时显示哪些字段、空关联 warning、snippet 勾选派生）应复用共享 composable；不要在弹窗和右侧编辑器里各自包一层条件胶水
 
 ### 控制台状态模型
 

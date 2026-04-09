@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { Toast, VButton } from "@halo-dev/components";
-import { computed, nextTick, ref, useId } from "vue";
+import { nextTick, ref, useId } from "vue";
 
 import {
   type TransformationSnippetReadModel,
@@ -8,14 +8,10 @@ import {
   MODE_OPTIONS,
   POSITION_OPTIONS,
 } from "@/types";
-import { getDomRulePerformanceWarning } from "@/views/composables/matchRule";
-import {
-  getEmptySnippetAssociationWarning,
-  getRuleCapabilities,
-} from "@/views/composables/ruleCapabilities";
 import { validateRuleDraft } from "@/views/composables/ruleValidation";
 import { updateSelectByWheel } from "@/views/composables/selectWheel.ts";
 import { useRuleCreateDraft } from "@/views/composables/useRuleCreateDraft";
+import { useRuleFormSemantics } from "@/views/composables/useRuleFormSemantics";
 
 import BaseFormModal from "./BaseFormModal.vue";
 import EnabledSwitch from "./EnabledSwitch.vue";
@@ -45,26 +41,20 @@ function reset() {
   createDraft.reset();
 }
 
-const ruleCapabilities = computed(() => getRuleCapabilities(createDraft.draft.value));
-const needsTarget = computed(() => ruleCapabilities.value.showsTargetField);
-const needsSnippets = computed(() => ruleCapabilities.value.showsSnippetPicker);
-const needsWrapMarker = computed(() => ruleCapabilities.value.allowsWrapMarker);
-const matchFieldError = computed(() => {
-  if (!needsTarget.value) {
-    return null;
-  }
-  return createDraft.draft.value.match.trim() ? null : "请填写匹配内容";
+const {
+  buildToggledSnippetIds,
+  emptySnippetAssociationWarning,
+  matchFieldError,
+  needsSnippets,
+  needsTarget,
+  needsWrapMarker,
+  performanceWarning,
+} = useRuleFormSemantics({
+  rule: createDraft.draft,
 });
-const performanceWarning = computed(() => getDomRulePerformanceWarning(createDraft.draft.value));
-const emptySnippetAssociationWarning = computed(() =>
-  getEmptySnippetAssociationWarning(createDraft.draft.value),
-);
 
 function toggleSnippet(id: string) {
-  const currentSnippetIds = createDraft.draft.value.snippetIds;
-  createDraft.draft.value.snippetIds = currentSnippetIds.includes(id)
-    ? currentSnippetIds.filter((snippetId) => snippetId !== id)
-    : [...currentSnippetIds, id];
+  createDraft.draft.value.snippetIds = buildToggledSnippetIds(id);
 }
 
 function handleSubmit() {
