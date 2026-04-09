@@ -603,4 +603,62 @@ describe("useTransformerData", () => {
     expect(store.editSnippet.value?.name).toBe("Snippet A");
     expect(store.editDirty.value).toBe(false);
   });
+
+  // why: 右侧关系面板在编辑规则时必须跟随当前活动 draft，
+  // 否则中间编辑器和右侧关联列表会各自引用不同真源，用户会看到自相矛盾的界面。
+  it("derives snippets-in-rule from the active rule draft", async () => {
+    const activeTab = ref<ActiveTab>("rules");
+    const snippetA = makeSnippetEditorDraft({
+      id: "snippet-a",
+      metadata: { name: "snippet-a", version: 1 },
+      name: "Snippet A",
+      code: "<div>a</div>",
+    });
+    const snippetB = makeSnippetEditorDraft({
+      id: "snippet-b",
+      metadata: { name: "snippet-b", version: 1 },
+      name: "Snippet B",
+      code: "<div>b</div>",
+    });
+    const savedRule = makeRuleEditorDraft({
+      id: "rule-a",
+      metadata: { name: "rule-a", version: 1 },
+      snippetIds: ["snippet-a"],
+      matchRule: {
+        type: "GROUP",
+        negate: false,
+        operator: "AND",
+        children: [
+          {
+            type: "PATH",
+            negate: false,
+            matcher: "ANT",
+            value: "/**",
+          },
+        ],
+      },
+    });
+    delete (savedRule as { matchRuleSource?: unknown }).matchRuleSource;
+
+    snippetApi.list.mockResolvedValue({ data: listOf([snippetA, snippetB]) });
+    snippetApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } });
+    ruleApi.list.mockResolvedValue({ data: listOf([savedRule]) });
+    ruleApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } });
+
+    const store = useTransformerData(activeTab);
+    await store.fetchAll();
+    store.selectedRuleId.value = "rule-a";
+    await nextTick();
+
+    expect(store.snippetsInRule.value.map((snippet) => snippet.id)).toEqual(["snippet-a"]);
+
+    store.editRule.value = {
+      ...store.editRule.value!,
+      snippetIds: ["snippet-b"],
+    };
+    store.editDirty.value = true;
+    await nextTick();
+
+    expect(store.snippetsInRule.value.map((snippet) => snippet.id)).toEqual(["snippet-b"]);
+  });
 });

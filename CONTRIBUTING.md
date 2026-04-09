@@ -73,6 +73,7 @@ pnpm dev
 - 当前 tab 只允许存在一份活动 `EditorDraft`
 - `tab -> selectedId` 可以按标签页分别记忆，方便路由恢复与面板跳转
 - 未保存草稿不会在两个 tab 后面各藏一份；切换时总是重新 hydrate 当前 tab 的活动会话，避免共享一个 `dirty` 标记却同时维护两份隐式草稿
+- 中间编辑器与右侧关系面板在当前 tab 下都必须从同一份活动 `EditorDraft` 派生；不能让“右侧关系”偷偷回退到 saved list，导致一个页面里同时出现两份真相
 - `bulk / create` 只会隐藏当前的 visible selection，不会顺手清掉 remembered selection；退出这些页面语义后应能回到该 tab 上次打开的资源
 - 新建弹窗用单一 `ActiveTab | null` 判别状态表达，不再维护两颗互斥布尔；避免出现 `snippet/rule` 弹窗同时为真或同时忘记收口的隐式组合态
 - 多步流程弹窗（例如批量导入）用单一 flow-state 判别对象表达 `source/options/result`，不要再并列维护多颗 `visible/result/pending` 状态去手动拼阶段

@@ -117,9 +117,12 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
 
   const snippetsInRule = computed(() => {
     if (!selectedRuleId.value) return [];
-    const rule = options.rules.value.find((item) => item.id === selectedRuleId.value);
-    if (!rule?.snippetIds?.length) return [];
-    return rule.snippetIds
+    const snippetIds =
+      editorSession.value.tab === "rules" && editorSession.value.draft?.id === selectedRuleId.value
+        ? editorSession.value.draft.snippetIds
+        : (options.rules.value.find((item) => item.id === selectedRuleId.value)?.snippetIds ?? []);
+    if (!snippetIds.length) return [];
+    return snippetIds
       .map((id) => options.snippets.value.find((snippet) => snippet.id === id))
       .filter((snippet): snippet is TransformationSnippetReadModel => !!snippet);
   });
