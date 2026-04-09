@@ -3,7 +3,7 @@
   lang="ts"
   setup
 >
-import { ref, type ComponentPublicInstance } from "vue";
+import { nextTick, ref, watch, type ComponentPublicInstance } from "vue";
 
 import StatusDot from "./StatusDot.vue";
 
@@ -40,6 +40,8 @@ const dropTargetId = ref<string | null>(null);
 const dropPlacement = ref<ReorderPlacement | null>(null);
 const scrollContainer = ref<HTMLElement | null>(null);
 const itemElements = ref<Record<string, HTMLElement | null>>({});
+const reorderButtonElements = ref<Record<string, HTMLButtonElement | null>>({});
+const pendingReorderFocusId = ref<string | null>(null);
 
 defineExpose({
   getScrollContainer() {
@@ -193,12 +195,14 @@ function handleReorderButtonKeydown(event: KeyboardEvent, index: number) {
     return;
   }
   event.preventDefault();
+  const sourceItem = props.items[index];
   const target = props.items[index + (event.key === "ArrowUp" ? -1 : 1)];
-  if (!target) {
+  if (!sourceItem || !target) {
     return;
   }
+  pendingReorderFocusId.value = sourceItem.id;
   emit("reorder", {
-    sourceId: props.items[index].id,
+    sourceId: sourceItem.id,
     targetId: target.id,
     placement: event.key === "ArrowUp" ? "before" : "after",
   });
@@ -218,11 +222,20 @@ function handleToggleBulkAll() {
 }
 
 /**
- * why: 键盘排序与上下导航都要把焦点移到目标项；
- * 这里提前收集每一项的 DOM 引用，避免后面再去靠脆弱的选择器回查。
+ * why: 列表导航和键盘重排的焦点语义不同；
+ * 上下导航应当把焦点移动到目标项，而重排后应当留在被移动项的拖动句柄上，方便连续调整顺序。
+ * 这里提前收集 DOM 引用，避免后面再去靠脆弱的选择器回查。
  */
 const setItemElement = (id: string, element: Element | ComponentPublicInstance | null) => {
   itemElements.value[id] = element instanceof HTMLElement ? element : null;
+};
+
+/**
+ * why: 重排句柄在拖动和键盘调整两条路径里都是同一个权威焦点落点；
+ * 这里提前收集每一项的 DOM 引用，避免后面再去靠脆弱的选择器回查。
+ */
+const setReorderButtonElement = (id: string, element: Element | ComponentPublicInstance | null) => {
+  reorderButtonElements.value[id] = element instanceof HTMLButtonElement ? element : null;
 };
 
 /**
@@ -232,6 +245,31 @@ const setItemElement = (id: string, element: Element | ComponentPublicInstance |
 function focusItem(id: string) {
   itemElements.value[id]?.focus();
 }
+
+/**
+ * why: 键盘重排后，用户通常会继续连按方向键微调顺序；
+ * 焦点必须留在同一项的拖动句柄上，否则会打断这条连续操作链路。
+ */
+async function restorePendingReorderButtonFocus() {
+  const focusId = pendingReorderFocusId.value;
+  if (!focusId) {
+    return;
+  }
+
+  await nextTick();
+  reorderButtonElements.value[focusId]?.focus();
+  pendingReorderFocusId.value = null;
+}
+
+watch(
+  () => props.items.map((item) => item.id),
+  () => {
+    if (!pendingReorderFocusId.value) {
+      return;
+    }
+    void restorePendingReorderButtonFocus();
+  },
+);
 </script>
 
 <template>
@@ -332,6 +370,7 @@ function focusItem(id: string) {
               <div class=":uno: flex items-center gap-1">
                 <button
                   v-if="props.reorderable && !props.bulkMode && props.items.length > 1"
+                  :ref="(element) => setReorderButtonElement(item.id, element)"
                   :aria-label="`拖动排序：${item.name || item.id}`"
                   aria-keyshortcuts="ArrowUp ArrowDown"
                   class=":uno: inline-flex h-5 w-5 shrink-0 cursor-grab items-center justify-center rounded text-sm leading-none tracking-[-0.2em] text-gray-400 transition hover:text-gray-600 active:cursor-grabbing"
