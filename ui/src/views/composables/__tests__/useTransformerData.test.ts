@@ -137,6 +137,70 @@ describe("useTransformerData", () => {
     expect(toast.error).not.toHaveBeenCalled();
   });
 
+  // why: 启用规则会让后端把已保存资源收敛到规范持久化形态；
+  // 当前草稿若还没脏，就应直接展示这份最新真源，而不是继续停留在旧形态造成前后端分叉。
+  it("rehydrates a clean rule draft to the saved canonical shape after enabling", async () => {
+    const activeTab = ref<ActiveTab>("rules");
+    const savedRule = makeRuleEditorDraft({
+      id: "rule-a",
+      metadata: { name: "rule-a", version: 1 },
+      enabled: false,
+      mode: "FOOTER",
+      position: "REMOVE",
+      wrapMarker: true,
+      snippetIds: [" snippet-a ", "snippet-a"],
+      matchRule: {
+        type: "GROUP",
+        negate: false,
+        operator: "AND",
+        children: [
+          {
+            type: "PATH",
+            negate: false,
+            matcher: "ANT",
+            value: "/**",
+          },
+        ],
+      },
+    });
+    delete (savedRule as { matchRuleSource?: unknown }).matchRuleSource;
+    const savedSnippet = makeSnippetEditorDraft({
+      id: "snippet-a",
+      metadata: { name: "snippet-a", version: 1 },
+      code: "<div>ok</div>",
+    });
+    const canonicalRule = {
+      ...savedRule,
+      enabled: true,
+      position: "APPEND" as const,
+      snippetIds: ["snippet-a"],
+      metadata: { ...savedRule.metadata, version: 2 },
+    };
+
+    snippetApi.getSnapshot.mockResolvedValue({ data: snapshotOf([savedSnippet]) });
+    ruleApi.getSnapshot.mockResolvedValue({ data: snapshotOf([savedRule]) });
+    ruleApi.updateEnabled.mockResolvedValue({
+      data: canonicalRule,
+    });
+
+    const store = useTransformerData(activeTab);
+    await store.fetchAll();
+    store.selectedRuleId.value = "rule-a";
+    await nextTick();
+
+    expect(store.editDirty.value).toBe(false);
+    expect(store.editRule.value?.position).toBe("REMOVE");
+    expect(store.editRule.value?.snippetIds).toEqual(["snippet-a"]);
+
+    await store.toggleRuleEnabled();
+
+    expect(store.editRule.value?.enabled).toBe(true);
+    expect(store.editRule.value?.position).toBe("APPEND");
+    expect(store.editRule.value?.snippetIds).toEqual(["snippet-a"]);
+    expect(store.editRule.value?.metadata.version).toBe(2);
+    expect(store.editDirty.value).toBe(false);
+  });
+
   // why: 代码片段启停也应只切 enabled 本身；
   // 其它未保存编辑必须继续留在右侧，而不是被 fetchAll 覆盖掉。
   it("toggles snippet enabled without saving or discarding other draft fields", async () => {

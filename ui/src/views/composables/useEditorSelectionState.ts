@@ -193,11 +193,16 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
   }
 
   /**
-   * why: 规则启停属于资源级动作，不应顺带重置当前编辑中的 matchRule / snippetIds 草稿；
-   * 列表快照与草稿同步现在职责分离，这里只保留草稿侧最小同步。
+   * why: 规则启停只作用于已保存资源，但“当前草稿是否已经脏了”会决定同步策略：
+   * 若草稿仍是干净的已保存视图，就应直接收敛到后端返回的规范形态；否则只同步
+   * enabled/version，避免把未保存编辑误当成一次完整保存。
    */
   function syncSavedRuleDraft(rule: TransformationRuleReadModel) {
     if (editorSession.value.tab === "rules" && editorSession.value.draft?.id === rule.id) {
+      if (!editorSession.value.dirty) {
+        editorSession.value = createRuleEditorSession(hydrateRuleEditorDraft(rule));
+        return;
+      }
       editorSession.value.draft.enabled = rule.enabled;
       editorSession.value.draft.metadata = mergeSavedMetadata(
         editorSession.value.draft.metadata,
