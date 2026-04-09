@@ -64,7 +64,7 @@ pnpm dev
 - 不承载 `id`、排序、系统 metadata
 - 规则导入导出内容（transfer）不承载 `snippetIds`
 - 跨环境关系迁移如果以后要支持，应单独设计显式协议，而不是把关系字段偷偷塞回当前导入导出内容（transfer）
-- create / edit / import（三条写路径）必须复用同一份前端校验器（validator）；不要让弹窗、右侧编辑器和导入提示各自复制校验条件
+- 新建 / 编辑 / 导入（create / edit / import）这三条写路径必须复用同一份前端校验器（validator）；不要让弹窗、右侧编辑器和导入提示各自复制校验条件
 - 新建弹窗同样要复用共享草稿控制器（draft controller），统一“初始值（`baseline`）/ 是否已修改（`dirty`）/ 提交时使用的快照（`submit snapshot`）”这几个语义；不要把这些领域逻辑重新塞回组件本身
 
 ### 控制台状态模型
@@ -73,12 +73,12 @@ pnpm dev
 
 - 当前标签页（tab）只允许存在一份活动编辑草稿（`EditorDraft`）
 - `tab -> selectedId` 可以按标签页分别记忆当前选中项，方便路由恢复与面板跳转
-- 未保存草稿不会在两个 tab 后面各藏一份；切换时总是重新恢复当前 tab 的活动会话（hydrate），避免共享一个“已修改”标记（`dirty`），却同时维护两份隐式草稿
-- 中间编辑器与右侧关系面板在当前 tab 下都必须从同一份活动编辑草稿（`EditorDraft`）派生；不能让“右侧关系”偷偷回退到已保存内容列表（saved list），变成左边看到的是当前草稿，右边看到的却是已保存内容，前后对不上
-- `bulk / create` 只会隐藏当前可见选中项（visible selection），不会顺手清掉之前记住的选中项（remembered selection）；退出这些页面语义后应能回到该 tab 上次打开的资源
+- 未保存草稿不会在两个标签页（tab）后面各藏一份；切换时总是重新恢复当前标签页的活动会话（hydrate），避免共享一个“已修改”标记（`dirty`），却同时维护两份隐式草稿
+- 中间编辑器与右侧关系面板在当前标签页（tab）下都必须从同一份活动编辑草稿（`EditorDraft`）派生；不能让“右侧关系”偷偷回退到已保存内容列表（saved list），变成左边看到的是当前草稿，右边看到的却是已保存内容，前后对不上
+- `bulk / create` 只会隐藏当前可见选中项（visible selection），不会顺手清掉之前记住的选中项（remembered selection）；退出这些页面语义后应能回到该标签页（tab）上次打开的资源
 - 新建弹窗用单一当前活动标签（`ActiveTab | null`）表达状态，不再维护两颗互斥布尔；避免出现代码片段 / 规则弹窗同时为真，或同时忘记收口的隐式组合态
 - 多步流程弹窗（例如批量导入）用单一流程状态（flow-state）对象表达 `source/options/result`，不要再并列维护多颗“是否显示 / 结果 / 进行中”状态去手动拼阶段
-- 路由意图（route intent）只改当前 tab 的页面语义；不要让 `mode=bulk`、`action=create` 这类 URL 状态顺手清掉另一个 tab 里之前记住的选中项（remembered selection）
+- 路由意图（route intent）只改当前标签页（tab）的页面语义；不要让 `mode=bulk`、`action=create` 这类 URL 状态顺手清掉另一个标签页里之前记住的选中项（remembered selection）
 
 ### 配置页交互语义
 
@@ -128,7 +128,7 @@ pnpm dev
 
 ## 匹配规则规范
 
-为了避免“README 很长，但约束样例（contract fixture）很薄”，`match-rule` 现在拆成两类规范源：
+为了避免“README 很长，但约束样例（contract fixture）太少”，`match-rule` 现在拆成两类规范源：
 
 - 共享约束（contract）
     - 规范源：`specs/match-rule/contract.spec.jsonc`
@@ -141,22 +141,22 @@ pnpm dev
 ### 生成链路
 
 - `pnpm generate:spec-artifacts`
-    - 从仓库根的 `specs/match-rule/contract.spec.jsonc` 刷新生成产物（generated artifacts）
+    - 从仓库根的 `specs/match-rule/contract.spec.jsonc` 刷新生成文件（generated artifacts）
 - `pnpm verify:spec-artifacts`
-    - 只校验生成产物（generated artifacts）是否与 spec 一致
+    - 只校验生成文件（generated artifacts）是否与规范（spec）一致
 - `./gradlew verifyMatchRuleSpecArtifacts`
-    - 后端构建链路上的同义校验，避免只跑 Gradle 时漏掉 spec 一致性检查
+    - 后端构建链路上的同义校验，避免只跑 Gradle 时漏掉规范（spec）一致性检查
 
-### JSON Schema
+### JSON 结构约束（JSON Schema）
 
 - `ui/public/generated/transformer.schema.json`
-    - 负责导入导出外层结构（transfer envelope）
+    - 负责导入导出的外层结构（transfer envelope）
     - 描述顶层 `version`、`resourceType`、`data`
 - `ui/public/generated/match-rule.schema.json`
     - 从 `specs/match-rule/contract.spec.jsonc` 生成
     - 负责 `match-rule` 领域结构
 - `ui/public/generated/transformer.schema.json`
-    - 通过 `$ref` 引用 `match-rule` 生成后的 Schema，而不是在外层结构（envelope）里手写一遍规则树结构
+    - 通过 `$ref` 引用 `match-rule` 生成后的结构约束（Schema），而不是在外层结构（envelope）里手写一遍规则树结构
 
 ## 导入 / 导出协议
 
@@ -292,8 +292,8 @@ pnpm dev
 - 凡是异步收敛、失败可重试、事件驱动刷新这类后台流程，优先使用 `controller / reconciler / watch`（控制器 / 协调器 / 监听）
 - 插件主生命周期只应管理自己显式聚合的控制器（controllers）；不要直接注入容器里的全量 `Controller` 列表去统一 start/stop
 - 运行时缓存优先做成“运行时内存快照”，由 Halo `watch`（监听）驱动维护，而不是在请求进来时再按 TTL 回源重查
-- 控制台读接口优先返回明确的响应模型（read model），而不是把存储实体原样暴露给 UI
-- 一旦资源进入 deleting（删除中）状态，控制台读接口、单项写接口、排序读模型和运行时装载都不应再把它当成“可见资源”；否则 `finalizer`（终结器）的最终一致删除会在 UI 上表现成滞后一拍
+- 控制台读接口优先返回明确的响应模型（read model），而不是把存储实体原样暴露给前端界面（UI）
+- 一旦资源进入 deleting（删除中）状态，控制台读接口、单项写接口、排序读模型和运行时装载都不应再把它当成“可见资源”；否则 `finalizer`（终结器）的最终一致删除会在前端界面（UI）上表现成滞后一拍
 - 运行时执行链路优先消费独立的运行时模型，而不是把 extension（扩展资源）存储实体继续直接传给过滤器 / 处理器（`filter / processor`）
 - 资源查询遵循平台模型：能 `fetch(name)`（按名称直接取）就不用 `list + filter(name)`（先列全表再过滤）；能 `fieldQuery`（字段查询）就不做全量扫描
 - `annotations / labels`（注解 / 标签）只用于轻量元信息、兼容标记与索引辅助，不承载结构化业务状态，也不替代独立资源建模
@@ -342,13 +342,13 @@ pnpm dev
 
 - 当前删除协调器需要找出所有引用某个代码片段的 `TransformationRule`
 - 关系真源已经收敛到 `TransformationRule.snippetIds`
-- Halo 当前没有直接提供“集合成员反向索引 / membership fieldQuery（按集合成员反查的字段查询）”这类查询能力
+- Halo 当前没有直接提供“集合成员反向索引 / membership fieldQuery（按集合成员反查的字段查询）”这类原生查询能力
 - 因此这一步仍然需要基于规则列表做过滤，而不是按 `snippetId` 直接反查
 
 在平台能力出现之前，不建议回退到：
 
 - 前端自己维护 `snippet -> rules` 的镜像关系
-- endpoint 同步补写另一侧资源
+- 接口端（endpoint）同步补写另一侧资源
 - `annotations / labels` 承载结构化关系真源
 
 ### 删除代码片段是最终一致，不是跨资源原子事务
@@ -385,7 +385,7 @@ pnpm dev
 
 因此当前推荐做法是：
 
-- 把这条限制显式写进 `README.md`，按用户语义说明清楚
+- 把这条限制显式写进 `README.md`，按用户能看懂的说法说明清楚
 - 运行时在拿不到 `_templateId` 时保守降级，只依赖路径等其他可用条件
 - 不在插件层发明脆弱的“按 URL / 主题名 / 页面 HTML 猜模板 ID”补偿逻辑
 
@@ -407,4 +407,4 @@ pnpm --dir ui test:unit
 ./gradlew build
 ```
 
-如果改动涉及 spec、schema、contract helper 或导入导出结构，先运行 `pnpm generate:spec-artifacts`，再提交生成物。
+如果改动涉及规范（spec）、结构约束（schema）、约束辅助代码（contract helper）或导入导出结构，先运行 `pnpm generate:spec-artifacts`，再提交生成文件。
