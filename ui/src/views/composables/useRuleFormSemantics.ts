@@ -1,4 +1,4 @@
-import { computed, type Readonly, type Ref } from "vue";
+import { computed, type Ref } from "vue";
 
 import type { TransformationRuleEditorDraft } from "@/types";
 

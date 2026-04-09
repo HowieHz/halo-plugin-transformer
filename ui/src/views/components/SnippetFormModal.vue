@@ -1,10 +1,11 @@
 <script lang="ts" setup>
 import { Toast, VButton } from "@halo-dev/components";
-import { computed, nextTick, ref, useId } from "vue";
+import { computed, ref, useId } from "vue";
 
 import type { TransformationSnippetEditorDraft } from "@/types";
 import { validateSnippetDraft } from "@/views/composables/snippetValidation";
 import { useSnippetCreateDraft } from "@/views/composables/useSnippetCreateDraft";
+import { useTransferImportSourceFlow } from "@/views/composables/useTransferImportSourceFlow";
 
 import BaseFormModal from "./BaseFormModal.vue";
 import EnabledSwitch from "./EnabledSwitch.vue";
@@ -21,8 +22,6 @@ const emit = defineEmits<{
 }>();
 
 const createDraft = useSnippetCreateDraft();
-const fileInput = ref<HTMLInputElement | null>(null);
-const importSourceVisible = ref(false);
 const codeScrollTop = ref(0);
 const formId = useId();
 const codeFieldErrorId = `snippet-form-code-error-${formId}`;
@@ -51,14 +50,6 @@ function syncCodeScroll(event: Event) {
   codeScrollTop.value = (event.target as HTMLTextAreaElement).scrollTop;
 }
 
-function openImportSourceModal() {
-  importSourceVisible.value = true;
-}
-
-function closeImportSourceModal() {
-  importSourceVisible.value = false;
-}
-
 async function applyImportedSnippet(raw: string, sourceLabel: "剪贴板" | "文件") {
   createDraft.importFromTransfer(raw);
   const validationError = validateSnippetDraft(createDraft.draft.value);
@@ -69,40 +60,17 @@ async function applyImportedSnippet(raw: string, sourceLabel: "剪贴板" | "文
   }
 }
 
-async function importFromClipboard() {
-  try {
-    const text = await navigator.clipboard.readText();
-    if (!text.trim()) {
-      Toast.warning("剪贴板里没有可导入的 JSON");
-      return;
-    }
-    await applyImportedSnippet(text, "剪贴板");
-    importSourceVisible.value = false;
-  } catch {
-    Toast.error("读取剪贴板失败，请检查浏览器权限后重试");
-  }
-}
-
-async function importFromFile() {
-  importSourceVisible.value = false;
-  await nextTick();
-  fileInput.value?.click();
-}
-
-async function handleImportFile(event: Event) {
-  const input = event.target as HTMLInputElement;
-  const file = input.files?.[0];
-  if (!file) {
-    return;
-  }
-  try {
-    await applyImportedSnippet(await file.text(), "文件");
-  } catch (error) {
-    Toast.error(error instanceof Error ? error.message : "导入失败");
-  } finally {
-    input.value = "";
-  }
-}
+const {
+  closeImportSourceModal,
+  fileInput,
+  handleImportFile,
+  importFromClipboard,
+  importFromFile,
+  importSourceVisible,
+  openImportSourceModal,
+} = useTransferImportSourceFlow({
+  applyImportedContent: applyImportedSnippet,
+});
 
 function hasUnsavedChanges() {
   return createDraft.hasUnsavedChanges();

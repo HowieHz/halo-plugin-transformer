@@ -88,6 +88,7 @@ pnpm dev
 - 导入导出内容（transfer）只承载可移植的编辑内容
 - 不承载 `id`、排序、系统元数据（metadata）
 - 规则导入导出内容（transfer）不承载 `snippetIds`
+- 新建代码片段 / 转换规则弹窗的“导入来源编排”（source modal、剪贴板读取、文件选择、通用失败提示）必须复用共享 composable；不要在两个弹窗里各自复制一套 source flow
 - 跨环境关系迁移如果以后要支持，应单独设计显式协议，而不是把关系字段偷偷塞回当前导入导出内容（transfer）
 - 新建 / 编辑 / 导入（create / edit / import）这三条写路径必须复用同一份前端校验器（validator）；不要让弹窗、右侧编辑器和导入提示各自复制一套校验条件
 - 新建弹窗同样要复用共享草稿控制器（draft controller），把默认草稿（`baseline`）、是否已修改（`dirty`）和提交快照（`submit snapshot`）统一起来；不要把这些逻辑重新塞回组件本身

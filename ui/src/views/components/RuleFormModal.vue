@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { Toast, VButton } from "@halo-dev/components";
-import { nextTick, ref, useId } from "vue";
+import { useId } from "vue";
 
 import {
   type TransformationSnippetReadModel,
@@ -12,6 +12,7 @@ import { validateRuleDraft } from "@/views/composables/ruleValidation";
 import { updateSelectByWheel } from "@/views/composables/selectWheel.ts";
 import { useRuleCreateDraft } from "@/views/composables/useRuleCreateDraft";
 import { useRuleFormSemantics } from "@/views/composables/useRuleFormSemantics";
+import { useTransferImportSourceFlow } from "@/views/composables/useTransferImportSourceFlow";
 
 import BaseFormModal from "./BaseFormModal.vue";
 import EnabledSwitch from "./EnabledSwitch.vue";
@@ -32,8 +33,6 @@ const emit = defineEmits<{
 }>();
 
 const createDraft = useRuleCreateDraft();
-const fileInput = ref<HTMLInputElement | null>(null);
-const importSourceVisible = ref(false);
 const formId = useId();
 const matchFieldErrorId = `rule-form-match-error-${formId}`;
 
@@ -61,14 +60,6 @@ function handleSubmit() {
   emit("submit", createDraft.draft.value);
 }
 
-function openImportSourceModal() {
-  importSourceVisible.value = true;
-}
-
-function closeImportSourceModal() {
-  importSourceVisible.value = false;
-}
-
 async function applyImportedRule(raw: string, sourceLabel: "剪贴板" | "文件") {
   createDraft.importFromTransfer(raw);
   const importedValidationError = resolveImportedRuleValidationError(createDraft.draft.value);
@@ -81,40 +72,17 @@ async function applyImportedRule(raw: string, sourceLabel: "剪贴板" | "文件
   }
 }
 
-async function importFromClipboard() {
-  try {
-    const text = await navigator.clipboard.readText();
-    if (!text.trim()) {
-      Toast.warning("剪贴板里没有可导入的 JSON");
-      return;
-    }
-    await applyImportedRule(text, "剪贴板");
-    importSourceVisible.value = false;
-  } catch {
-    Toast.error("读取剪贴板失败，请检查浏览器权限后重试");
-  }
-}
-
-async function importFromFile() {
-  importSourceVisible.value = false;
-  await nextTick();
-  fileInput.value?.click();
-}
-
-async function handleImportFile(event: Event) {
-  const input = event.target as HTMLInputElement;
-  const file = input.files?.[0];
-  if (!file) {
-    return;
-  }
-  try {
-    await applyImportedRule(await file.text(), "文件");
-  } catch (error) {
-    Toast.error(error instanceof Error ? error.message : "导入失败");
-  } finally {
-    input.value = "";
-  }
-}
+const {
+  closeImportSourceModal,
+  fileInput,
+  handleImportFile,
+  importFromClipboard,
+  importFromFile,
+  importSourceVisible,
+  openImportSourceModal,
+} = useTransferImportSourceFlow({
+  applyImportedContent: applyImportedRule,
+});
 
 function resolveImportedRuleValidationError(importedRule: TransformationRuleEditorDraft) {
   return validateRuleDraft(importedRule);
