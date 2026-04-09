@@ -19,5 +19,13 @@ public class TransformerControllerConfiguration {
         ExtensionClient client) {
         return reconciler.setupWith(new ControllerBuilder(reconciler, client));
     }
-}
 
+    /**
+     * why: 插件主生命周期不该直接拿全局 `Controller` 列表；
+     * 这里显式聚合本插件自己的 controllers，避免未来误启动/误停止其它模块的后台流程。
+     */
+    @Bean
+    TransformerControllers transformerControllers(Controller transformationSnippetDeletionController) {
+        return new TransformerControllers(java.util.List.of(transformationSnippetDeletionController));
+    }
+}

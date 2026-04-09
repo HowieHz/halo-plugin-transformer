@@ -289,6 +289,7 @@ pnpm dev
 - 并发写入优先使用 `metadata.version` 做乐观并发控制，而不是退回 silent last-write-wins
 - 涉及“删除前先清理引用”的资源生命周期，优先使用 `metadata.deletionTimestamp + finalizers`
 - 凡是异步收敛、失败可重试、事件驱动刷新这类后台流程，优先使用 `controller / reconciler / watch`
+- 插件主生命周期只应管理自己显式聚合的 controllers；不要直接注入容器里的全量 `Controller` 列表去统一 start/stop
 - 运行时缓存优先做成“实时规则快照”，由 Halo `watch` 驱动的内存视图来维护，而不是请求路径上的 TTL 回源
 - 控制台读接口优先返回显式 projection / read model，而不是把存储实体直接暴露给 UI
 - 一旦资源进入 deleting 状态，控制台读接口、单项写接口、排序读模型和运行时装载都不应再把它当成“可见资源”；否则 `finalizer` 的最终一致删除会在 UI 上表现成滞后一拍

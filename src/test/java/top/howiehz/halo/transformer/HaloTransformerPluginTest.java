@@ -14,6 +14,7 @@ import run.halo.app.extension.GroupVersionKind;
 import run.halo.app.extension.Scheme;
 import run.halo.app.extension.SchemeManager;
 import run.halo.app.extension.controller.Controller;
+import top.howiehz.halo.transformer.config.TransformerControllers;
 import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
 import top.howiehz.halo.transformer.scheme.ResourceOrder;
 import top.howiehz.halo.transformer.scheme.TransformationRule;
@@ -38,7 +39,11 @@ class HaloTransformerPluginTest {
         when(schemeManager.fetch(GroupVersionKind.fromExtension(ResourceOrder.class)))
             .thenReturn(Optional.empty());
 
-        new HaloTransformerPlugin(schemeManager, ruleRuntimeStore, List.of(controller)).stop();
+        new HaloTransformerPlugin(
+            schemeManager,
+            ruleRuntimeStore,
+            new TransformerControllers(List.of(controller))
+        ).stop();
 
         verify(controller).dispose();
         verify(ruleRuntimeStore).stopWatching();
