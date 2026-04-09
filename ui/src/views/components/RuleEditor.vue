@@ -9,6 +9,10 @@ import type {
 } from "@/types";
 import { MODE_OPTIONS, POSITION_OPTIONS } from "@/types";
 import {
+  resolveEditorEmptyStateMessage,
+  type EditorEmptyStateLayout,
+} from "@/views/composables/editorEmptyState.ts";
+import {
   cloneMatchRule,
   cloneMatchRuleSource,
   getDomRulePerformanceWarning,
@@ -48,6 +52,7 @@ const props = defineProps<{
   snippets: TransformationSnippetReadModel[];
   saving: boolean;
   dirty: boolean;
+  emptyStateLayout?: EditorEmptyStateLayout;
 }>();
 
 const emit = defineEmits<{
@@ -102,6 +107,12 @@ const textFieldInitialValue = ref<Record<"name" | "description", string>>({
   name: "",
   description: "",
 });
+const emptyStateMessage = computed(() =>
+  resolveEditorEmptyStateMessage({
+    layout: props.emptyStateLayout ?? "split-pane",
+    resourceLabel: "规则",
+  }),
+);
 
 function updateDragOverlayHeights() {
   dragOverlayTopHeight.value =
@@ -421,7 +432,7 @@ onBeforeUnmount(() => {
     />
 
     <div v-if="!currentRule" class=":uno: flex flex-1 items-center justify-center">
-      <span class=":uno: text-sm text-gray-500">从左侧选择规则进行编辑</span>
+      <span class=":uno: text-sm text-gray-500">{{ emptyStateMessage }}</span>
     </div>
 
     <form v-else class=":uno: flex min-h-0 flex-1 flex-col" @submit.prevent="emit('save')">

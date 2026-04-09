@@ -29,6 +29,7 @@ import RuleEditor from "./components/RuleEditor.vue";
 import RuleFormModal from "./components/RuleFormModal.vue";
 import SnippetEditor from "./components/SnippetEditor.vue";
 import SnippetFormModal from "./components/SnippetFormModal.vue";
+import type { EditorEmptyStateLayout } from "./composables/editorEmptyState";
 import { matchRuleSummary } from "./composables/matchRule.ts";
 import { hydrateRuleEditorDraft } from "./composables/ruleDraft";
 import { hydrateSnippetEditorDraft } from "./composables/snippetDraft";
@@ -159,6 +160,9 @@ const mobileMainLabel = computed(() =>
     : activeTab.value === "snippets"
       ? "代码片段编辑区"
       : "转换规则编辑区",
+);
+const editorEmptyStateLayout = computed<EditorEmptyStateLayout>(() =>
+  mobileDrawer.isMobileViewport.value ? "compact" : "split-pane",
 );
 
 onMounted(fetchAll);
@@ -1020,6 +1024,7 @@ function jumpToSnippet(id: string) {
               <SnippetEditor
                 v-else-if="activeTab === 'snippets'"
                 :dirty="editDirty"
+                :empty-state-layout="editorEmptyStateLayout"
                 :saving="savingEditor"
                 :snippet="editSnippet"
                 @delete="confirmDeleteSnippet"
@@ -1032,6 +1037,7 @@ function jumpToSnippet(id: string) {
               <RuleEditor
                 v-else
                 :dirty="editDirty"
+                :empty-state-layout="editorEmptyStateLayout"
                 :rule="editRule"
                 :saving="savingEditor"
                 :snippets="snippets"
