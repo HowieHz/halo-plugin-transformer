@@ -7,7 +7,7 @@ import type { TransformationRuleEditorDraft, TransformationRuleReadModel } from 
 import { buildRuleWritePayload } from "./ruleDraft";
 import { validateRuleDraft } from "./ruleValidation";
 import { getErrorMessage } from "./transformerShared";
-import { appendCreatedResourcesInOrder, uniqueStrings } from "./util";
+import { appendCreatedResourcesInOrder } from "./util";
 
 interface UseRuleStateOptions {
   creating: Ref<boolean>;
@@ -28,16 +28,6 @@ interface UseRuleStateOptions {
  * 独立拆出后，规则写语义不再和列表装载、选中态、排序队列挤在同一个 500+ 行模块里。
  */
 export function useRuleState(options: UseRuleStateOptions) {
-  /**
-   * why: 代码片段关联属于写入语义，不应直接复用编辑器里“看起来像已选”的临时状态；
-   * 这里集中收口 REMOVE 等模式差异，保证所有写路径都走同一套规则。
-   */
-  function resolvePersistedSnippetIdsForRule(
-    rule: Pick<TransformationRuleEditorDraft, "position" | "snippetIds">,
-  ) {
-    return rule.position === "REMOVE" ? [] : uniqueStrings(rule.snippetIds);
-  }
-
   const ruleEditorError = computed(() => {
     if (!options.editRule.value) return null;
     return validateRuleDraft(options.editRule.value);
@@ -51,10 +41,7 @@ export function useRuleState(options: UseRuleStateOptions) {
     }
     options.creating.value = true;
     try {
-      const payload = buildRuleWritePayload({
-        ...rule,
-        snippetIds: resolvePersistedSnippetIdsForRule(rule),
-      });
+      const payload = buildRuleWritePayload(rule);
       if (!payload) {
         Toast.error("匹配规则有误，请先修正后再保存");
         return null;
@@ -101,7 +88,6 @@ export function useRuleState(options: UseRuleStateOptions) {
           const payload = buildRuleWritePayload({
             ...rule,
             enabled,
-            snippetIds: resolvePersistedSnippetIdsForRule(rule),
           });
           if (!payload) {
             failures.push("匹配规则有误，请先修正后再保存");
@@ -146,10 +132,7 @@ export function useRuleState(options: UseRuleStateOptions) {
     }
     options.savingEditor.value = true;
     try {
-      const payload = buildRuleWritePayload({
-        ...options.editRule.value,
-        snippetIds: resolvePersistedSnippetIdsForRule(options.editRule.value),
-      });
+      const payload = buildRuleWritePayload(options.editRule.value);
       if (!payload) {
         Toast.error("匹配规则有误，请先修正后再保存");
         return false;

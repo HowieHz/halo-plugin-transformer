@@ -225,6 +225,237 @@ describe("useTransformerData", () => {
     expect(snippetApi.update).not.toHaveBeenCalled();
   });
 
+  // why: `REMOVE` 只在 `SELECTOR` 模式下才代表“删除元素且不再消费代码片段”；
+  // 旧的 UI 状态若残留到 `FOOTER/HEAD`，写链路也必须以统一 payload 语义为准，不能静默抹掉用户重新选回来的 snippetIds。
+  it("preserves snippetIds when saving a non-selector rule with stale remove state", async () => {
+    const activeTab = ref<ActiveTab>("rules");
+    const savedRule = makeRuleEditorDraft({
+      id: "rule-a",
+      metadata: { name: "rule-a", version: 1 },
+      mode: "FOOTER",
+      position: "REMOVE",
+      snippetIds: ["snippet-a"],
+      matchRule: {
+        type: "GROUP",
+        negate: false,
+        operator: "AND",
+        children: [
+          {
+            type: "PATH",
+            negate: false,
+            matcher: "ANT",
+            value: "/**",
+          },
+        ],
+      },
+    });
+    delete (savedRule as { matchRuleSource?: unknown }).matchRuleSource;
+    const savedSnippet = makeSnippetEditorDraft({
+      id: "snippet-a",
+      metadata: { name: "snippet-a" },
+      code: "<div>ok</div>",
+    });
+
+    snippetApi.getSnapshot.mockResolvedValue({ data: snapshotOf([savedSnippet]) });
+    ruleApi.getSnapshot
+      .mockResolvedValueOnce({ data: snapshotOf([savedRule]) })
+      .mockResolvedValueOnce({ data: snapshotOf([savedRule]) });
+    ruleApi.update.mockResolvedValue({ data: savedRule });
+
+    const store = useTransformerData(activeTab);
+    await store.fetchAll();
+    store.selectedRuleId.value = "rule-a";
+    await nextTick();
+
+    await store.saveRule();
+
+    expect(ruleApi.update).toHaveBeenCalledWith(
+      "rule-a",
+      expect.objectContaining({
+        mode: "FOOTER",
+        position: "APPEND",
+        snippetIds: ["snippet-a"],
+      }),
+    );
+  });
+
+  // why: 新建规则也必须复用同一份写模型收敛；
+  // 否则表单看起来允许重新关联 snippet，但提交前会被另一层 helper 偷偷清空。
+  it("preserves snippetIds when adding a non-selector rule with stale remove state", async () => {
+    const activeTab = ref<ActiveTab>("rules");
+    const createdRule = makeRuleEditorDraft({
+      id: "rule-a",
+      metadata: { name: "rule-a", version: 1 },
+      mode: "FOOTER",
+      position: "APPEND",
+      snippetIds: ["snippet-a"],
+      matchRule: {
+        type: "GROUP",
+        negate: false,
+        operator: "AND",
+        children: [
+          {
+            type: "PATH",
+            negate: false,
+            matcher: "ANT",
+            value: "/**",
+          },
+        ],
+      },
+    });
+    delete (createdRule as { matchRuleSource?: unknown }).matchRuleSource;
+    const savedSnippet = makeSnippetEditorDraft({
+      id: "snippet-a",
+      metadata: { name: "snippet-a" },
+      code: "<div>ok</div>",
+    });
+    const draftRule = makeRuleEditorDraft({
+      mode: "FOOTER",
+      position: "REMOVE",
+      snippetIds: ["snippet-a"],
+      matchRule: {
+        type: "GROUP",
+        negate: false,
+        operator: "AND",
+        children: [
+          {
+            type: "PATH",
+            negate: false,
+            matcher: "ANT",
+            value: "/**",
+          },
+        ],
+      },
+      matchRuleSource: {
+        kind: "RULE_TREE",
+        data: {
+          type: "GROUP",
+          negate: false,
+          operator: "AND",
+          children: [
+            {
+              type: "PATH",
+              negate: false,
+              matcher: "ANT",
+              value: "/**",
+            },
+          ],
+        },
+      },
+    });
+
+    snippetApi.getSnapshot.mockResolvedValue({ data: snapshotOf([savedSnippet]) });
+    ruleApi.getSnapshot
+      .mockResolvedValueOnce({ data: snapshotOf([]) })
+      .mockResolvedValueOnce({ data: snapshotOf([createdRule]) });
+    ruleApi.add.mockResolvedValue({ data: createdRule });
+    ruleApi.updateOrder.mockResolvedValue({
+      data: { orders: { "rule-a": 1 }, version: 2 },
+    });
+
+    const store = useTransformerData(activeTab);
+    await store.fetchAll();
+
+    await store.addRule(draftRule);
+
+    expect(ruleApi.add).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: "FOOTER",
+        position: "APPEND",
+        snippetIds: ["snippet-a"],
+      }),
+    );
+  });
+
+  // why: 批量导入走的是另一条写路径，但语义不能分叉；
+  // 同一份草稿导入后也必须保留非 selector 规则重新关联的 snippetIds。
+  it("preserves snippetIds when importing non-selector rules with stale remove state", async () => {
+    const activeTab = ref<ActiveTab>("rules");
+    const savedSnippet = makeSnippetEditorDraft({
+      id: "snippet-a",
+      metadata: { name: "snippet-a" },
+      code: "<div>ok</div>",
+    });
+    const createdRule = makeRuleEditorDraft({
+      id: "rule-a",
+      metadata: { name: "rule-a", version: 1 },
+      mode: "FOOTER",
+      position: "APPEND",
+      snippetIds: ["snippet-a"],
+      matchRule: {
+        type: "GROUP",
+        negate: false,
+        operator: "AND",
+        children: [
+          {
+            type: "PATH",
+            negate: false,
+            matcher: "ANT",
+            value: "/**",
+          },
+        ],
+      },
+    });
+    delete (createdRule as { matchRuleSource?: unknown }).matchRuleSource;
+    const importRule = makeRuleEditorDraft({
+      mode: "FOOTER",
+      position: "REMOVE",
+      snippetIds: ["snippet-a"],
+      matchRule: {
+        type: "GROUP",
+        negate: false,
+        operator: "AND",
+        children: [
+          {
+            type: "PATH",
+            negate: false,
+            matcher: "ANT",
+            value: "/**",
+          },
+        ],
+      },
+      matchRuleSource: {
+        kind: "RULE_TREE",
+        data: {
+          type: "GROUP",
+          negate: false,
+          operator: "AND",
+          children: [
+            {
+              type: "PATH",
+              negate: false,
+              matcher: "ANT",
+              value: "/**",
+            },
+          ],
+        },
+      },
+    });
+
+    snippetApi.getSnapshot.mockResolvedValue({ data: snapshotOf([savedSnippet]) });
+    ruleApi.getSnapshot
+      .mockResolvedValueOnce({ data: snapshotOf([]) })
+      .mockResolvedValueOnce({ data: snapshotOf([createdRule]) });
+    ruleApi.add.mockResolvedValue({ data: createdRule });
+    ruleApi.updateOrder.mockResolvedValue({
+      data: { orders: { "rule-a": 1 }, version: 2 },
+    });
+
+    const store = useTransformerData(activeTab);
+    await store.fetchAll();
+
+    await store.importRules([importRule], true);
+
+    expect(ruleApi.add).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: true,
+        mode: "FOOTER",
+        position: "APPEND",
+        snippetIds: ["snippet-a"],
+      }),
+    );
+  });
+
   // why: 规则保存只应刷新规则上下文；不该再顺手把代码片段列表和代码片段顺序也整页回拉。
   it("refreshes only rules after saving a rule", async () => {
     const activeTab = ref<ActiveTab>("rules");
