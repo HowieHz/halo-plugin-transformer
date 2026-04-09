@@ -261,6 +261,7 @@ class TransformationRuleValidatorTest {
         rule.setMode(TransformationRule.Mode.SELECTOR);
         rule.setMatch("main");
         rule.setPosition(TransformationRule.Position.REMOVE);
+        setSnippetIdsDirectly(rule, java.util.Set.of());
         setWrapMarkerDirectly(rule, true);
 
         TransformationRuleValidationException error = assertThrows(
@@ -269,6 +270,23 @@ class TransformationRuleValidatorTest {
         );
 
         assertEquals("wrapMarker：REMOVE 模式下无需输出注释标记", error.getReason());
+    }
+
+    // why: HEAD/FOOTER 规则切出 selector 后，旧的 REMOVE 状态不应再绕过 snippet 约束；
+    // 否则历史 UI 状态会把非 selector 规则静默保存成空操作。
+    @Test
+    void shouldRequireSnippetIdsForNonSelectorRulesEvenWhenPositionIsRemove() {
+        TransformationRule rule = makeRule();
+        rule.setMode(TransformationRule.Mode.FOOTER);
+        rule.setPosition(TransformationRule.Position.REMOVE);
+        setSnippetIdsDirectly(rule, java.util.Set.of());
+
+        TransformationRuleValidationException error = assertThrows(
+            TransformationRuleValidationException.class,
+            () -> validator.validateForWrite(rule).block()
+        );
+
+        assertEquals("snippetIds：请至少关联一个代码片段", error.getReason());
     }
 
     // why: runtimeOrder 是同阶段运行优先级契约；负数会破坏“值越小越靠前”的非负范围约定，必须在写入期拒绝。
@@ -333,6 +351,7 @@ class TransformationRuleValidatorTest {
     private TransformationRule makeRule() {
         TransformationRule rule = new TransformationRule();
         rule.setMatchRule(MatchRule.defaultRule());
+        rule.setSnippetIds(new java.util.LinkedHashSet<>(java.util.Set.of("snippet-a")));
         return rule;
     }
 
@@ -395,4 +414,3 @@ class TransformationRuleValidatorTest {
         }
     }
 }
-

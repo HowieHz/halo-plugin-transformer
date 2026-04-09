@@ -232,6 +232,7 @@ describe("useTransformerData", () => {
       id: "rule-a",
       metadata: { name: "rule-a", version: 1 },
       name: "Rule A",
+      snippetIds: ["snippet-a"],
       matchRule: {
         type: "GROUP",
         negate: false,
@@ -309,8 +310,9 @@ describe("useTransformerData", () => {
     expect(ruleApi.getOrder).toHaveBeenCalledTimes(1);
   });
 
-  // why: snippet 删除和 rule 引用清理是最终一致；在后端完成收敛前，前端编辑器也不应继续回传已失效的 snippet id。
-  it("prunes missing snippet ids from the rule editor selection state", async () => {
+  // why: snippet 删除和 rule 引用清理是最终一致；当前端发现 rule draft 里的 snippet 已不存在时，
+  // 应先把坏 id 剪掉，并阻止用户把“非 REMOVE 且无 snippet”的空操作规则继续保存出去。
+  it("prunes missing snippet ids and blocks saving until the rule is re-linked", async () => {
     const activeTab = ref<ActiveTab>("rules");
     const savedRule = makeRuleEditorDraft({
       id: "rule-a",
@@ -347,14 +349,11 @@ describe("useTransformerData", () => {
 
     expect(store.editRule.value?.snippetIds).toEqual([]);
 
-    await store.saveRule();
+    const saved = await store.saveRule();
 
-    expect(ruleApi.update).toHaveBeenCalledWith(
-      "rule-a",
-      expect.objectContaining({
-        snippetIds: [],
-      }),
-    );
+    expect(saved).toBe(false);
+    expect(ruleApi.update).not.toHaveBeenCalled();
+    expect(store.ruleEditorError.value).toBe("请至少关联一个代码片段");
   });
 
   // why: 删除一个资源后，页面上两侧列表和关联面板都可能受影响；删除路径应刷新整页资源快照，而不是只刷当前标签页。

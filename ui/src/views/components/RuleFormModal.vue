@@ -9,6 +9,7 @@ import {
   POSITION_OPTIONS,
 } from "@/types";
 import { getDomRulePerformanceWarning } from "@/views/composables/matchRule";
+import { getRuleCapabilities } from "@/views/composables/ruleCapabilities";
 import { validateRuleDraft } from "@/views/composables/ruleValidation";
 import { updateSelectByWheel } from "@/views/composables/selectWheel.ts";
 import { useRuleCreateDraft } from "@/views/composables/useRuleCreateDraft";
@@ -39,9 +40,10 @@ function reset() {
   createDraft.reset();
 }
 
-const needsTarget = computed(() => createDraft.draft.value.mode === "SELECTOR");
-const needsSnippets = computed(() => createDraft.draft.value.position !== "REMOVE");
-const needsWrapMarker = computed(() => createDraft.draft.value.position !== "REMOVE");
+const ruleCapabilities = computed(() => getRuleCapabilities(createDraft.draft.value));
+const needsTarget = computed(() => ruleCapabilities.value.showsTargetField);
+const needsSnippets = computed(() => ruleCapabilities.value.requiresSnippets);
+const needsWrapMarker = computed(() => ruleCapabilities.value.allowsWrapMarker);
 const matchFieldError = computed(() => {
   if (!needsTarget.value) {
     return null;

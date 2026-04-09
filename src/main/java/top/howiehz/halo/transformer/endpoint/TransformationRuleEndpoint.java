@@ -199,7 +199,7 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
                 if (!enabled) {
                     return Mono.just(rule);
                 }
-                rule.setMatchRule(MatchRule.canonicalizeForStorage(rule.getMatchRule()));
+                canonicalizeRuleForStorage(rule);
                 return validator.validateForWrite(rule)
                     .flatMap(ignored -> normalizeAndValidateSnippetReferences(rule));
             })
@@ -242,6 +242,7 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
      */
     private TransformationRule canonicalizeRuleForStorage(TransformationRule rule) {
         rule.setMatchRule(MatchRule.canonicalizeForStorage(rule.getMatchRule()));
+        rule.canonicalizeModeSpecificFieldsForStorage();
         return rule;
     }
 

@@ -14,6 +14,7 @@ import {
   getDomRulePerformanceWarning,
   makeRuleTreeSource,
 } from "@/views/composables/matchRule";
+import { getRuleCapabilities } from "@/views/composables/ruleCapabilities";
 import {
   buildRuleUndoBaselineSnapshot,
   resolveRuleUndoFieldCurrentValue,
@@ -73,9 +74,12 @@ const dragOverlayBottomHeight = ref(52 + RULE_EDITOR_EDGE_OVERLAP_PX);
 const autoScroll = useDragAutoScroll(editorScrollContainer);
 let dragOverlayResizeObserver: ResizeObserver | null = null;
 
-const needsTarget = computed(() => currentRule.value?.mode === "SELECTOR");
-const needsSnippets = computed(() => currentRule.value?.position !== "REMOVE");
-const needsWrapMarker = computed(() => currentRule.value?.position !== "REMOVE");
+const ruleCapabilities = computed(() =>
+  currentRule.value ? getRuleCapabilities(currentRule.value) : null,
+);
+const needsTarget = computed(() => ruleCapabilities.value?.showsTargetField ?? false);
+const needsSnippets = computed(() => ruleCapabilities.value?.requiresSnippets ?? false);
+const needsWrapMarker = computed(() => ruleCapabilities.value?.allowsWrapMarker ?? false);
 const matchDraft = ref("");
 const matchInitialValue = ref("");
 const matchFieldError = computed(() => {

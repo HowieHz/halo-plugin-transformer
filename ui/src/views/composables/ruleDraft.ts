@@ -6,6 +6,7 @@ import type {
 import { RUNTIME_ORDER_DEFAULT } from "@/types";
 
 import { normalizeMatchRule, resolveRuleMatchRule, makeRuleTreeSource } from "./matchRule";
+import { normalizeRuleWriteFields } from "./ruleCapabilities";
 
 /**
  * why: 规则读模型进入编辑器前，需要显式补齐规则树与来源状态；
@@ -48,9 +49,7 @@ export function buildRuleWritePayload(
   if (!result.rule) {
     return null;
   }
-
-  const normalizedSnippetIds = rule.position === "REMOVE" ? [] : [...rule.snippetIds];
-  const normalizedWrapMarker = rule.position === "REMOVE" ? false : rule.wrapMarker;
+  const normalizedFields = normalizeRuleWriteFields(rule);
 
   return {
     apiVersion: rule.apiVersion,
@@ -60,11 +59,11 @@ export function buildRuleWritePayload(
     description: rule.description,
     enabled: rule.enabled,
     mode: rule.mode,
-    match: rule.match.trim(),
+    match: normalizedFields.match,
     matchRule: result.rule,
-    position: rule.position,
-    wrapMarker: normalizedWrapMarker,
+    position: normalizedFields.position,
+    wrapMarker: normalizedFields.wrapMarker,
     runtimeOrder: rule.runtimeOrder,
-    snippetIds: normalizedSnippetIds,
+    snippetIds: normalizedFields.snippetIds,
   };
 }

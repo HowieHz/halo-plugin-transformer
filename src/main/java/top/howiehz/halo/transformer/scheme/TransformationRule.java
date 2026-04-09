@@ -62,6 +62,32 @@ public class TransformationRule extends AbstractExtension implements ITransforma
     }
 
     /**
+     * why: `position` 只属于 `SELECTOR` 规则的 DOM 操作语义；
+     * 一旦切到 `HEAD/FOOTER`，旧的 selector-only 字段就不应继续污染持久化结果。
+     */
+    public void canonicalizeModeSpecificFieldsForStorage() {
+        if (!Mode.SELECTOR.equals(getMode())) {
+            match = "";
+            position = Position.APPEND;
+        }
+
+        if (isSelectorRemove()) {
+            snippetIds = new LinkedHashSet<>();
+            wrapMarker = false;
+            return;
+        }
+
+        if (snippetIds == null) {
+            snippetIds = new LinkedHashSet<>();
+        }
+    }
+
+    @JsonIgnore
+    public boolean isSelectorRemove() {
+        return Mode.SELECTOR.equals(getMode()) && Position.REMOVE.equals(getPosition());
+    }
+
+    /**
      * why: 开发版虽然已删除独立 `ID` 模式，但已有存量规则仍可能带着旧值启动插件；
      * 这里在读取期把旧 `ID` 自动迁成 `SELECTOR`，并继续触发 `match` 的 `#id` 兼容改写。
      */

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -129,5 +130,47 @@ class TransformationRuleTest {
 
         assertEquals("rule-a", rule.getId());
         assertTrue(rule.isValid());
+    }
+
+    // why: `position` 只属于 selector DOM 语义；切到 HEAD/FOOTER 后，旧的 REMOVE 状态不应再继续清空其它持久化字段。
+    @Test
+    void shouldCanonicalizeNonSelectorRulesWithoutLosingSnippetsOrWrapMarker() {
+        TransformationRule rule = new TransformationRule();
+        Metadata metadata = new Metadata();
+        metadata.setName("rule-a");
+        rule.setMetadata(metadata);
+        rule.setMode(TransformationRule.Mode.FOOTER);
+        rule.setPosition(TransformationRule.Position.REMOVE);
+        rule.setWrapMarker(true);
+        rule.setMatch("#main");
+        rule.setSnippetIds(new LinkedHashSet<>(List.of("snippet-a")));
+
+        rule.canonicalizeModeSpecificFieldsForStorage();
+
+        assertEquals("", rule.getMatch());
+        assertEquals(TransformationRule.Position.APPEND, rule.getPosition());
+        assertTrue(rule.getWrapMarker());
+        assertEquals(new LinkedHashSet<>(List.of("snippet-a")), rule.getSnippetIds());
+    }
+
+    // why: selector remove 是唯一允许“无 snippet、无注释标记”的规则形态；
+    // 持久化前应把这组字段显式收敛，避免运行时继续消费无意义配置。
+    @Test
+    void shouldCanonicalizeSelectorRemoveRulesToDeleteOnlySemantics() {
+        TransformationRule rule = new TransformationRule();
+        Metadata metadata = new Metadata();
+        metadata.setName("rule-a");
+        rule.setMetadata(metadata);
+        rule.setMode(TransformationRule.Mode.SELECTOR);
+        rule.setPosition(TransformationRule.Position.REMOVE);
+        rule.setWrapMarker(true);
+        rule.setMatch("#main");
+        rule.setSnippetIds(new LinkedHashSet<>(List.of("snippet-a")));
+
+        rule.canonicalizeModeSpecificFieldsForStorage();
+
+        assertEquals(TransformationRule.Position.REMOVE, rule.getPosition());
+        assertFalse(rule.getWrapMarker());
+        assertEquals(new LinkedHashSet<>(), rule.getSnippetIds());
     }
 }

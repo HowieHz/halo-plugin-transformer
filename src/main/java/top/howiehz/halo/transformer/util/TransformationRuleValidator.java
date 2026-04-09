@@ -43,14 +43,18 @@ public class TransformationRuleValidator {
                 return Mono.error(
                     new TransformationRuleValidationException("runtimeOrder：不能小于 0"));
             }
-            if (TransformationRule.Position.REMOVE.equals(rule.getPosition())
+            if ((rule.getSnippetIds() == null || rule.getSnippetIds().isEmpty())
+                && !rule.isSelectorRemove()) {
+                return Mono.error(new TransformationRuleValidationException(
+                    "snippetIds：请至少关联一个代码片段"));
+            }
+            if (rule.isSelectorRemove()
                 && rule.getSnippetIds() != null
                 && !rule.getSnippetIds().isEmpty()) {
                 return Mono.error(new TransformationRuleValidationException(
                     "snippetIds：REMOVE 模式下无需关联代码片段"));
             }
-            if (TransformationRule.Position.REMOVE.equals(rule.getPosition())
-                && rule.getWrapMarker()) {
+            if (rule.isSelectorRemove() && rule.getWrapMarker()) {
                 return Mono.error(new TransformationRuleValidationException(
                     "wrapMarker：REMOVE 模式下无需输出注释标记"));
             }
@@ -60,4 +64,3 @@ public class TransformationRuleValidator {
         }
     }
 }
-
