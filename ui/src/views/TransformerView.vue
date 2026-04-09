@@ -23,6 +23,7 @@ import BulkOperationPanel from "./components/BulkOperationPanel.vue";
 import DragAutoScrollOverlay from "./components/DragAutoScrollOverlay.vue";
 import ExportContentModal from "./components/ExportContentModal.vue";
 import ImportSourceModal from "./components/ImportSourceModal.vue";
+import MobileDrawerPanel from "./components/MobileDrawerPanel.vue";
 import RelationPanel from "./components/RelationPanel.vue";
 import ResourceList from "./components/ResourceList.vue";
 import RuleEditor from "./components/RuleEditor.vue";
@@ -60,7 +61,7 @@ import {
 } from "./composables/useCreateSessionState";
 import { useDragAutoScroll } from "./composables/useDragAutoScroll";
 import { useLeaveConfirmation } from "./composables/useLeaveConfirmation";
-import { useMobileDrawerState } from "./composables/useMobileDrawerState";
+import { useMobileDrawerState, type MobileDrawerSide } from "./composables/useMobileDrawerState";
 import { useTransformerData } from "./composables/useTransformerData.ts";
 import { rulePreview } from "./composables/util.ts";
 
@@ -87,6 +88,12 @@ const LEFT_PANE_EDGE_OVERLAP_PX = 5;
 const tabGroupId = useId();
 const mobileLeftDrawerId = `transformer-mobile-left-${tabGroupId}`;
 const mobileRightDrawerId = `transformer-mobile-right-${tabGroupId}`;
+const mobileLeftDrawerTitleId = `transformer-mobile-left-title-${tabGroupId}`;
+const mobileRightDrawerTitleId = `transformer-mobile-right-title-${tabGroupId}`;
+const mobileLeftDrawerDescriptionId = `transformer-mobile-left-description-${tabGroupId}`;
+const mobileRightDrawerDescriptionId = `transformer-mobile-right-description-${tabGroupId}`;
+const mobileLeftDrawerToggleId = `transformer-mobile-left-toggle-${tabGroupId}`;
+const mobileRightDrawerToggleId = `transformer-mobile-right-toggle-${tabGroupId}`;
 const TAB_DEFINITIONS = [
   { key: "snippets", label: "代码片段" },
   { key: "rules", label: "转换规则" },
@@ -181,6 +188,18 @@ function focusTabButton(tab: ActiveTab) {
   document.getElementById(tabButtonId(tab))?.focus();
 }
 
+function drawerToggleButtonId(side: MobileDrawerSide) {
+  return side === "left" ? mobileLeftDrawerToggleId : mobileRightDrawerToggleId;
+}
+
+function focusDrawerToggleButton(side: MobileDrawerSide) {
+  document.getElementById(drawerToggleButtonId(side))?.focus();
+}
+
+function closeMobileDrawer() {
+  mobileDrawer.closeDrawer();
+}
+
 function handleLeftPaneDragOver(event: DragEvent) {
   leftPaneAutoScroll.handleContainerDragOver(event, {
     topZoneHeight: 48 + LEFT_PANE_EDGE_OVERLAP_PX,
@@ -195,6 +214,28 @@ function handleLeftPaneDragLeave(event: DragEvent) {
 function handleLeftPaneDropCapture() {
   resourceListRef.value?.commitPendingDrop();
 }
+
+watch(
+  () => ({
+    activeDrawer: mobileDrawer.activeDrawer.value,
+    isCompact: mobileDrawer.isMobileViewport.value,
+  }),
+  (nextState, previousState) => {
+    if (
+      !previousState ||
+      previousState.activeDrawer === "none" ||
+      !nextState.isCompact ||
+      nextState.activeDrawer !== "none"
+    ) {
+      return;
+    }
+
+    const previousActiveDrawer: MobileDrawerSide = previousState.activeDrawer;
+    nextTick(() => {
+      focusDrawerToggleButton(previousActiveDrawer);
+    });
+  },
+);
 
 function currentSelectedId(tab: ActiveTab) {
   return resolveVisibleTransformerSelection(
@@ -855,8 +896,11 @@ function jumpToSnippet(id: string) {
         <div class="transformer-workspace :uno: relative h-full">
           <div class="mobile-drawer-toolbar">
             <VButton
+              :id="mobileLeftDrawerToggleId"
               :aria-controls="mobileLeftDrawerId"
               :aria-expanded="mobileDrawer.showLeftDrawer.value"
+              :aria-haspopup="mobileDrawer.isMobileViewport.value ? 'dialog' : undefined"
+              :aria-label="`${mobileDrawer.showLeftDrawer.value ? '关闭' : '打开'}${mobileLeftDrawerLabel}`"
               size="sm"
               type="secondary"
               @click="mobileDrawer.toggleDrawer('left')"
@@ -865,8 +909,11 @@ function jumpToSnippet(id: string) {
             </VButton>
             <span class="mobile-drawer-toolbar-title">{{ mobileMainLabel }}</span>
             <VButton
+              :id="mobileRightDrawerToggleId"
               :aria-controls="mobileRightDrawerId"
               :aria-expanded="mobileDrawer.showRightDrawer.value"
+              :aria-haspopup="mobileDrawer.isMobileViewport.value ? 'dialog' : undefined"
+              :aria-label="`${mobileDrawer.showRightDrawer.value ? '关闭' : '打开'}${mobileRightDrawerLabel}`"
               size="sm"
               type="secondary"
               @click="mobileDrawer.toggleDrawer('right')"
@@ -878,26 +925,28 @@ function jumpToSnippet(id: string) {
           <div class="transformer-layout :uno: flex h-full divide-x divide-gray-100">
             <button
               v-if="mobileDrawer.backdropVisible.value"
-              aria-label="关闭侧边栏"
+              aria-label="关闭当前侧边栏"
               class="mobile-drawer-backdrop"
               type="button"
-              @click="mobileDrawer.closeDrawer()"
+              @click="closeMobileDrawer()"
             />
 
-            <div
-              :id="mobileLeftDrawerId"
-              :aria-hidden="
-                mobileDrawer.isMobileViewport.value ? !mobileDrawer.showLeftDrawer.value : undefined
-              "
-              :class="{ 'mobile-drawer-open': mobileDrawer.showLeftDrawer.value }"
-              class=":uno: aside left-aside relative flex h-full flex-none flex-col overflow-hidden"
+            <MobileDrawerPanel
+              :compact="mobileDrawer.isMobileViewport.value"
+              :description-id="mobileLeftDrawerDescriptionId"
+              :drawer-id="mobileLeftDrawerId"
+              :open="mobileDrawer.showLeftDrawer.value"
+              side="left"
+              :title="mobileLeftDrawerLabel"
+              :title-id="mobileLeftDrawerTitleId"
+              @close="closeMobileDrawer"
               @dragover.capture="handleLeftPaneDragOver"
               @dragleave.capture="handleLeftPaneDragLeave"
               @drop.capture="handleLeftPaneDropCapture"
             >
               <div class="mobile-drawer-header">
                 <span>{{ mobileLeftDrawerLabel }}</span>
-                <button type="button" @click="mobileDrawer.closeDrawer()">关闭</button>
+                <button type="button" @click="closeMobileDrawer()">关闭</button>
               </div>
               <div
                 aria-label="资源类型"
@@ -1004,7 +1053,7 @@ function jumpToSnippet(id: string) {
                   {{ activeTab === "snippets" ? "新建代码片段" : "新建转换规则" }}
                 </VButton>
               </div>
-            </div>
+            </MobileDrawerPanel>
 
             <div class=":uno: main flex h-full flex-none flex-col overflow-hidden">
               <BulkOperationPanel
@@ -1050,19 +1099,19 @@ function jumpToSnippet(id: string) {
               />
             </div>
 
-            <div
-              :id="mobileRightDrawerId"
-              :aria-hidden="
-                mobileDrawer.isMobileViewport.value
-                  ? !mobileDrawer.showRightDrawer.value
-                  : undefined
-              "
-              :class="{ 'mobile-drawer-open': mobileDrawer.showRightDrawer.value }"
-              class=":uno: aside right-aside flex h-full flex-none flex-col overflow-hidden"
+            <MobileDrawerPanel
+              :compact="mobileDrawer.isMobileViewport.value"
+              :description-id="mobileRightDrawerDescriptionId"
+              :drawer-id="mobileRightDrawerId"
+              :open="mobileDrawer.showRightDrawer.value"
+              side="right"
+              :title="mobileRightDrawerLabel"
+              :title-id="mobileRightDrawerTitleId"
+              @close="closeMobileDrawer"
             >
               <div class="mobile-drawer-header">
                 <span>{{ mobileRightDrawerLabel }}</span>
-                <button type="button" @click="mobileDrawer.closeDrawer()">关闭</button>
+                <button type="button" @click="closeMobileDrawer()">关闭</button>
               </div>
               <BulkModeSidePanel
                 v-if="bulkSelectionState.isBulkMode.value"
@@ -1085,7 +1134,7 @@ function jumpToSnippet(id: string) {
                 aria-hidden="true"
                 class="transformer-mobile-pane-footer transformer-mobile-pane-footer-spacer :uno: border-t bg-white"
               />
-            </div>
+            </MobileDrawerPanel>
           </div>
         </div>
       </VCard>

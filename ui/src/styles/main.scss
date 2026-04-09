@@ -1,5 +1,6 @@
 $aside-width: 20%;
 $main-width: 60%;
+$compact-layout-breakpoint: 1250px;
 
 #transformer-view {
   /**
@@ -96,7 +97,9 @@ $main-width: 60%;
   white-space: pre-line;
 }
 
-@media (width < 1250px) {
+// why: `1250px` 是控制台三栏切换到窄宽度抽屉布局的统一断点；
+// 变更这里时，要同步更新 useMobileDrawerState.ts 和 README 中的布局说明。
+@media (width < $compact-layout-breakpoint) {
   #transformer-view {
     .transformer-workspace {
       overflow: hidden;

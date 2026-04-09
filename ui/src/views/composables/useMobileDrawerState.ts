@@ -2,6 +2,8 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 
 export type MobileDrawerSide = "left" | "right";
 export type MobileDrawerState = MobileDrawerSide | "none";
+export const COMPACT_LAYOUT_BREAKPOINT_PX = 1250;
+export const COMPACT_LAYOUT_MEDIA_QUERY = `(width < ${COMPACT_LAYOUT_BREAKPOINT_PX}px)`;
 
 export function createMobileDrawerController() {
   const isMobileViewport = ref(false);
@@ -62,7 +64,12 @@ export function useMobileDrawerState() {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
       return;
     }
-    mediaQueryList = window.matchMedia("(width < 1250px)");
+    /**
+     * why: `1250px` 是控制台三栏切窄布局的统一断点。
+     * 这里和样式层必须保持同一条规则，否则会出现 JS 已按抽屉逻辑运行，
+     * 但 CSS 仍停留在桌面三栏，或者反过来的布局撕裂。
+     */
+    mediaQueryList = window.matchMedia(COMPACT_LAYOUT_MEDIA_QUERY);
     controller.syncViewport(mediaQueryList.matches);
 
     handleChange = (event) => {

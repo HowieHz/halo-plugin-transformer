@@ -1,8 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import { createMobileDrawerController } from "../useMobileDrawerState";
+import {
+  COMPACT_LAYOUT_BREAKPOINT_PX,
+  COMPACT_LAYOUT_MEDIA_QUERY,
+  createMobileDrawerController,
+} from "../useMobileDrawerState";
 
 describe("createMobileDrawerController", () => {
+  // why: CSS 和 JS 共用同一条窄宽度断点，避免抽屉状态和媒体查询进入不同布局分支。
+  it("documents the compact layout breakpoint as 1250px", () => {
+    expect(COMPACT_LAYOUT_BREAKPOINT_PX).toBe(1250);
+    expect(COMPACT_LAYOUT_MEDIA_QUERY).toBe("(width < 1250px)");
+  });
+
   // why: 移动端左右栏必须共用一份抽屉状态；
   // 否则很容易又退回成两颗布尔并存，出现左右栏同时打开的隐式组合态。
   it("keeps a single active drawer on mobile", () => {
