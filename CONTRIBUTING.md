@@ -90,7 +90,7 @@ pnpm dev
 - 中间编辑器与右侧关系面板在当前标签页（tab）下都必须从同一份活动编辑草稿（`EditorDraft`）派生；不能让“右侧关系”偷偷回退到已保存内容列表（saved list），变成左边看到的是当前草稿，右边看到的却是已保存内容，前后对不上
 - `bulk / create` 只会隐藏当前可见选中项（visible selection），不会顺手清掉之前记住的选中项（remembered selection）；退出这些页面语义后应能回到该标签页（tab）上次打开的资源
 - 新建弹窗用单一当前活动标签（`ActiveTab | null`）表达状态，不再维护两颗互斥布尔；避免出现代码片段 / 规则弹窗同时为真，或者两边都没收好口的隐式组合态
-- 多步流程弹窗（例如批量导入）用单一流程状态（flow-state）对象表达 `source/options/result`，不要再并列维护多颗“是否显示 / 结果 / 进行中”状态去手动拼阶段
+- 多步流程弹窗（例如批量导入）用单一流程状态对象（flow-state）表达 `source/options/result`，不要再并列维护多颗“是否显示 / 结果 / 进行中”状态去手动拼阶段
 - 路由意图（route intent）只改当前标签页（tab）的页面语义；不要让 `mode=bulk`、`action=create` 这类 URL 状态顺手清掉另一个标签页里之前记住的选中项（remembered selection）
 
 ### 配置页交互语义
@@ -160,22 +160,22 @@ pnpm dev
 这一块必须把“规范文件、生成文件、校验结果”一起对齐。
 
 - `pnpm generate:spec-artifacts`
-    - 从仓库根的 `specs/match-rule/contract.spec.jsonc` 刷新生成文件（generated artifacts）
+    - 从仓库根的 `specs/match-rule/contract.spec.jsonc` 刷新生成文件
 - `pnpm verify:spec-artifacts`
-    - 只校验生成文件（generated artifacts）是否与规范（spec）一致
+    - 只校验生成文件是否与规范（spec）一致
 - `./gradlew verifyMatchRuleSpecArtifacts`
     - 后端构建链路上的同义校验，避免只跑 Gradle 时漏掉规范（spec）一致性检查
 
 ### JSON 结构约束（JSON Schema）
 
 - `ui/public/generated/transformer.schema.json`
-    - 负责导入导出的外层结构（transfer envelope）
+    - 负责导入导出的外层结构
     - 描述顶层 `version`、`resourceType`、`data`
 - `ui/public/generated/match-rule.schema.json`
     - 从 `specs/match-rule/contract.spec.jsonc` 生成
     - 负责 `match-rule` 领域结构
 - `ui/public/generated/transformer.schema.json`
-    - 通过 `$ref` 引用 `match-rule` 生成后的结构约束（Schema），而不是在外层结构（envelope）里手写一遍规则树结构
+    - 通过 `$ref` 引用 `match-rule` 生成后的结构约束（Schema），而不是在导入导出的外层结构里手写一遍规则树结构
 
 ## 导入 / 导出协议
 
@@ -189,7 +189,7 @@ pnpm dev
 - 不包含 `metadata` 系统态
 - 转换规则不导出 / 导入 `snippetIds`
 - 导出的 JSON 自动带上 `$schema`
-- 外层 envelope 使用 `version`、`resourceType`、`data`
+- 最外层固定使用 `version`、`resourceType`、`data`
 
 ### 资源类型（`resourceType`）
 
@@ -318,17 +318,17 @@ pnpm dev
 
 这样做的好处不是“显得高级”，而是后面更稳、更容易维护，也更不容易偷偷长出第二套状态和补丁逻辑。
 
-- 并发写入优先使用 `metadata.version` 做乐观并发控制，而不是退回“静默的最后一次写入生效”（silent last-write-wins）
+- 并发写入优先使用 `metadata.version` 做乐观并发控制，而不是退回“静默地以最后一次写入为准”（silent last-write-wins）
 - 涉及“删除前先清理引用”的资源生命周期，优先使用 `metadata.deletionTimestamp + finalizers`（删除时间戳 + 终结器）
 - 凡是异步收敛、失败可重试、事件驱动刷新这类后台流程，优先使用 `controller / reconciler / watch`（控制器 / 协调器 / 监听）
 - 插件主生命周期只应管理自己显式聚合的控制器（controllers）；不要直接注入容器里的全量 `Controller` 列表去统一 start/stop
 - 运行时缓存优先做成“运行时内存快照”，由 Halo `watch`（监听）驱动维护，而不是在请求进来时再按 TTL 回源重查
 - 控制台读接口优先返回明确的响应模型（read model），而不是把存储实体原样暴露给前端界面（UI）
-- 一旦资源进入 deleting（删除中）状态，控制台读接口、单项写接口、排序读模型和运行时装载都不应再把它当成“可见资源”；否则 `finalizer`（终结器）的最终一致删除会在前端界面（UI）上表现成滞后一拍
+- 一旦资源进入“删除中”（deleting）状态，控制台读接口、单项写接口、排序读模型和运行时装载都不应再把它当成“可见资源”；否则 `finalizer`（终结器）的最终一致删除会在前端界面（UI）上表现成滞后一拍
 - 运行时执行链路优先消费独立的运行时模型，而不是把 extension（扩展资源）存储实体继续直接传给过滤器 / 处理器（`filter / processor`）
 - 资源查询遵循平台模型：能 `fetch(name)`（按名称直接取）就不用 `list + filter(name)`（先列全表再过滤）；能 `fieldQuery`（字段查询）就不做全量扫描
 - `annotations / labels`（注解 / 标签）只用于轻量元信息、兼容标记与索引辅助，不承载结构化业务状态，也不替代独立资源建模
-- 业务语义校验仍由插件自己负责，例如 `unknownFields`（未知字段）、`match-rule` 合同（contract）、导入导出约束；这些属于插件领域规则，不属于 Halo 通用扩展层职责
+- 业务语义校验仍由插件自己负责，例如 `unknownFields`（未知字段）、`match-rule` 约束、导入导出约束；这些属于插件领域规则，不属于 Halo 通用扩展层职责
 
 ### 当前运行时收敛链路
 
@@ -343,9 +343,9 @@ pnpm dev
 - 插件启动时第一次预热是独立职责，不能和 `watch` 是否连上绑死；即使 `watch` 暂时连不上，也要先把已保存的规则 / 代码片段装进快照
 - 请求处理时只从内存快照读取规则与代码片段；规则匹配后不再逐个代码片段（snippet）回源 `fetch`
 - 若 `CSS 选择器` 规则还不能先按页面路径缩小范围，插件仍会继续工作，但会带来额外处理开销
-- 删除代码片段走 Halo `finalizer`（终结器）生命周期：先进入 deleting（删除中）状态，再由后端协调器摘掉规则引用，最后完成真正删除
-- 进入 deleting（删除中）的代码片段会被视为“当前无法关联”，运行时也不会再继续加载它
-- 同时，控制台列表读模型、单项读写接口、排序清理和运行时快照也必须过滤 deleting（删除中）资源；这不是某个页面的小修补，而是 `finalizer` 生命周期在读写两侧都要遵守的一条一致性约束
+- 删除代码片段走 Halo `finalizer`（终结器）生命周期：先进入“删除中”（deleting）状态，再由后端协调器摘掉规则引用，最后完成真正删除
+- 进入“删除中”（deleting）的代码片段会被视为“当前无法关联”，运行时也不会再继续加载它
+- 同时，控制台列表读模型、单项读写接口、排序清理和运行时快照也必须过滤“删除中”（deleting）资源；这不是某个页面的小修补，而是 `finalizer` 生命周期在读写两侧都要遵守的一条一致性约束
 
 ## 排序与并发语义
 
@@ -391,7 +391,7 @@ pnpm dev
 现在的删除链路是“最终一致”，不是“一次请求里把所有相关资源同时原子改完”。
 
 - 删除代码片段当前走 Halo `finalizer + reconciler`（终结器 + 协调器）生命周期
-- 删除请求本身只负责把 `TransformationSnippet` 送入 deleting（删除中）状态
+- 删除请求本身只负责把 `TransformationSnippet` 送入“删除中”（deleting）状态
 - 后端协调器随后摘掉所有引用它的 `TransformationRule.snippetIds`
 - 全部清理完成后，才移除 finalizer，交还 Halo 完成真正删除
 

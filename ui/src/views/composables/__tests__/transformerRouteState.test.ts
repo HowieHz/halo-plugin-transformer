@@ -112,7 +112,7 @@ describe("transformerRouteState", () => {
     ).toBe(false);
   });
 
-  // why: 记住的选中项（remembered selection）是标签页内的恢复锚点；
+  // why: 记住的选中项是标签页内的恢复锚点；
   // create / bulk 只改变当前页面语义，不该把这份记忆态顺手清空。
   it("preserves remembered selection for create and bulk route states", () => {
     expect(
@@ -153,7 +153,7 @@ describe("transformerRouteState", () => {
   });
 
   // why: UI 需要在 create / bulk 里隐藏列表高亮，
-  // 但这只是“可见选中态”收起，不代表记住的选中项（remembered selection）被删除。
+  // 但这只是“可见选中态”收起，不代表记住的选中项被删除。
   it("hides visible selection for create and bulk states", () => {
     expect(
       resolveVisibleTransformerSelection(
