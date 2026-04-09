@@ -78,7 +78,7 @@ const ruleCapabilities = computed(() =>
   currentRule.value ? getRuleCapabilities(currentRule.value) : null,
 );
 const needsTarget = computed(() => ruleCapabilities.value?.showsTargetField ?? false);
-const needsSnippets = computed(() => ruleCapabilities.value?.requiresSnippets ?? false);
+const needsSnippets = computed(() => ruleCapabilities.value?.showsSnippetPicker ?? false);
 const needsWrapMarker = computed(() => ruleCapabilities.value?.allowsWrapMarker ?? false);
 const matchDraft = ref("");
 const matchInitialValue = ref("");

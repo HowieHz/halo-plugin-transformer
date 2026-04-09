@@ -43,11 +43,6 @@ public class TransformationRuleValidator {
                 return Mono.error(
                     new TransformationRuleValidationException("runtimeOrder：不能小于 0"));
             }
-            if ((rule.getSnippetIds() == null || rule.getSnippetIds().isEmpty())
-                && !rule.isSelectorRemove()) {
-                return Mono.error(new TransformationRuleValidationException(
-                    "snippetIds：请至少关联一个代码片段"));
-            }
             if (rule.isSelectorRemove()
                 && rule.getSnippetIds() != null
                 && !rule.getSnippetIds().isEmpty()) {

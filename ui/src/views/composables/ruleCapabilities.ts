@@ -7,7 +7,7 @@ export interface RuleCapabilities {
   isSelectorRemove: boolean;
   showsTargetField: boolean;
   showsPositionField: boolean;
-  requiresSnippets: boolean;
+  showsSnippetPicker: boolean;
   allowsWrapMarker: boolean;
 }
 
@@ -24,7 +24,7 @@ export function getRuleCapabilities(rule: RuleSemanticFields): RuleCapabilities 
     isSelectorRemove,
     showsTargetField: isSelectorMode,
     showsPositionField: isSelectorMode,
-    requiresSnippets: !isSelectorRemove,
+    showsSnippetPicker: !isSelectorRemove,
     allowsWrapMarker: !isSelectorRemove,
   };
 }
@@ -41,7 +41,7 @@ export function normalizeRuleWriteFields(
   return {
     match: capabilities.isSelectorMode ? rule.match.trim() : "",
     position: capabilities.showsPositionField ? rule.position : "APPEND",
-    snippetIds: capabilities.requiresSnippets ? [...rule.snippetIds] : [],
+    snippetIds: capabilities.showsSnippetPicker ? [...rule.snippetIds] : [],
     wrapMarker: capabilities.allowsWrapMarker ? rule.wrapMarker : false,
   };
 }

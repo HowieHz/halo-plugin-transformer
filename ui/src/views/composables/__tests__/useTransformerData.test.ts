@@ -311,8 +311,8 @@ describe("useTransformerData", () => {
   });
 
   // why: snippet 删除和 rule 引用清理是最终一致；当前端发现 rule draft 里的 snippet 已不存在时，
-  // 应先把坏 id 剪掉，并阻止用户把“非 REMOVE 且无 snippet”的空操作规则继续保存出去。
-  it("prunes missing snippet ids and blocks saving until the rule is re-linked", async () => {
+  // 应先把坏 id 剪掉，但空关联本身仍是合法草稿态，不应阻止规则继续保存。
+  it("prunes missing snippet ids and saves the rule with an empty association set", async () => {
     const activeTab = ref<ActiveTab>("rules");
     const savedRule = makeRuleEditorDraft({
       id: "rule-a",
@@ -351,9 +351,13 @@ describe("useTransformerData", () => {
 
     const saved = await store.saveRule();
 
-    expect(saved).toBe(false);
-    expect(ruleApi.update).not.toHaveBeenCalled();
-    expect(store.ruleEditorError.value).toBe("请至少关联一个代码片段");
+    expect(saved).toBe(true);
+    expect(ruleApi.update).toHaveBeenCalledWith(
+      "rule-a",
+      expect.objectContaining({
+        snippetIds: [],
+      }),
+    );
   });
 
   // why: 删除一个资源后，页面上两侧列表和关联面板都可能受影响；删除路径应刷新整页资源快照，而不是只刷当前标签页。

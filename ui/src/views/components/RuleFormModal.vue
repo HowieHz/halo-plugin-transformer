@@ -42,7 +42,7 @@ function reset() {
 
 const ruleCapabilities = computed(() => getRuleCapabilities(createDraft.draft.value));
 const needsTarget = computed(() => ruleCapabilities.value.showsTargetField);
-const needsSnippets = computed(() => ruleCapabilities.value.requiresSnippets);
+const needsSnippets = computed(() => ruleCapabilities.value.showsSnippetPicker);
 const needsWrapMarker = computed(() => ruleCapabilities.value.allowsWrapMarker);
 const matchFieldError = computed(() => {
   if (!needsTarget.value) {

@@ -272,13 +272,13 @@ pnpm dev
     - 目标匹配
         - `CSS 选择器` 模式下，匹配内容不能为空
         - `position` 只属于 `CSS 选择器` 规则的 DOM 操作语义；切到 `<head>` / `<footer>` 后，不会再继续继承旧的 `REMOVE` 语义去清空 `snippetIds` 或关闭 `wrapMarker`
+        - 非 `REMOVE` 规则允许先不关联代码片段，作为可继续编辑的草稿态；只有 `CSS 选择器 + REMOVE` 会显式清空 `snippetIds` 并关闭 `wrapMarker`
     - 匹配规则结构
         - 根节点是否为 `GROUP`
         - 是否出现不支持的字段名
         - 条件组是否为空组
         - `type`、`negate`、`operator`、`matcher`、`value` 等结构字段是否缺失或不合法
     - 字段取值
-        - 非 `REMOVE` 规则必须至少关联 1 个代码片段
         - 匹配方式（`matcher`）是否与节点类型匹配
         - 匹配内容（`value`）是否为空
         - `REGEX` 是否可正常编译

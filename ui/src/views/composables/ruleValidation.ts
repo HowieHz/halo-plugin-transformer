@@ -13,9 +13,6 @@ export function validateRuleDraft(rule: TransformationRuleEditorDraft): string |
   if (capabilities.showsTargetField && !rule.match.trim()) {
     return "请填写匹配内容";
   }
-  if (capabilities.requiresSnippets && rule.snippetIds.length === 0) {
-    return "请至少关联一个代码片段";
-  }
   const result = resolveRuleMatchRule(rule);
   if (result.error) {
     return `匹配规则有误：${formatMatchRuleError(result.error)}`;
