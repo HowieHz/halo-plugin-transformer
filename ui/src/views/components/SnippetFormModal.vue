@@ -4,6 +4,7 @@ import { computed, nextTick, onMounted, ref } from "vue";
 
 import type { TransformationSnippetEditorDraft } from "@/types";
 import { makeSnippetEditorDraft } from "@/types";
+import { validateSnippetDraft } from "@/views/composables/snippetValidation";
 import { parseSnippetTransfer } from "@/views/composables/transfer";
 
 import BaseFormModal from "./BaseFormModal.vue";
@@ -60,8 +61,9 @@ function closeImportSourceModal() {
 
 async function applyImportedSnippet(raw: string, sourceLabel: "剪贴板" | "文件") {
   snippet.value = parseSnippetTransfer(raw);
-  if (!snippet.value.code.trim()) {
-    Toast.warning(`已从${sourceLabel}导入代码片段 JSON，但当前内容仍有错误：代码内容不能为空`);
+  const validationError = validateSnippetDraft(snippet.value);
+  if (validationError) {
+    Toast.warning(`已从${sourceLabel}导入代码片段 JSON，但当前内容仍有错误：${validationError}`);
   } else {
     Toast.success(`已从${sourceLabel}导入代码片段 JSON`);
   }
@@ -102,7 +104,7 @@ async function handleImportFile(event: Event) {
   }
 }
 
-const validationError = computed(() => codeFieldError.value);
+const validationError = computed(() => validateSnippetDraft(snippet.value));
 const dirty = computed(() => {
   return (
     snippet.value.enabled !== initialSnippet.enabled ||

@@ -64,6 +64,7 @@ pnpm dev
 - 不承载 `id`、排序、系统 metadata
 - 规则 transfer 不承载 `snippetIds`
 - 跨环境关系迁移如果以后要支持，应单独设计显式协议，而不是把关系字段偷偷塞回当前 transfer
+- create / edit / import 三条写路径必须复用同一份前端 validator；不要让弹窗、右侧编辑器和导入提示各自复制校验条件
 
 ### 控制台状态模型
 

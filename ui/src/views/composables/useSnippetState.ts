@@ -5,6 +5,7 @@ import { snippetApi } from "@/apis";
 import type { TransformationSnippetEditorDraft, TransformationSnippetReadModel } from "@/types";
 
 import { buildSnippetWritePayload } from "./snippetDraft";
+import { validateSnippetDraft } from "./snippetValidation";
 import { getErrorMessage } from "./transformerShared";
 import { appendCreatedResourcesInOrder } from "./util";
 
@@ -284,11 +285,4 @@ export function useSnippetState(options: UseSnippetStateOptions) {
     confirmDeleteSnippet,
     confirmDeleteSnippets,
   };
-}
-
-function validateSnippetDraft(snippet: Pick<TransformationSnippetEditorDraft, "code">) {
-  if (!snippet.code.trim()) {
-    return "代码内容不能为空";
-  }
-  return null;
 }

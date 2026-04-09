@@ -4,8 +4,8 @@ import { computed, type ComputedRef, type Ref } from "vue";
 import { ruleApi } from "@/apis";
 import type { TransformationRuleEditorDraft, TransformationRuleReadModel } from "@/types";
 
-import { formatMatchRuleError, isValidMatchRule, resolveRuleMatchRule } from "./matchRule";
 import { buildRuleWritePayload } from "./ruleDraft";
+import { validateRuleDraft } from "./ruleValidation";
 import { getErrorMessage } from "./transformerShared";
 import { appendCreatedResourcesInOrder, uniqueStrings } from "./util";
 
@@ -36,24 +36,6 @@ export function useRuleState(options: UseRuleStateOptions) {
     rule: Pick<TransformationRuleEditorDraft, "position" | "snippetIds">,
   ) {
     return rule.position === "REMOVE" ? [] : uniqueStrings(rule.snippetIds);
-  }
-
-  /**
-   * why: 前端先做一层用户可读的快速校验，把大部分编辑态错误拦在保存前；
-   * 后端仍会复核，但这里要尽量把错误定位成用户能直接修的提示。
-   */
-  function validateRuleDraft(rule: TransformationRuleEditorDraft): string | null {
-    if (rule.mode === "SELECTOR" && !rule.match.trim()) {
-      return "请填写匹配内容";
-    }
-    const result = resolveRuleMatchRule(rule);
-    if (result.error) {
-      return `匹配规则有误：${formatMatchRuleError(result.error)}`;
-    }
-    if (!isValidMatchRule(result.rule)) {
-      return "请完善匹配规则";
-    }
-    return null;
   }
 
   const ruleEditorError = computed(() => {

@@ -9,12 +9,8 @@ import {
   MODE_OPTIONS,
   POSITION_OPTIONS,
 } from "@/types";
-import {
-  formatMatchRuleError,
-  getDomRulePerformanceWarning,
-  isValidMatchRule,
-  resolveRuleMatchRule,
-} from "@/views/composables/matchRule";
+import { getDomRulePerformanceWarning } from "@/views/composables/matchRule";
+import { validateRuleDraft } from "@/views/composables/ruleValidation";
 import { updateSelectByWheel } from "@/views/composables/selectWheel.ts";
 import { parseRuleTransfer } from "@/views/composables/transfer.ts";
 
@@ -125,17 +121,7 @@ async function handleImportFile(event: Event) {
 }
 
 function resolveImportedRuleValidationError(importedRule: TransformationRuleEditorDraft) {
-  if (importedRule.mode === "SELECTOR" && !importedRule.match.trim()) {
-    return "请填写匹配内容";
-  }
-  const result = resolveRuleMatchRule(importedRule);
-  if (result.error) {
-    return `匹配规则有误：${formatMatchRuleError(result.error)}`;
-  }
-  if (!isValidMatchRule(result.rule)) {
-    return "请完善匹配规则";
-  }
-  return null;
+  return validateRuleDraft(importedRule);
 }
 
 const validationError = computed(() => {
