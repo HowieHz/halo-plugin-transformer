@@ -53,6 +53,10 @@ import {
   type BulkImportPayload,
 } from "./composables/useBulkImportFlowState";
 import { useBulkSelectionState } from "./composables/useBulkSelectionState";
+import {
+  useCreateSessionState,
+  type CreateFormController,
+} from "./composables/useCreateSessionState";
 import { useDragAutoScroll } from "./composables/useDragAutoScroll";
 import { useLeaveConfirmation } from "./composables/useLeaveConfirmation";
 import { useMobileDrawerState } from "./composables/useMobileDrawerState";
@@ -63,24 +67,15 @@ const activeTab = ref<ActiveTab>("snippets");
 const route = useRoute();
 const router = useRouter();
 
-const createModalTab = ref<ActiveTab | null>(null);
 const syncingQuery = ref(false);
 const queryStateHydrated = ref(false);
 const bulkExportFallback = ref<TransferFileDraft | null>(null);
 const bulkImportFileInput = ref<HTMLInputElement | null>(null);
 const bulkImportFlow = useBulkImportFlowState();
-const snippetFormRef = ref<{
-  reset: () => void;
-  hasUnsavedChanges: () => boolean;
-  getValidationError: () => string | null;
-  getSubmitPayload: () => { snippet: TransformationSnippetEditorDraft };
-} | null>(null);
-const ruleFormRef = ref<{
-  reset: () => void;
-  hasUnsavedChanges: () => boolean;
-  getValidationError: () => string | null;
-  getSubmitPayload: () => { rule: TransformationRuleEditorDraft };
-} | null>(null);
+const snippetFormRef = ref<CreateFormController<{
+  snippet: TransformationSnippetEditorDraft;
+}> | null>(null);
+const ruleFormRef = ref<CreateFormController<{ rule: TransformationRuleEditorDraft }> | null>(null);
 const resourceListRef = ref<{
   getScrollContainer: () => HTMLElement | null;
   commitPendingDrop: () => void;
@@ -96,6 +91,11 @@ const TAB_DEFINITIONS = [
   { key: "rules", label: "转换规则" },
 ] as const satisfies ReadonlyArray<{ key: ActiveTab; label: string }>;
 const mobileDrawer = useMobileDrawerState();
+const createSession = useCreateSessionState({
+  snippetFormRef,
+  ruleFormRef,
+});
+const { createModalTab } = createSession;
 
 const {
   loading,
@@ -317,29 +317,19 @@ function validateSelection() {
 function openCreateModal(tab: ActiveTab) {
   activeTab.value = tab;
   bulkSelectionState.exitBulkMode();
-  createModalTab.value = tab;
+  createSession.open(tab);
 }
 
 function closeSnippetModal() {
-  if (createModalTab.value === "snippets") {
-    createModalTab.value = null;
-  }
+  createSession.close("snippets");
 }
 
 function closeRuleModal() {
-  if (createModalTab.value === "rules") {
-    createModalTab.value = null;
-  }
-}
-
-function currentCreateController() {
-  if (createModalTab.value === "snippets") return snippetFormRef.value;
-  if (createModalTab.value === "rules") return ruleFormRef.value;
-  return null;
+  createSession.close("rules");
 }
 
 function hasUnsavedCreateChanges() {
-  return currentCreateController()?.hasUnsavedChanges() ?? false;
+  return createSession.hasUnsavedChanges();
 }
 
 function hasUnsavedEditorChanges() {
@@ -351,22 +341,15 @@ function hasUnsavedChanges() {
 }
 
 function currentValidationError() {
-  if (createModalTab.value === "snippets") {
-    return snippetFormRef.value?.getValidationError() ?? null;
-  }
-  if (createModalTab.value === "rules") {
-    return ruleFormRef.value?.getValidationError() ?? null;
+  if (createModalTab.value) {
+    return createSession.getValidationError();
   }
   return activeTab.value === "snippets" ? snippetEditorError.value : ruleEditorError.value;
 }
 
 function discardCurrentChanges() {
-  if (createModalTab.value === "snippets") {
-    snippetFormRef.value?.reset();
-    return;
-  }
-  if (createModalTab.value === "rules") {
-    ruleFormRef.value?.reset();
+  if (createModalTab.value) {
+    createSession.discardCurrentSession();
     return;
   }
   if (activeTab.value === "snippets") {
@@ -386,13 +369,13 @@ async function saveCurrentChanges() {
     const payload = snippetFormRef.value?.getSubmitPayload();
     saved = payload ? !!(await addSnippet(payload.snippet)) : false;
     if (saved) {
-      createModalTab.value = null;
+      createSession.close("snippets");
     }
   } else if (createModalTab.value === "rules") {
     const payload = ruleFormRef.value?.getSubmitPayload();
     saved = payload ? !!(await addRule(payload.rule)) : false;
     if (saved) {
-      createModalTab.value = null;
+      createSession.close("rules");
     }
   } else {
     saved = activeTab.value === "snippets" ? await saveSnippet() : await saveRule();
@@ -419,11 +402,7 @@ const {
 });
 
 function resetCreateForm(tab: ActiveTab) {
-  if (tab === "snippets") {
-    snippetFormRef.value?.reset();
-    return;
-  }
-  ruleFormRef.value?.reset();
+  createSession.resetForm(tab);
 }
 
 function keepCreatingCreatedResource() {
@@ -441,11 +420,11 @@ function focusCreatedResource() {
   }
   resetCreateForm(prompt.tab);
   if (prompt.tab === "snippets") {
-    createModalTab.value = null;
+    createSession.close("snippets");
     activeTab.value = "snippets";
     selectedSnippetId.value = prompt.id;
   } else {
-    createModalTab.value = null;
+    createSession.close("rules");
     activeTab.value = "rules";
     selectedRuleId.value = prompt.id;
   }
@@ -457,6 +436,7 @@ function handleTabSwitch(tab: ActiveTab) {
     return;
   }
   requestEditorLeave(() => {
+    createSession.close();
     activeTab.value = tab;
     mobileDrawer.closeDrawer();
   });
@@ -500,6 +480,7 @@ function handleSnippetSelect(id: string) {
     return;
   }
   requestEditorLeave(() => {
+    createSession.close();
     selectedSnippetId.value = id;
     mobileDrawer.closeDrawer();
   });
@@ -510,6 +491,7 @@ function handleRuleSelect(id: string) {
     return;
   }
   requestEditorLeave(() => {
+    createSession.close();
     selectedRuleId.value = id;
     mobileDrawer.closeDrawer();
   });
@@ -524,7 +506,7 @@ function handleOpenCreateModal(tab: ActiveTab) {
 
 function enterBulkMode() {
   requestEditorLeave(() => {
-    createModalTab.value = null;
+    createSession.close();
     bulkSelectionState.enterBulkMode();
     mobileDrawer.closeDrawer();
   });
@@ -736,7 +718,7 @@ async function handleAddRule(...args: Parameters<typeof addRule>) {
 function jumpToRule(id: string) {
   requestEditorLeave(() => {
     activeTab.value = "rules";
-    createModalTab.value = null;
+    createSession.close();
     selectedRuleId.value = id;
     mobileDrawer.closeDrawer();
   });
@@ -745,7 +727,7 @@ function jumpToRule(id: string) {
 function jumpToSnippet(id: string) {
   requestEditorLeave(() => {
     activeTab.value = "snippets";
-    createModalTab.value = null;
+    createSession.close();
     selectedSnippetId.value = id;
     mobileDrawer.closeDrawer();
   });
