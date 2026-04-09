@@ -14,7 +14,7 @@ import {
 } from "../transfer";
 
 describe("parseRuleTransfer", () => {
-  // why: 规则导入也应像代码片段一样围绕统一 baseline 补默认值；
+  // why: 规则导入也应像代码片段一样围绕统一默认草稿（baseline）补默认值；
   // 否则导入恢复语义会因为资源类型不同而分裂成两套规则。
   it("fills missing rule fields with editor defaults during import", () => {
     const raw = JSON.stringify({
@@ -555,7 +555,7 @@ describe("batch transfer", () => {
     expect(rules[0].matchRuleSource).toMatchObject({ kind: "JSON_DRAFT" });
   });
 
-  // why: 规则批量导入也应和单条规则导入共享同一份 baseline；
+  // why: 规则批量导入也应和单条规则导入共享同一份默认草稿（baseline）；
   // 这样“可补默认值”的字段不会因为放进数组里就突然变成必填。
   it("fills missing rule fields with defaults in batches", () => {
     const raw = JSON.stringify({

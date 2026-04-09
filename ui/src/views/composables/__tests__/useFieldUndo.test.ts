@@ -18,7 +18,7 @@ describe("useFieldUndo", () => {
     expect(undo.undo("name", "rule-b")).toBe("rule-a");
   });
 
-  // why: 长按按钮依赖 reset() 直接回到 baseline，
+  // why: 长按按钮依赖 reset() 直接回到默认快照（baseline），
   // 这里锁住“清空字段历史并恢复初始值”的职责边界。
   it("resets a field back to baseline", () => {
     const undo = useFieldUndo();
