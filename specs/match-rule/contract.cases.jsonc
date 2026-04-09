@@ -1,4 +1,4 @@
-// why: 这是前后端共享的 `match-rule` contract cases。
+// 这是前后端共享的 `match-rule` contract cases。
 // Java 与 TypeScript 都必须对这批样例跑一致性测试。
 {
     "version": 4,

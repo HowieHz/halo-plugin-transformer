@@ -1,12 +1,12 @@
-# Generated Files
+# 自动生成文件
 
-This directory stores generated TypeScript contract helpers.
+这个目录存放自动生成的 TypeScript 契约 helper。
 
-- Do not edit files in this directory by hand.
-- Update the authoritative spec or generator instead.
-- Regenerate files with `pnpm generate:spec-artifacts` from the repository root.
+- 不要手动修改这个目录下的文件。
+- 如需调整，请修改权威 spec 或生成器。
+- 修改后请在仓库根目录执行 `pnpm generate:spec-artifacts` 重新生成。
 
-Why:
+为什么这样做：
 
-- generated helpers give the UI the same allowed fields, enum values, and messages as the backend
-- keeping them isolated from hand-written composables makes ownership explicit and avoids silent contract drift
+- 这些 helper 让 UI 和后端共享同一份允许字段、枚举值与错误消息
+- 把它们和手写 composable 隔离开，可以明确归属并避免契约悄悄漂移

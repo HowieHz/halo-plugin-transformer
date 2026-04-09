@@ -1,12 +1,7 @@
-# Generated Files
+# 自动生成文件
 
-This directory stores generated JSON schema artifacts.
+这个目录存放自动生成的 JSON Schema 产物。
 
-- Do not edit files in this directory by hand.
-- Update the authoritative spec or generator instead.
-- Regenerate files with `pnpm generate:spec-artifacts` from the repository root.
-
-Why:
-
-- schema artifacts must stay byte-for-byte aligned with the shared contract spec
-- treating these files as generated prevents formatter or manual edits from becoming a second source of truth
+- 不要手动修改这个目录下的文件。
+- 如需调整，请修改权威 spec 或生成器。
+- 修改后请在仓库根目录执行 `pnpm generate:spec-artifacts` 重新生成。
