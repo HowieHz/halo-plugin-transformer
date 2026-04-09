@@ -18,7 +18,6 @@ describe("useBulkSelectionState", () => {
       rules,
     });
 
-    state.enterBulkMode();
     state.toggleCurrentBulkItem("snippet-a");
 
     activeTab.value = "rules";
@@ -40,7 +39,6 @@ describe("useBulkSelectionState", () => {
       rules: computed(() => ruleItems.value),
     });
 
-    state.enterBulkMode();
     state.replaceCurrentBulkSelection(["snippet-a", "snippet-b"]);
 
     snippetItems.value = [{ id: "snippet-b" }];

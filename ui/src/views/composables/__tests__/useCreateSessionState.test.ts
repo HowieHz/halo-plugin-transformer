@@ -20,7 +20,9 @@ describe("useCreateSessionState", () => {
   it("discards the current create session by resetting and closing it", () => {
     const snippetForm = makeFormController();
     const ruleForm = makeFormController();
+    const createModalTab = ref<ActiveTab | null>(null);
     const state = useCreateSessionState({
+      createModalTab,
       snippetFormRef: ref(snippetForm),
       ruleFormRef: ref(ruleForm),
     });
@@ -36,7 +38,9 @@ describe("useCreateSessionState", () => {
   // why: create session 的 authoritative source 只有 `createModalTab`；
   // 切走当前上下文时应统一关闭，而不是让旧 tab 的 create 语义继续泄漏到新页面语义中。
   it("closes the active create session regardless of the next view target", () => {
+    const createModalTab = ref<ActiveTab | null>(null);
     const state = useCreateSessionState({
+      createModalTab,
       snippetFormRef: ref(makeFormController()),
       ruleFormRef: ref(makeFormController()),
     });
@@ -50,7 +54,9 @@ describe("useCreateSessionState", () => {
   it("reads validation and dirty state from the active session only", () => {
     const snippetForm = makeFormController();
     const ruleForm = makeFormController();
+    const createModalTab = ref<ActiveTab | null>(null);
     const state = useCreateSessionState({
+      createModalTab,
       snippetFormRef: ref(snippetForm),
       ruleFormRef: ref(ruleForm),
     });

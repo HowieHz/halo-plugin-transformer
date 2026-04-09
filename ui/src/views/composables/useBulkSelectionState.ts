@@ -4,8 +4,6 @@ import type { ActiveTab } from "@/types";
 
 import { uniqueStrings } from "./util";
 
-export type TransformerViewMode = "single" | "bulk";
-
 interface BulkSelectableResource {
   id: string;
 }
@@ -17,11 +15,10 @@ interface UseBulkSelectionStateOptions {
 }
 
 /**
- * why: 批量模式和批量选中态需要独立于“当前单个编辑对象”存在，
- * 否则会把单资源编辑 URL、草稿、批量勾选三套语义揉成一团。
+ * why: 按 tab 隔离的批量勾选集不该再顺带承担“当前页面是不是 bulk 模式”；
+ * 把 mode 留给页面 session controller，选择集这里只负责被选中了哪些资源。
  */
 export function useBulkSelectionState(options: UseBulkSelectionStateOptions) {
-  const viewMode = ref<TransformerViewMode>("single");
   const bulkSnippetIds = ref<string[]>([]);
   const bulkRuleIds = ref<string[]>([]);
 
@@ -30,7 +27,6 @@ export function useBulkSelectionState(options: UseBulkSelectionStateOptions) {
   );
 
   const currentBulkSelectionCount = computed(() => currentBulkIds.value.length);
-  const isBulkMode = computed(() => viewMode.value === "bulk");
   const allCurrentSelected = computed(() => {
     const resourceIds = resolveResourceIds(options.activeTab.value);
     return resourceIds.length > 0 && resourceIds.every((id) => currentBulkIds.value.includes(id));
@@ -38,14 +34,6 @@ export function useBulkSelectionState(options: UseBulkSelectionStateOptions) {
   const someCurrentSelected = computed(
     () => currentBulkSelectionCount.value > 0 && !allCurrentSelected.value,
   );
-
-  function enterBulkMode() {
-    viewMode.value = "bulk";
-  }
-
-  function exitBulkMode() {
-    viewMode.value = "single";
-  }
 
   function clearCurrentBulkSelection() {
     replaceCurrentBulkSelection([]);
@@ -111,16 +99,12 @@ export function useBulkSelectionState(options: UseBulkSelectionStateOptions) {
   watch(options.rules, () => pruneSelection("rules"));
 
   return {
-    viewMode,
-    isBulkMode,
     bulkSnippetIds,
     bulkRuleIds,
     currentBulkIds,
     currentBulkSelectionCount,
     allCurrentSelected,
     someCurrentSelected,
-    enterBulkMode,
-    exitBulkMode,
     clearCurrentBulkSelection,
     replaceCurrentBulkSelection,
     appendCurrentBulkSelection,

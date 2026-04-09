@@ -43,12 +43,9 @@ import {
   type TransferFileDraft,
 } from "./composables/transfer";
 import {
-  applyTransformerRouteSelection,
   buildTransformerRouteQuery,
   isSameTransformerRouteState,
   parseTransformerRouteState,
-  resolveVisibleTransformerSelection,
-  type TransformerRouteState,
 } from "./composables/transformerRouteState";
 import {
   useBulkImportFlowState,
@@ -63,6 +60,10 @@ import { useDragAutoScroll } from "./composables/useDragAutoScroll";
 import { useLeaveConfirmation } from "./composables/useLeaveConfirmation";
 import { useMobileDrawerState, type MobileDrawerSide } from "./composables/useMobileDrawerState";
 import { useTransformerData } from "./composables/useTransformerData.ts";
+import {
+  useTransformerViewSessionState,
+  type TransformerPageMode,
+} from "./composables/useTransformerViewSessionState";
 import { rulePreview } from "./composables/util.ts";
 
 const activeTab = ref<ActiveTab>("snippets");
@@ -74,6 +75,7 @@ const queryStateHydrated = ref(false);
 const bulkExportFallback = ref<TransferFileDraft | null>(null);
 const bulkImportFileInput = ref<HTMLInputElement | null>(null);
 const bulkImportFlow = useBulkImportFlowState();
+const transformerViewMode = ref<TransformerPageMode>("single");
 const snippetFormRef = ref<CreateFormController<{
   snippet: TransformationSnippetEditorDraft;
 }> | null>(null);
@@ -99,11 +101,6 @@ const TAB_DEFINITIONS = [
   { key: "rules", label: "转换规则" },
 ] as const satisfies ReadonlyArray<{ key: ActiveTab; label: string }>;
 const mobileDrawer = useMobileDrawerState();
-const createSession = useCreateSessionState({
-  snippetFormRef,
-  ruleFormRef,
-});
-const { createModalTab } = createSession;
 
 const {
   loading,
@@ -142,6 +139,18 @@ const {
   reorderRule,
 } = useTransformerData(activeTab);
 
+const viewSession = useTransformerViewSessionState({
+  activeTab,
+  selectedSnippetId,
+  selectedRuleId,
+  viewMode: transformerViewMode,
+});
+const { createModalTab, isBulkMode } = viewSession;
+const createSession = useCreateSessionState({
+  createModalTab,
+  snippetFormRef,
+  ruleFormRef,
+});
 const bulkSelectionState = useBulkSelectionState({
   activeTab,
   snippets,
@@ -158,11 +167,9 @@ const selectedBulkResources = computed(() => {
 const canBulkEnable = computed(() => selectedBulkResources.value.some((item) => !item.enabled));
 const canBulkDisable = computed(() => selectedBulkResources.value.some((item) => item.enabled));
 const mobileLeftDrawerLabel = computed(() => "选择列表");
-const mobileRightDrawerLabel = computed(() =>
-  bulkSelectionState.isBulkMode.value ? "批量信息" : "关联关系",
-);
+const mobileRightDrawerLabel = computed(() => (isBulkMode.value ? "批量信息" : "关联关系"));
 const mobileMainLabel = computed(() =>
-  bulkSelectionState.isBulkMode.value
+  isBulkMode.value
     ? "批量操作"
     : activeTab.value === "snippets"
       ? "代码片段编辑区"
@@ -238,66 +245,20 @@ watch(
 );
 
 function currentSelectedId(tab: ActiveTab) {
-  return resolveVisibleTransformerSelection(
-    {
-      action: currentAction(tab),
-      viewMode: bulkSelectionState.isBulkMode.value ? "bulk" : "single",
-    },
-    tab === "snippets" ? selectedSnippetId.value : selectedRuleId.value,
-  );
+  return viewSession.currentSelectedId(tab);
 }
 
-function currentAction(tab: ActiveTab) {
-  if (bulkSelectionState.isBulkMode.value) return null;
-  if (createModalTab.value === tab) return "create";
-  return null;
-}
-
-function currentLocalRouteState(): TransformerRouteState {
-  return {
-    tab: activeTab.value,
-    selectedId: currentSelectedId(activeTab.value),
-    action: currentAction(activeTab.value),
-    viewMode: bulkSelectionState.isBulkMode.value ? "bulk" : "single",
-  };
-}
-
-function applyRouteState(nextState: TransformerRouteState) {
-  activeTab.value = nextState.tab;
-  createModalTab.value =
-    nextState.viewMode !== "bulk" && nextState.action === "create" ? nextState.tab : null;
-
-  const nextSelection = applyTransformerRouteSelection(
-    {
-      snippets: selectedSnippetId.value,
-      rules: selectedRuleId.value,
-    },
-    nextState,
-  );
-  selectedSnippetId.value = nextSelection.snippets;
-  selectedRuleId.value = nextSelection.rules;
-
-  if (nextState.viewMode === "bulk") {
-    bulkSelectionState.enterBulkMode();
-    queryStateHydrated.value = true;
-    return;
-  }
-
-  bulkSelectionState.exitBulkMode();
-
-  if (nextState.action === "create") {
-    queryStateHydrated.value = true;
-    return;
-  }
+function applyRouteState() {
+  viewSession.applyRouteState(parseTransformerRouteState(route.query));
   queryStateHydrated.value = true;
 }
 
 function applyQueryState() {
-  applyRouteState(parseTransformerRouteState(route.query));
+  applyRouteState();
 }
 
 function syncQueryState() {
-  const nextState = currentLocalRouteState();
+  const nextState = viewSession.currentRouteState();
   const currentState = parseTransformerRouteState(route.query);
 
   if (isSameTransformerRouteState(currentState, nextState)) {
@@ -326,7 +287,7 @@ onBeforeRouteUpdate((to) => {
   }
 
   const nextState = parseTransformerRouteState(to.query);
-  if (isSameTransformerRouteState(currentLocalRouteState(), nextState)) {
+  if (isSameTransformerRouteState(viewSession.currentRouteState(), nextState)) {
     return true;
   }
   return requestNavigationLeave();
@@ -358,17 +319,15 @@ function validateSelection() {
 }
 
 function openCreateModal(tab: ActiveTab) {
-  activeTab.value = tab;
-  bulkSelectionState.exitBulkMode();
-  createSession.open(tab);
+  viewSession.openCreate(tab);
 }
 
 function closeSnippetModal() {
-  createSession.close("snippets");
+  viewSession.closeCreate("snippets");
 }
 
 function closeRuleModal() {
-  createSession.close("rules");
+  viewSession.closeCreate("rules");
 }
 
 function hasUnsavedCreateChanges() {
@@ -462,15 +421,7 @@ function focusCreatedResource() {
     return;
   }
   resetCreateForm(prompt.tab);
-  if (prompt.tab === "snippets") {
-    createSession.close("snippets");
-    activeTab.value = "snippets";
-    selectedSnippetId.value = prompt.id;
-  } else {
-    createSession.close("rules");
-    activeTab.value = "rules";
-    selectedRuleId.value = prompt.id;
-  }
+  viewSession.selectResource(prompt.tab, prompt.id);
   closePostCreatePrompt();
 }
 
@@ -479,8 +430,7 @@ function handleTabSwitch(tab: ActiveTab) {
     return;
   }
   requestEditorLeave(() => {
-    createSession.close();
-    activeTab.value = tab;
+    viewSession.switchTab(tab);
   });
 }
 
@@ -518,23 +468,29 @@ function handleTabKeydown(event: KeyboardEvent, currentTab: ActiveTab) {
 }
 
 function handleSnippetSelect(id: string) {
-  if (activeTab.value === "snippets" && selectedSnippetId.value === id) {
+  if (
+    activeTab.value === "snippets" &&
+    createModalTab.value !== "snippets" &&
+    selectedSnippetId.value === id
+  ) {
     return;
   }
   requestEditorLeave(() => {
-    createSession.close();
-    selectedSnippetId.value = id;
+    viewSession.selectResource("snippets", id);
     mobileDrawer.closeDrawer();
   });
 }
 
 function handleRuleSelect(id: string) {
-  if (activeTab.value === "rules" && selectedRuleId.value === id) {
+  if (
+    activeTab.value === "rules" &&
+    createModalTab.value !== "rules" &&
+    selectedRuleId.value === id
+  ) {
     return;
   }
   requestEditorLeave(() => {
-    createSession.close();
-    selectedRuleId.value = id;
+    viewSession.selectResource("rules", id);
     mobileDrawer.closeDrawer();
   });
 }
@@ -548,14 +504,13 @@ function handleOpenCreateModal(tab: ActiveTab) {
 
 function enterBulkMode() {
   requestEditorLeave(() => {
-    createSession.close();
-    bulkSelectionState.enterBulkMode();
+    viewSession.enterBulkMode();
     mobileDrawer.closeDrawer();
   });
 }
 
 function exitBulkMode() {
-  bulkSelectionState.exitBulkMode();
+  viewSession.exitBulkMode();
   mobileDrawer.closeDrawer();
 }
 
@@ -713,13 +668,10 @@ watch(
   { immediate: true },
 );
 
-watch(
-  [activeTab, selectedSnippetId, selectedRuleId, createModalTab, bulkSelectionState.viewMode],
-  () => {
-    if (!queryStateHydrated.value || syncingQuery.value) return;
-    syncQueryState();
-  },
-);
+watch([activeTab, selectedSnippetId, selectedRuleId, transformerViewMode], () => {
+  if (!queryStateHydrated.value || syncingQuery.value) return;
+  syncQueryState();
+});
 
 watch([snippets, rules], () => {
   validateSelection();
@@ -738,7 +690,7 @@ watch(activeTab, async (tab) => {
 async function handleAddSnippet(...args: Parameters<typeof addSnippet>) {
   const id = await addSnippet(...args);
   if (id) {
-    if (bulkSelectionState.isBulkMode.value) {
+    if (isBulkMode.value) {
       bulkSelectionState.appendCurrentBulkSelection([id]);
       return;
     }
@@ -749,7 +701,7 @@ async function handleAddSnippet(...args: Parameters<typeof addSnippet>) {
 async function handleAddRule(...args: Parameters<typeof addRule>) {
   const id = await addRule(...args);
   if (id) {
-    if (bulkSelectionState.isBulkMode.value) {
+    if (isBulkMode.value) {
       bulkSelectionState.appendCurrentBulkSelection([id]);
       return;
     }
@@ -759,18 +711,14 @@ async function handleAddRule(...args: Parameters<typeof addRule>) {
 
 function jumpToRule(id: string) {
   requestEditorLeave(() => {
-    activeTab.value = "rules";
-    createSession.close();
-    selectedRuleId.value = id;
+    viewSession.selectResource("rules", id);
     mobileDrawer.closeDrawer();
   });
 }
 
 function jumpToSnippet(id: string) {
   requestEditorLeave(() => {
-    activeTab.value = "snippets";
-    createSession.close();
-    selectedSnippetId.value = id;
+    viewSession.selectResource("snippets", id);
     mobileDrawer.closeDrawer();
   });
 }
@@ -994,12 +942,12 @@ function jumpToSnippet(id: string) {
               <ResourceList
                 v-else-if="activeTab === 'snippets'"
                 ref="resourceListRef"
-                :bulk-mode="bulkSelectionState.isBulkMode.value"
+                :bulk-mode="isBulkMode"
                 :bulk-selected-ids="bulkSelectionState.bulkSnippetIds.value"
                 :items="snippets"
                 list-label="代码片段列表"
                 :panel-id="tabPanelId('snippets')"
-                :reorderable="!bulkSelectionState.isBulkMode.value"
+                :reorderable="!isBulkMode"
                 :selected-id="currentSelectedId('snippets')"
                 :stretch="true"
                 :tab-labelledby="tabButtonId('snippets')"
@@ -1016,12 +964,12 @@ function jumpToSnippet(id: string) {
               <ResourceList
                 v-else
                 ref="resourceListRef"
-                :bulk-mode="bulkSelectionState.isBulkMode.value"
+                :bulk-mode="isBulkMode"
                 :bulk-selected-ids="bulkSelectionState.bulkRuleIds.value"
                 :items="rules"
                 list-label="转换规则列表"
                 :panel-id="tabPanelId('rules')"
-                :reorderable="!bulkSelectionState.isBulkMode.value"
+                :reorderable="!isBulkMode"
                 :selected-id="currentSelectedId('rules')"
                 :stretch="true"
                 :tab-labelledby="tabButtonId('rules')"
@@ -1046,7 +994,7 @@ function jumpToSnippet(id: string) {
               </ResourceList>
 
               <div
-                v-if="!bulkSelectionState.isBulkMode.value"
+                v-if="!isBulkMode"
                 class="transformer-mobile-pane-footer :uno: flex shrink-0 items-center justify-center border-t bg-white px-4 py-2"
               >
                 <VButton size="sm" type="secondary" @click="handleOpenCreateModal(activeTab)">
@@ -1057,7 +1005,7 @@ function jumpToSnippet(id: string) {
 
             <div class=":uno: main flex h-full flex-none flex-col overflow-hidden">
               <BulkOperationPanel
-                v-if="bulkSelectionState.isBulkMode.value"
+                v-if="isBulkMode"
                 :can-disable="canBulkDisable"
                 :can-enable="canBulkEnable"
                 :processing="processingBulk"
@@ -1114,7 +1062,7 @@ function jumpToSnippet(id: string) {
                 <button type="button" @click="closeMobileDrawer()">关闭</button>
               </div>
               <BulkModeSidePanel
-                v-if="bulkSelectionState.isBulkMode.value"
+                v-if="isBulkMode"
                 :selected-count="bulkSelectionState.currentBulkSelectionCount.value"
                 :tab="activeTab"
               />
@@ -1130,7 +1078,7 @@ function jumpToSnippet(id: string) {
                 @jump-to-snippet="jumpToSnippet"
               />
               <div
-                v-if="!bulkSelectionState.isBulkMode.value"
+                v-if="!isBulkMode"
                 aria-hidden="true"
                 class="transformer-mobile-pane-footer transformer-mobile-pane-footer-spacer :uno: border-t bg-white"
               />

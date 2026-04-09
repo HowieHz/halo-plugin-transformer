@@ -1,4 +1,4 @@
-import { ref, type Ref } from "vue";
+import type { Ref } from "vue";
 
 import type { ActiveTab } from "@/types";
 
@@ -10,6 +10,7 @@ export interface CreateFormController<TSubmitPayload> {
 }
 
 interface UseCreateSessionStateOptions<TSnippetSubmitPayload, TRuleSubmitPayload> {
+  createModalTab: Ref<ActiveTab | null>;
   snippetFormRef: Ref<CreateFormController<TSnippetSubmitPayload> | null>;
   ruleFormRef: Ref<CreateFormController<TRuleSubmitPayload> | null>;
 }
@@ -21,7 +22,7 @@ interface UseCreateSessionStateOptions<TSnippetSubmitPayload, TRuleSubmitPayload
 export function useCreateSessionState<TSnippetSubmitPayload, TRuleSubmitPayload>(
   options: UseCreateSessionStateOptions<TSnippetSubmitPayload, TRuleSubmitPayload>,
 ) {
-  const createModalTab = ref<ActiveTab | null>(null);
+  const createModalTab = options.createModalTab;
 
   function open(tab: ActiveTab) {
     createModalTab.value = tab;

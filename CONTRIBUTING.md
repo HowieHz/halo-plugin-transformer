@@ -103,6 +103,9 @@ pnpm dev
 - `tab -> selectedId` 可以按标签页分别记忆当前选中项，方便路由恢复与面板跳转
 - 未保存草稿不会在两个标签页（tab）后面各藏一份；切换时总是重新恢复当前标签页的活动会话（hydrate），避免共享一个“已修改”标记（`dirty`），却同时维护两份隐式草稿
 - 中间编辑器与右侧关系面板在当前标签页（tab）下都必须从同一份活动编辑草稿（`EditorDraft`）派生；不能让“右侧关系”偷偷回退到已保存列表，变成左边看到的是当前草稿，右边看到的却是已保存内容，前后对不上
+- Transformer 页面语义本身只允许由一份共享 page session controller 表达 `single / create / bulk`
+    - `activeTab`、当前页面模式和 remembered selection 的迁移必须统一收口
+    - 不要在 `TransformerView` 里再手工拼 `createModalTab + bulkMode + selectedId` 去反推“当前在什么页面”
 - `bulk / create` 只会隐藏当前显示的选中项，不会顺手清掉之前记住的选中项；退出这些页面语义后，应该还能回到该标签页（tab）上次打开的资源
 - 新建弹窗用单一当前活动标签（`ActiveTab | null`）表达状态，不再维护两颗互斥布尔；避免出现代码片段 / 规则弹窗同时为真，或者两边都没收好口的隐式组合态
 - 多步流程弹窗（例如批量导入）只用一个流程状态对象表达 `source/options/result`，不要再并列维护多颗“是否显示 / 结果 / 进行中”状态去手动拼阶段
