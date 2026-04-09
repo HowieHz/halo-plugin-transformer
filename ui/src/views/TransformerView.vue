@@ -88,11 +88,6 @@ const resourceListRef = ref<{
 const resourceListScrollContainer = ref<HTMLElement | null>(null);
 const leftPaneAutoScroll = useDragAutoScroll(resourceListScrollContainer);
 const LEFT_PANE_EDGE_OVERLAP_PX = 5;
-/**
- * why: 移动端底部固定导航当前会遮住 48px 可视高度；
- * 先集中收在这里，后面如果宿主导航高度再调，只改这一处就行。
- */
-const MOBILE_FIXED_NAV_HEIGHT_PX = 48;
 const tabGroupId = useId();
 const mobileLeftDrawerId = `transformer-mobile-left-${tabGroupId}`;
 const mobileRightDrawerId = `transformer-mobile-right-${tabGroupId}`;
@@ -167,9 +162,6 @@ const mobileMainLabel = computed(() =>
       ? "代码片段编辑区"
       : "转换规则编辑区",
 );
-const transformerCardStyle = {
-  height: `calc(100vh - ${MOBILE_FIXED_NAV_HEIGHT_PX}px)`,
-};
 
 onMounted(fetchAll);
 
@@ -876,7 +868,7 @@ function jumpToSnippet(id: string) {
         @change="handleBulkImportFileChange"
       />
 
-      <VCard :body-class="['transformer-view-card-body']" :style="transformerCardStyle">
+      <VCard class="transformer-view-card" :body-class="['transformer-view-card-body']">
         <div class="transformer-workspace :uno: relative h-full">
           <div class="mobile-drawer-toolbar">
             <VButton

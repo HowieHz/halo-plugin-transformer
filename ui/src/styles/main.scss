@@ -2,6 +2,12 @@ $aside-width: 20%;
 $main-width: 60%;
 
 #transformer-view {
+  /**
+   * why: Halo 移动端底部固定导航当前会遮住 48px 可视高度；
+   * 把这个值收成单一配置源，后面要微调时只改这里，不再同时改脚本和样式。
+   */
+  --transformer-mobile-fixed-nav-height: 48px;
+
   .transformer-workspace {
     display: flex;
     flex-direction: column;
@@ -50,9 +56,19 @@ $main-width: 60%;
   }
 }
 
+.transformer-view-card {
+  height: calc(100vh - var(--transformer-mobile-fixed-nav-height));
+}
+
 .transformer-view-card-body {
   height: 100% !important;
   padding: 0 !important;
+}
+
+@supports (height: 100dvh) {
+  .transformer-view-card {
+    height: calc(100dvh - var(--transformer-mobile-fixed-nav-height));
+  }
 }
 
 // why: @halo-dev/components 的 Dialog.description 按纯文本渲染，
