@@ -105,7 +105,7 @@ class ResourceOrderEndpointTest {
     }
 
     // why: 排序接口现在依赖 Halo 的 metadata.version 做乐观并发；
-    // payload 必须显式携带版本，不能再默默退回 last-write-wins。
+    // payload 必须显式携带版本，不能再默默退回“最后一次写入覆盖前面所有写入”。
     @Test
     void shouldExposeOrderPayloadVersion() {
         ResourceOrderEndpoint.OrderPayload payload = new ResourceOrderEndpoint.OrderPayload();

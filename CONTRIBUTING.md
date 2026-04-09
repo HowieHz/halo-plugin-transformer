@@ -433,7 +433,7 @@ pnpm dev
 如果准备提 PR，至少先跑下面这些检查：
 
 ```bash
-# spec 一致性
+# 规范一致性（spec）
 pnpm verify:spec-artifacts
 
 # 前端
@@ -446,4 +446,4 @@ pnpm --dir ui test:unit
 ./gradlew build
 ```
 
-如果改动涉及规范（spec）、结构约束（schema）、约束辅助代码（contract helper）或导入导出结构，先运行 `pnpm generate:spec-artifacts`，把生成文件一起更新后再提交。
+如果改动涉及规范（spec）、结构约束（schema）、约束辅助代码（contract helper）或导入导出结构，先运行 `pnpm generate:spec-artifacts`，把对应的生成文件一起更新后再提交。

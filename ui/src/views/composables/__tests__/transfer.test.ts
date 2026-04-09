@@ -413,7 +413,8 @@ describe("parseSnippetTransfer", () => {
 });
 
 describe("buildRuleTransfer", () => {
-  // why: 导出后的包裹层应只保留 version/resourceType/data，并自动附带 schema 提示，不再继续输出旧的 format 字段。
+  // why: 导出后的最外层应只保留 version / resourceType / data，
+  // 并自动附带 schema 提示，不再继续输出旧的 format 字段。
   it("exports schema url without legacy format field", () => {
     const payload = buildRuleTransfer(makeRuleEditorDraft());
 
@@ -472,7 +473,8 @@ describe("buildRuleTransfer", () => {
 });
 
 describe("batch transfer", () => {
-  // why: 批量 envelope 需要和单条 envelope 明确区分 resourceType，避免批量导入误吃单条 JSON。
+  // why: 批量导出的最外层结构要和单条导出明确区分 resourceType，
+  // 避免批量导入时把单条 JSON 错当成批量数据。
   it("exports snippet batches with explicit batch resource type", () => {
     const payload = buildSnippetBatchTransfer([
       makeSnippetEditorDraft({ name: "alpha", code: "<div>a</div>" }),

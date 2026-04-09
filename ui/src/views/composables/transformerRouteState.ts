@@ -81,8 +81,8 @@ export function isSameTransformerRouteState(
 }
 
 /**
- * why: route 只表达“当前 tab 想进入什么页面语义”，
- * `bulk / create` 并不代表“把记住的选中项真删掉”；这里的 remembered selection
+ * why: 路由只表达“当前标签页想进入什么页面语义”，
+ * `bulk / create` 并不代表“把记住的选中项真删掉”；这里记住的选中项
  * 只是“离开当前语义后，应该回到哪个资源”的恢复锚点。
  */
 export function applyTransformerRouteSelection(
