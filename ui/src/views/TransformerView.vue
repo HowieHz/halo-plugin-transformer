@@ -868,7 +868,7 @@ function jumpToSnippet(id: string) {
         @change="handleBulkImportFileChange"
       />
 
-      <VCard :body-class="['transformer-view-card-body']" style="height: calc(100vh - 5.5rem)">
+      <VCard :body-class="['transformer-view-card-body']" style="height: calc(100vh - 48px)">
         <div class="transformer-workspace :uno: relative h-full">
           <div class="mobile-drawer-toolbar">
             <VButton
