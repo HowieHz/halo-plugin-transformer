@@ -14,7 +14,10 @@ import {
   getDomRulePerformanceWarning,
   makeRuleTreeSource,
 } from "@/views/composables/matchRule";
-import { getRuleCapabilities } from "@/views/composables/ruleCapabilities";
+import {
+  getEmptySnippetAssociationWarning,
+  getRuleCapabilities,
+} from "@/views/composables/ruleCapabilities";
 import {
   buildRuleUndoBaselineSnapshot,
   resolveRuleUndoFieldCurrentValue,
@@ -90,6 +93,9 @@ const matchFieldError = computed(() => {
 });
 const performanceWarning = computed(() =>
   currentRule.value ? getDomRulePerformanceWarning(currentRule.value) : null,
+);
+const emptySnippetAssociationWarning = computed(() =>
+  currentRule.value ? getEmptySnippetAssociationWarning(currentRule.value) : null,
 );
 const undo = useFieldUndo();
 const textFieldInitialValue = ref<Record<"name" | "description", string>>({
@@ -593,13 +599,22 @@ onBeforeUnmount(() => {
             </div>
           </template>
           <template #default>
-            <ItemPicker
-              :items="sortedSnippets"
-              label="关联代码片段选择列表"
-              :selected-ids="currentRule.snippetIds"
-              empty-text="暂无代码片段, 请先创建"
-              @toggle="handleToggleSnippet"
-            />
+            <div class=":uno: space-y-2">
+              <ItemPicker
+                :items="sortedSnippets"
+                label="关联代码片段选择列表"
+                :selected-ids="currentRule.snippetIds"
+                empty-text="暂无代码片段, 请先创建"
+                @toggle="handleToggleSnippet"
+              />
+              <div
+                v-if="emptySnippetAssociationWarning"
+                aria-live="polite"
+                class=":uno: rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800"
+              >
+                {{ emptySnippetAssociationWarning }}
+              </div>
+            </div>
           </template>
         </FormField>
 

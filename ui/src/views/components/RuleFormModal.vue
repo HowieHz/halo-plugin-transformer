@@ -9,7 +9,10 @@ import {
   POSITION_OPTIONS,
 } from "@/types";
 import { getDomRulePerformanceWarning } from "@/views/composables/matchRule";
-import { getRuleCapabilities } from "@/views/composables/ruleCapabilities";
+import {
+  getEmptySnippetAssociationWarning,
+  getRuleCapabilities,
+} from "@/views/composables/ruleCapabilities";
 import { validateRuleDraft } from "@/views/composables/ruleValidation";
 import { updateSelectByWheel } from "@/views/composables/selectWheel.ts";
 import { useRuleCreateDraft } from "@/views/composables/useRuleCreateDraft";
@@ -51,6 +54,9 @@ const matchFieldError = computed(() => {
   return createDraft.draft.value.match.trim() ? null : "请填写匹配内容";
 });
 const performanceWarning = computed(() => getDomRulePerformanceWarning(createDraft.draft.value));
+const emptySnippetAssociationWarning = computed(() =>
+  getEmptySnippetAssociationWarning(createDraft.draft.value),
+);
 
 function toggleSnippet(id: string) {
   const currentSnippetIds = createDraft.draft.value.snippetIds;
@@ -274,19 +280,28 @@ defineExpose({
     </template>
 
     <template v-if="needsSnippets" #picker>
-      <div class=":uno: flex items-center justify-between">
-        <label class=":uno: text-xs font-medium text-gray-600">关联代码片段</label>
-        <span class=":uno: text-xs text-gray-400">
-          {{ createDraft.draft.value.snippetIds.length }} 个已选
-        </span>
+      <div class=":uno: space-y-2">
+        <div class=":uno: flex items-center justify-between">
+          <label class=":uno: text-xs font-medium text-gray-600">关联代码片段</label>
+          <span class=":uno: text-xs text-gray-400">
+            {{ createDraft.draft.value.snippetIds.length }} 个已选
+          </span>
+        </div>
+        <ItemPicker
+          :items="snippets"
+          label="关联代码片段选择列表"
+          :selected-ids="createDraft.draft.value.snippetIds"
+          empty-text="暂无代码片段, 请先创建"
+          @toggle="toggleSnippet"
+        />
+        <div
+          v-if="emptySnippetAssociationWarning"
+          aria-live="polite"
+          class=":uno: rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800"
+        >
+          {{ emptySnippetAssociationWarning }}
+        </div>
       </div>
-      <ItemPicker
-        :items="snippets"
-        label="关联代码片段选择列表"
-        :selected-ids="createDraft.draft.value.snippetIds"
-        empty-text="暂无代码片段, 请先创建"
-        @toggle="toggleSnippet"
-      />
     </template>
   </BaseFormModal>
 
