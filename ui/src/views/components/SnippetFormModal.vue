@@ -1,11 +1,10 @@
 <script lang="ts" setup>
 import { Toast, VButton } from "@halo-dev/components";
-import { computed, nextTick, onMounted, ref } from "vue";
+import { computed, nextTick, ref } from "vue";
 
 import type { TransformationSnippetEditorDraft } from "@/types";
-import { makeSnippetEditorDraft } from "@/types";
 import { validateSnippetDraft } from "@/views/composables/snippetValidation";
-import { parseSnippetTransfer } from "@/views/composables/transfer";
+import { useSnippetCreateDraft } from "@/views/composables/useSnippetCreateDraft";
 
 import BaseFormModal from "./BaseFormModal.vue";
 import EnabledSwitch from "./EnabledSwitch.vue";
@@ -21,30 +20,29 @@ const emit = defineEmits<{
   (e: "submit", snippet: TransformationSnippetEditorDraft): void;
 }>();
 
-const snippet = ref<TransformationSnippetEditorDraft>(makeSnippetEditorDraft());
+const createDraft = useSnippetCreateDraft();
 const fileInput = ref<HTMLInputElement | null>(null);
 const importSourceVisible = ref(false);
-const initialSnippet = makeSnippetEditorDraft();
 const codeScrollTop = ref(0);
 
 const codeLines = computed(() => {
-  const content = snippet.value.code.replace(/\r\n/g, "\n");
+  const content = createDraft.draft.value.code.replace(/\r\n/g, "\n");
   return content.split("\n").length;
 });
 
 const codeLineNumberStyle = computed(() => ({
   transform: `translateY(-${codeScrollTop.value}px)`,
 }));
-const codeFieldError = computed(() => (!snippet.value.code.trim() ? "代码内容不能为空" : null));
-
-onMounted(reset);
+const codeFieldError = computed(() =>
+  !createDraft.draft.value.code.trim() ? "代码内容不能为空" : null,
+);
 
 function reset() {
-  snippet.value = makeSnippetEditorDraft();
+  createDraft.reset();
 }
 
 function handleSubmit() {
-  emit("submit", snippet.value);
+  emit("submit", createDraft.draft.value);
 }
 
 function syncCodeScroll(event: Event) {
@@ -60,8 +58,8 @@ function closeImportSourceModal() {
 }
 
 async function applyImportedSnippet(raw: string, sourceLabel: "剪贴板" | "文件") {
-  snippet.value = parseSnippetTransfer(raw);
-  const validationError = validateSnippetDraft(snippet.value);
+  createDraft.importFromTransfer(raw);
+  const validationError = validateSnippetDraft(createDraft.draft.value);
   if (validationError) {
     Toast.warning(`已从${sourceLabel}导入代码片段 JSON，但当前内容仍有错误：${validationError}`);
   } else {
@@ -104,30 +102,16 @@ async function handleImportFile(event: Event) {
   }
 }
 
-const validationError = computed(() => validateSnippetDraft(snippet.value));
-const dirty = computed(() => {
-  return (
-    snippet.value.enabled !== initialSnippet.enabled ||
-    snippet.value.name !== initialSnippet.name ||
-    snippet.value.description !== initialSnippet.description ||
-    snippet.value.code !== initialSnippet.code
-  );
-});
-
 function hasUnsavedChanges() {
-  return dirty.value;
+  return createDraft.hasUnsavedChanges();
 }
 
 function getValidationError() {
-  return validationError.value;
+  return createDraft.validationError.value;
 }
 
 function getSubmitPayload() {
-  return {
-    snippet: {
-      ...snippet.value,
-    },
-  };
+  return createDraft.getSubmitPayload();
 }
 
 defineExpose({
@@ -157,11 +141,11 @@ defineExpose({
           @change="handleImportFile"
         />
         <EnabledSwitch
-          :enabled="snippet.enabled"
+          :enabled="createDraft.draft.value.enabled"
           label="切换新建代码片段的启用状态"
           title-when-disabled="当前新建后会保持禁用，点击改为启用"
           title-when-enabled="当前新建后会直接启用，点击改为禁用"
-          @toggle="snippet.enabled = !snippet.enabled"
+          @toggle="createDraft.draft.value.enabled = !createDraft.draft.value.enabled"
         />
         <VButton size="sm" type="secondary" @click="openImportSourceModal">导入</VButton>
       </div>
@@ -171,7 +155,7 @@ defineExpose({
       <FormField v-slot="{ inputId }" label="名称">
         <input
           :id="inputId"
-          v-model="snippet.name"
+          v-model="createDraft.draft.value.name"
           class=":uno: focus:border-primary w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:outline-none"
           placeholder="不填默认显示为 ID"
         />
@@ -180,7 +164,7 @@ defineExpose({
       <FormField v-slot="{ inputId }" label="描述">
         <input
           :id="inputId"
-          v-model="snippet.description"
+          v-model="createDraft.draft.value.description"
           class=":uno: focus:border-primary w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:outline-none"
           placeholder="说明此代码片段的用途"
         />
@@ -214,7 +198,7 @@ defineExpose({
               </div>
               <textarea
                 :id="inputId"
-                v-model="snippet.code"
+                v-model="createDraft.draft.value.code"
                 :aria-invalid="!!codeFieldError"
                 autofocus
                 class=":uno: h-full min-h-0 w-full flex-1 resize-none border-0 bg-transparent px-3 pt-2 pb-0 font-mono text-sm leading-6 focus:outline-none"

@@ -65,6 +65,7 @@ pnpm dev
 - 规则 transfer 不承载 `snippetIds`
 - 跨环境关系迁移如果以后要支持，应单独设计显式协议，而不是把关系字段偷偷塞回当前 transfer
 - create / edit / import 三条写路径必须复用同一份前端 validator；不要让弹窗、右侧编辑器和导入提示各自复制校验条件
+- 新建弹窗同样要复用共享 draft controller，统一 `baseline / dirty / submit snapshot` 语义；不要把这些领域逻辑重新塞回组件本身
 
 ### 控制台状态模型
 
