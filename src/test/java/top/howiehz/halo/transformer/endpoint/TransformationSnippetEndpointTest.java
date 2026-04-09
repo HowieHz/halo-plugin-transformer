@@ -17,7 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
-import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
+import top.howiehz.halo.transformer.manager.TransformationSnippetRuntimeStore;
 import top.howiehz.halo.transformer.scheme.TransformationSnippet;
 import top.howiehz.halo.transformer.service.TransformationSnippetLifecycleService;
 import top.howiehz.halo.transformer.util.TransformationSnippetValidationException;
@@ -27,7 +27,7 @@ class TransformationSnippetEndpointTest {
     private ReactiveExtensionClient client;
     private TransformationSnippetValidator validator;
     private TransformationSnippetLifecycleService lifecycleService;
-    private TransformationRuleRuntimeStore ruleRuntimeStore;
+    private TransformationSnippetRuntimeStore snippetRuntimeStore;
     private TransformationSnippetEndpoint endpoint;
 
     @BeforeEach
@@ -35,12 +35,12 @@ class TransformationSnippetEndpointTest {
         client = mock(ReactiveExtensionClient.class);
         validator = mock(TransformationSnippetValidator.class);
         lifecycleService = mock(TransformationSnippetLifecycleService.class);
-        ruleRuntimeStore = mock(TransformationRuleRuntimeStore.class);
+        snippetRuntimeStore = mock(TransformationSnippetRuntimeStore.class);
         endpoint = new TransformationSnippetEndpoint(
             client,
             validator,
             lifecycleService,
-            ruleRuntimeStore,
+            snippetRuntimeStore,
             mock(ConsoleReadModelMapper.class)
         );
     }
@@ -62,7 +62,7 @@ class TransformationSnippetEndpointTest {
 
         assertTrue(updated.isEnabled());
         verify(client).update(any(TransformationSnippet.class));
-        verify(ruleRuntimeStore).invalidateAndWarmUpAsync();
+        verify(snippetRuntimeStore).invalidateAndWarmUpAsync();
     }
 
     // why: 停用只是把资源移出运行时，不该被历史坏内容再次卡住；因此停用路径不再复跑写入校验。
@@ -182,7 +182,7 @@ class TransformationSnippetEndpointTest {
         endpoint.deleteSnippet("snippet-a", deletePayload(7L)).block();
 
         verify(lifecycleService).markForDeletion(snippet);
-        verify(ruleRuntimeStore).invalidateAndWarmUpAsync();
+        verify(snippetRuntimeStore).invalidateAndWarmUpAsync();
     }
 
     private TransformationSnippet snippet(String id, String code, boolean enabled) {

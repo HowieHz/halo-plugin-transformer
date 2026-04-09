@@ -21,7 +21,7 @@ import reactor.core.publisher.Mono;
 import top.howiehz.halo.transformer.core.MatchRule;
 import top.howiehz.halo.transformer.core.RuntimeTransformationRule;
 import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
-import top.howiehz.halo.transformer.manager.TransformationSnippetManager;
+import top.howiehz.halo.transformer.manager.TransformationSnippetRuntimeStore;
 import top.howiehz.halo.transformer.scheme.TransformationRule;
 import top.howiehz.halo.transformer.scheme.TransformationSnippet;
 
@@ -34,7 +34,7 @@ import top.howiehz.halo.transformer.scheme.TransformationSnippet;
 @RequiredArgsConstructor
 public class TransformHelper {
     protected final TransformationRuleRuntimeStore ruleRuntimeStore;
-    protected final TransformationSnippetManager snippetManager;
+    protected final TransformationSnippetRuntimeStore snippetRuntimeStore;
     protected final RouteMatcher routeMatcher = createRouteMatcher();
     protected final Map<String, RegexPatternHolder> regexPatternCache = new ConcurrentHashMap<>();
 
@@ -116,12 +116,8 @@ public class TransformHelper {
     }
 
     Mono<Map<String, TransformationSnippet>> loadSnippetsByIds(Collection<String> snippetIds) {
-        if (snippetIds == null || snippetIds.isEmpty()) {
-            return Mono.just(Map.of());
-        }
-        return Flux.fromIterable(snippetIds)
-            .flatMap(id -> snippetManager.get(id).map(snippet -> Map.entry(id, snippet)))
-            .collectMap(Map.Entry::getKey, Map.Entry::getValue, LinkedHashMap::new);
+        return snippetRuntimeStore.getByIds(snippetIds)
+            .map(LinkedHashMap::new);
     }
 
     List<String> collectUniqueSnippetIds(List<RuntimeTransformationRule> rules) {
@@ -352,4 +348,3 @@ public class TransformHelper {
     public record ResolvedRuleCode(RuntimeTransformationRule rule, String code) {
     }
 }
-

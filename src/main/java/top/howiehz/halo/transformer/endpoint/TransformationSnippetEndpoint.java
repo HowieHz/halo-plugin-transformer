@@ -22,7 +22,7 @@ import run.halo.app.extension.ExtensionUtil;
 import run.halo.app.extension.GroupVersion;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
-import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
+import top.howiehz.halo.transformer.manager.TransformationSnippetRuntimeStore;
 import top.howiehz.halo.transformer.scheme.TransformationSnippet;
 import top.howiehz.halo.transformer.service.TransformationSnippetLifecycleService;
 import top.howiehz.halo.transformer.util.OptimisticConcurrencyGuard;
@@ -38,7 +38,7 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
     private final ReactiveExtensionClient client;
     private final TransformationSnippetValidator validator;
     private final TransformationSnippetLifecycleService lifecycleService;
-    private final TransformationRuleRuntimeStore ruleRuntimeStore;
+    private final TransformationSnippetRuntimeStore snippetRuntimeStore;
     private final ConsoleReadModelMapper readModelMapper;
 
     @Override
@@ -83,7 +83,7 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
             .map(lifecycleService::prepareForPersist)
             .flatMap(validator::validateForWrite)
             .flatMap(client::create)
-            .doOnSuccess(created -> ruleRuntimeStore.invalidateAndWarmUpAsync())
+            .doOnSuccess(created -> snippetRuntimeStore.invalidateAndWarmUpAsync())
             .flatMap(created -> ServerResponse.created(
                     URI.create("/apis/" + CONSOLE_API_VERSION + "/transformationSnippets/"
                         + created.getMetadata().getName()))
@@ -118,7 +118,7 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
             })
             .flatMap(validator::validateForWrite)
             .flatMap(client::update)
-            .doOnSuccess(updated -> ruleRuntimeStore.invalidateAndWarmUpAsync())
+            .doOnSuccess(updated -> snippetRuntimeStore.invalidateAndWarmUpAsync())
             .flatMap(updated -> ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(readModelMapper.toReadModel(updated)));
@@ -165,7 +165,7 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
                 );
                 return lifecycleService.markForDeletion(snippet);
             })
-            .doOnSuccess(ignored -> ruleRuntimeStore.invalidateAndWarmUpAsync())
+            .doOnSuccess(ignored -> snippetRuntimeStore.invalidateAndWarmUpAsync())
             .then();
     }
 
@@ -193,7 +193,7 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
                 return enabled ? validator.validateForWrite(snippet) : Mono.just(snippet);
             })
             .flatMap(client::update)
-            .doOnSuccess(updated -> ruleRuntimeStore.invalidateAndWarmUpAsync());
+            .doOnSuccess(updated -> snippetRuntimeStore.invalidateAndWarmUpAsync());
     }
 
     private Mono<TransformationSnippet> fetchVisibleSnippet(String name, String notFoundReason) {

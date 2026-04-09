@@ -2,7 +2,7 @@ package top.howiehz.halo.transformer.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -14,10 +14,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import top.howiehz.halo.transformer.core.MatchRule;
 import top.howiehz.halo.transformer.core.RuntimeTransformationRule;
 import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
-import top.howiehz.halo.transformer.manager.TransformationSnippetManager;
+import top.howiehz.halo.transformer.manager.TransformationSnippetRuntimeStore;
 import top.howiehz.halo.transformer.scheme.TransformationRule;
 import top.howiehz.halo.transformer.scheme.TransformationSnippet;
 
@@ -27,13 +28,13 @@ class TransformHelperTest {
     private TransformationRuleRuntimeStore ruleRuntimeStore;
 
     @Mock
-    private TransformationSnippetManager snippetManager;
+    private TransformationSnippetRuntimeStore snippetRuntimeStore;
 
     private TransformHelper transformHelper;
 
     @BeforeEach
     void setUp() {
-        transformHelper = new TransformHelper(ruleRuntimeStore, snippetManager);
+        transformHelper = new TransformHelper(ruleRuntimeStore, snippetRuntimeStore);
     }
 
     // why: 基础命中链路必须同时满足路径和模板 ID，保证组合条件按 AND 正常工作。
@@ -144,7 +145,7 @@ class TransformHelperTest {
     @Test
     void shouldCompileSameRegexOnlyOnceAtRuntime() {
         CountingTransformHelper helper =
-            new CountingTransformHelper(ruleRuntimeStore, snippetManager);
+            new CountingTransformHelper(ruleRuntimeStore, snippetRuntimeStore);
         TransformationRule rule = createRule(group(MatchRule.Operator.AND,
             MatchRule.pathRule(MatchRule.Matcher.REGEX, "^/posts/\\d+$")));
         RuntimeTransformationRule runtimeRule = runtimeRule(rule);
@@ -169,7 +170,7 @@ class TransformHelperTest {
     @Test
     void shouldCacheInvalidRegexFailureToAvoidRepeatedCompile() {
         CountingTransformHelper helper =
-            new CountingTransformHelper(ruleRuntimeStore, snippetManager);
+            new CountingTransformHelper(ruleRuntimeStore, snippetRuntimeStore);
         TransformationRule rule = new TransformationRule();
         rule.setEnabled(true);
         rule.setMode(TransformationRule.Mode.FOOTER);
@@ -192,7 +193,8 @@ class TransformHelperTest {
         assertEquals(1, helper.compileCount.get());
     }
 
-    // why: 同一次注入里若多条规则复用同一个代码片段，应只加载一次代码片段，再按各规则自己的关联顺序回拼。
+    // why: 同一次注入里若多条规则复用同一个代码片段，应只读取一次运行时快照，
+    // 再按各规则自己的关联顺序回拼，避免热路径重新回源逐条 fetch。
     @Test
     void shouldLoadSharedSnippetOnlyOnceWhenResolvingMultipleRules() {
         TransformationRule firstRule = createRule(group(MatchRule.Operator.AND,
@@ -202,18 +204,24 @@ class TransformHelperTest {
             MatchRule.pathRule(MatchRule.Matcher.ANT, "/**")));
         secondRule.setSnippetIds(new java.util.LinkedHashSet<>(List.of("snippet-b", "snippet-c")));
 
-        AtomicInteger fetchCount = new AtomicInteger();
-        when(snippetManager.get(anyString())).thenAnswer(invocation -> {
-            fetchCount.incrementAndGet();
-            String id = invocation.getArgument(0, String.class);
-            return reactor.core.publisher.Mono.just(snippet(id, id.toUpperCase()));
+        AtomicInteger snapshotReadCount = new AtomicInteger();
+        when(snippetRuntimeStore.getByIds(any())).thenAnswer(invocation -> {
+            snapshotReadCount.incrementAndGet();
+            @SuppressWarnings("unchecked")
+            java.util.Collection<String> ids = invocation.getArgument(0, java.util.Collection.class);
+            java.util.LinkedHashMap<String, TransformationSnippet> resolved =
+                new java.util.LinkedHashMap<>();
+            for (String id : ids) {
+                resolved.put(id, snippet(id, id.toUpperCase()));
+            }
+            return Mono.just(resolved);
         });
 
         List<TransformHelper.ResolvedRuleCode> resolved = transformHelper
             .resolveRuleCodes(List.of(runtimeRule(firstRule), runtimeRule(secondRule)))
             .block();
 
-        assertEquals(3, fetchCount.get());
+        assertEquals(1, snapshotReadCount.get());
         assertEquals("SNIPPET-ASNIPPET-B", resolved.get(0).code());
         assertEquals("SNIPPET-BSNIPPET-C", resolved.get(1).code());
     }
@@ -222,7 +230,7 @@ class TransformHelperTest {
     @Test
     void shouldParseCurrentPathOnlyOnceDuringSingleMatchEvaluation() {
         CountingTransformHelper helper =
-            new CountingTransformHelper(ruleRuntimeStore, snippetManager);
+            new CountingTransformHelper(ruleRuntimeStore, snippetRuntimeStore);
         TransformationRule rule = createRule(group(MatchRule.Operator.AND,
             MatchRule.pathRule(MatchRule.Matcher.ANT, "/posts/**"),
             group(MatchRule.Operator.OR,
@@ -288,8 +296,8 @@ class TransformHelperTest {
         private final AtomicInteger routeParseCount = new AtomicInteger();
 
         CountingTransformHelper(TransformationRuleRuntimeStore ruleRuntimeStore,
-            TransformationSnippetManager snippetManager) {
-            super(ruleRuntimeStore, snippetManager);
+            TransformationSnippetRuntimeStore snippetRuntimeStore) {
+            super(ruleRuntimeStore, snippetRuntimeStore);
         }
 
         @Override
@@ -306,4 +314,3 @@ class TransformHelperTest {
         }
     }
 }
-

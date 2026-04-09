@@ -16,6 +16,7 @@ import run.halo.app.extension.SchemeManager;
 import run.halo.app.extension.controller.Controller;
 import top.howiehz.halo.transformer.config.TransformerControllers;
 import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
+import top.howiehz.halo.transformer.manager.TransformationSnippetRuntimeStore;
 import top.howiehz.halo.transformer.scheme.ResourceOrder;
 import top.howiehz.halo.transformer.scheme.TransformationRule;
 import top.howiehz.halo.transformer.scheme.TransformationSnippet;
@@ -28,6 +29,8 @@ class HaloTransformerPluginTest {
         SchemeManager schemeManager = mock(SchemeManager.class);
         TransformationRuleRuntimeStore ruleRuntimeStore =
             mock(TransformationRuleRuntimeStore.class);
+        TransformationSnippetRuntimeStore snippetRuntimeStore =
+            mock(TransformationSnippetRuntimeStore.class);
         Controller controller = mock(Controller.class);
         Scheme transformationSnippetScheme = Scheme.buildFromType(TransformationSnippet.class);
         Scheme transformationRuleScheme = Scheme.buildFromType(TransformationRule.class);
@@ -42,14 +45,17 @@ class HaloTransformerPluginTest {
         new HaloTransformerPlugin(
             schemeManager,
             ruleRuntimeStore,
+            snippetRuntimeStore,
             new TransformerControllers(List.of(controller))
         ).stop();
 
         verify(controller).dispose();
+        verify(snippetRuntimeStore).stopWatching();
         verify(ruleRuntimeStore).stopWatching();
         verify(schemeManager).unregister(transformationSnippetScheme);
         verify(schemeManager).unregister(transformationRuleScheme);
         verify(schemeManager, times(2)).unregister(any(Scheme.class));
+        verifyNoMoreInteractions(snippetRuntimeStore);
         verifyNoMoreInteractions(ruleRuntimeStore);
     }
 }

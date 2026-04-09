@@ -8,6 +8,7 @@ import run.halo.app.extension.SchemeManager;
 import run.halo.app.plugin.BasePlugin;
 import top.howiehz.halo.transformer.config.TransformerControllers;
 import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
+import top.howiehz.halo.transformer.manager.TransformationSnippetRuntimeStore;
 import top.howiehz.halo.transformer.scheme.ResourceOrder;
 import top.howiehz.halo.transformer.scheme.TransformationRule;
 import top.howiehz.halo.transformer.scheme.TransformationSnippet;
@@ -21,6 +22,7 @@ import top.howiehz.halo.transformer.scheme.TransformationSnippet;
 public class HaloTransformerPlugin extends BasePlugin {
     private final SchemeManager schemeManager;
     private final TransformationRuleRuntimeStore transformationRuleRuntimeStore;
+    private final TransformationSnippetRuntimeStore transformationSnippetRuntimeStore;
     private final TransformerControllers transformerControllers;
 
     @Override
@@ -28,10 +30,12 @@ public class HaloTransformerPlugin extends BasePlugin {
         registerScheme();
         startControllers();
         transformationRuleRuntimeStore.startWatching();
+        transformationSnippetRuntimeStore.startWatching();
     }
 
     @Override
     public void stop() {
+        transformationSnippetRuntimeStore.stopWatching();
         transformationRuleRuntimeStore.stopWatching();
         stopControllers();
         unregisterScheme();
