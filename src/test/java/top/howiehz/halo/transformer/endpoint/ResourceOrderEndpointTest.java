@@ -17,7 +17,7 @@ import top.howiehz.halo.transformer.util.OptimisticConcurrencyGuard;
 
 class ResourceOrderEndpointTest {
     private final ResourceOrderEndpoint endpoint =
-        new ResourceOrderEndpoint(new ResourceOrderService(null));
+        new ResourceOrderEndpoint(new ResourceOrderService(null), null, null);
 
     // why: 排序映射里 0 代表“未显式排序”，入库时应直接剔除；这样新增项才能继续以默认 0 顶到最前面。
     @Test

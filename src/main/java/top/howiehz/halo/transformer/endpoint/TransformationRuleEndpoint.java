@@ -61,7 +61,7 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
      */
     private Mono<ServerResponse> getRuleSnapshot(ServerRequest request) {
         return resourceOrderService.buildCollectionSnapshot(ResourceOrderService.RULE_ORDER_NAME,
-                TransformationRule.class, TransformationRule::getName)
+                ruleRuntimeStore::listVisibleRules, TransformationRule::getName)
             .map(snapshot -> readModelMapper.toRuleSnapshot(snapshot.resources(),
                 snapshot.orders(), snapshot.orderVersion()))
             .flatMap(response -> ServerResponse.ok()

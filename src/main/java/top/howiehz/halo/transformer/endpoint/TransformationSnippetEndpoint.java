@@ -59,7 +59,7 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
      */
     private Mono<ServerResponse> getSnippetSnapshot(ServerRequest request) {
         return resourceOrderService.buildCollectionSnapshot(ResourceOrderService.SNIPPET_ORDER_NAME,
-                TransformationSnippet.class, TransformationSnippet::getName)
+                snippetRuntimeStore::listVisibleSnippets, TransformationSnippet::getName)
             .map(snapshot -> readModelMapper.toSnippetSnapshot(snapshot.resources(),
                 snapshot.orders(), snapshot.orderVersion()))
             .flatMap(response -> ServerResponse.ok()

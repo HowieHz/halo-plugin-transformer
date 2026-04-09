@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -19,6 +20,8 @@ import run.halo.app.core.extension.endpoint.CustomEndpoint;
 import run.halo.app.extension.AbstractExtension;
 import run.halo.app.extension.GroupVersion;
 import run.halo.app.extension.Metadata;
+import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
+import top.howiehz.halo.transformer.manager.TransformationSnippetRuntimeStore;
 import top.howiehz.halo.transformer.scheme.ResourceOrder;
 import top.howiehz.halo.transformer.scheme.TransformationRule;
 import top.howiehz.halo.transformer.scheme.TransformationSnippet;
@@ -27,27 +30,29 @@ import top.howiehz.halo.transformer.scheme.TransformationSnippet;
 @RequiredArgsConstructor
 public class ResourceOrderEndpoint implements CustomEndpoint {
     private final ResourceOrderService resourceOrderService;
+    private final TransformationSnippetRuntimeStore snippetRuntimeStore;
+    private final TransformationRuleRuntimeStore ruleRuntimeStore;
 
     @Override
     public RouterFunction<ServerResponse> endpoint() {
         return route(PUT("/snippet-order"), request ->
             putOrder(request, ResourceOrderService.SNIPPET_ORDER_NAME, "代码片段",
-                TransformationSnippet.class,
+                snippetRuntimeStore::listVisibleSnippets,
                 TransformationSnippet::getName))
             .andRoute(PUT("/rule-order"), request ->
                 putOrder(request, ResourceOrderService.RULE_ORDER_NAME, "转换规则",
-                    TransformationRule.class,
+                    ruleRuntimeStore::listVisibleRules,
                     TransformationRule::getName));
     }
 
     private <T extends AbstractExtension> Mono<ServerResponse> putOrder(ServerRequest request,
         String orderName,
-        String resourceLabel, Class<T> resourceType,
+        String resourceLabel, Supplier<List<T>> visibleResourcesSupplier,
         Function<T, String> displayNameGetter) {
         return request.bodyToMono(OrderPayload.class)
             .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
             .flatMap(payload -> resourceOrderService.saveOrder(payload, orderName, resourceLabel,
-                resourceType,
+                visibleResourcesSupplier,
                 displayNameGetter))
             .flatMap(orderState -> ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)

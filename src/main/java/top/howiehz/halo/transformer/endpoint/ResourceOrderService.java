@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -29,13 +30,14 @@ public class ResourceOrderService {
     private final ReactiveExtensionClient client;
 
     /**
-     * why: 控制台左侧的权威读模型不是“列表”或“排序映射”单独一份，而是两者合并后的快照；
-     * 这里集中装配资源列表、当前生效顺序和排序版本，避免各个 endpoint 再各自拼接。
+     * why: 控制台左侧的权威读模型现在由“watch-driven 资源快照 + 精确 fetch 的排序资源”组成；
+     * 请求线程只做装配，不再自己回源 list 全表，避免把控制台热点重新退化成线性扫描。
      */
     <T extends AbstractExtension> Mono<ResourceCollectionSnapshot<T>> buildCollectionSnapshot(
-        String orderName, Class<T> resourceType, Function<T, String> displayNameGetter) {
+        String orderName, Supplier<List<T>> visibleResourcesSupplier,
+        Function<T, String> displayNameGetter) {
         return Mono.zip(
-                client.list(resourceType, null, null).collectList(),
+                Mono.fromSupplier(visibleResourcesSupplier),
                 findStoredOrder(orderName).defaultIfEmpty(new ResourceOrder())
             )
             .map(tuple -> {
@@ -54,10 +56,9 @@ public class ResourceOrderService {
 
     <T extends AbstractExtension> Mono<OrderState> saveOrder(
         ResourceOrderEndpoint.OrderPayload payload,
-        String orderName, String resourceLabel, Class<T> resourceType,
+        String orderName, String resourceLabel, Supplier<List<T>> visibleResourcesSupplier,
         Function<T, String> displayNameGetter) {
-        return client.list(resourceType, null, null)
-            .collectList()
+        return Mono.fromSupplier(visibleResourcesSupplier)
             .flatMap(resources -> {
                 Map<String, Integer> sanitizedOrders =
                     sanitizePayload(payload, resourceLabel, resources, displayNameGetter);

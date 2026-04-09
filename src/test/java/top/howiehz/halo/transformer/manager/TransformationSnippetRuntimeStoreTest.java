@@ -132,6 +132,24 @@ class TransformationSnippetRuntimeStoreTest {
         assertTrue(snapshot.isEmpty());
     }
 
+    // why: 控制台读列表和拖拽排序都应直接消费这份 watch-driven snippet 快照；
+    // 若这里还拿不到已过滤后的可见资源，endpoint 就会继续被迫在请求路径整表 list。
+    @Test
+    void shouldExposeVisibleSnippetsForConsoleFromWatchDrivenSnapshot() {
+        TransformationSnippet visibleSnippet = snippet("snippet-a", "before");
+        TransformationSnippet deletingSnippet = snippet("snippet-b", "after");
+        deletingSnippet.getMetadata().setDeletionTimestamp(Instant.now());
+        when(client.list(TransformationSnippet.class, null, null))
+            .thenReturn(Flux.just(visibleSnippet, deletingSnippet));
+
+        store.startWatching();
+
+        waitUntil(() -> store.listVisibleSnippets().stream()
+            .map(snippet -> snippet.getMetadata().getName())
+            .toList()
+            .equals(List.of("snippet-a")));
+    }
+
     // why: watch 自愈之外，还要兜住首轮全量加载失败的场景；
     // 否则既没连上 watch、又没后续事件时，snippet snapshot 会永久停在空状态。
     @Test

@@ -1,6 +1,7 @@
 package top.howiehz.halo.transformer.manager;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -68,6 +69,14 @@ public class TransformationSnippetRuntimeStore extends AbstractWatchDrivenExtens
             }
         }
         return Mono.just(resolved);
+    }
+
+    /**
+     * why: 控制台列表与排序保存也应消费同一份 watch-driven snippet 真源；
+     * 这样请求线程只读内存快照，不再为了列表刷新或拖拽保存回源整表扫描。
+     */
+    public List<TransformationSnippet> listVisibleSnippets() {
+        return List.copyOf(cachedSnippetsById.values());
     }
 
     @Override

@@ -199,6 +199,26 @@ class TransformationRuleRuntimeStoreTest {
         );
     }
 
+    // why: 控制台列表与排序保存和运行时执行应共享同一份 watch-driven 规则真源；
+    // 可见规则快照必须自动排除 deleting 资源，避免控制台请求路径再自己扫表过滤一次。
+    @Test
+    void shouldExposeVisibleRulesForConsoleFromWatchDrivenSnapshot() {
+        TransformationRule visibleRule =
+            rule("rule-a", TransformationRule.Mode.FOOTER, false, "");
+        TransformationRule deletingRule =
+            rule("rule-b", TransformationRule.Mode.FOOTER, false, "");
+        deletingRule.getMetadata().setDeletionTimestamp(Instant.now());
+        when(client.list(TransformationRule.class, null, null))
+            .thenReturn(Flux.just(visibleRule, deletingRule));
+
+        manager.startWatching();
+
+        waitUntil(() -> manager.listVisibleRules().stream()
+            .map(rule -> rule.getMetadata().getName())
+            .toList()
+            .equals(List.of("rule-a")));
+    }
+
     // why: watch 不是永不掉线的“神链路”；一旦底层 watch 被释放，管理器应自动按退避策略重连，
     // 而不是让运行时快照永久停留在一条已经失效的订阅上。
     @Test
