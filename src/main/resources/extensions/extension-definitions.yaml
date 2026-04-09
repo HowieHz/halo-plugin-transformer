@@ -1,4 +1,4 @@
-﻿apiVersion: plugin.halo.run/v1alpha1
+apiVersion: plugin.halo.run/v1alpha1
 kind: ExtensionDefinition
 metadata:
   name: transformer-custom-footer-extension
