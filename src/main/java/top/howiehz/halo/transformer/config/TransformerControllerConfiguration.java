@@ -25,7 +25,9 @@ public class TransformerControllerConfiguration {
      * 这里显式聚合本插件自己的 controllers，避免未来误启动/误停止其它模块的后台流程。
      */
     @Bean
-    TransformerControllers transformerControllers(Controller transformationSnippetDeletionController) {
-        return new TransformerControllers(java.util.List.of(transformationSnippetDeletionController));
+    TransformerControllers transformerControllers(
+        Controller transformationSnippetDeletionController) {
+        return new TransformerControllers(
+            java.util.List.of(transformationSnippetDeletionController));
     }
 }

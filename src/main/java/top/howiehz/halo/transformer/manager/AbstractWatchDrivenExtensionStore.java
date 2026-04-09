@@ -120,12 +120,6 @@ abstract class AbstractWatchDrivenExtensionStore<R extends Extension, S> {
 
     protected abstract int snapshotSize(S snapshot);
 
-    protected enum WatchEventType {
-        ADD,
-        UPDATE,
-        DELETE
-    }
-
     private void runRefreshLoopAsync() {
         synchronized (refreshMonitor) {
             refreshRequested = false;
@@ -323,6 +317,12 @@ abstract class AbstractWatchDrivenExtensionStore<R extends Extension, S> {
         }
         refreshRetryTask.cancel(false);
         refreshRetryTask = null;
+    }
+
+    protected enum WatchEventType {
+        ADD,
+        UPDATE,
+        DELETE
     }
 
     private final class RuntimeStoreWatcher implements Watcher {

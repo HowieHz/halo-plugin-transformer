@@ -1,6 +1,7 @@
 package top.howiehz.halo.transformer.endpoint;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Instant;
@@ -81,7 +82,7 @@ class ConsoleReadModelMapperTest {
 
         TransformationRuleReadModel readModel = mapper.toReadModel(rule);
 
-        assertTrue(readModel.matchRule().getChildren().getFirst().getChildren() == null);
+        assertNull(readModel.matchRule().getChildren().getFirst().getChildren());
     }
 
     // why: 代码片段删除走 finalizer 最终一致流程；控制台列表必须立刻把“删除中”的资源隐藏掉，

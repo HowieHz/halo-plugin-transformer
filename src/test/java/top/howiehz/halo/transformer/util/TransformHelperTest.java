@@ -208,7 +208,8 @@ class TransformHelperTest {
         when(snippetRuntimeStore.getByIds(any())).thenAnswer(invocation -> {
             snapshotReadCount.incrementAndGet();
             @SuppressWarnings("unchecked")
-            java.util.Collection<String> ids = invocation.getArgument(0, java.util.Collection.class);
+            java.util.Collection<String> ids =
+                invocation.getArgument(0, java.util.Collection.class);
             java.util.LinkedHashMap<String, TransformationSnippet> resolved =
                 new java.util.LinkedHashMap<>();
             for (String id : ids) {

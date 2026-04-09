@@ -58,7 +58,8 @@ public class ResourceOrderService {
             .map(snapshot -> new OrderState(snapshot.orders(), snapshot.orderVersion()));
     }
 
-    <T extends AbstractExtension> Mono<OrderState> saveOrder(ResourceOrderEndpoint.OrderPayload payload,
+    <T extends AbstractExtension> Mono<OrderState> saveOrder(
+        ResourceOrderEndpoint.OrderPayload payload,
         String orderName, String resourceLabel, Class<T> resourceType,
         Function<T, String> displayNameGetter) {
         return client.list(resourceType, null, null)

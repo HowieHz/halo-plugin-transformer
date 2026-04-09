@@ -47,7 +47,7 @@ class TransformationSnippetReferenceServiceTest {
             Mono.just(snippet("snippet-b")));
 
         LinkedHashSet<String> result = service.normalizeAndValidateSnippetIds(
-            new LinkedHashSet<>(List.of(" snippet-a ", "", "snippet-a", "snippet-b ")))
+                new LinkedHashSet<>(List.of(" snippet-a ", "", "snippet-a", "snippet-b ")))
             .block();
 
         assertEquals(new LinkedHashSet<>(List.of("snippet-a", "snippet-b")), result);
