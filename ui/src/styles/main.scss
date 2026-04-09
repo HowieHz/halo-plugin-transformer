@@ -3,10 +3,15 @@ $main-width: 60%;
 
 #transformer-view {
   /**
-   * why: Halo 移动端底部固定导航当前会遮住 48px 可视高度；
-   * 把这个值收成单一配置源，后面要微调时只改这里，不再同时改脚本和样式。
+   * why: 移动端底部可视空间会同时被两段固定区域占掉：
+   * 1) Halo 宿主底部导航；2) 当前编辑器自己的保存底栏。
+   * 把两段高度拆开收口后，再组合成统一预留高度，后面微调时不容易改漏。
    */
-  --transformer-mobile-fixed-nav-height: 48px;
+  --transformer-host-mobile-nav-height: 50px;
+  --transformer-editor-footer-height: 56px;
+  --transformer-mobile-bottom-reserved-height: calc(
+    var(--transformer-host-mobile-nav-height) + var(--transformer-editor-footer-height)
+  );
 
   .transformer-workspace {
     display: flex;
@@ -57,7 +62,11 @@ $main-width: 60%;
 }
 
 .transformer-view-card {
-  height: calc(100vh - var(--transformer-mobile-fixed-nav-height));
+  height: calc(100vh - var(--transformer-mobile-bottom-reserved-height));
+}
+
+.transformer-editor-footer {
+  min-height: var(--transformer-editor-footer-height);
 }
 
 .transformer-view-card-body {
@@ -67,7 +76,7 @@ $main-width: 60%;
 
 @supports (height: 100dvh) {
   .transformer-view-card {
-    height: calc(100dvh - var(--transformer-mobile-fixed-nav-height));
+    height: calc(100dvh - var(--transformer-mobile-bottom-reserved-height));
   }
 }
 
