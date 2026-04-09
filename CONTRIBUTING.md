@@ -60,12 +60,12 @@ pnpm dev
 
 导入 / 导出也遵循同一条边界：
 
-- transfer 只承载可移植的编辑内容
+- 导入导出内容（transfer）只承载可移植的编辑内容
 - 不承载 `id`、排序、系统 metadata
-- 规则 transfer 不承载 `snippetIds`
-- 跨环境关系迁移如果以后要支持，应单独设计显式协议，而不是把关系字段偷偷塞回当前 transfer
-- create / edit / import 三条写路径必须复用同一份前端 validator；不要让弹窗、右侧编辑器和导入提示各自复制校验条件
-- 新建弹窗同样要复用共享草稿控制器（draft controller），统一“初始值（`baseline`）/ 是否已修改（`dirty`）/ 提交快照（`submit snapshot`）”这几个语义；不要把这些领域逻辑重新塞回组件本身
+- 规则导入导出内容（transfer）不承载 `snippetIds`
+- 跨环境关系迁移如果以后要支持，应单独设计显式协议，而不是把关系字段偷偷塞回当前导入导出内容（transfer）
+- create / edit / import（三条写路径）必须复用同一份前端校验器（validator）；不要让弹窗、右侧编辑器和导入提示各自复制校验条件
+- 新建弹窗同样要复用共享草稿控制器（draft controller），统一“初始值（`baseline`）/ 是否已修改（`dirty`）/ 提交时使用的快照（`submit snapshot`）”这几个语义；不要把这些领域逻辑重新塞回组件本身
 
 ### 控制台状态模型
 
@@ -73,12 +73,12 @@ pnpm dev
 
 - 当前标签页（tab）只允许存在一份活动编辑草稿（`EditorDraft`）
 - `tab -> selectedId` 可以按标签页分别记忆当前选中项，方便路由恢复与面板跳转
-- 未保存草稿不会在两个 tab 后面各藏一份；切换时总是重新恢复（hydrate）当前 tab 的活动会话，避免共享一个“已修改”标记（`dirty`），却同时维护两份隐式草稿
-- 中间编辑器与右侧关系面板在当前 tab 下都必须从同一份活动编辑草稿（`EditorDraft`）派生；不能让“右侧关系”偷偷回退到已保存列表（saved list），变成左边看到的是当前草稿，右边看到的却是已保存内容，前后对不上
-- `bulk / create` 只会隐藏当前可见选中项（visible selection），不会顺手清掉记住的选中项（remembered selection）；退出这些页面语义后应能回到该 tab 上次打开的资源
+- 未保存草稿不会在两个 tab 后面各藏一份；切换时总是重新恢复当前 tab 的活动会话（hydrate），避免共享一个“已修改”标记（`dirty`），却同时维护两份隐式草稿
+- 中间编辑器与右侧关系面板在当前 tab 下都必须从同一份活动编辑草稿（`EditorDraft`）派生；不能让“右侧关系”偷偷回退到已保存内容列表（saved list），变成左边看到的是当前草稿，右边看到的却是已保存内容，前后对不上
+- `bulk / create` 只会隐藏当前可见选中项（visible selection），不会顺手清掉之前记住的选中项（remembered selection）；退出这些页面语义后应能回到该 tab 上次打开的资源
 - 新建弹窗用单一当前活动标签（`ActiveTab | null`）表达状态，不再维护两颗互斥布尔；避免出现代码片段 / 规则弹窗同时为真，或同时忘记收口的隐式组合态
 - 多步流程弹窗（例如批量导入）用单一流程状态（flow-state）对象表达 `source/options/result`，不要再并列维护多颗“是否显示 / 结果 / 进行中”状态去手动拼阶段
-- 路由意图（route intent）只改当前 tab 的页面语义；不要让 `mode=bulk`、`action=create` 这类 URL 状态顺手清掉另一个 tab 里记住的选中项（remembered selection）
+- 路由意图（route intent）只改当前 tab 的页面语义；不要让 `mode=bulk`、`action=create` 这类 URL 状态顺手清掉另一个 tab 里之前记住的选中项（remembered selection）
 
 ### 配置页交互语义
 
@@ -126,14 +126,14 @@ pnpm dev
     - JSON 合法时可执行“格式化 JSON”
     - JSON 非法时可执行“重建 JSON”，按当前简单模式配置重新生成
 
-## Match-rule specs
+## 匹配规则规范
 
-为了避免“README 很长，但 contract fixture 很薄”，`match-rule` 现在拆成两类规范源：
+为了避免“README 很长，但约束样例（contract fixture）很薄”，`match-rule` 现在拆成两类规范源：
 
-- 共享 contract
+- 共享约束（contract）
     - 规范源：`specs/match-rule/contract.spec.jsonc`
-    - case 源：`specs/match-rule/contract.cases.jsonc`
-    - 允许字段集合、错误文本模板与 schema 都从这里生成
+    - 样例源：`specs/match-rule/contract.cases.jsonc`
+    - 允许字段集合、错误文本模板与 Schema 都从这里生成
 - 前端专属行为
     - 仍记录在 spec / cases 中，但不强制要求后端共享同一语义
     - 典型例子包括模式切换确认、JSON 行高亮、导入后退回 `JSON_DRAFT`
@@ -141,22 +141,22 @@ pnpm dev
 ### 生成链路
 
 - `pnpm generate:spec-artifacts`
-    - 从仓库根的 `specs/match-rule/contract.spec.jsonc` 刷新 generated artifacts
+    - 从仓库根的 `specs/match-rule/contract.spec.jsonc` 刷新生成产物（generated artifacts）
 - `pnpm verify:spec-artifacts`
-    - 只校验 generated artifacts 是否与 spec 一致
+    - 只校验生成产物（generated artifacts）是否与 spec 一致
 - `./gradlew verifyMatchRuleSpecArtifacts`
     - 后端构建链路上的同义校验，避免只跑 Gradle 时漏掉 spec 一致性检查
 
 ### JSON Schema
 
 - `ui/public/generated/transformer.schema.json`
-    - 负责 transfer envelope
+    - 负责导入导出外层结构（transfer envelope）
     - 描述顶层 `version`、`resourceType`、`data`
 - `ui/public/generated/match-rule.schema.json`
     - 从 `specs/match-rule/contract.spec.jsonc` 生成
     - 负责 `match-rule` 领域结构
 - `ui/public/generated/transformer.schema.json`
-    - 通过 `$ref` 引用 `match-rule` generated schema，而不是在 envelope 中手写一遍规则树结构
+    - 通过 `$ref` 引用 `match-rule` 生成后的 Schema，而不是在外层结构（envelope）里手写一遍规则树结构
 
 ## 导入 / 导出协议
 
@@ -171,7 +171,7 @@ pnpm dev
 - 导出的 JSON 自动带上 `$schema`
 - 外层 envelope 使用 `version`、`resourceType`、`data`
 
-### `resourceType`
+### 资源类型（`resourceType`）
 
 - 单项代码片段：`snippet`
 - 单项规则：`rule`
@@ -265,7 +265,7 @@ pnpm dev
         - 是否错误关联了代码片段（内部字段名为 `snippetIds`）
         - 是否错误开启了注释标记（内部字段名为 `wrapMarker`）
 
-## Runtime boolean simplification
+## 运行时布尔化简
 
 运行时和分析期会先对 `match-rule` 做一轮“收缩表达式 / 减少操作数”方向的布尔最小化；这一步只影响运行期分析与匹配，不会改写控制台草稿，也不会改写持久化存储的原始规则树。
 
