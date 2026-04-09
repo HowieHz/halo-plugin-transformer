@@ -1,7 +1,8 @@
-import type { AxiosError } from 'axios'
-import type { ItemList, ResourceReadMetadata, ResourceWriteMetadata } from '@/types'
+import type { AxiosError } from "axios";
 
-export type ReorderPlacement = 'before' | 'after'
+import type { ItemList, ResourceReadMetadata, ResourceWriteMetadata } from "@/types";
+
+export type ReorderPlacement = "before" | "after";
 
 export function emptyList<T>(): ItemList<T> {
   return {
@@ -14,21 +15,21 @@ export function emptyList<T>(): ItemList<T> {
     totalPages: 0,
     items: [],
     total: 0,
-  }
+  };
 }
 
 export function getErrorMessage(error: unknown, fallback: string) {
   const axiosError = error as AxiosError<{
-    message?: string
-    detail?: string
-    error?: { message?: string }
-  }>
+    message?: string;
+    detail?: string;
+    error?: { message?: string };
+  }>;
   return (
     axiosError?.response?.data?.message ||
     axiosError?.response?.data?.detail ||
     axiosError?.response?.data?.error?.message ||
     fallback
-  )
+  );
 }
 
 /**
@@ -43,5 +44,5 @@ export function mergeSavedMetadata(
     ...draft,
     name: saved.name,
     version: saved.version ?? null,
-  }
+  };
 }

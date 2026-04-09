@@ -11,7 +11,7 @@
  * - `ui/src/views/composables/matchRuleContract.generated.ts`
  * - `src/main/java/top/howiehz/halo/transformer/core/MatchRuleContractMessages.java`
  * - `ui/public/generated/match-rule.schema.json`
- * - `ui/public/transformer.schema.json`
+ * - `ui/public/generated/transformer.schema.json`
  *
  * Modes:
  * - default: 写回所有 generated artifacts
@@ -60,7 +60,7 @@ const artifacts = [
     content: buildJsonArtifact(buildMatchRuleSchema(spec)),
   },
   {
-    path: path.join(repoRoot, "ui", "public", "transformer.schema.json"),
+    path: path.join(repoRoot, "ui", "public", "generated", "transformer.schema.json"),
     content: buildJsonArtifact(buildTransferEnvelopeSchema()),
   },
 ];
@@ -531,7 +531,7 @@ function toPascalCase(value) {
 function buildTransferEnvelopeSchema() {
   return {
     $schema: "https://json-schema.org/draft/2020-12/schema",
-    $id: "https://raw.githubusercontent.com/HowieHz/halo-plugin-transformer/main/ui/public/transformer.schema.json",
+    $id: "https://raw.githubusercontent.com/HowieHz/halo-plugin-transformer/main/ui/public/generated/transformer.schema.json",
     title: "Halo Plugin Transformer Transfer",
     description: "JSON import/export schema for Halo Plugin Transformer resources.",
     type: "object",
@@ -683,7 +683,7 @@ function buildTransferEnvelopeSchema() {
             maximum: 2147483647,
           },
           matchRuleSource: {
-            $ref: "./generated/match-rule.schema.json#/$defs/matchRuleSource",
+            $ref: "./match-rule.schema.json#/$defs/matchRuleSource",
           },
         },
         additionalProperties: false,

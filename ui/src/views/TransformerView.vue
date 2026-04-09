@@ -1,26 +1,37 @@
 <script lang="ts" setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { Toast, VButton, VCard, VLoading, VModal, VPageHeader, VSpace } from "@halo-dev/components";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import {
   onBeforeRouteLeave,
   onBeforeRouteUpdate,
   useRoute,
   useRouter,
   type LocationQueryRaw,
-} from 'vue-router'
-import { Toast, VButton, VCard, VLoading, VModal, VPageHeader, VSpace } from '@halo-dev/components'
-import PluginLogoIcon from '@/components/PluginLogoIcon.vue'
+} from "vue-router";
 
+import PluginLogoIcon from "@/components/PluginLogoIcon.vue";
 import type {
   ActiveTab,
   TransformationSnippetEditorDraft,
   TransformationRuleEditorDraft,
-} from '@/types'
-import { useTransformerData } from './composables/useTransformerData.ts'
-import { rulePreview } from './composables/util.ts'
-import { matchRuleSummary } from './composables/matchRule.ts'
-import { hydrateRuleEditorDraft } from './composables/ruleDraft'
-import { hydrateSnippetEditorDraft } from './composables/snippetDraft'
-import { useBulkSelectionState } from './composables/useBulkSelectionState'
+} from "@/types";
+
+import BulkImportOptionsModal from "./components/BulkImportOptionsModal.vue";
+import BulkImportResultModal from "./components/BulkImportResultModal.vue";
+import BulkModeSidePanel from "./components/BulkModeSidePanel.vue";
+import BulkOperationPanel from "./components/BulkOperationPanel.vue";
+import DragAutoScrollOverlay from "./components/DragAutoScrollOverlay.vue";
+import ExportContentModal from "./components/ExportContentModal.vue";
+import ImportSourceModal from "./components/ImportSourceModal.vue";
+import RelationPanel from "./components/RelationPanel.vue";
+import ResourceList from "./components/ResourceList.vue";
+import RuleEditor from "./components/RuleEditor.vue";
+import RuleFormModal from "./components/RuleFormModal.vue";
+import SnippetEditor from "./components/SnippetEditor.vue";
+import SnippetFormModal from "./components/SnippetFormModal.vue";
+import { matchRuleSummary } from "./composables/matchRule.ts";
+import { hydrateRuleEditorDraft } from "./composables/ruleDraft";
+import { hydrateSnippetEditorDraft } from "./composables/snippetDraft";
 import {
   buildRuleBatchTransfer,
   buildSnippetBatchTransfer,
@@ -28,27 +39,7 @@ import {
   parseRuleBatchTransfer,
   parseSnippetBatchTransfer,
   type TransferFileDraft,
-} from './composables/transfer'
-
-import ResourceList from './components/ResourceList.vue'
-import DragAutoScrollOverlay from './components/DragAutoScrollOverlay.vue'
-import SnippetEditor from './components/SnippetEditor.vue'
-import RuleEditor from './components/RuleEditor.vue'
-import RelationPanel from './components/RelationPanel.vue'
-import SnippetFormModal from './components/SnippetFormModal.vue'
-import RuleFormModal from './components/RuleFormModal.vue'
-import ImportSourceModal from './components/ImportSourceModal.vue'
-import ExportContentModal from './components/ExportContentModal.vue'
-import BulkOperationPanel from './components/BulkOperationPanel.vue'
-import BulkModeSidePanel from './components/BulkModeSidePanel.vue'
-import BulkImportOptionsModal from './components/BulkImportOptionsModal.vue'
-import BulkImportResultModal from './components/BulkImportResultModal.vue'
-import { useDragAutoScroll } from './composables/useDragAutoScroll'
-import { useLeaveConfirmation } from './composables/useLeaveConfirmation'
-import {
-  useBulkImportFlowState,
-  type BulkImportPayload,
-} from './composables/useBulkImportFlowState'
+} from "./composables/transfer";
 import {
   applyTransformerRouteSelection,
   buildTransformerRouteQuery,
@@ -56,37 +47,46 @@ import {
   parseTransformerRouteState,
   resolveVisibleTransformerSelection,
   type TransformerRouteState,
-} from './composables/transformerRouteState'
+} from "./composables/transformerRouteState";
+import {
+  useBulkImportFlowState,
+  type BulkImportPayload,
+} from "./composables/useBulkImportFlowState";
+import { useBulkSelectionState } from "./composables/useBulkSelectionState";
+import { useDragAutoScroll } from "./composables/useDragAutoScroll";
+import { useLeaveConfirmation } from "./composables/useLeaveConfirmation";
+import { useTransformerData } from "./composables/useTransformerData.ts";
+import { rulePreview } from "./composables/util.ts";
 
-const activeTab = ref<ActiveTab>('snippets')
-const route = useRoute()
-const router = useRouter()
+const activeTab = ref<ActiveTab>("snippets");
+const route = useRoute();
+const router = useRouter();
 
-const createModalTab = ref<ActiveTab | null>(null)
-const syncingQuery = ref(false)
-const queryStateHydrated = ref(false)
-const bulkExportFallback = ref<TransferFileDraft | null>(null)
-const bulkImportFileInput = ref<HTMLInputElement | null>(null)
-const bulkImportFlow = useBulkImportFlowState()
+const createModalTab = ref<ActiveTab | null>(null);
+const syncingQuery = ref(false);
+const queryStateHydrated = ref(false);
+const bulkExportFallback = ref<TransferFileDraft | null>(null);
+const bulkImportFileInput = ref<HTMLInputElement | null>(null);
+const bulkImportFlow = useBulkImportFlowState();
 const snippetFormRef = ref<{
-  reset: () => void
-  hasUnsavedChanges: () => boolean
-  getValidationError: () => string | null
-  getSubmitPayload: () => { snippet: TransformationSnippetEditorDraft }
-} | null>(null)
+  reset: () => void;
+  hasUnsavedChanges: () => boolean;
+  getValidationError: () => string | null;
+  getSubmitPayload: () => { snippet: TransformationSnippetEditorDraft };
+} | null>(null);
 const ruleFormRef = ref<{
-  reset: () => void
-  hasUnsavedChanges: () => boolean
-  getValidationError: () => string | null
-  getSubmitPayload: () => { rule: TransformationRuleEditorDraft; snippetIds: string[] }
-} | null>(null)
+  reset: () => void;
+  hasUnsavedChanges: () => boolean;
+  getValidationError: () => string | null;
+  getSubmitPayload: () => { rule: TransformationRuleEditorDraft; snippetIds: string[] };
+} | null>(null);
 const resourceListRef = ref<{
-  getScrollContainer: () => HTMLElement | null
-  commitPendingDrop: () => void
-} | null>(null)
-const resourceListScrollContainer = ref<HTMLElement | null>(null)
-const leftPaneAutoScroll = useDragAutoScroll(resourceListScrollContainer)
-const LEFT_PANE_EDGE_OVERLAP_PX = 5
+  getScrollContainer: () => HTMLElement | null;
+  commitPendingDrop: () => void;
+} | null>(null);
+const resourceListScrollContainer = ref<HTMLElement | null>(null);
+const leftPaneAutoScroll = useDragAutoScroll(resourceListScrollContainer);
+const LEFT_PANE_EDGE_OVERLAP_PX = 5;
 
 const {
   loading,
@@ -125,57 +125,57 @@ const {
   discardRuleEdit,
   toggleSnippetInRuleEditor,
   reorderRule,
-} = useTransformerData(activeTab)
+} = useTransformerData(activeTab);
 
 const bulkSelectionState = useBulkSelectionState({
   activeTab,
   snippets,
   rules,
-})
+});
 const selectedBulkResources = computed(() => {
-  if (activeTab.value === 'snippets') {
-    const selectedIds = new Set(bulkSelectionState.currentBulkIds.value)
-    return snippets.value.filter((item) => selectedIds.has(item.id))
+  if (activeTab.value === "snippets") {
+    const selectedIds = new Set(bulkSelectionState.currentBulkIds.value);
+    return snippets.value.filter((item) => selectedIds.has(item.id));
   }
-  const selectedIds = new Set(bulkSelectionState.currentBulkIds.value)
-  return rules.value.filter((item) => selectedIds.has(item.id))
-})
-const canBulkEnable = computed(() => selectedBulkResources.value.some((item) => !item.enabled))
-const canBulkDisable = computed(() => selectedBulkResources.value.some((item) => item.enabled))
+  const selectedIds = new Set(bulkSelectionState.currentBulkIds.value);
+  return rules.value.filter((item) => selectedIds.has(item.id));
+});
+const canBulkEnable = computed(() => selectedBulkResources.value.some((item) => !item.enabled));
+const canBulkDisable = computed(() => selectedBulkResources.value.some((item) => item.enabled));
 
-onMounted(fetchAll)
+onMounted(fetchAll);
 
-const postCreatePrompt = ref<null | { tab: ActiveTab; id: string }>(null)
+const postCreatePrompt = ref<null | { tab: ActiveTab; id: string }>(null);
 
 function handleLeftPaneDragOver(event: DragEvent) {
   leftPaneAutoScroll.handleContainerDragOver(event, {
     topZoneHeight: 48 + LEFT_PANE_EDGE_OVERLAP_PX,
     bottomZoneHeight: 48 + LEFT_PANE_EDGE_OVERLAP_PX,
-  })
+  });
 }
 
 function handleLeftPaneDragLeave(event: DragEvent) {
-  leftPaneAutoScroll.handleContainerDragLeave(event)
+  leftPaneAutoScroll.handleContainerDragLeave(event);
 }
 
 function handleLeftPaneDropCapture() {
-  resourceListRef.value?.commitPendingDrop()
+  resourceListRef.value?.commitPendingDrop();
 }
 
 function currentSelectedId(tab: ActiveTab) {
   return resolveVisibleTransformerSelection(
     {
       action: currentAction(tab),
-      viewMode: bulkSelectionState.isBulkMode.value ? 'bulk' : 'single',
+      viewMode: bulkSelectionState.isBulkMode.value ? "bulk" : "single",
     },
-    tab === 'snippets' ? selectedSnippetId.value : selectedRuleId.value,
-  )
+    tab === "snippets" ? selectedSnippetId.value : selectedRuleId.value,
+  );
 }
 
 function currentAction(tab: ActiveTab) {
-  if (bulkSelectionState.isBulkMode.value) return null
-  if (createModalTab.value === tab) return 'create'
-  return null
+  if (bulkSelectionState.isBulkMode.value) return null;
+  if (createModalTab.value === tab) return "create";
+  return null;
 }
 
 function currentLocalRouteState(): TransformerRouteState {
@@ -183,14 +183,14 @@ function currentLocalRouteState(): TransformerRouteState {
     tab: activeTab.value,
     selectedId: currentSelectedId(activeTab.value),
     action: currentAction(activeTab.value),
-    viewMode: bulkSelectionState.isBulkMode.value ? 'bulk' : 'single',
-  }
+    viewMode: bulkSelectionState.isBulkMode.value ? "bulk" : "single",
+  };
 }
 
 function applyRouteState(nextState: TransformerRouteState) {
-  activeTab.value = nextState.tab
+  activeTab.value = nextState.tab;
   createModalTab.value =
-    nextState.viewMode !== 'bulk' && nextState.action === 'create' ? nextState.tab : null
+    nextState.viewMode !== "bulk" && nextState.action === "create" ? nextState.tab : null;
 
   const nextSelection = applyTransformerRouteSelection(
     {
@@ -198,47 +198,47 @@ function applyRouteState(nextState: TransformerRouteState) {
       rules: selectedRuleId.value,
     },
     nextState,
-  )
-  selectedSnippetId.value = nextSelection.snippets
-  selectedRuleId.value = nextSelection.rules
+  );
+  selectedSnippetId.value = nextSelection.snippets;
+  selectedRuleId.value = nextSelection.rules;
 
-  if (nextState.viewMode === 'bulk') {
-    bulkSelectionState.enterBulkMode()
-    queryStateHydrated.value = true
-    return
+  if (nextState.viewMode === "bulk") {
+    bulkSelectionState.enterBulkMode();
+    queryStateHydrated.value = true;
+    return;
   }
 
-  bulkSelectionState.exitBulkMode()
+  bulkSelectionState.exitBulkMode();
 
-  if (nextState.action === 'create') {
-    queryStateHydrated.value = true
-    return
+  if (nextState.action === "create") {
+    queryStateHydrated.value = true;
+    return;
   }
-  queryStateHydrated.value = true
+  queryStateHydrated.value = true;
 }
 
 function applyQueryState() {
-  applyRouteState(parseTransformerRouteState(route.query))
+  applyRouteState(parseTransformerRouteState(route.query));
 }
 
 function syncQueryState() {
-  const nextState = currentLocalRouteState()
-  const currentState = parseTransformerRouteState(route.query)
+  const nextState = currentLocalRouteState();
+  const currentState = parseTransformerRouteState(route.query);
 
   if (isSameTransformerRouteState(currentState, nextState)) {
-    return
+    return;
   }
 
-  const nextQuery: LocationQueryRaw = buildTransformerRouteQuery(route.query, nextState)
+  const nextQuery: LocationQueryRaw = buildTransformerRouteQuery(route.query, nextState);
 
-  syncingQuery.value = true
+  syncingQuery.value = true;
   void router
     .replace({
       query: nextQuery,
     })
     .finally(() => {
-      syncingQuery.value = false
-    })
+      syncingQuery.value = false;
+    });
 }
 
 /**
@@ -247,15 +247,15 @@ function syncQueryState() {
  */
 onBeforeRouteUpdate((to) => {
   if (syncingQuery.value || !queryStateHydrated.value) {
-    return true
+    return true;
   }
 
-  const nextState = parseTransformerRouteState(to.query)
+  const nextState = parseTransformerRouteState(to.query);
   if (isSameTransformerRouteState(currentLocalRouteState(), nextState)) {
-    return true
+    return true;
   }
-  return requestNavigationLeave()
-})
+  return requestNavigationLeave();
+});
 
 /**
  * why: 只拦住页内 query 变化还不够；如果整页导航能直接离开，
@@ -263,112 +263,112 @@ onBeforeRouteUpdate((to) => {
  */
 onBeforeRouteLeave(() => {
   if (syncingQuery.value || !queryStateHydrated.value) {
-    return true
+    return true;
   }
-  return requestNavigationLeave()
-})
+  return requestNavigationLeave();
+});
 
 function validateSelection() {
   const hasSnippet =
-    !!selectedSnippetId.value && snippets.value.some((item) => item.id === selectedSnippetId.value)
+    !!selectedSnippetId.value && snippets.value.some((item) => item.id === selectedSnippetId.value);
   const hasRule =
-    !!selectedRuleId.value && rules.value.some((item) => item.id === selectedRuleId.value)
+    !!selectedRuleId.value && rules.value.some((item) => item.id === selectedRuleId.value);
 
   if (selectedSnippetId.value && !hasSnippet) {
-    selectedSnippetId.value = null
+    selectedSnippetId.value = null;
   }
   if (selectedRuleId.value && !hasRule) {
-    selectedRuleId.value = null
+    selectedRuleId.value = null;
   }
 }
 
 function openCreateModal(tab: ActiveTab) {
-  activeTab.value = tab
-  bulkSelectionState.exitBulkMode()
-  createModalTab.value = tab
+  activeTab.value = tab;
+  bulkSelectionState.exitBulkMode();
+  createModalTab.value = tab;
 }
 
 function closeSnippetModal() {
-  if (createModalTab.value === 'snippets') {
-    createModalTab.value = null
+  if (createModalTab.value === "snippets") {
+    createModalTab.value = null;
   }
 }
 
 function closeRuleModal() {
-  if (createModalTab.value === 'rules') {
-    createModalTab.value = null
+  if (createModalTab.value === "rules") {
+    createModalTab.value = null;
   }
 }
 
 function currentCreateController() {
-  if (createModalTab.value === 'snippets') return snippetFormRef.value
-  if (createModalTab.value === 'rules') return ruleFormRef.value
-  return null
+  if (createModalTab.value === "snippets") return snippetFormRef.value;
+  if (createModalTab.value === "rules") return ruleFormRef.value;
+  return null;
 }
 
 function hasUnsavedCreateChanges() {
-  return currentCreateController()?.hasUnsavedChanges() ?? false
+  return currentCreateController()?.hasUnsavedChanges() ?? false;
 }
 
 function hasUnsavedEditorChanges() {
-  return editDirty.value && !!(activeTab.value === 'snippets' ? editSnippet.value : editRule.value)
+  return editDirty.value && !!(activeTab.value === "snippets" ? editSnippet.value : editRule.value);
 }
 
 function hasUnsavedChanges() {
-  return hasUnsavedCreateChanges() || hasUnsavedEditorChanges()
+  return hasUnsavedCreateChanges() || hasUnsavedEditorChanges();
 }
 
 function currentValidationError() {
-  if (createModalTab.value === 'snippets') {
-    return snippetFormRef.value?.getValidationError() ?? null
+  if (createModalTab.value === "snippets") {
+    return snippetFormRef.value?.getValidationError() ?? null;
   }
-  if (createModalTab.value === 'rules') {
-    return ruleFormRef.value?.getValidationError() ?? null
+  if (createModalTab.value === "rules") {
+    return ruleFormRef.value?.getValidationError() ?? null;
   }
-  return activeTab.value === 'snippets' ? snippetEditorError.value : ruleEditorError.value
+  return activeTab.value === "snippets" ? snippetEditorError.value : ruleEditorError.value;
 }
 
 function discardCurrentChanges() {
-  if (createModalTab.value === 'snippets') {
-    snippetFormRef.value?.reset()
-    return
+  if (createModalTab.value === "snippets") {
+    snippetFormRef.value?.reset();
+    return;
   }
-  if (createModalTab.value === 'rules') {
-    ruleFormRef.value?.reset()
-    return
+  if (createModalTab.value === "rules") {
+    ruleFormRef.value?.reset();
+    return;
   }
-  if (activeTab.value === 'snippets') {
-    discardSnippetEdit()
-    return
+  if (activeTab.value === "snippets") {
+    discardSnippetEdit();
+    return;
   }
-  discardRuleEdit()
+  discardRuleEdit();
 }
 
 function closePostCreatePrompt() {
-  postCreatePrompt.value = null
+  postCreatePrompt.value = null;
 }
 
 async function saveCurrentChanges() {
-  let saved = false
-  if (createModalTab.value === 'snippets') {
-    const payload = snippetFormRef.value?.getSubmitPayload()
-    saved = payload ? !!(await addSnippet(payload.snippet)) : false
+  let saved = false;
+  if (createModalTab.value === "snippets") {
+    const payload = snippetFormRef.value?.getSubmitPayload();
+    saved = payload ? !!(await addSnippet(payload.snippet)) : false;
     if (saved) {
-      createModalTab.value = null
+      createModalTab.value = null;
     }
-  } else if (createModalTab.value === 'rules') {
-    const payload = ruleFormRef.value?.getSubmitPayload()
-    saved = payload ? !!(await addRule(payload.rule, payload.snippetIds)) : false
+  } else if (createModalTab.value === "rules") {
+    const payload = ruleFormRef.value?.getSubmitPayload();
+    saved = payload ? !!(await addRule(payload.rule, payload.snippetIds)) : false;
     if (saved) {
-      createModalTab.value = null
+      createModalTab.value = null;
     }
   } else {
-    saved = activeTab.value === 'snippets' ? await saveSnippet() : await saveRule()
+    saved = activeTab.value === "snippets" ? await saveSnippet() : await saveRule();
   }
   if (!saved) {
-    return false
+    return false;
   }
-  return true
+  return true;
 }
 
 const {
@@ -384,293 +384,293 @@ const {
   hasValidationError: () => !!currentValidationError(),
   discardChanges: discardCurrentChanges,
   saveChanges: saveCurrentChanges,
-})
+});
 
 function resetCreateForm(tab: ActiveTab) {
-  if (tab === 'snippets') {
-    snippetFormRef.value?.reset()
-    return
+  if (tab === "snippets") {
+    snippetFormRef.value?.reset();
+    return;
   }
-  ruleFormRef.value?.reset()
+  ruleFormRef.value?.reset();
 }
 
 function keepCreatingCreatedResource() {
   if (!postCreatePrompt.value) {
-    return
+    return;
   }
-  resetCreateForm(postCreatePrompt.value.tab)
-  closePostCreatePrompt()
+  resetCreateForm(postCreatePrompt.value.tab);
+  closePostCreatePrompt();
 }
 
 function focusCreatedResource() {
-  const prompt = postCreatePrompt.value
+  const prompt = postCreatePrompt.value;
   if (!prompt) {
-    return
+    return;
   }
-  resetCreateForm(prompt.tab)
-  if (prompt.tab === 'snippets') {
-    createModalTab.value = null
-    activeTab.value = 'snippets'
-    selectedSnippetId.value = prompt.id
+  resetCreateForm(prompt.tab);
+  if (prompt.tab === "snippets") {
+    createModalTab.value = null;
+    activeTab.value = "snippets";
+    selectedSnippetId.value = prompt.id;
   } else {
-    createModalTab.value = null
-    activeTab.value = 'rules'
-    selectedRuleId.value = prompt.id
+    createModalTab.value = null;
+    activeTab.value = "rules";
+    selectedRuleId.value = prompt.id;
   }
-  closePostCreatePrompt()
+  closePostCreatePrompt();
 }
 
 function handleTabSwitch(tab: ActiveTab) {
   if (activeTab.value === tab) {
-    return
+    return;
   }
   requestEditorLeave(() => {
-    activeTab.value = tab
-  })
+    activeTab.value = tab;
+  });
 }
 
 function handleSnippetSelect(id: string) {
-  if (activeTab.value === 'snippets' && selectedSnippetId.value === id) {
-    return
+  if (activeTab.value === "snippets" && selectedSnippetId.value === id) {
+    return;
   }
   requestEditorLeave(() => {
-    selectedSnippetId.value = id
-  })
+    selectedSnippetId.value = id;
+  });
 }
 
 function handleRuleSelect(id: string) {
-  if (activeTab.value === 'rules' && selectedRuleId.value === id) {
-    return
+  if (activeTab.value === "rules" && selectedRuleId.value === id) {
+    return;
   }
   requestEditorLeave(() => {
-    selectedRuleId.value = id
-  })
+    selectedRuleId.value = id;
+  });
 }
 
 function handleOpenCreateModal(tab: ActiveTab) {
   requestEditorLeave(() => {
-    openCreateModal(tab)
-  })
+    openCreateModal(tab);
+  });
 }
 
 function enterBulkMode() {
   requestEditorLeave(() => {
-    createModalTab.value = null
-    bulkSelectionState.enterBulkMode()
-  })
+    createModalTab.value = null;
+    bulkSelectionState.enterBulkMode();
+  });
 }
 
 function exitBulkMode() {
-  bulkSelectionState.exitBulkMode()
+  bulkSelectionState.exitBulkMode();
 }
 
 function handleBulkItemToggle(id: string) {
-  bulkSelectionState.toggleCurrentBulkItem(id)
+  bulkSelectionState.toggleCurrentBulkItem(id);
 }
 
 function handleBulkToggleAll() {
-  bulkSelectionState.toggleCurrentBulkSelectAll()
+  bulkSelectionState.toggleCurrentBulkSelectAll();
 }
 
 function openBulkImportSourceModal() {
-  bulkImportFlow.openSource()
+  bulkImportFlow.openSource();
 }
 
 function closeBulkImportFlow() {
-  bulkImportFlow.close()
+  bulkImportFlow.close();
 }
 
 async function handleBulkImportFromClipboard() {
-  let text = ''
+  let text = "";
   try {
-    text = await navigator.clipboard.readText()
+    text = await navigator.clipboard.readText();
   } catch {
-    Toast.error('读取剪贴板失败，请检查浏览器权限后重试')
-    return
+    Toast.error("读取剪贴板失败，请检查浏览器权限后重试");
+    return;
   }
 
   if (!text.trim()) {
-    Toast.warning('剪贴板里没有可导入的 JSON')
-    return
+    Toast.warning("剪贴板里没有可导入的 JSON");
+    return;
   }
 
   try {
-    applyBulkImportSource(text)
+    applyBulkImportSource(text);
   } catch (error) {
-    Toast.error(error instanceof Error ? error.message : '导入失败')
+    Toast.error(error instanceof Error ? error.message : "导入失败");
   }
 }
 
 async function handleBulkImportFromFile() {
-  bulkImportFlow.close()
-  await nextTick()
-  bulkImportFileInput.value?.click()
+  bulkImportFlow.close();
+  await nextTick();
+  bulkImportFileInput.value?.click();
 }
 
 async function handleBulkImportFileChange(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
   if (!file) {
-    return
+    return;
   }
 
   try {
-    applyBulkImportSource(await file.text())
+    applyBulkImportSource(await file.text());
   } catch (error) {
-    Toast.error(error instanceof Error ? error.message : '导入失败')
+    Toast.error(error instanceof Error ? error.message : "导入失败");
   } finally {
-    input.value = ''
+    input.value = "";
   }
 }
 
 function applyBulkImportSource(raw: string) {
   const pendingImport: BulkImportPayload =
-    activeTab.value === 'snippets'
-      ? { tab: 'snippets', items: parseSnippetBatchTransfer(raw) }
-      : { tab: 'rules', items: parseRuleBatchTransfer(raw) }
-  bulkImportFlow.openOptions(pendingImport)
+    activeTab.value === "snippets"
+      ? { tab: "snippets", items: parseSnippetBatchTransfer(raw) }
+      : { tab: "rules", items: parseRuleBatchTransfer(raw) };
+  bulkImportFlow.openOptions(pendingImport);
 }
 
 async function submitBulkImport(enabled: boolean) {
-  const pendingImport = bulkImportFlow.pendingImport.value
+  const pendingImport = bulkImportFlow.pendingImport.value;
   if (!pendingImport) {
-    return
+    return;
   }
 
   const importedIds =
-    pendingImport.tab === 'snippets'
+    pendingImport.tab === "snippets"
       ? await importSnippets(pendingImport.items, enabled)
-      : await importRules(pendingImport.items, enabled)
+      : await importRules(pendingImport.items, enabled);
 
   if (importedIds.length > 0) {
     if (pendingImport.tab === activeTab.value) {
-      bulkSelectionState.appendCurrentBulkSelection(importedIds)
+      bulkSelectionState.appendCurrentBulkSelection(importedIds);
     }
     bulkImportFlow.openResult({
       count: importedIds.length,
       tab: pendingImport.tab,
-    })
+    });
   } else {
-    bulkImportFlow.close()
+    bulkImportFlow.close();
   }
 }
 
 function continueBulkImport() {
-  bulkImportFlow.continueImport()
+  bulkImportFlow.continueImport();
 }
 
 function handleBulkExport() {
-  if (activeTab.value === 'snippets') {
+  if (activeTab.value === "snippets") {
     const selectedItems = snippets.value.filter((item) =>
       bulkSelectionState.currentBulkIds.value.includes(item.id),
-    )
+    );
     if (!selectedItems.length) {
-      return
+      return;
     }
     bulkExportFallback.value = createTransferFileDraft(
       buildSnippetBatchTransfer(selectedItems.map(hydrateSnippetEditorDraft)),
-      'transformer-snippets-batch',
-    )
-    return
+      "transformer-snippets-batch",
+    );
+    return;
   }
 
   const selectedItems = rules.value.filter((item) =>
     bulkSelectionState.currentBulkIds.value.includes(item.id),
-  )
+  );
   if (!selectedItems.length) {
-    return
+    return;
   }
   bulkExportFallback.value = createTransferFileDraft(
     buildRuleBatchTransfer(selectedItems.map(hydrateRuleEditorDraft)),
-    'transformer-rules-batch',
-  )
+    "transformer-rules-batch",
+  );
 }
 
 function handleBulkEnable() {
-  if (activeTab.value === 'snippets') {
-    void setSnippetsEnabled(bulkSelectionState.currentBulkIds.value, true)
-    return
+  if (activeTab.value === "snippets") {
+    void setSnippetsEnabled(bulkSelectionState.currentBulkIds.value, true);
+    return;
   }
-  void setRulesEnabled(bulkSelectionState.currentBulkIds.value, true)
+  void setRulesEnabled(bulkSelectionState.currentBulkIds.value, true);
 }
 
 function handleBulkDisable() {
-  if (activeTab.value === 'snippets') {
-    void setSnippetsEnabled(bulkSelectionState.currentBulkIds.value, false)
-    return
+  if (activeTab.value === "snippets") {
+    void setSnippetsEnabled(bulkSelectionState.currentBulkIds.value, false);
+    return;
   }
-  void setRulesEnabled(bulkSelectionState.currentBulkIds.value, false)
+  void setRulesEnabled(bulkSelectionState.currentBulkIds.value, false);
 }
 
 function handleBulkDelete() {
-  if (activeTab.value === 'snippets') {
-    confirmDeleteSnippets(bulkSelectionState.currentBulkIds.value)
-    return
+  if (activeTab.value === "snippets") {
+    confirmDeleteSnippets(bulkSelectionState.currentBulkIds.value);
+    return;
   }
-  confirmDeleteRules(bulkSelectionState.currentBulkIds.value)
+  confirmDeleteRules(bulkSelectionState.currentBulkIds.value);
 }
 
 watch(
   () => [route.query.tab, route.query.id, route.query.action, route.query.mode],
   () => {
-    applyQueryState()
+    applyQueryState();
   },
   { immediate: true },
-)
+);
 
 watch(
   [activeTab, selectedSnippetId, selectedRuleId, createModalTab, bulkSelectionState.viewMode],
   () => {
-    if (!queryStateHydrated.value || syncingQuery.value) return
-    syncQueryState()
+    if (!queryStateHydrated.value || syncingQuery.value) return;
+    syncQueryState();
   },
-)
+);
 
 watch([snippets, rules], () => {
-  validateSelection()
-})
+  validateSelection();
+});
 
 watch([activeTab, loading], async () => {
-  await nextTick()
-  resourceListScrollContainer.value = resourceListRef.value?.getScrollContainer() ?? null
-})
+  await nextTick();
+  resourceListScrollContainer.value = resourceListRef.value?.getScrollContainer() ?? null;
+});
 
 async function handleAddSnippet(...args: Parameters<typeof addSnippet>) {
-  const id = await addSnippet(...args)
+  const id = await addSnippet(...args);
   if (id) {
     if (bulkSelectionState.isBulkMode.value) {
-      bulkSelectionState.appendCurrentBulkSelection([id])
-      return
+      bulkSelectionState.appendCurrentBulkSelection([id]);
+      return;
     }
-    postCreatePrompt.value = { tab: 'snippets', id }
+    postCreatePrompt.value = { tab: "snippets", id };
   }
 }
 
 async function handleAddRule(...args: Parameters<typeof addRule>) {
-  const id = await addRule(...args)
+  const id = await addRule(...args);
   if (id) {
     if (bulkSelectionState.isBulkMode.value) {
-      bulkSelectionState.appendCurrentBulkSelection([id])
-      return
+      bulkSelectionState.appendCurrentBulkSelection([id]);
+      return;
     }
-    postCreatePrompt.value = { tab: 'rules', id }
+    postCreatePrompt.value = { tab: "rules", id };
   }
 }
 
 function jumpToRule(id: string) {
   requestEditorLeave(() => {
-    activeTab.value = 'rules'
-    createModalTab.value = null
-    selectedRuleId.value = id
-  })
+    activeTab.value = "rules";
+    createModalTab.value = null;
+    selectedRuleId.value = id;
+  });
 }
 
 function jumpToSnippet(id: string) {
   requestEditorLeave(() => {
-    activeTab.value = 'snippets'
-    createModalTab.value = null
-    selectedSnippetId.value = id
-  })
+    activeTab.value = "snippets";
+    createModalTab.value = null;
+    selectedSnippetId.value = id;
+  });
 }
 </script>
 
@@ -745,7 +745,7 @@ function jumpToSnippet(id: string) {
             type="secondary"
             @click="confirmSaveAndLeave"
           >
-            {{ savingEditor ? '保存中...' : '保存' }}
+            {{ savingEditor ? "保存中..." : "保存" }}
           </VButton>
         </VSpace>
       </template>
@@ -759,9 +759,9 @@ function jumpToSnippet(id: string) {
     >
       <div class=":uno: px-1 py-1 text-sm leading-6 text-gray-700">
         {{
-          postCreatePrompt.tab === 'snippets'
-            ? '是否继续创建代码片段？如果不继续，页面会切换到刚创建的代码片段。'
-            : '是否继续创建转换规则？如果不继续，页面会切换到刚创建的转换规则。'
+          postCreatePrompt.tab === "snippets"
+            ? "是否继续创建代码片段？如果不继续，页面会切换到刚创建的代码片段。"
+            : "是否继续创建转换规则？如果不继续，页面会切换到刚创建的转换规则。"
         }}
       </div>
 
@@ -769,7 +769,7 @@ function jumpToSnippet(id: string) {
         <VSpace>
           <VButton @click="focusCreatedResource">
             {{
-              postCreatePrompt.tab === 'snippets' ? '查看刚创建的代码片段' : '查看刚创建的转换规则'
+              postCreatePrompt.tab === "snippets" ? "查看刚创建的代码片段" : "查看刚创建的转换规则"
             }}
           </VButton>
           <VButton type="secondary" @click="keepCreatingCreatedResource">继续创建</VButton>
@@ -791,15 +791,15 @@ function jumpToSnippet(id: string) {
       />
 
       <VCard :body-class="['transformer-view-card-body']" style="height: calc(100vh - 5.5rem)">
-        <div class=":uno: h-full flex divide-x divide-gray-100">
+        <div class=":uno: flex h-full divide-x divide-gray-100">
           <div
-            class=":uno: relative aside h-full flex-none flex flex-col overflow-hidden"
+            class=":uno: aside relative flex h-full flex-none flex-col overflow-hidden"
             @dragover.capture="handleLeftPaneDragOver"
             @dragleave.capture="handleLeftPaneDragLeave"
             @drop.capture="handleLeftPaneDropCapture"
           >
             <div
-              class=":uno: sticky top-0 z-10 h-12 flex items-center gap-4 border-b bg-white px-4 shrink-0"
+              class=":uno: sticky top-0 z-10 flex h-12 shrink-0 items-center gap-4 border-b bg-white px-4"
             >
               <button
                 v-for="tab in [
@@ -812,7 +812,7 @@ function jumpToSnippet(id: string) {
                     ? ':uno: text-primary'
                     : ':uno: text-gray-500 hover:text-gray-800'
                 "
-                class=":uno: text-sm font-medium transition-colors whitespace-nowrap"
+                class=":uno: text-sm font-medium whitespace-nowrap transition-colors"
                 @click="handleTabSwitch(tab.key as ActiveTab)"
               >
                 {{ tab.label }}
@@ -873,7 +873,7 @@ function jumpToSnippet(id: string) {
               <template #meta="{ item: r }">
                 <span class=":uno: text-xs text-gray-500">{{ rulePreview(r) }}</span>
                 <span
-                  class=":uno: mt-0.5 block overflow-hidden text-ellipsis whitespace-nowrap text-xs text-gray-400"
+                  class=":uno: mt-0.5 block overflow-hidden text-xs text-ellipsis whitespace-nowrap text-gray-400"
                   :title="matchRuleSummary(r.matchRule)"
                 >
                   {{ matchRuleSummary(r.matchRule) }}
@@ -883,15 +883,15 @@ function jumpToSnippet(id: string) {
 
             <div
               v-if="!bulkSelectionState.isBulkMode.value"
-              class=":uno: h-12 flex items-center justify-center border-t bg-white shrink-0"
+              class=":uno: flex h-12 shrink-0 items-center justify-center border-t bg-white"
             >
               <VButton size="sm" type="secondary" @click="handleOpenCreateModal(activeTab)">
-                {{ activeTab === 'snippets' ? '新建代码片段' : '新建转换规则' }}
+                {{ activeTab === "snippets" ? "新建代码片段" : "新建转换规则" }}
               </VButton>
             </div>
           </div>
 
-          <div class=":uno: main h-full flex-none flex flex-col overflow-hidden">
+          <div class=":uno: main flex h-full flex-none flex-col overflow-hidden">
             <BulkOperationPanel
               v-if="bulkSelectionState.isBulkMode.value"
               :can-disable="canBulkDisable"
@@ -936,7 +936,7 @@ function jumpToSnippet(id: string) {
             />
           </div>
 
-          <div class=":uno: aside h-full flex-none flex flex-col overflow-hidden">
+          <div class=":uno: aside flex h-full flex-none flex-col overflow-hidden">
             <BulkModeSidePanel
               v-if="bulkSelectionState.isBulkMode.value"
               :selected-count="bulkSelectionState.currentBulkSelectionCount.value"

@@ -1,38 +1,40 @@
 <script lang="ts" setup>
-import { computed } from 'vue'
+import { computed } from "vue";
+
 import type {
   TransformationPosition,
   TransformationRuleReadModel,
   TransformationSnippetReadModel,
-} from '@/types'
-import ResourceList from './ResourceList.vue'
-import { rulePreview } from '@/views/composables/util'
-import { matchRuleSummary } from '@/views/composables/matchRule'
+} from "@/types";
+import { matchRuleSummary } from "@/views/composables/matchRule";
+import { rulePreview } from "@/views/composables/util";
+
+import ResourceList from "./ResourceList.vue";
 
 const props = defineProps<{
-  mode: 'snippets' | 'rules'
-  selectedSnippetId: string | null
-  selectedRuleId: string | null
-  selectedRulePosition?: TransformationPosition | null
-  rulesUsingSnippet: TransformationRuleReadModel[]
-  snippetsInRule: TransformationSnippetReadModel[]
-}>()
+  mode: "snippets" | "rules";
+  selectedSnippetId: string | null;
+  selectedRuleId: string | null;
+  selectedRulePosition?: TransformationPosition | null;
+  rulesUsingSnippet: TransformationRuleReadModel[];
+  snippetsInRule: TransformationSnippetReadModel[];
+}>();
 
 const emit = defineEmits<{
-  (e: 'jump-to-rule', id: string): void
-  (e: 'jump-to-snippet', id: string): void
-}>()
+  (e: "jump-to-rule", id: string): void;
+  (e: "jump-to-snippet", id: string): void;
+}>();
 
 const ruleSnippetsEmptyText = computed(() =>
-  props.selectedRulePosition === 'REMOVE'
-    ? '该规则无需关联代码片段'
-    : '该规则暂未关联代码片段，请在规则编辑器中添加',
-)
+  props.selectedRulePosition === "REMOVE"
+    ? "该规则无需关联代码片段"
+    : "该规则暂未关联代码片段，请在规则编辑器中添加",
+);
 </script>
 
 <template>
-  <div class=":uno: h-full flex flex-col">
-    <div class=":uno: sticky top-0 z-10 h-12 flex items-center border-b bg-white px-4 shrink-0">
+  <div class=":uno: flex h-full flex-col">
+    <div class=":uno: sticky top-0 z-10 flex h-12 shrink-0 items-center border-b bg-white px-4">
       <template v-if="mode === 'snippets'">
         <h2 v-if="selectedSnippetId" class=":uno: text-sm font-semibold text-gray-900">
           被 <span class=":uno: text-primary">{{ rulesUsingSnippet.length }}</span> 个规则引用
@@ -59,7 +61,7 @@ const ruleSnippetsEmptyText = computed(() =>
           <template #meta="{ item: rule }">
             <span class=":uno: text-xs text-gray-500">{{ rulePreview(rule) }}</span>
             <span
-              class=":uno: mt-0.5 block overflow-hidden text-ellipsis whitespace-nowrap text-xs text-gray-400"
+              class=":uno: mt-0.5 block overflow-hidden text-xs text-ellipsis whitespace-nowrap text-gray-400"
               :title="matchRuleSummary(rule.matchRule)"
             >
               {{ matchRuleSummary(rule.matchRule) }}
@@ -68,7 +70,7 @@ const ruleSnippetsEmptyText = computed(() =>
 
           <template #hint>
             <span
-              class=":uno: text-xs text-primary opacity-0 mt-0.5 group-hover:opacity-100 transition-opacity"
+              class=":uno: text-primary mt-0.5 text-xs opacity-0 transition-opacity group-hover:opacity-100"
             >
               点击跳转到规则 →
             </span>
@@ -86,7 +88,7 @@ const ruleSnippetsEmptyText = computed(() =>
         >
           <template #hint>
             <span
-              class=":uno: text-xs text-primary opacity-0 mt-0.5 group-hover:opacity-100 transition-opacity"
+              class=":uno: text-primary mt-0.5 text-xs opacity-0 transition-opacity group-hover:opacity-100"
             >
               点击跳转到代码片段 →
             </span>

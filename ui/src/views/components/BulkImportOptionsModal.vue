@@ -1,20 +1,21 @@
 <script lang="ts" setup>
-import { ref } from 'vue'
-import { VButton, VModal, VSpace } from '@halo-dev/components'
-import EnabledSwitch from './EnabledSwitch.vue'
+import { VButton, VModal, VSpace } from "@halo-dev/components";
+import { ref } from "vue";
+
+import EnabledSwitch from "./EnabledSwitch.vue";
 
 defineProps<{
-  itemCount: number
-  resourceLabel: string
-  submitting: boolean
-}>()
+  itemCount: number;
+  resourceLabel: string;
+  submitting: boolean;
+}>();
 
 const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'submit', enabled: boolean): void
-}>()
+  (e: "close"): void;
+  (e: "submit", enabled: boolean): void;
+}>();
 
-const enabled = ref(true)
+const enabled = ref(true);
 </script>
 
 <template>
@@ -44,7 +45,7 @@ const enabled = ref(true)
       <VSpace>
         <VButton @click="emit('close')">取消</VButton>
         <VButton :disabled="submitting" type="secondary" @click="emit('submit', enabled)">
-          {{ submitting ? '导入中...' : '开始导入' }}
+          {{ submitting ? "导入中..." : "开始导入" }}
         </VButton>
       </VSpace>
     </template>

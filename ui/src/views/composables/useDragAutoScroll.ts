@@ -1,15 +1,15 @@
-import { computed, onBeforeUnmount, ref, watch, type Ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch, type Ref } from "vue";
 
-export type DragAutoScrollDirection = 'up' | 'down'
+export type DragAutoScrollDirection = "up" | "down";
 
 interface UseDragAutoScrollOptions {
-  minStepPx?: number
-  maxStepPx?: number
+  minStepPx?: number;
+  maxStepPx?: number;
 }
 
 interface DragAutoScrollZoneBounds {
-  topZoneHeight?: number
-  bottomZoneHeight?: number
+  topZoneHeight?: number;
+  bottomZoneHeight?: number;
 }
 
 /**
@@ -20,59 +20,59 @@ export function useDragAutoScroll(
   containerRef: Ref<HTMLElement | null>,
   options: UseDragAutoScrollOptions = {},
 ) {
-  const minScrollStepPx = options.minStepPx ?? 6
-  const maxScrollStepPx = options.maxStepPx ?? 28
-  const initialScrollStepPx = Math.max(1, minScrollStepPx * 0.5)
-  const warmupDurationMs = 320
-  const isDragActive = ref(false)
-  const activeDirection = ref<DragAutoScrollDirection | null>(null)
-  const scrollTop = ref(0)
-  const maxScrollTop = ref(0)
-  const currentStepPx = ref(minScrollStepPx)
-  let activeDirectionStartedAt = 0
-  let animationFrameId: number | null = null
+  const minScrollStepPx = options.minStepPx ?? 6;
+  const maxScrollStepPx = options.maxStepPx ?? 28;
+  const initialScrollStepPx = Math.max(1, minScrollStepPx * 0.5);
+  const warmupDurationMs = 320;
+  const isDragActive = ref(false);
+  const activeDirection = ref<DragAutoScrollDirection | null>(null);
+  const scrollTop = ref(0);
+  const maxScrollTop = ref(0);
+  const currentStepPx = ref(minScrollStepPx);
+  let activeDirectionStartedAt = 0;
+  let animationFrameId: number | null = null;
 
-  const canScrollUp = computed(() => scrollTop.value > 0)
-  const canScrollDown = computed(() => scrollTop.value < maxScrollTop.value)
+  const canScrollUp = computed(() => scrollTop.value > 0);
+  const canScrollDown = computed(() => scrollTop.value < maxScrollTop.value);
 
   function updateScrollBounds() {
-    const container = containerRef.value
+    const container = containerRef.value;
     if (!container) {
-      scrollTop.value = 0
-      maxScrollTop.value = 0
-      return
+      scrollTop.value = 0;
+      maxScrollTop.value = 0;
+      return;
     }
-    scrollTop.value = container.scrollTop
-    maxScrollTop.value = Math.max(0, container.scrollHeight - container.clientHeight)
+    scrollTop.value = container.scrollTop;
+    maxScrollTop.value = Math.max(0, container.scrollHeight - container.clientHeight);
   }
 
   function stopAutoScroll() {
-    activeDirection.value = null
-    currentStepPx.value = minScrollStepPx
-    activeDirectionStartedAt = 0
+    activeDirection.value = null;
+    currentStepPx.value = minScrollStepPx;
+    activeDirectionStartedAt = 0;
     if (animationFrameId !== null) {
-      cancelAnimationFrame(animationFrameId)
-      animationFrameId = null
+      cancelAnimationFrame(animationFrameId);
+      animationFrameId = null;
     }
   }
 
   function tickAutoScroll() {
-    const container = containerRef.value
+    const container = containerRef.value;
     if (!container || !isDragActive.value || !activeDirection.value) {
-      stopAutoScroll()
-      return
+      stopAutoScroll();
+      return;
     }
 
-    updateScrollBounds()
-    const nextOffset = activeDirection.value === 'up' ? -currentStepPx.value : currentStepPx.value
-    const canScroll = activeDirection.value === 'up' ? canScrollUp.value : canScrollDown.value
+    updateScrollBounds();
+    const nextOffset = activeDirection.value === "up" ? -currentStepPx.value : currentStepPx.value;
+    const canScroll = activeDirection.value === "up" ? canScrollUp.value : canScrollDown.value;
 
     if (canScroll) {
-      container.scrollTop += nextOffset
-      updateScrollBounds()
+      container.scrollTop += nextOffset;
+      updateScrollBounds();
     }
 
-    animationFrameId = requestAnimationFrame(tickAutoScroll)
+    animationFrameId = requestAnimationFrame(tickAutoScroll);
   }
 
   /**
@@ -81,76 +81,76 @@ export function useDragAutoScroll(
    */
   function handleContainerDragOver(event: DragEvent, zoneBounds: DragAutoScrollZoneBounds = {}) {
     if (!isDragActive.value) {
-      return
+      return;
     }
 
-    const currentTarget = event.currentTarget
+    const currentTarget = event.currentTarget;
     if (!(currentTarget instanceof HTMLElement)) {
-      stopAutoScroll()
-      return
+      stopAutoScroll();
+      return;
     }
 
-    const direction = resolveAutoScrollDirection(currentTarget, event, zoneBounds)
+    const direction = resolveAutoScrollDirection(currentTarget, event, zoneBounds);
     if (!direction) {
-      stopAutoScroll()
-      return
+      stopAutoScroll();
+      return;
     }
 
-    event.preventDefault()
+    event.preventDefault();
     if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = 'move'
+      event.dataTransfer.dropEffect = "move";
     }
 
     if (activeDirection.value !== direction) {
-      activeDirectionStartedAt = performance.now()
+      activeDirectionStartedAt = performance.now();
     }
-    activeDirection.value = direction
+    activeDirection.value = direction;
     currentStepPx.value = resolveScrollStepPxWithinBounds(
       currentTarget,
       direction,
       event,
       zoneBounds,
-    )
-    updateScrollBounds()
+    );
+    updateScrollBounds();
     if (animationFrameId === null) {
-      animationFrameId = requestAnimationFrame(tickAutoScroll)
+      animationFrameId = requestAnimationFrame(tickAutoScroll);
     }
   }
 
   function handleContainerDragLeave(event: DragEvent) {
-    const currentTarget = event.currentTarget
+    const currentTarget = event.currentTarget;
     if (!(currentTarget instanceof HTMLElement)) {
-      stopAutoScroll()
-      return
+      stopAutoScroll();
+      return;
     }
 
-    const rect = currentTarget.getBoundingClientRect()
+    const rect = currentTarget.getBoundingClientRect();
     const isOutside =
       event.clientX < rect.left ||
       event.clientX > rect.right ||
       event.clientY < rect.top ||
-      event.clientY > rect.bottom
+      event.clientY > rect.bottom;
 
     if (isOutside) {
-      stopAutoScroll()
+      stopAutoScroll();
     }
   }
 
   function handleContainerScroll() {
-    updateScrollBounds()
+    updateScrollBounds();
   }
 
   function setDragActive(active: boolean) {
-    isDragActive.value = active
+    isDragActive.value = active;
     if (active) {
-      updateScrollBounds()
-      return
+      updateScrollBounds();
+      return;
     }
-    stopAutoScroll()
+    stopAutoScroll();
   }
 
   function resetOnGlobalDragEnd() {
-    setDragActive(false)
+    setDragActive(false);
   }
 
   function resolveScrollStepPxWithinBounds(
@@ -159,20 +159,20 @@ export function useDragAutoScroll(
     event: DragEvent,
     zoneBounds: DragAutoScrollZoneBounds = {},
   ) {
-    const zoneRect = resolveZoneRect(currentTarget, direction, zoneBounds)
+    const zoneRect = resolveZoneRect(currentTarget, direction, zoneBounds);
     if (!zoneRect.height) {
-      return minScrollStepPx
+      return minScrollStepPx;
     }
 
-    const pointerRatio = clamp((event.clientY - zoneRect.top) / zoneRect.height, 0, 1)
-    const edgeIntensity = direction === 'up' ? 1 - pointerRatio : pointerRatio
-    const easedIntensity = edgeIntensity ** 1.6
-    const spatialStep = minScrollStepPx + (maxScrollStepPx - minScrollStepPx) * easedIntensity
+    const pointerRatio = clamp((event.clientY - zoneRect.top) / zoneRect.height, 0, 1);
+    const edgeIntensity = direction === "up" ? 1 - pointerRatio : pointerRatio;
+    const easedIntensity = edgeIntensity ** 1.6;
+    const spatialStep = minScrollStepPx + (maxScrollStepPx - minScrollStepPx) * easedIntensity;
     const warmupProgress =
       activeDirectionStartedAt > 0
         ? clamp((performance.now() - activeDirectionStartedAt) / warmupDurationMs, 0, 1)
-        : 0
-    return initialScrollStepPx + (spatialStep - initialScrollStepPx) * easeOutQuad(warmupProgress)
+        : 0;
+    return initialScrollStepPx + (spatialStep - initialScrollStepPx) * easeOutQuad(warmupProgress);
   }
 
   function resolveAutoScrollDirection(
@@ -180,17 +180,17 @@ export function useDragAutoScroll(
     event: DragEvent,
     zoneBounds: DragAutoScrollZoneBounds,
   ) {
-    const rect = currentTarget.getBoundingClientRect()
-    const topZoneHeight = clamp(zoneBounds.topZoneHeight ?? 0, 0, rect.height)
-    const bottomZoneHeight = clamp(zoneBounds.bottomZoneHeight ?? 0, 0, rect.height)
+    const rect = currentTarget.getBoundingClientRect();
+    const topZoneHeight = clamp(zoneBounds.topZoneHeight ?? 0, 0, rect.height);
+    const bottomZoneHeight = clamp(zoneBounds.bottomZoneHeight ?? 0, 0, rect.height);
 
     if (topZoneHeight > 0 && event.clientY <= rect.top + topZoneHeight) {
-      return 'up'
+      return "up";
     }
     if (bottomZoneHeight > 0 && event.clientY >= rect.bottom - bottomZoneHeight) {
-      return 'down'
+      return "down";
     }
-    return null
+    return null;
   }
 
   function resolveZoneRect(
@@ -198,58 +198,58 @@ export function useDragAutoScroll(
     direction: DragAutoScrollDirection,
     zoneBounds: DragAutoScrollZoneBounds,
   ) {
-    const rect = currentTarget.getBoundingClientRect()
-    const topZoneHeight = clamp(zoneBounds.topZoneHeight ?? rect.height, 0, rect.height)
-    const bottomZoneHeight = clamp(zoneBounds.bottomZoneHeight ?? rect.height, 0, rect.height)
+    const rect = currentTarget.getBoundingClientRect();
+    const topZoneHeight = clamp(zoneBounds.topZoneHeight ?? rect.height, 0, rect.height);
+    const bottomZoneHeight = clamp(zoneBounds.bottomZoneHeight ?? rect.height, 0, rect.height);
 
-    if (direction === 'up') {
+    if (direction === "up") {
       return {
         top: rect.top,
         height: topZoneHeight,
-      }
+      };
     }
 
     return {
       top: rect.bottom - bottomZoneHeight,
       height: bottomZoneHeight,
-    }
+    };
   }
 
   function clamp(value: number, min: number, max: number) {
-    return Math.min(max, Math.max(min, value))
+    return Math.min(max, Math.max(min, value));
   }
 
   function easeOutQuad(value: number) {
-    return 1 - (1 - value) ** 2
+    return 1 - (1 - value) ** 2;
   }
 
   watch(
     isDragActive,
     (active, _, onCleanup) => {
-      if (!active || typeof window === 'undefined') {
-        return
+      if (!active || typeof window === "undefined") {
+        return;
       }
 
-      window.addEventListener('dragend', resetOnGlobalDragEnd, true)
-      window.addEventListener('drop', resetOnGlobalDragEnd, true)
+      window.addEventListener("dragend", resetOnGlobalDragEnd, true);
+      window.addEventListener("drop", resetOnGlobalDragEnd, true);
 
       const cleanup = () => {
-        window.removeEventListener('dragend', resetOnGlobalDragEnd, true)
-        window.removeEventListener('drop', resetOnGlobalDragEnd, true)
-      }
+        window.removeEventListener("dragend", resetOnGlobalDragEnd, true);
+        window.removeEventListener("drop", resetOnGlobalDragEnd, true);
+      };
 
-      onCleanup(cleanup)
+      onCleanup(cleanup);
     },
-    { flush: 'post' },
-  )
+    { flush: "post" },
+  );
 
   onBeforeUnmount(() => {
-    stopAutoScroll()
-    if (typeof window !== 'undefined') {
-      window.removeEventListener('dragend', resetOnGlobalDragEnd, true)
-      window.removeEventListener('drop', resetOnGlobalDragEnd, true)
+    stopAutoScroll();
+    if (typeof window !== "undefined") {
+      window.removeEventListener("dragend", resetOnGlobalDragEnd, true);
+      window.removeEventListener("drop", resetOnGlobalDragEnd, true);
     }
-  })
+  });
 
   return {
     isDragActive,
@@ -261,5 +261,5 @@ export function useDragAutoScroll(
     handleContainerDragOver,
     handleContainerDragLeave,
     stopAutoScroll,
-  }
+  };
 }

@@ -1,17 +1,19 @@
-import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
-import type { ActiveTab } from '@/types'
-import { uniqueStrings } from './util'
+import { computed, ref, watch, type ComputedRef, type Ref } from "vue";
 
-export type TransformerViewMode = 'single' | 'bulk'
+import type { ActiveTab } from "@/types";
+
+import { uniqueStrings } from "./util";
+
+export type TransformerViewMode = "single" | "bulk";
 
 interface BulkSelectableResource {
-  id: string
+  id: string;
 }
 
 interface UseBulkSelectionStateOptions {
-  activeTab: Ref<ActiveTab>
-  snippets: ComputedRef<BulkSelectableResource[]>
-  rules: ComputedRef<BulkSelectableResource[]>
+  activeTab: Ref<ActiveTab>;
+  snippets: ComputedRef<BulkSelectableResource[]>;
+  rules: ComputedRef<BulkSelectableResource[]>;
 }
 
 /**
@@ -19,47 +21,47 @@ interface UseBulkSelectionStateOptions {
  * 否则会把单资源编辑 URL、草稿、批量勾选三套语义揉成一团。
  */
 export function useBulkSelectionState(options: UseBulkSelectionStateOptions) {
-  const viewMode = ref<TransformerViewMode>('single')
-  const bulkSnippetIds = ref<string[]>([])
-  const bulkRuleIds = ref<string[]>([])
+  const viewMode = ref<TransformerViewMode>("single");
+  const bulkSnippetIds = ref<string[]>([]);
+  const bulkRuleIds = ref<string[]>([]);
 
   const currentBulkIds = computed(() =>
-    options.activeTab.value === 'snippets' ? bulkSnippetIds.value : bulkRuleIds.value,
-  )
+    options.activeTab.value === "snippets" ? bulkSnippetIds.value : bulkRuleIds.value,
+  );
 
-  const currentBulkSelectionCount = computed(() => currentBulkIds.value.length)
-  const isBulkMode = computed(() => viewMode.value === 'bulk')
+  const currentBulkSelectionCount = computed(() => currentBulkIds.value.length);
+  const isBulkMode = computed(() => viewMode.value === "bulk");
   const allCurrentSelected = computed(() => {
-    const resourceIds = resolveResourceIds(options.activeTab.value)
-    return resourceIds.length > 0 && resourceIds.every((id) => currentBulkIds.value.includes(id))
-  })
+    const resourceIds = resolveResourceIds(options.activeTab.value);
+    return resourceIds.length > 0 && resourceIds.every((id) => currentBulkIds.value.includes(id));
+  });
   const someCurrentSelected = computed(
     () => currentBulkSelectionCount.value > 0 && !allCurrentSelected.value,
-  )
+  );
 
   function enterBulkMode() {
-    viewMode.value = 'bulk'
+    viewMode.value = "bulk";
   }
 
   function exitBulkMode() {
-    viewMode.value = 'single'
+    viewMode.value = "single";
   }
 
   function clearCurrentBulkSelection() {
-    replaceCurrentBulkSelection([])
+    replaceCurrentBulkSelection([]);
   }
 
   function replaceCurrentBulkSelection(ids: string[]) {
-    const normalizedIds = filterExistingIds(options.activeTab.value, ids)
-    if (options.activeTab.value === 'snippets') {
-      bulkSnippetIds.value = normalizedIds
-      return
+    const normalizedIds = filterExistingIds(options.activeTab.value, ids);
+    if (options.activeTab.value === "snippets") {
+      bulkSnippetIds.value = normalizedIds;
+      return;
     }
-    bulkRuleIds.value = normalizedIds
+    bulkRuleIds.value = normalizedIds;
   }
 
   function appendCurrentBulkSelection(ids: string[]) {
-    replaceCurrentBulkSelection([...currentBulkIds.value, ...ids])
+    replaceCurrentBulkSelection([...currentBulkIds.value, ...ids]);
   }
 
   function toggleCurrentBulkItem(id: string) {
@@ -67,46 +69,46 @@ export function useBulkSelectionState(options: UseBulkSelectionStateOptions) {
       currentBulkIds.value.includes(id)
         ? currentBulkIds.value.filter((currentId) => currentId !== id)
         : [...currentBulkIds.value, id],
-    )
+    );
   }
 
   function toggleCurrentBulkSelectAll() {
     if (allCurrentSelected.value) {
-      clearCurrentBulkSelection()
-      return
+      clearCurrentBulkSelection();
+      return;
     }
-    replaceCurrentBulkSelection(resolveResourceIds(options.activeTab.value))
+    replaceCurrentBulkSelection(resolveResourceIds(options.activeTab.value));
   }
 
   function isCurrentBulkSelected(id: string) {
-    return currentBulkIds.value.includes(id)
+    return currentBulkIds.value.includes(id);
   }
 
   function pruneSelection(tab: ActiveTab) {
     const nextIds = filterExistingIds(
       tab,
-      tab === 'snippets' ? bulkSnippetIds.value : bulkRuleIds.value,
-    )
-    if (tab === 'snippets') {
-      bulkSnippetIds.value = nextIds
-      return
+      tab === "snippets" ? bulkSnippetIds.value : bulkRuleIds.value,
+    );
+    if (tab === "snippets") {
+      bulkSnippetIds.value = nextIds;
+      return;
     }
-    bulkRuleIds.value = nextIds
+    bulkRuleIds.value = nextIds;
   }
 
   function resolveResourceIds(tab: ActiveTab) {
-    return (tab === 'snippets' ? options.snippets.value : options.rules.value).map(
+    return (tab === "snippets" ? options.snippets.value : options.rules.value).map(
       (item) => item.id,
-    )
+    );
   }
 
   function filterExistingIds(tab: ActiveTab, ids: string[]) {
-    const allowedIds = new Set(resolveResourceIds(tab))
-    return uniqueStrings(ids).filter((id) => allowedIds.has(id))
+    const allowedIds = new Set(resolveResourceIds(tab));
+    return uniqueStrings(ids).filter((id) => allowedIds.has(id));
   }
 
-  watch(options.snippets, () => pruneSelection('snippets'))
-  watch(options.rules, () => pruneSelection('rules'))
+  watch(options.snippets, () => pruneSelection("snippets"));
+  watch(options.rules, () => pruneSelection("rules"));
 
   return {
     viewMode,
@@ -125,5 +127,5 @@ export function useBulkSelectionState(options: UseBulkSelectionStateOptions) {
     toggleCurrentBulkItem,
     toggleCurrentBulkSelectAll,
     isCurrentBulkSelected,
-  }
+  };
 }

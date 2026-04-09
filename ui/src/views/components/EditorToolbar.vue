@@ -1,34 +1,34 @@
 <script lang="ts" setup>
-import { VButton, VSpace } from '@halo-dev/components'
+import { VButton, VSpace } from "@halo-dev/components";
 
 withDefaults(
   defineProps<{
-    title: string
-    idText?: string
-    enabled?: boolean
-    showActions?: boolean
-    showDefaultActions?: boolean
-    showExport?: boolean
+    title: string;
+    idText?: string;
+    enabled?: boolean;
+    showActions?: boolean;
+    showDefaultActions?: boolean;
+    showExport?: boolean;
   }>(),
   {
     showDefaultActions: true,
   },
-)
+);
 
 const emit = defineEmits<{
-  (e: 'export'): void
-  (e: 'toggle-enabled'): void
-  (e: 'delete'): void
-}>()
+  (e: "export"): void;
+  (e: "toggle-enabled"): void;
+  (e: "delete"): void;
+}>();
 </script>
 
 <template>
   <div
-    class=":uno: sticky top-0 z-10 h-12 flex items-center justify-between border-b bg-white px-4 shrink-0"
+    class=":uno: sticky top-0 z-10 flex h-12 shrink-0 items-center justify-between border-b bg-white px-4"
   >
-    <div class=":uno: min-w-0 flex items-center gap-2">
-      <h2 class=":uno: shrink-0 text-gray-900 font-semibold text-sm">{{ title }}</h2>
-      <span v-if="idText" class=":uno: min-w-0 truncate text-xs text-gray-500 font-mono">
+    <div class=":uno: flex min-w-0 items-center gap-2">
+      <h2 class=":uno: shrink-0 text-sm font-semibold text-gray-900">{{ title }}</h2>
+      <span v-if="idText" class=":uno: min-w-0 truncate font-mono text-xs text-gray-500">
         ID: {{ idText }}
       </span>
     </div>
@@ -51,7 +51,7 @@ const emit = defineEmits<{
         size="sm"
         @click="emit('toggle-enabled')"
       >
-        {{ enabled ? '禁用' : '启用' }}
+        {{ enabled ? "禁用" : "启用" }}
       </VButton>
       <VButton
         v-if="showActions && showDefaultActions !== false"

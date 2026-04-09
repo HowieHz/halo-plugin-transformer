@@ -146,13 +146,13 @@ pnpm dev
 
 ### JSON Schema
 
-- `ui/public/transformer.schema.json`
+- `ui/public/generated/transformer.schema.json`
     - 负责 transfer envelope
     - 描述顶层 `version`、`resourceType`、`data`
 - `ui/public/generated/match-rule.schema.json`
     - 从 `specs/match-rule/contract.spec.jsonc` 生成
     - 负责 `match-rule` 领域结构
-- `ui/public/transformer.schema.json`
+- `ui/public/generated/transformer.schema.json`
     - 通过 `$ref` 引用 `match-rule` generated schema，而不是在 envelope 中手写一遍规则树结构
 
 ## 导入 / 导出协议

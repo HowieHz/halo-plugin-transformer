@@ -1,18 +1,19 @@
 <script lang="ts" setup>
-import { computed } from 'vue'
-import type { ActiveTab } from '@/types'
+import { computed } from "vue";
+
+import type { ActiveTab } from "@/types";
 
 const props = defineProps<{
-  tab: ActiveTab
-  selectedCount: number
-}>()
+  tab: ActiveTab;
+  selectedCount: number;
+}>();
 
-const resourceLabel = computed(() => (props.tab === 'snippets' ? '代码片段' : '转换规则'))
+const resourceLabel = computed(() => (props.tab === "snippets" ? "代码片段" : "转换规则"));
 </script>
 
 <template>
-  <div class=":uno: h-full flex flex-col">
-    <div class=":uno: sticky top-0 z-10 h-12 flex items-center border-b bg-white px-4 shrink-0">
+  <div class=":uno: flex h-full flex-col">
+    <div class=":uno: sticky top-0 z-10 flex h-12 shrink-0 items-center border-b bg-white px-4">
       <h2 class=":uno: text-sm font-semibold text-gray-900">
         已勾选 <span class=":uno: text-primary">{{ selectedCount }}</span> 个{{ resourceLabel }}
       </h2>

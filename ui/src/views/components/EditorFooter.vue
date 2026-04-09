@@ -1,14 +1,14 @@
 <script lang="ts" setup>
-import { VButton } from '@halo-dev/components'
+import { VButton } from "@halo-dev/components";
 
 defineProps<{
-  dirty: boolean
-  saving: boolean
-}>()
+  dirty: boolean;
+  saving: boolean;
+}>();
 
 const emit = defineEmits<{
-  (e: 'save'): void
-}>()
+  (e: "save"): void;
+}>();
 </script>
 
 <template>
@@ -24,7 +24,7 @@ const emit = defineEmits<{
       type="secondary"
       @click="emit('save')"
     >
-      {{ saving ? '保存中...' : '保存' }}
+      {{ saving ? "保存中..." : "保存" }}
     </VButton>
   </div>
 </template>

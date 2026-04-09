@@ -9,7 +9,7 @@ export {
   type MatchRuleValidationError,
   type MatchRuleParseResult,
   type MatchRuleValidationSummary,
-} from './matchRuleValidation'
+} from "./matchRuleValidation";
 export {
   cloneMatchRule,
   cloneMatchRuleSource,
@@ -17,10 +17,10 @@ export {
   makeJsonDraftSource,
   buildMatchRuleEditorSourceForMode,
   resolveRuleMatchRule,
-} from './matchRuleSource'
+} from "./matchRuleSource";
 export {
   isValidMatchRule,
   supportsDomPathPrecheck,
   getDomRulePerformanceWarning,
   matchRuleSummary,
-} from './matchRuleAnalysis'
+} from "./matchRuleAnalysis";

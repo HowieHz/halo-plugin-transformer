@@ -2,10 +2,20 @@
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
   "ignorePatterns": [
     "public/generated/match-rule.schema.json",
-    "public/transformer.schema.json",
+    "public/generated/transformer.schema.json",
     "src/views/composables/matchRuleContract.generated.ts"
   ],
-  "semi": false,
-  "singleQuote": true,
-  "sortPackageJson": false
+  "overrides": [
+    {
+      "files": ["**/*.jsonc"],
+      "options": {
+        "trailingComma": "none"
+      }
+    }
+  ],
+  "sortImports": {},
+  "sortPackageJson": {
+    "sortScripts": true
+  },
+  "sortTailwindcss": {}
 }

@@ -1,16 +1,17 @@
-import type { MatchRuleSource, TransformationRuleEditorDraft } from '@/types'
-import { cloneMatchRule, cloneMatchRuleSource, makeRuleTreeSource } from './matchRule'
+import type { MatchRuleSource, TransformationRuleEditorDraft } from "@/types";
+
+import { cloneMatchRule, cloneMatchRuleSource, makeRuleTreeSource } from "./matchRule";
 
 export type UndoableRuleField =
-  | 'name'
-  | 'description'
-  | 'mode'
-  | 'match'
-  | 'position'
-  | 'wrapMarker'
-  | 'runtimeOrder'
-  | 'matchRule'
-  | 'snippetIds'
+  | "name"
+  | "description"
+  | "mode"
+  | "match"
+  | "position"
+  | "wrapMarker"
+  | "runtimeOrder"
+  | "matchRule"
+  | "snippetIds";
 
 /**
  * why: 字段级撤销的 authoritative source 应该是“每个字段自己的语义值”；
@@ -33,7 +34,7 @@ export function buildRuleUndoBaselineSnapshot(
       matchRuleSource: cloneRuleMatchRuleSource(rule),
     },
     snippetIds: [...selectedSnippetIds],
-  }
+  };
 }
 
 export function resolveRuleUndoFieldCurrentValue(
@@ -41,16 +42,16 @@ export function resolveRuleUndoFieldCurrentValue(
   rule: TransformationRuleEditorDraft,
   selectedSnippetIds: string[],
 ) {
-  return field === 'matchRule'
+  return field === "matchRule"
     ? {
         matchRule: cloneMatchRule(rule.matchRule),
         matchRuleSource: cloneRuleMatchRuleSource(rule),
       }
-    : field === 'snippetIds'
+    : field === "snippetIds"
       ? [...selectedSnippetIds]
-      : rule[field]
+      : rule[field];
 }
 
 function cloneRuleMatchRuleSource(rule: TransformationRuleEditorDraft): MatchRuleSource {
-  return cloneMatchRuleSource(rule.matchRuleSource ?? makeRuleTreeSource(rule.matchRule))
+  return cloneMatchRuleSource(rule.matchRuleSource ?? makeRuleTreeSource(rule.matchRule));
 }

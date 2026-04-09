@@ -2,39 +2,40 @@ import {
   type TransformationSnippetEditorDraft,
   type TransformationRuleEditorDraft,
   type MatchRuleSource,
-} from '@/types'
-import { makeJsonDraftSource, makeRuleTreeSource, parseMatchRuleDraft } from './matchRule'
-import { TRANSFER_SCHEMA_URL, type TransferEnvelope } from './transferEnvelope'
+} from "@/types";
+
+import { makeJsonDraftSource, makeRuleTreeSource, parseMatchRuleDraft } from "./matchRule";
+import { TRANSFER_SCHEMA_URL, type TransferEnvelope } from "./transferEnvelope";
 
 export interface SnippetTransferData {
-  enabled: boolean
-  name: string
-  description: string
-  code: string
+  enabled: boolean;
+  name: string;
+  description: string;
+  code: string;
 }
 
 export interface RuleTransferData {
-  enabled: boolean
-  name: string
-  description: string
-  mode: TransformationRuleEditorDraft['mode']
-  match: string
-  position: TransformationRuleEditorDraft['position']
-  wrapMarker: boolean
-  runtimeOrder: number
-  matchRuleSource: MatchRuleSource
+  enabled: boolean;
+  name: string;
+  description: string;
+  mode: TransformationRuleEditorDraft["mode"];
+  match: string;
+  position: TransformationRuleEditorDraft["position"];
+  wrapMarker: boolean;
+  runtimeOrder: number;
+  matchRuleSource: MatchRuleSource;
 }
 
-export type SnippetTransferEnvelope = TransferEnvelope<'snippet', SnippetTransferData>
-export type RuleTransferEnvelope = TransferEnvelope<'rule', RuleTransferData>
+export type SnippetTransferEnvelope = TransferEnvelope<"snippet", SnippetTransferData>;
+export type RuleTransferEnvelope = TransferEnvelope<"rule", RuleTransferData>;
 export type SnippetBatchTransferEnvelope = TransferEnvelope<
-  'snippet-batch',
+  "snippet-batch",
   { items: SnippetTransferData[] }
->
+>;
 export type RuleBatchTransferEnvelope = TransferEnvelope<
-  'rule-batch',
+  "rule-batch",
   { items: RuleTransferData[] }
->
+>;
 
 /**
  * why: 导入导出只面向用户可编辑内容；像 id、排序、metadata、关联关系这类系统字段
@@ -46,9 +47,9 @@ export function buildSnippetTransfer(
   return {
     $schema: TRANSFER_SCHEMA_URL,
     version: 1,
-    resourceType: 'snippet',
+    resourceType: "snippet",
     data: buildSnippetTransferData(snippet),
-  }
+  };
 }
 
 /**
@@ -59,9 +60,9 @@ export function buildRuleTransfer(rule: TransformationRuleEditorDraft): RuleTran
   return {
     $schema: TRANSFER_SCHEMA_URL,
     version: 1,
-    resourceType: 'rule',
+    resourceType: "rule",
     data: buildRuleTransferData(rule),
-  }
+  };
 }
 
 /**
@@ -74,11 +75,11 @@ export function buildSnippetBatchTransfer(
   return {
     $schema: TRANSFER_SCHEMA_URL,
     version: 1,
-    resourceType: 'snippet-batch',
+    resourceType: "snippet-batch",
     data: {
       items: snippets.map(buildSnippetTransferData),
     },
-  }
+  };
 }
 
 /**
@@ -91,16 +92,16 @@ export function buildRuleBatchTransfer(
   return {
     $schema: TRANSFER_SCHEMA_URL,
     version: 1,
-    resourceType: 'rule-batch',
+    resourceType: "rule-batch",
     data: {
       items: rules.map(buildRuleTransferData),
     },
-  }
+  };
 }
 
 export interface TransferFileDraft {
-  fileName: string
-  content: string
+  fileName: string;
+  content: string;
 }
 
 export function createTransferFileDraft(
@@ -111,12 +112,12 @@ export function createTransferFileDraft(
     | RuleBatchTransferEnvelope,
   name: string,
 ): TransferFileDraft {
-  const fileName = `${sanitizeFileName(name)}.json`
-  const content = JSON.stringify(payload, null, 2)
+  const fileName = `${sanitizeFileName(name)}.json`;
+  const content = JSON.stringify(payload, null, 2);
   return {
     fileName,
     content,
-  }
+  };
 }
 
 function buildSnippetTransferData(snippet: TransformationSnippetEditorDraft): SnippetTransferData {
@@ -125,11 +126,11 @@ function buildSnippetTransferData(snippet: TransformationSnippetEditorDraft): Sn
     name: snippet.name,
     description: snippet.description,
     code: snippet.code,
-  }
+  };
 }
 
 function buildRuleTransferData(rule: TransformationRuleEditorDraft): RuleTransferData {
-  const matchRuleSource = buildRuleTransferMatchRuleSource(rule)
+  const matchRuleSource = buildRuleTransferMatchRuleSource(rule);
   return {
     enabled: rule.enabled,
     name: rule.name,
@@ -140,28 +141,28 @@ function buildRuleTransferData(rule: TransformationRuleEditorDraft): RuleTransfe
     wrapMarker: rule.wrapMarker,
     runtimeOrder: rule.runtimeOrder,
     matchRuleSource,
-  }
+  };
 }
 
 function buildRuleTransferMatchRuleSource(rule: TransformationRuleEditorDraft): MatchRuleSource {
-  const source = rule.matchRuleSource ?? makeRuleTreeSource(rule.matchRule)
-  if (source.kind !== 'JSON_DRAFT') {
-    return makeRuleTreeSource(rule.matchRule)
+  const source = rule.matchRuleSource ?? makeRuleTreeSource(rule.matchRule);
+  if (source.kind !== "JSON_DRAFT") {
+    return makeRuleTreeSource(rule.matchRule);
   }
 
-  const draft = String(source.data ?? '')
-  const parsed = parseMatchRuleDraft(draft)
+  const draft = String(source.data ?? "");
+  const parsed = parseMatchRuleDraft(draft);
   if (parsed.rule) {
-    return makeRuleTreeSource(parsed.rule)
+    return makeRuleTreeSource(parsed.rule);
   }
 
-  return makeJsonDraftSource(draft)
+  return makeJsonDraftSource(draft);
 }
 
 function sanitizeFileName(name: string) {
-  const trimmed = name.trim()
+  const trimmed = name.trim();
   if (!trimmed) {
-    return 'transformer-export'
+    return "transformer-export";
   }
-  return trimmed.replace(/[\\/:*?"<>|]+/g, '-')
+  return trimmed.replace(/[\\/:*?"<>|]+/g, "-");
 }

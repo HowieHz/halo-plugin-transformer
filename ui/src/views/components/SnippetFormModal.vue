@@ -1,121 +1,123 @@
 <script lang="ts" setup>
-import { Toast, VButton } from '@halo-dev/components'
-import { computed, nextTick, onMounted, ref } from 'vue'
-import type { TransformationSnippetEditorDraft } from '@/types'
-import { makeSnippetEditorDraft } from '@/types'
-import BaseFormModal from './BaseFormModal.vue'
-import EnabledSwitch from './EnabledSwitch.vue'
-import FormField from './FormField.vue'
-import ImportSourceModal from './ImportSourceModal.vue'
-import { parseSnippetTransfer } from '@/views/composables/transfer'
+import { Toast, VButton } from "@halo-dev/components";
+import { computed, nextTick, onMounted, ref } from "vue";
+
+import type { TransformationSnippetEditorDraft } from "@/types";
+import { makeSnippetEditorDraft } from "@/types";
+import { parseSnippetTransfer } from "@/views/composables/transfer";
+
+import BaseFormModal from "./BaseFormModal.vue";
+import EnabledSwitch from "./EnabledSwitch.vue";
+import FormField from "./FormField.vue";
+import ImportSourceModal from "./ImportSourceModal.vue";
 
 const props = defineProps<{
-  saving: boolean
-}>()
+  saving: boolean;
+}>();
 
 const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'submit', snippet: TransformationSnippetEditorDraft): void
-}>()
+  (e: "close"): void;
+  (e: "submit", snippet: TransformationSnippetEditorDraft): void;
+}>();
 
-const snippet = ref<TransformationSnippetEditorDraft>(makeSnippetEditorDraft())
-const fileInput = ref<HTMLInputElement | null>(null)
-const importSourceVisible = ref(false)
-const initialSnippet = makeSnippetEditorDraft()
-const codeScrollTop = ref(0)
+const snippet = ref<TransformationSnippetEditorDraft>(makeSnippetEditorDraft());
+const fileInput = ref<HTMLInputElement | null>(null);
+const importSourceVisible = ref(false);
+const initialSnippet = makeSnippetEditorDraft();
+const codeScrollTop = ref(0);
 
 const codeLines = computed(() => {
-  const content = snippet.value.code.replace(/\r\n/g, '\n')
-  return content.split('\n').length
-})
+  const content = snippet.value.code.replace(/\r\n/g, "\n");
+  return content.split("\n").length;
+});
 
 const codeLineNumberStyle = computed(() => ({
   transform: `translateY(-${codeScrollTop.value}px)`,
-}))
-const codeFieldError = computed(() => (!snippet.value.code.trim() ? '代码内容不能为空' : null))
+}));
+const codeFieldError = computed(() => (!snippet.value.code.trim() ? "代码内容不能为空" : null));
 
-onMounted(reset)
+onMounted(reset);
 
 function reset() {
-  snippet.value = makeSnippetEditorDraft()
+  snippet.value = makeSnippetEditorDraft();
 }
 
 function handleSubmit() {
-  emit('submit', snippet.value)
+  emit("submit", snippet.value);
 }
 
 function syncCodeScroll(event: Event) {
-  codeScrollTop.value = (event.target as HTMLTextAreaElement).scrollTop
+  codeScrollTop.value = (event.target as HTMLTextAreaElement).scrollTop;
 }
 
 function openImportSourceModal() {
-  importSourceVisible.value = true
+  importSourceVisible.value = true;
 }
 
 function closeImportSourceModal() {
-  importSourceVisible.value = false
+  importSourceVisible.value = false;
 }
 
-async function applyImportedSnippet(raw: string, sourceLabel: '剪贴板' | '文件') {
-  snippet.value = parseSnippetTransfer(raw)
+async function applyImportedSnippet(raw: string, sourceLabel: "剪贴板" | "文件") {
+  snippet.value = parseSnippetTransfer(raw);
   if (!snippet.value.code.trim()) {
-    Toast.warning(`已从${sourceLabel}导入代码片段 JSON，但当前内容仍有错误：代码内容不能为空`)
+    Toast.warning(`已从${sourceLabel}导入代码片段 JSON，但当前内容仍有错误：代码内容不能为空`);
   } else {
-    Toast.success(`已从${sourceLabel}导入代码片段 JSON`)
+    Toast.success(`已从${sourceLabel}导入代码片段 JSON`);
   }
 }
 
 async function importFromClipboard() {
   try {
-    const text = await navigator.clipboard.readText()
+    const text = await navigator.clipboard.readText();
     if (!text.trim()) {
-      Toast.warning('剪贴板里没有可导入的 JSON')
-      return
+      Toast.warning("剪贴板里没有可导入的 JSON");
+      return;
     }
-    await applyImportedSnippet(text, '剪贴板')
-    importSourceVisible.value = false
+    await applyImportedSnippet(text, "剪贴板");
+    importSourceVisible.value = false;
   } catch {
-    Toast.error('读取剪贴板失败，请检查浏览器权限后重试')
+    Toast.error("读取剪贴板失败，请检查浏览器权限后重试");
   }
 }
 
 async function importFromFile() {
-  importSourceVisible.value = false
-  await nextTick()
-  fileInput.value?.click()
+  importSourceVisible.value = false;
+  await nextTick();
+  fileInput.value?.click();
 }
 
 async function handleImportFile(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
   if (!file) {
-    return
+    return;
   }
   try {
-    await applyImportedSnippet(await file.text(), '文件')
+    await applyImportedSnippet(await file.text(), "文件");
   } catch (error) {
-    Toast.error(error instanceof Error ? error.message : '导入失败')
+    Toast.error(error instanceof Error ? error.message : "导入失败");
   } finally {
-    input.value = ''
+    input.value = "";
   }
 }
 
-const validationError = computed(() => codeFieldError.value)
+const validationError = computed(() => codeFieldError.value);
 const dirty = computed(() => {
   return (
     snippet.value.enabled !== initialSnippet.enabled ||
     snippet.value.name !== initialSnippet.name ||
     snippet.value.description !== initialSnippet.description ||
     snippet.value.code !== initialSnippet.code
-  )
-})
+  );
+});
 
 function hasUnsavedChanges() {
-  return dirty.value
+  return dirty.value;
 }
 
 function getValidationError() {
-  return validationError.value
+  return validationError.value;
 }
 
 function getSubmitPayload() {
@@ -123,7 +125,7 @@ function getSubmitPayload() {
     snippet: {
       ...snippet.value,
     },
-  }
+  };
 }
 
 defineExpose({
@@ -131,7 +133,7 @@ defineExpose({
   hasUnsavedChanges,
   getValidationError,
   getSubmitPayload,
-})
+});
 </script>
 
 <template>
@@ -168,7 +170,7 @@ defineExpose({
         <input
           :id="inputId"
           v-model="snippet.name"
-          class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+          class=":uno: focus:border-primary w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:outline-none"
           placeholder="不填默认显示为 ID"
         />
       </FormField>
@@ -177,7 +179,7 @@ defineExpose({
         <input
           :id="inputId"
           v-model="snippet.description"
-          class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+          class=":uno: focus:border-primary w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:outline-none"
           placeholder="说明此代码片段的用途"
         />
       </FormField>
@@ -188,14 +190,14 @@ defineExpose({
             :class="
               codeFieldError
                 ? ':uno: border-red-300 focus-within:border-red-500'
-                : ':uno: border-gray-200 focus-within:border-primary'
+                : ':uno: focus-within:border-primary border-gray-200'
             "
             class=":uno: relative h-72 min-h-72 resize-y overflow-hidden rounded-md border bg-white"
           >
-            <div class=":uno: relative z-1 h-full flex">
+            <div class=":uno: relative z-1 flex h-full">
               <div
                 aria-hidden="true"
-                class=":uno: relative h-full overflow-hidden select-none border-r border-gray-100 bg-gray-50 px-2 pt-2 pb-0 text-right text-xs text-gray-400"
+                class=":uno: relative h-full overflow-hidden border-r border-gray-100 bg-gray-50 px-2 pt-2 pb-0 text-right text-xs text-gray-400 select-none"
               >
                 <div :style="codeLineNumberStyle">
                   <div
@@ -213,7 +215,7 @@ defineExpose({
                 v-model="snippet.code"
                 :aria-invalid="!!codeFieldError"
                 autofocus
-                class=":uno: h-full min-h-0 w-full flex-1 resize-none border-0 bg-transparent px-3 pt-2 pb-0 text-sm font-mono leading-6 focus:outline-none"
+                class=":uno: h-full min-h-0 w-full flex-1 resize-none border-0 bg-transparent px-3 pt-2 pb-0 font-mono text-sm leading-6 focus:outline-none"
                 placeholder="输入 HTML 代码"
                 spellcheck="false"
                 wrap="off"

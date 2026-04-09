@@ -1,146 +1,148 @@
 <script lang="ts" setup>
-import { Toast, VButton } from '@halo-dev/components'
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { Toast, VButton } from "@halo-dev/components";
+import { computed, nextTick, onMounted, ref } from "vue";
+
 import {
   type TransformationSnippetReadModel,
   type TransformationRuleEditorDraft,
   makeRuleEditorDraft,
   MODE_OPTIONS,
   POSITION_OPTIONS,
-} from '@/types'
+} from "@/types";
 import {
   formatMatchRuleError,
   getDomRulePerformanceWarning,
   isValidMatchRule,
   resolveRuleMatchRule,
-} from '@/views/composables/matchRule'
-import BaseFormModal from './BaseFormModal.vue'
-import EnabledSwitch from './EnabledSwitch.vue'
-import ItemPicker from './ItemPicker.vue'
-import FormField from './FormField.vue'
-import MatchRuleEditor from './MatchRuleEditor.vue'
-import ImportSourceModal from './ImportSourceModal.vue'
-import RuleRuntimeOrderField from './RuleRuntimeOrderField.vue'
-import { updateSelectByWheel } from '@/views/composables/selectWheel.ts'
-import { parseRuleTransfer } from '@/views/composables/transfer.ts'
+} from "@/views/composables/matchRule";
+import { updateSelectByWheel } from "@/views/composables/selectWheel.ts";
+import { parseRuleTransfer } from "@/views/composables/transfer.ts";
+
+import BaseFormModal from "./BaseFormModal.vue";
+import EnabledSwitch from "./EnabledSwitch.vue";
+import FormField from "./FormField.vue";
+import ImportSourceModal from "./ImportSourceModal.vue";
+import ItemPicker from "./ItemPicker.vue";
+import MatchRuleEditor from "./MatchRuleEditor.vue";
+import RuleRuntimeOrderField from "./RuleRuntimeOrderField.vue";
 
 defineProps<{
-  snippets: TransformationSnippetReadModel[]
-  saving: boolean
-}>()
+  snippets: TransformationSnippetReadModel[];
+  saving: boolean;
+}>();
 
 const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'submit', rule: TransformationRuleEditorDraft, snippetIds: string[]): void
-}>()
+  (e: "close"): void;
+  (e: "submit", rule: TransformationRuleEditorDraft, snippetIds: string[]): void;
+}>();
 
-const rule = ref<TransformationRuleEditorDraft>(makeRuleEditorDraft())
-const selectedSnippetIds = ref<string[]>([])
-const fileInput = ref<HTMLInputElement | null>(null)
-const importSourceVisible = ref(false)
-const initialRule = makeRuleEditorDraft()
+const rule = ref<TransformationRuleEditorDraft>(makeRuleEditorDraft());
+const selectedSnippetIds = ref<string[]>([]);
+const fileInput = ref<HTMLInputElement | null>(null);
+const importSourceVisible = ref(false);
+const initialRule = makeRuleEditorDraft();
 
-onMounted(reset)
+onMounted(reset);
 
 function reset() {
-  rule.value = makeRuleEditorDraft()
-  selectedSnippetIds.value = []
+  rule.value = makeRuleEditorDraft();
+  selectedSnippetIds.value = [];
 }
 
-const needsTarget = computed(() => rule.value.mode === 'SELECTOR')
-const needsSnippets = computed(() => rule.value.position !== 'REMOVE')
-const needsWrapMarker = computed(() => rule.value.position !== 'REMOVE')
+const needsTarget = computed(() => rule.value.mode === "SELECTOR");
+const needsSnippets = computed(() => rule.value.position !== "REMOVE");
+const needsWrapMarker = computed(() => rule.value.position !== "REMOVE");
 const matchFieldError = computed(() => {
   if (!needsTarget.value) {
-    return null
+    return null;
   }
-  return rule.value.match.trim() ? null : '请填写匹配内容'
-})
-const performanceWarning = computed(() => getDomRulePerformanceWarning(rule.value))
+  return rule.value.match.trim() ? null : "请填写匹配内容";
+});
+const performanceWarning = computed(() => getDomRulePerformanceWarning(rule.value));
 
 function toggleSnippet(id: string) {
-  const idx = selectedSnippetIds.value.indexOf(id)
-  if (idx === -1) selectedSnippetIds.value.push(id)
-  else selectedSnippetIds.value.splice(idx, 1)
+  const idx = selectedSnippetIds.value.indexOf(id);
+  if (idx === -1) selectedSnippetIds.value.push(id);
+  else selectedSnippetIds.value.splice(idx, 1);
 }
 
 function handleSubmit() {
-  emit('submit', rule.value, selectedSnippetIds.value)
+  emit("submit", rule.value, selectedSnippetIds.value);
 }
 
 function openImportSourceModal() {
-  importSourceVisible.value = true
+  importSourceVisible.value = true;
 }
 
 function closeImportSourceModal() {
-  importSourceVisible.value = false
+  importSourceVisible.value = false;
 }
 
-async function applyImportedRule(raw: string, sourceLabel: '剪贴板' | '文件') {
-  rule.value = parseRuleTransfer(raw)
-  selectedSnippetIds.value = []
-  const importedValidationError = resolveImportedRuleValidationError(rule.value)
+async function applyImportedRule(raw: string, sourceLabel: "剪贴板" | "文件") {
+  rule.value = parseRuleTransfer(raw);
+  selectedSnippetIds.value = [];
+  const importedValidationError = resolveImportedRuleValidationError(rule.value);
   if (importedValidationError) {
     Toast.warning(
       `已从${sourceLabel}导入转换规则 JSON，但当前内容仍有错误：${importedValidationError}`,
-    )
+    );
   } else {
-    Toast.success(`已从${sourceLabel}导入转换规则 JSON`)
+    Toast.success(`已从${sourceLabel}导入转换规则 JSON`);
   }
 }
 
 async function importFromClipboard() {
   try {
-    const text = await navigator.clipboard.readText()
+    const text = await navigator.clipboard.readText();
     if (!text.trim()) {
-      Toast.warning('剪贴板里没有可导入的 JSON')
-      return
+      Toast.warning("剪贴板里没有可导入的 JSON");
+      return;
     }
-    await applyImportedRule(text, '剪贴板')
-    importSourceVisible.value = false
+    await applyImportedRule(text, "剪贴板");
+    importSourceVisible.value = false;
   } catch {
-    Toast.error('读取剪贴板失败，请检查浏览器权限后重试')
+    Toast.error("读取剪贴板失败，请检查浏览器权限后重试");
   }
 }
 
 async function importFromFile() {
-  importSourceVisible.value = false
-  await nextTick()
-  fileInput.value?.click()
+  importSourceVisible.value = false;
+  await nextTick();
+  fileInput.value?.click();
 }
 
 async function handleImportFile(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
   if (!file) {
-    return
+    return;
   }
   try {
-    await applyImportedRule(await file.text(), '文件')
+    await applyImportedRule(await file.text(), "文件");
   } catch (error) {
-    Toast.error(error instanceof Error ? error.message : '导入失败')
+    Toast.error(error instanceof Error ? error.message : "导入失败");
   } finally {
-    input.value = ''
+    input.value = "";
   }
 }
 
 function resolveImportedRuleValidationError(importedRule: TransformationRuleEditorDraft) {
-  if (importedRule.mode === 'SELECTOR' && !importedRule.match.trim()) {
-    return '请填写匹配内容'
+  if (importedRule.mode === "SELECTOR" && !importedRule.match.trim()) {
+    return "请填写匹配内容";
   }
-  const result = resolveRuleMatchRule(importedRule)
+  const result = resolveRuleMatchRule(importedRule);
   if (result.error) {
-    return `匹配规则有误：${formatMatchRuleError(result.error)}`
+    return `匹配规则有误：${formatMatchRuleError(result.error)}`;
   }
   if (!isValidMatchRule(result.rule)) {
-    return '请完善匹配规则'
+    return "请完善匹配规则";
   }
-  return null
+  return null;
 }
 
 const validationError = computed(() => {
-  return resolveImportedRuleValidationError(rule.value)
-})
+  return resolveImportedRuleValidationError(rule.value);
+});
 
 const dirty = computed(() => {
   return (
@@ -170,15 +172,15 @@ const dirty = computed(() => {
       matchRuleSource: initialRule.matchRuleSource,
       snippetIds: [],
     })
-  )
-})
+  );
+});
 
 function hasUnsavedChanges() {
-  return dirty.value
+  return dirty.value;
 }
 
 function getValidationError() {
-  return validationError.value
+  return validationError.value;
 }
 
 function getSubmitPayload() {
@@ -188,7 +190,7 @@ function getSubmitPayload() {
       matchRule: JSON.parse(JSON.stringify(rule.value.matchRule)),
     },
     snippetIds: [...selectedSnippetIds.value],
-  }
+  };
 }
 
 defineExpose({
@@ -196,7 +198,7 @@ defineExpose({
   hasUnsavedChanges,
   getValidationError,
   getSubmitPayload,
-})
+});
 </script>
 
 <template>
@@ -233,7 +235,7 @@ defineExpose({
         <input
           :id="inputId"
           v-model="rule.name"
-          class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+          class=":uno: focus:border-primary w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:outline-none"
           placeholder="不填默认为 ID"
         />
       </FormField>
@@ -242,7 +244,7 @@ defineExpose({
         <input
           :id="inputId"
           v-model="rule.description"
-          class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+          class=":uno: focus:border-primary w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:outline-none"
           placeholder="说明此规则的用途"
         />
       </FormField>
@@ -257,7 +259,7 @@ defineExpose({
         <select
           :id="inputId"
           v-model="rule.mode"
-          class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none bg-white"
+          class=":uno: focus:border-primary w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm focus:outline-none"
           @wheel="updateSelectByWheel"
         >
           <option v-for="o in MODE_OPTIONS" :key="o.value" :value="o.value">{{ o.label }}</option>
@@ -275,9 +277,9 @@ defineExpose({
               :class="
                 matchFieldError
                   ? ':uno: border-red-300 bg-red-50/40 focus:border-red-500'
-                  : ':uno: border-gray-200 focus:border-primary'
+                  : ':uno: focus:border-primary border-gray-200'
               "
-              class=":uno: w-full rounded-md border px-3 py-1.5 text-sm font-mono focus:outline-none"
+              class=":uno: w-full rounded-md border px-3 py-1.5 font-mono text-sm focus:outline-none"
             />
             <p
               v-if="matchFieldError"
@@ -294,7 +296,7 @@ defineExpose({
           <select
             :id="inputId"
             v-model="rule.position"
-            class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none bg-white"
+            class=":uno: focus:border-primary w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm focus:outline-none"
             @wheel="updateSelectByWheel"
           >
             <option v-for="o in POSITION_OPTIONS" :key="o.value" :value="o.value">

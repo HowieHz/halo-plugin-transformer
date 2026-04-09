@@ -1,15 +1,15 @@
 <script lang="ts" setup>
-import { VButton, VModal, VSpace } from '@halo-dev/components'
+import { VButton, VModal, VSpace } from "@halo-dev/components";
 
 defineProps<{
-  importedCount: number
-  resourceLabel: string
-}>()
+  importedCount: number;
+  resourceLabel: string;
+}>();
 
 const emit = defineEmits<{
-  (e: 'continue'): void
-  (e: 'close'): void
-}>()
+  (e: "continue"): void;
+  (e: "close"): void;
+}>();
 </script>
 
 <template>

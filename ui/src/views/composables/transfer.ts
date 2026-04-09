@@ -1,4 +1,4 @@
-export { TRANSFER_SCHEMA_URL } from './transferEnvelope'
+export { TRANSFER_SCHEMA_URL } from "./transferEnvelope";
 export {
   buildRuleBatchTransfer,
   buildRuleTransfer,
@@ -12,11 +12,11 @@ export {
   type RuleTransferData,
   type SnippetTransferData,
   type TransferFileDraft,
-} from './transferExportBuilder'
+} from "./transferExportBuilder";
 export {
   parseRuleBatchTransfer,
   parseRuleTransfer,
   parseSnippetBatchTransfer,
   parseSnippetTransfer,
-} from './transferImportParser'
-export { downloadTransferFile } from './transferFileIO'
+} from "./transferImportParser";
+export { downloadTransferFile } from "./transferFileIO";

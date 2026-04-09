@@ -6,20 +6,21 @@ import {
   type TransformationSnippetEditorDraft,
   type TransformationRuleEditorDraft,
   type MatchRuleSource,
-} from '@/types'
+} from "@/types";
+
 import {
   makeJsonDraftSource,
   makeRuleTreeSource,
   normalizeMatchRule,
   parseMatchRuleDraft,
   validateMatchRuleObject,
-} from './matchRule'
+} from "./matchRule";
 import {
   ensureAllowedFields,
   isPlainObject,
   parseTransferEnvelope,
   validateEnumField,
-} from './transferEnvelope'
+} from "./transferEnvelope";
 import type {
   RuleBatchTransferEnvelope,
   RuleTransferData,
@@ -27,101 +28,101 @@ import type {
   SnippetBatchTransferEnvelope,
   SnippetTransferData,
   SnippetTransferEnvelope,
-} from './transferExportBuilder'
+} from "./transferExportBuilder";
 
 export function parseSnippetTransfer(raw: string): TransformationSnippetEditorDraft {
-  const envelope = parseTransferEnvelope<SnippetTransferEnvelope>(raw, 'snippet')
-  return parseSnippetTransferData(envelope.data)
+  const envelope = parseTransferEnvelope<SnippetTransferEnvelope>(raw, "snippet");
+  return parseSnippetTransferData(envelope.data);
 }
 
 export function parseSnippetBatchTransfer(raw: string): TransformationSnippetEditorDraft[] {
-  const envelope = parseTransferEnvelope<SnippetBatchTransferEnvelope>(raw, 'snippet-batch')
-  return parseTransferItemList(envelope.data, '批量代码片段', parseSnippetTransferData)
+  const envelope = parseTransferEnvelope<SnippetBatchTransferEnvelope>(raw, "snippet-batch");
+  return parseTransferItemList(envelope.data, "批量代码片段", parseSnippetTransferData);
 }
 
 export function parseRuleTransfer(raw: string): TransformationRuleEditorDraft {
-  const envelope = parseTransferEnvelope<RuleTransferEnvelope>(raw, 'rule')
-  return parseRuleTransferData(envelope.data)
+  const envelope = parseTransferEnvelope<RuleTransferEnvelope>(raw, "rule");
+  return parseRuleTransferData(envelope.data);
 }
 
 export function parseRuleBatchTransfer(raw: string): TransformationRuleEditorDraft[] {
-  const envelope = parseTransferEnvelope<RuleBatchTransferEnvelope>(raw, 'rule-batch')
-  return parseTransferItemList(envelope.data, '批量转换规则', parseRuleTransferData)
+  const envelope = parseTransferEnvelope<RuleBatchTransferEnvelope>(raw, "rule-batch");
+  return parseTransferItemList(envelope.data, "批量转换规则", parseRuleTransferData);
 }
 
 function parseSnippetTransferData(data: SnippetTransferData): TransformationSnippetEditorDraft {
-  ensureAllowedFields(data, ['enabled', 'name', 'description', 'code'], '代码片段')
-  if (data.enabled !== undefined && typeof data.enabled !== 'boolean') {
-    throw new Error('导入失败：`enabled` 必须是布尔值；仅支持 true 或 false')
+  ensureAllowedFields(data, ["enabled", "name", "description", "code"], "代码片段");
+  if (data.enabled !== undefined && typeof data.enabled !== "boolean") {
+    throw new Error("导入失败：`enabled` 必须是布尔值；仅支持 true 或 false");
   }
-  if (data.name !== undefined && typeof data.name !== 'string') {
-    throw new Error('导入失败：`name` 必须是字符串')
+  if (data.name !== undefined && typeof data.name !== "string") {
+    throw new Error("导入失败：`name` 必须是字符串");
   }
-  if (data.description !== undefined && typeof data.description !== 'string') {
-    throw new Error('导入失败：`description` 必须是字符串')
+  if (data.description !== undefined && typeof data.description !== "string") {
+    throw new Error("导入失败：`description` 必须是字符串");
   }
-  if (data.code !== undefined && typeof data.code !== 'string') {
-    throw new Error('导入失败：`code` 必须是字符串')
+  if (data.code !== undefined && typeof data.code !== "string") {
+    throw new Error("导入失败：`code` 必须是字符串");
   }
   return makeSnippetEditorDraft({
-    enabled: typeof data.enabled === 'boolean' ? data.enabled : true,
-    name: typeof data.name === 'string' ? data.name : '',
-    description: typeof data.description === 'string' ? data.description : '',
-    code: typeof data.code === 'string' ? data.code : '',
-  })
+    enabled: typeof data.enabled === "boolean" ? data.enabled : true,
+    name: typeof data.name === "string" ? data.name : "",
+    description: typeof data.description === "string" ? data.description : "",
+    code: typeof data.code === "string" ? data.code : "",
+  });
 }
 
 function parseRuleTransferData(data: RuleTransferData): TransformationRuleEditorDraft {
   ensureAllowedFields(
     data,
     [
-      'enabled',
-      'name',
-      'description',
-      'mode',
-      'match',
-      'position',
-      'wrapMarker',
-      'runtimeOrder',
-      'matchRuleSource',
+      "enabled",
+      "name",
+      "description",
+      "mode",
+      "match",
+      "position",
+      "wrapMarker",
+      "runtimeOrder",
+      "matchRuleSource",
     ],
-    '转换规则',
-  )
-  if (typeof data.enabled !== 'boolean') {
-    throw new Error('导入失败：`enabled` 必须是布尔值；仅支持 true 或 false')
+    "转换规则",
+  );
+  if (typeof data.enabled !== "boolean") {
+    throw new Error("导入失败：`enabled` 必须是布尔值；仅支持 true 或 false");
   }
-  if (typeof data.name !== 'string') {
-    throw new Error('导入失败：`name` 必须是字符串')
+  if (typeof data.name !== "string") {
+    throw new Error("导入失败：`name` 必须是字符串");
   }
-  if (typeof data.description !== 'string') {
-    throw new Error('导入失败：`description` 必须是字符串')
+  if (typeof data.description !== "string") {
+    throw new Error("导入失败：`description` 必须是字符串");
   }
-  validateEnumField('mode', data.mode, ['HEAD', 'FOOTER', 'SELECTOR'])
-  if (typeof data.match !== 'string') {
-    throw new Error('导入失败：`match` 必须是字符串')
+  validateEnumField("mode", data.mode, ["HEAD", "FOOTER", "SELECTOR"]);
+  if (typeof data.match !== "string") {
+    throw new Error("导入失败：`match` 必须是字符串");
   }
-  validateEnumField('position', data.position, [
-    'APPEND',
-    'PREPEND',
-    'BEFORE',
-    'AFTER',
-    'REPLACE',
-    'REMOVE',
-  ])
-  if (typeof data.wrapMarker !== 'boolean') {
-    throw new Error('导入失败：`wrapMarker` 必须是布尔值；仅支持 true 或 false')
+  validateEnumField("position", data.position, [
+    "APPEND",
+    "PREPEND",
+    "BEFORE",
+    "AFTER",
+    "REPLACE",
+    "REMOVE",
+  ]);
+  if (typeof data.wrapMarker !== "boolean") {
+    throw new Error("导入失败：`wrapMarker` 必须是布尔值；仅支持 true 或 false");
   }
-  const runtimeOrder = data.runtimeOrder ?? RUNTIME_ORDER_DEFAULT
-  if (typeof runtimeOrder !== 'number' || !Number.isInteger(runtimeOrder)) {
-    throw new Error('导入失败：`runtimeOrder` 必须是整数')
+  const runtimeOrder = data.runtimeOrder ?? RUNTIME_ORDER_DEFAULT;
+  if (typeof runtimeOrder !== "number" || !Number.isInteger(runtimeOrder)) {
+    throw new Error("导入失败：`runtimeOrder` 必须是整数");
   }
   if (runtimeOrder < 0) {
-    throw new Error('导入失败：`runtimeOrder` 不能小于 0')
+    throw new Error("导入失败：`runtimeOrder` 不能小于 0");
   }
   if (runtimeOrder > RUNTIME_ORDER_MAX) {
-    throw new Error(`导入失败：\`runtimeOrder\` 不能大于 ${RUNTIME_ORDER_MAX}`)
+    throw new Error(`导入失败：\`runtimeOrder\` 不能大于 ${RUNTIME_ORDER_MAX}`);
   }
-  const matchRuleState = parseImportedMatchRuleSource(data.matchRuleSource)
+  const matchRuleState = parseImportedMatchRuleSource(data.matchRuleSource);
   return makeRuleEditorDraft({
     enabled: data.enabled,
     name: data.name,
@@ -133,7 +134,7 @@ function parseRuleTransferData(data: RuleTransferData): TransformationRuleEditor
     wrapMarker: data.wrapMarker,
     runtimeOrder,
     matchRuleSource: matchRuleState.matchRuleSource,
-  })
+  });
 }
 
 function parseTransferItemList<TData, TResult>(
@@ -142,75 +143,75 @@ function parseTransferItemList<TData, TResult>(
   parseItem: (item: TData) => TResult,
 ): TResult[] {
   if (!isPlainObject(data)) {
-    throw new Error(`导入失败：${resourceLabel}的 \`data\` 必须是对象`)
+    throw new Error(`导入失败：${resourceLabel}的 \`data\` 必须是对象`);
   }
-  ensureAllowedFields(data, ['items'], resourceLabel)
+  ensureAllowedFields(data, ["items"], resourceLabel);
   if (!Array.isArray(data.items)) {
-    throw new Error(`导入失败：${resourceLabel}的 \`items\` 必须是数组`)
+    throw new Error(`导入失败：${resourceLabel}的 \`items\` 必须是数组`);
   }
   if (data.items.length === 0) {
-    throw new Error(`导入失败：${resourceLabel}至少需要 1 项`)
+    throw new Error(`导入失败：${resourceLabel}至少需要 1 项`);
   }
   return data.items.map((item, index) => {
     if (!isPlainObject(item)) {
-      throw new Error(`导入失败：第 ${index + 1} 项必须是对象`)
+      throw new Error(`导入失败：第 ${index + 1} 项必须是对象`);
     }
     try {
-      return parseItem(item as TData)
+      return parseItem(item as TData);
     } catch (error) {
-      const message = error instanceof Error ? error.message : '导入失败'
-      throw new Error(`导入失败：第 ${index + 1} 项：${stripImportFailurePrefix(message)}`)
+      const message = error instanceof Error ? error.message : "导入失败";
+      throw new Error(`导入失败：第 ${index + 1} 项：${stripImportFailurePrefix(message)}`);
     }
-  })
+  });
 }
 
 function stripImportFailurePrefix(message: string) {
-  return message.replace(/^导入失败：/, '')
+  return message.replace(/^导入失败：/, "");
 }
 
 function parseImportedMatchRuleSource(source: unknown): {
-  matchRule: TransformationRuleEditorDraft['matchRule']
-  matchRuleSource: MatchRuleSource
+  matchRule: TransformationRuleEditorDraft["matchRule"];
+  matchRuleSource: MatchRuleSource;
 } {
   if (!isPlainObject(source)) {
-    throw new Error('导入失败：`matchRuleSource` 必须是对象')
+    throw new Error("导入失败：`matchRuleSource` 必须是对象");
   }
 
-  ensureAllowedFields(source, ['kind', 'data'], '匹配规则来源')
-  validateEnumField('matchRuleSource.kind', source.kind, ['RULE_TREE', 'JSON_DRAFT'])
+  ensureAllowedFields(source, ["kind", "data"], "匹配规则来源");
+  validateEnumField("matchRuleSource.kind", source.kind, ["RULE_TREE", "JSON_DRAFT"]);
 
-  if (!Object.prototype.hasOwnProperty.call(source, 'data')) {
-    throw new Error('导入失败：`matchRuleSource.data` 缺少必填字段')
+  if (!Object.prototype.hasOwnProperty.call(source, "data")) {
+    throw new Error("导入失败：`matchRuleSource.data` 缺少必填字段");
   }
 
-  if (source.kind === 'JSON_DRAFT') {
-    if (typeof source.data !== 'string') {
-      throw new Error('导入失败：`matchRuleSource.data` 必须是字符串')
+  if (source.kind === "JSON_DRAFT") {
+    if (typeof source.data !== "string") {
+      throw new Error("导入失败：`matchRuleSource.data` 必须是字符串");
     }
-    const parsed = parseMatchRuleDraft(source.data)
+    const parsed = parseMatchRuleDraft(source.data);
     return {
       matchRule:
         parsed.rule ??
-        normalizeMatchRule({ type: 'GROUP', negate: false, operator: 'AND', children: [] }),
+        normalizeMatchRule({ type: "GROUP", negate: false, operator: "AND", children: [] }),
       matchRuleSource: makeJsonDraftSource(source.data),
-    }
+    };
   }
 
   if (!isPlainObject(source.data)) {
-    throw new Error('导入失败：`matchRuleSource.data` 必须是对象')
+    throw new Error("导入失败：`matchRuleSource.data` 必须是对象");
   }
 
-  const matchRuleResult = validateMatchRuleObject(source.data, 'data.matchRuleSource.data')
+  const matchRuleResult = validateMatchRuleObject(source.data, "data.matchRuleSource.data");
   if (matchRuleResult.error) {
     return {
       matchRule: normalizeMatchRule(source.data),
       matchRuleSource: makeJsonDraftSource(JSON.stringify(source.data, null, 2)),
-    }
+    };
   }
 
-  const matchRule = matchRuleResult.rule ?? normalizeMatchRule(source.data)
+  const matchRule = matchRuleResult.rule ?? normalizeMatchRule(source.data);
   return {
     matchRule,
     matchRuleSource: makeRuleTreeSource(matchRule),
-  }
+  };
 }

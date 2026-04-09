@@ -3,109 +3,113 @@
   lang="ts"
   setup
 >
-import { ref } from 'vue'
-import StatusDot from './StatusDot.vue'
+import { ref } from "vue";
 
-type ReorderPlacement = 'before' | 'after'
+import StatusDot from "./StatusDot.vue";
+
+type ReorderPlacement = "before" | "after";
 
 const props = defineProps<{
-  items: T[]
-  selectedId?: string | null
-  bulkMode?: boolean
-  bulkSelectedIds?: string[]
-  emptyText?: string
-  stretch?: boolean
-  reorderable?: boolean
-  listLabel?: string
-}>()
+  items: T[];
+  selectedId?: string | null;
+  bulkMode?: boolean;
+  bulkSelectedIds?: string[];
+  emptyText?: string;
+  stretch?: boolean;
+  reorderable?: boolean;
+  listLabel?: string;
+}>();
 
 const emit = defineEmits<{
-  (e: 'select', id: string): void
-  (e: 'create'): void
-  (e: 'toggle-bulk-item', id: string): void
-  (e: 'toggle-bulk-all'): void
-  (e: 'reorder', payload: { sourceId: string; targetId: string; placement: ReorderPlacement }): void
-  (e: 'drag-state-change', active: boolean): void
-  (e: 'scroll-container'): void
-}>()
+  (e: "select", id: string): void;
+  (e: "create"): void;
+  (e: "toggle-bulk-item", id: string): void;
+  (e: "toggle-bulk-all"): void;
+  (
+    e: "reorder",
+    payload: { sourceId: string; targetId: string; placement: ReorderPlacement },
+  ): void;
+  (e: "drag-state-change", active: boolean): void;
+  (e: "scroll-container"): void;
+}>();
 
-const draggingId = ref<string | null>(null)
-const dropTargetId = ref<string | null>(null)
-const dropPlacement = ref<ReorderPlacement | null>(null)
-const scrollContainer = ref<HTMLElement | null>(null)
+const draggingId = ref<string | null>(null);
+const dropTargetId = ref<string | null>(null);
+const dropPlacement = ref<ReorderPlacement | null>(null);
+const scrollContainer = ref<HTMLElement | null>(null);
 
 defineExpose({
   getScrollContainer() {
-    return scrollContainer.value
+    return scrollContainer.value;
   },
   commitPendingDrop() {
-    commitPendingDrop(dropPlacement.value, dropTargetId.value)
+    commitPendingDrop(dropPlacement.value, dropTargetId.value);
   },
-})
+});
 
 function clearDragState() {
-  draggingId.value = null
-  dropTargetId.value = null
-  dropPlacement.value = null
-  emit('drag-state-change', false)
+  draggingId.value = null;
+  dropTargetId.value = null;
+  dropPlacement.value = null;
+  emit("drag-state-change", false);
 }
 
 function resolveDropPlacement(event: DragEvent, id: string): ReorderPlacement | null {
   if (!draggingId.value || draggingId.value === id) {
-    dropTargetId.value = null
-    dropPlacement.value = null
-    return null
+    dropTargetId.value = null;
+    dropPlacement.value = null;
+    return null;
   }
 
-  const currentTarget = event.currentTarget
+  const currentTarget = event.currentTarget;
   if (!(currentTarget instanceof HTMLElement)) {
-    return null
+    return null;
   }
 
-  const rect = currentTarget.getBoundingClientRect()
+  const rect = currentTarget.getBoundingClientRect();
   const rawPlacement: ReorderPlacement =
-    event.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
-  const currentIndex = props.items.findIndex((item) => item.id === id)
+    event.clientY < rect.top + rect.height / 2 ? "before" : "after";
+  const currentIndex = props.items.findIndex((item) => item.id === id);
   if (currentIndex === -1) {
-    dropTargetId.value = null
-    dropPlacement.value = null
-    return null
+    dropTargetId.value = null;
+    dropPlacement.value = null;
+    return null;
   }
 
-  const nextItem = props.items[currentIndex + 1]
-  const placement = rawPlacement === 'after' && nextItem ? 'before' : rawPlacement
-  const targetId = rawPlacement === 'after' && nextItem ? nextItem.id : id
+  const nextItem = props.items[currentIndex + 1];
+  const placement = rawPlacement === "after" && nextItem ? "before" : rawPlacement;
+  const targetId = rawPlacement === "after" && nextItem ? nextItem.id : id;
 
-  dropTargetId.value = targetId
-  dropPlacement.value = placement
-  return placement
+  dropTargetId.value = targetId;
+  dropPlacement.value = placement;
+  return placement;
 }
 
 function handleDragStart(event: DragEvent, id: string) {
-  draggingId.value = id
-  dropTargetId.value = null
-  dropPlacement.value = null
-  emit('drag-state-change', true)
+  draggingId.value = id;
+  dropTargetId.value = null;
+  dropPlacement.value = null;
+  emit("drag-state-change", true);
   if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/plain', id)
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", id);
   }
 }
 
 function handleDragOver(event: DragEvent, id: string) {
-  if (!draggingId.value) return
-  event.preventDefault()
+  if (!draggingId.value) return;
+  event.preventDefault();
   if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'move'
+    event.dataTransfer.dropEffect = "move";
   }
-  resolveDropPlacement(event, id)
+  resolveDropPlacement(event, id);
 }
 
 function handleDrop(event: DragEvent, id: string) {
-  if (!draggingId.value) return
-  event.preventDefault()
-  const placement = resolveDropPlacement(event, id)
-  commitPendingDrop(placement, dropTargetId.value)
+  if (!draggingId.value) return;
+  event.preventDefault();
+  const placement = resolveDropPlacement(event, id);
+  commitPendingDrop(placement, dropTargetId.value);
 }
 
 /**
@@ -114,74 +118,74 @@ function handleDrop(event: DragEvent, id: string) {
  */
 function handleContainerDragOver(event: DragEvent) {
   if (!draggingId.value || !dropTargetId.value || !dropPlacement.value) {
-    return
+    return;
   }
-  event.preventDefault()
+  event.preventDefault();
   if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'move'
+    event.dataTransfer.dropEffect = "move";
   }
 }
 
 function handleContainerDrop(event: DragEvent) {
   if (!draggingId.value) {
-    return
+    return;
   }
-  event.preventDefault()
-  commitPendingDrop(dropPlacement.value, dropTargetId.value)
+  event.preventDefault();
+  commitPendingDrop(dropPlacement.value, dropTargetId.value);
 }
 
 function commitPendingDrop(placement: ReorderPlacement | null, targetId: string | null) {
-  const sourceId = draggingId.value
-  clearDragState()
+  const sourceId = draggingId.value;
+  clearDragState();
   if (!placement || !targetId || !sourceId || sourceId === targetId) {
-    return
+    return;
   }
-  emit('reorder', { sourceId, targetId, placement })
+  emit("reorder", { sourceId, targetId, placement });
 }
 
 function handleSelect(id: string) {
   if (props.bulkMode) {
-    emit('toggle-bulk-item', id)
-    return
+    emit("toggle-bulk-item", id);
+    return;
   }
-  emit('select', id)
+  emit("select", id);
 }
 
 function handleItemKeydown(event: KeyboardEvent, id: string) {
-  if (event.key !== 'Enter' && event.key !== ' ') {
-    return
+  if (event.key !== "Enter" && event.key !== " ") {
+    return;
   }
-  event.preventDefault()
-  handleSelect(id)
+  event.preventDefault();
+  handleSelect(id);
 }
 
 function handleReorderButtonKeydown(event: KeyboardEvent, index: number) {
-  if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') {
-    return
+  if (event.key !== "ArrowUp" && event.key !== "ArrowDown") {
+    return;
   }
-  event.preventDefault()
-  const target = props.items[index + (event.key === 'ArrowUp' ? -1 : 1)]
+  event.preventDefault();
+  const target = props.items[index + (event.key === "ArrowUp" ? -1 : 1)];
   if (!target) {
-    return
+    return;
   }
-  emit('reorder', {
+  emit("reorder", {
     sourceId: props.items[index].id,
     targetId: target.id,
-    placement: event.key === 'ArrowUp' ? 'before' : 'after',
-  })
+    placement: event.key === "ArrowUp" ? "before" : "after",
+  });
 }
 
 function isBulkSelected(id: string) {
-  return props.bulkSelectedIds?.includes(id) ?? false
+  return props.bulkSelectedIds?.includes(id) ?? false;
 }
 
 function handleCheckboxClick(event: Event, id: string) {
-  event.stopPropagation()
-  emit('toggle-bulk-item', id)
+  event.stopPropagation();
+  emit("toggle-bulk-item", id);
 }
 
 function handleToggleBulkAll() {
-  emit('toggle-bulk-all')
+  emit("toggle-bulk-all");
 }
 </script>
 
@@ -223,9 +227,9 @@ function handleToggleBulkAll() {
 
       <li
         v-if="!props.items.length"
-        class=":uno: flex flex-col items-center justify-center gap-3 py-10 px-4"
+        class=":uno: flex flex-col items-center justify-center gap-3 px-4 py-10"
       >
-        <span class=":uno: text-sm text-gray-500">{{ props.emptyText ?? '暂无数据' }}</span>
+        <span class=":uno: text-sm text-gray-500">{{ props.emptyText ?? "暂无数据" }}</span>
         <slot name="empty-action"></slot>
       </li>
 
@@ -234,7 +238,7 @@ function handleToggleBulkAll() {
         :key="item.id"
         :aria-selected="props.selectedId !== undefined && props.selectedId === item.id"
         :class="draggingId === item.id ? ':uno: opacity-60' : ''"
-        class=":uno: relative cursor-pointer group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+        class=":uno: group focus-visible:ring-primary/40 relative cursor-pointer focus:outline-none focus-visible:ring-2"
         role="option"
         tabindex="0"
         @dragover="handleDragOver($event, item.id)"
@@ -248,11 +252,11 @@ function handleToggleBulkAll() {
         />
         <div
           v-if="dropTargetId === item.id && dropPlacement === 'before'"
-          class=":uno: pointer-events-none absolute left-4 right-4 top-0 h-0.5 rounded-full bg-primary"
+          class=":uno: bg-primary pointer-events-none absolute top-0 right-4 left-4 h-0.5 rounded-full"
         />
         <div
           v-if="dropTargetId === item.id && dropPlacement === 'after'"
-          class=":uno: pointer-events-none absolute left-4 right-4 bottom-0 h-0.5 rounded-full bg-primary"
+          class=":uno: bg-primary pointer-events-none absolute right-4 bottom-0 left-4 h-0.5 rounded-full"
         />
 
         <div class=":uno: flex gap-3 px-4 py-2.5 hover:bg-gray-50">
@@ -268,9 +272,9 @@ function handleToggleBulkAll() {
             />
           </label>
 
-          <div class=":uno: min-w-0 flex flex-1 flex-col gap-1">
+          <div class=":uno: flex min-w-0 flex-1 flex-col gap-1">
             <div class=":uno: flex items-center justify-between gap-2">
-              <span class=":uno: flex-1 min-w-0 text-sm text-gray-900 font-medium truncate">
+              <span class=":uno: min-w-0 flex-1 truncate text-sm font-medium text-gray-900">
                 {{ item.name || item.id }}
               </span>
               <div class=":uno: flex items-center gap-1">
@@ -278,7 +282,7 @@ function handleToggleBulkAll() {
                   v-if="props.reorderable && !props.bulkMode && props.items.length > 1"
                   :aria-label="`拖动排序：${item.name || item.id}`"
                   aria-keyshortcuts="ArrowUp ArrowDown"
-                  class=":uno: inline-flex h-5 w-5 shrink-0 cursor-grab active:cursor-grabbing items-center justify-center rounded text-sm leading-none tracking-[-0.2em] text-gray-400 transition hover:text-gray-600"
+                  class=":uno: inline-flex h-5 w-5 shrink-0 cursor-grab items-center justify-center rounded text-sm leading-none tracking-[-0.2em] text-gray-400 transition hover:text-gray-600 active:cursor-grabbing"
                   draggable="true"
                   title="按住拖动排序；聚焦后可用上下方向键调整顺序"
                   @click.stop
@@ -294,7 +298,7 @@ function handleToggleBulkAll() {
               </div>
             </div>
 
-            <p v-if="item.description" class=":uno: text-xs text-gray-500 line-clamp-1">
+            <p v-if="item.description" class=":uno: line-clamp-1 text-xs text-gray-500">
               {{ item.description }}
             </p>
 

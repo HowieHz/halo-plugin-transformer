@@ -1,19 +1,20 @@
-import type { ActiveTab } from '@/types'
-import type { LocationQuery, LocationQueryRaw } from 'vue-router'
+import type { LocationQuery, LocationQueryRaw } from "vue-router";
 
-export type TransformerRouteAction = 'create' | null
-export type TransformerRouteViewMode = 'single' | 'bulk'
+import type { ActiveTab } from "@/types";
+
+export type TransformerRouteAction = "create" | null;
+export type TransformerRouteViewMode = "single" | "bulk";
 
 export interface TransformerRouteState {
-  tab: ActiveTab
-  selectedId: string | null
-  action: TransformerRouteAction
-  viewMode: TransformerRouteViewMode
+  tab: ActiveTab;
+  selectedId: string | null;
+  action: TransformerRouteAction;
+  viewMode: TransformerRouteViewMode;
 }
 
 export interface TransformerRememberedSelection {
-  snippets: string | null
-  rules: string | null
+  snippets: string | null;
+  rules: string | null;
 }
 
 /**
@@ -21,17 +22,17 @@ export interface TransformerRememberedSelection {
  * 把它们收成单一 route-state，才能避免 URL、局部 ref、批量模式之间再出现隐式漂移。
  */
 export function parseTransformerRouteState(query: LocationQuery): TransformerRouteState {
-  const tab = normalizeTransformerRouteTab(query.tab)
-  const action = normalizeTransformerRouteAction(query.action)
-  const viewMode = normalizeTransformerRouteViewMode(query.mode)
-  const selectedId = typeof query.id === 'string' ? query.id : null
+  const tab = normalizeTransformerRouteTab(query.tab);
+  const action = normalizeTransformerRouteAction(query.action);
+  const viewMode = normalizeTransformerRouteViewMode(query.mode);
+  const selectedId = typeof query.id === "string" ? query.id : null;
 
   return {
     tab,
     action,
     viewMode,
-    selectedId: action || viewMode === 'bulk' ? null : selectedId,
-  }
+    selectedId: action || viewMode === "bulk" ? null : selectedId,
+  };
 }
 
 export function buildTransformerRouteQuery(
@@ -41,30 +42,30 @@ export function buildTransformerRouteQuery(
   const nextQuery: LocationQueryRaw = {
     ...currentQuery,
     tab: state.tab,
-  }
+  };
 
   if (state.action) {
-    nextQuery.action = state.action
-    delete nextQuery.mode
-    delete nextQuery.id
-    return nextQuery
+    nextQuery.action = state.action;
+    delete nextQuery.mode;
+    delete nextQuery.id;
+    return nextQuery;
   }
 
-  if (state.viewMode === 'bulk') {
-    nextQuery.mode = 'bulk'
-    delete nextQuery.action
-    delete nextQuery.id
-    return nextQuery
+  if (state.viewMode === "bulk") {
+    nextQuery.mode = "bulk";
+    delete nextQuery.action;
+    delete nextQuery.id;
+    return nextQuery;
   }
 
-  delete nextQuery.mode
-  delete nextQuery.action
+  delete nextQuery.mode;
+  delete nextQuery.action;
   if (state.selectedId) {
-    nextQuery.id = state.selectedId
+    nextQuery.id = state.selectedId;
   } else {
-    delete nextQuery.id
+    delete nextQuery.id;
   }
-  return nextQuery
+  return nextQuery;
 }
 
 export function isSameTransformerRouteState(
@@ -76,7 +77,7 @@ export function isSameTransformerRouteState(
     left.selectedId === right.selectedId &&
     left.action === right.action &&
     left.viewMode === right.viewMode
-  )
+  );
 }
 
 /**
@@ -87,14 +88,14 @@ export function applyTransformerRouteSelection(
   currentSelection: TransformerRememberedSelection,
   state: TransformerRouteState,
 ): TransformerRememberedSelection {
-  if (state.viewMode === 'bulk' || state.action === 'create') {
-    return currentSelection
+  if (state.viewMode === "bulk" || state.action === "create") {
+    return currentSelection;
   }
 
   return {
     ...currentSelection,
     [state.tab]: state.selectedId,
-  }
+  };
 }
 
 /**
@@ -102,23 +103,23 @@ export function applyTransformerRouteSelection(
  * create / bulk 只需要隐藏这个可见选中态，不应该把 remembered selection 本身清掉。
  */
 export function resolveVisibleTransformerSelection(
-  state: Pick<TransformerRouteState, 'action' | 'viewMode'>,
+  state: Pick<TransformerRouteState, "action" | "viewMode">,
   selectedId: string | null,
 ): string | null {
-  if (state.viewMode === 'bulk' || state.action === 'create') {
-    return null
+  if (state.viewMode === "bulk" || state.action === "create") {
+    return null;
   }
-  return selectedId
+  return selectedId;
 }
 
 function normalizeTransformerRouteTab(tab: unknown): ActiveTab {
-  return tab === 'rules' ? 'rules' : 'snippets'
+  return tab === "rules" ? "rules" : "snippets";
 }
 
 function normalizeTransformerRouteAction(action: unknown): TransformerRouteAction {
-  return action === 'create' ? 'create' : null
+  return action === "create" ? "create" : null;
 }
 
 function normalizeTransformerRouteViewMode(mode: unknown): TransformerRouteViewMode {
-  return mode === 'bulk' ? 'bulk' : 'single'
+  return mode === "bulk" ? "bulk" : "single";
 }

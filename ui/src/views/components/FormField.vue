@@ -1,16 +1,16 @@
 <script lang="ts" setup>
-import { computed, useId } from 'vue'
+import { computed, useId } from "vue";
 
 const props = defineProps<{
-  label?: string
-  labelTitle?: string
-  required?: boolean
-  invalid?: boolean
-}>()
+  label?: string;
+  labelTitle?: string;
+  required?: boolean;
+  invalid?: boolean;
+}>();
 
-const fieldId = useId()
-const inputId = computed(() => `field-input-${fieldId}`)
-const labelId = computed(() => `field-label-${fieldId}`)
+const fieldId = useId();
+const inputId = computed(() => `field-input-${fieldId}`);
+const labelId = computed(() => `field-label-${fieldId}`);
 </script>
 
 <template>

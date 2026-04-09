@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 
-import { describe, expect, it } from 'vitest'
-import { makeRuleEditorDraft, type TransformationRuleReadModel } from '@/types'
+import { describe, expect, it } from "vitest";
+
+import { makeRuleEditorDraft, type TransformationRuleReadModel } from "@/types";
+
 import {
   buildMatchRuleEditorSourceForMode,
   getDomRulePerformanceWarning,
@@ -9,264 +11,264 @@ import {
   parseMatchRuleDraft,
   resolveRuleMatchRule,
   validateSimpleMatchRuleTree,
-} from '../matchRule'
-import { hydrateRuleEditorDraft } from '../ruleDraft'
+} from "../matchRule";
+import { hydrateRuleEditorDraft } from "../ruleDraft";
 
-describe('matchRule editor state', () => {
+describe("matchRule editor state", () => {
   // why: 刷新页面应回到已保存内容；不应再恢复本地未保存草稿或编辑模式。
-  it('hydrates editor from saved rule only', () => {
+  it("hydrates editor from saved rule only", () => {
     const savedRule: TransformationRuleReadModel = {
-      apiVersion: 'transformer.howiehz.top/v1alpha1',
-      kind: 'TransformationRule',
-      metadata: { name: 'rule-a', version: 1 },
-      id: 'rule-a',
-      name: 'Rule A',
-      description: '',
+      apiVersion: "transformer.howiehz.top/v1alpha1",
+      kind: "TransformationRule",
+      metadata: { name: "rule-a", version: 1 },
+      id: "rule-a",
+      name: "Rule A",
+      description: "",
       enabled: true,
-      mode: 'FOOTER',
-      match: '',
+      mode: "FOOTER",
+      match: "",
       matchRule: makeRuleEditorDraft().matchRule,
-      position: 'APPEND',
+      position: "APPEND",
       wrapMarker: true,
       runtimeOrder: 2147483645,
       snippetIds: [],
-    }
+    };
 
-    const hydrated = hydrateRuleEditorDraft(savedRule)
+    const hydrated = hydrateRuleEditorDraft(savedRule);
 
     expect(hydrated.matchRuleSource).toMatchObject({
-      kind: 'RULE_TREE',
-    })
-  })
+      kind: "RULE_TREE",
+    });
+  });
 
   // why: `type` 写成布尔值时，应先明确提示“必须是字符串”，避免用户误以为只是枚举值写错。
-  it('reports type field type errors before enum errors', () => {
+  it("reports type field type errors before enum errors", () => {
     const result = parseMatchRuleDraft(
       '{ "type": false, "negate": false, "operator": "AND", "children": [] }',
-    )
+    );
 
-    expect(result.error?.path).toBe('$.type')
-    expect(result.error?.message).toBe('必须是字符串；仅支持 "GROUP"、"PATH"、"TEMPLATE_ID"')
-  })
+    expect(result.error?.path).toBe("$.type");
+    expect(result.error?.message).toBe('必须是字符串；仅支持 "GROUP"、"PATH"、"TEMPLATE_ID"');
+  });
 
   // why: 连 `type` 都没写时，应该先明确提示补 `type`，而不是过早按某个字段去猜。
-  it('reports missing type before other required fields', () => {
-    const result = parseMatchRuleDraft('{ "negate": false }')
+  it("reports missing type before other required fields", () => {
+    const result = parseMatchRuleDraft('{ "negate": false }');
 
-    expect(result.error?.path).toBe('$.type')
+    expect(result.error?.path).toBe("$.type");
     expect(result.error?.message).toBe(
       '缺少必填字段 "type"；该字段可选值为 "GROUP"、"PATH"、"TEMPLATE_ID"',
-    )
-  })
+    );
+  });
 
   // why: `type` 是字符串但值不合法时，提示里也应带上带引号的允许值，保持和其它枚举字段一致。
-  it('reports quoted allowed type values for invalid enum values', () => {
+  it("reports quoted allowed type values for invalid enum values", () => {
     const result = parseMatchRuleDraft(
       '{ "type": "foo", "negate": false, "operator": "AND", "children": [] }',
-    )
+    );
 
-    expect(result.error?.path).toBe('$.type')
-    expect(result.error?.message).toBe('仅支持 "GROUP"、"PATH"、"TEMPLATE_ID"')
-  })
+    expect(result.error?.path).toBe("$.type");
+    expect(result.error?.message).toBe('仅支持 "GROUP"、"PATH"、"TEMPLATE_ID"');
+  });
 
   // why: 布尔字段若给成其它类型，也应补充 true / false 提示，和枚举字段的“允许值”风格保持一致。
-  it('reports allowed boolean values for negate type errors', () => {
+  it("reports allowed boolean values for negate type errors", () => {
     const result = parseMatchRuleDraft(
       '{ "type": "GROUP", "negate": "yes", "operator": "AND", "children": [] }',
-    )
+    );
 
-    expect(result.error?.path).toBe('$.negate')
-    expect(result.error?.message).toBe('必须是布尔值；仅支持 true 或 false')
-  })
+    expect(result.error?.path).toBe("$.negate");
+    expect(result.error?.message).toBe("必须是布尔值；仅支持 true 或 false");
+  });
 
   // why: 已经给出 `type: GROUP` 后，缺少的必填字段应按 GROUP 结构明确提示，而不是只说笼统的“缺少必填字段”。
-  it('reports missing group children with group-specific guidance', () => {
-    const result = parseMatchRuleDraft('{ "type": "GROUP", "negate": false, "operator": "AND" }')
+  it("reports missing group children with group-specific guidance", () => {
+    const result = parseMatchRuleDraft('{ "type": "GROUP", "negate": false, "operator": "AND" }');
 
-    expect(result.error?.path).toBe('$.children')
-    expect(result.error?.message).toBe('条件组缺少必填字段 "children"')
-  })
+    expect(result.error?.path).toBe("$.children");
+    expect(result.error?.message).toBe('条件组缺少必填字段 "children"');
+  });
 
   // why: `negate` 语义上也属于结构字段；显式写出 true / false，才能避免“省略就默认 false”的隐式歧义。
-  it('requires explicit negate field', () => {
-    const result = parseMatchRuleDraft('{ "type": "GROUP", "operator": "AND", "children": [] }')
+  it("requires explicit negate field", () => {
+    const result = parseMatchRuleDraft('{ "type": "GROUP", "operator": "AND", "children": [] }');
 
-    expect(result.error?.path).toBe('$.negate')
-    expect(result.error?.message).toBe('缺少必填字段 "negate"；该字段可选值为 true 或 false')
-  })
+    expect(result.error?.path).toBe("$.negate");
+    expect(result.error?.message).toBe('缺少必填字段 "negate"；该字段可选值为 true 或 false');
+  });
 
   // why: 枚举型必填字段缺失时，提示“该字段可选值”为语义更自然，也更方便用户直接补值。
-  it('reports missing operator with field options wording', () => {
-    const result = parseMatchRuleDraft('{ "type": "GROUP", "negate": false, "children": [] }')
+  it("reports missing operator with field options wording", () => {
+    const result = parseMatchRuleDraft('{ "type": "GROUP", "negate": false, "children": [] }');
 
-    expect(result.error?.path).toBe('$.operator')
+    expect(result.error?.path).toBe("$.operator");
     expect(result.error?.message).toBe(
       '条件组缺少必填字段 "operator"；该字段可选值为 "AND" 或 "OR"',
-    )
-  })
+    );
+  });
 
   // why: 叶子节点误带条件组字段时，直接告诉用户“当前类型允许哪些字段”比“仅条件组可使用”更完整，
   // 也能和后端写入期错误保持同一套 contract 风格。
-  it('reports unsupported leaf-only operator fields with allowed field guidance', () => {
+  it("reports unsupported leaf-only operator fields with allowed field guidance", () => {
     const result = parseMatchRuleDraft(
       '{ "type": "GROUP", "negate": false, "operator": "AND", "children": [{ "type": "PATH", "negate": false, "matcher": "ANT", "value": "/**", "operator": "AND" }] }',
-    )
+    );
 
-    expect(result.error?.path).toBe('$.children[0].operator')
+    expect(result.error?.path).toBe("$.children[0].operator");
     expect(result.error?.message).toBe(
       '不支持该字段；页面路径条件仅支持 "type"、"negate"、"matcher"、"value"',
-    )
-  })
+    );
+  });
 
   // why: `children` 落在叶子节点上时同理也应回到“允许字段集合”提示，
   // 避免前端和后端对同一个结构错误给出两种不同心智模型。
-  it('reports unsupported leaf-only children fields with allowed field guidance', () => {
+  it("reports unsupported leaf-only children fields with allowed field guidance", () => {
     const result = parseMatchRuleDraft(
       '{ "type": "GROUP", "negate": false, "operator": "AND", "children": [{ "type": "TEMPLATE_ID", "negate": false, "matcher": "EXACT", "value": "post", "children": [] }] }',
-    )
+    );
 
-    expect(result.error?.path).toBe('$.children[0].children')
+    expect(result.error?.path).toBe("$.children[0].children");
     expect(result.error?.message).toBe(
       '不支持该字段；模板 ID 条件仅支持 "type"、"negate"、"matcher"、"value"',
-    )
-  })
+    );
+  });
 
   // why: 简单模式保存时必须只信当前规则树来源，不能被高级模式草稿心智反向污染。
-  it('resolves rule tree source when current source is simple', () => {
+  it("resolves rule tree source when current source is simple", () => {
     const rule = makeRuleEditorDraft({
       matchRule: {
-        type: 'GROUP',
+        type: "GROUP",
         negate: false,
-        operator: 'AND',
-        children: [{ type: 'PATH', negate: false, matcher: 'ANT', value: '/**' }],
+        operator: "AND",
+        children: [{ type: "PATH", negate: false, matcher: "ANT", value: "/**" }],
       },
       matchRuleSource: {
-        kind: 'RULE_TREE',
+        kind: "RULE_TREE",
         data: {
-          type: 'GROUP',
+          type: "GROUP",
           negate: false,
-          operator: 'AND',
-          children: [{ type: 'PATH', negate: false, matcher: 'ANT', value: '/**' }],
+          operator: "AND",
+          children: [{ type: "PATH", negate: false, matcher: "ANT", value: "/**" }],
         },
       },
-    })
+    });
 
-    const result = resolveRuleMatchRule(rule)
+    const result = resolveRuleMatchRule(rule);
 
-    expect(result.error).toBeNull()
+    expect(result.error).toBeNull();
     expect(result.rule?.children?.[0]).toMatchObject({
-      type: 'PATH',
-      matcher: 'ANT',
-      value: '/**',
-    })
-  })
+      type: "PATH",
+      matcher: "ANT",
+      value: "/**",
+    });
+  });
 
   // why: 模式切回简单时必须无条件收敛为 RULE_TREE，不能把坏掉的 JSON 草稿继续带回去，
   // 否则用户看到的是简单模式，底层却还残留 JSON_DRAFT，后续保存与导出都会语义错位。
-  it('builds rule tree source when switching editor mode to simple', () => {
+  it("builds rule tree source when switching editor mode to simple", () => {
     const source = buildMatchRuleEditorSourceForMode(
-      'SIMPLE',
+      "SIMPLE",
       makeRuleEditorDraft({
         matchRule: {
-          type: 'GROUP',
+          type: "GROUP",
           negate: false,
-          operator: 'AND',
-          children: [{ type: 'PATH', negate: false, matcher: 'ANT', value: '/**' }],
+          operator: "AND",
+          children: [{ type: "PATH", negate: false, matcher: "ANT", value: "/**" }],
         },
       }).matchRule,
-    )
+    );
 
     expect(source.matchRuleSource).toMatchObject({
-      kind: 'RULE_TREE',
-    })
-  })
+      kind: "RULE_TREE",
+    });
+  });
 
   // why: 新建转换规则时，首个匹配条件应留空等待用户填写，而不是偷偷预填默认路径。
-  it('starts new rules with an empty first match value', () => {
-    const rule = makeRuleEditorDraft()
+  it("starts new rules with an empty first match value", () => {
+    const rule = makeRuleEditorDraft();
 
     expect(rule.matchRule.children?.[0]).toMatchObject({
-      type: 'PATH',
-      matcher: 'ANT',
-      value: '',
-    })
-  })
+      type: "PATH",
+      matcher: "ANT",
+      value: "",
+    });
+  });
 
   // why: 空组或空值这类“当前还不合法”的编辑中间态，应优先显示校验错误，不该再叠加性能提示干扰判断。
-  it('hides dom performance warning when match rule is currently invalid', () => {
+  it("hides dom performance warning when match rule is currently invalid", () => {
     const rule = makeRuleEditorDraft({
-      mode: 'SELECTOR',
-      match: '#main-content',
+      mode: "SELECTOR",
+      match: "#main-content",
       matchRule: {
-        type: 'GROUP',
+        type: "GROUP",
         negate: false,
-        operator: 'AND',
+        operator: "AND",
         children: [],
       },
-    })
+    });
 
-    expect(getDomRulePerformanceWarning(rule)).toBeNull()
-  })
+    expect(getDomRulePerformanceWarning(rule)).toBeNull();
+  });
 
   // why: 高级模式里如果 JSON 草稿已经损坏，性能提示必须跟随当前 source 一起失效；
   // 不能继续读取旧的合法规则树，否则用户会看到基于过期状态生成的错误提示。
-  it('hides dom performance warning when json draft is invalid even if last rule tree was valid', () => {
+  it("hides dom performance warning when json draft is invalid even if last rule tree was valid", () => {
     const rule = makeRuleEditorDraft({
-      mode: 'SELECTOR',
-      match: '#main-content',
+      mode: "SELECTOR",
+      match: "#main-content",
       matchRule: {
-        type: 'GROUP',
+        type: "GROUP",
         negate: false,
-        operator: 'AND',
-        children: [{ type: 'PATH', negate: false, matcher: 'ANT', value: '/**' }],
+        operator: "AND",
+        children: [{ type: "PATH", negate: false, matcher: "ANT", value: "/**" }],
       },
       matchRuleSource: {
-        kind: 'JSON_DRAFT',
-        data: '{',
+        kind: "JSON_DRAFT",
+        data: "{",
       },
-    })
+    });
 
-    expect(getDomRulePerformanceWarning(rule)).toBeNull()
-  })
+    expect(getDomRulePerformanceWarning(rule)).toBeNull();
+  });
 
   // why: 简单模式应一次收集所有可定位错误，避免用户修完一个后才看到同层或子层的下一个错误。
-  it('collects multiple simple mode errors at the same time', () => {
+  it("collects multiple simple mode errors at the same time", () => {
     const result = validateSimpleMatchRuleTree({
-      type: 'GROUP',
+      type: "GROUP",
       negate: false,
-      operator: 'AND',
+      operator: "AND",
       children: [
-        { type: 'PATH', negate: false, matcher: 'ANT', value: '' },
+        { type: "PATH", negate: false, matcher: "ANT", value: "" },
         {
-          type: 'GROUP',
+          type: "GROUP",
           negate: false,
-          operator: 'AND',
+          operator: "AND",
           children: [],
         },
       ],
-    })
+    });
 
     expect(result.errors).toEqual(
       expect.arrayContaining([
-        { path: '$.children[0].value', message: '必须是非空字符串' },
-        { path: '$.children[1].children', message: '不能有空组' },
+        { path: "$.children[0].value", message: "必须是非空字符串" },
+        { path: "$.children[1].children", message: "不能有空组" },
       ]),
-    )
-  })
+    );
+  });
 
   // why: 列表与关联面板只需要更紧凑的摘要文案；
   // 这里单独锁住 UI 缩写格式，避免把 shared contract 的规范表达式也一起改短。
-  it('formats compact rule summaries for ui display', () => {
+  it("formats compact rule summaries for ui display", () => {
     expect(
       matchRuleSummary({
-        type: 'GROUP',
+        type: "GROUP",
         negate: false,
-        operator: 'AND',
+        operator: "AND",
         children: [
-          { type: 'PATH', negate: false, matcher: 'REGEX', value: '^/posts' },
-          { type: 'TEMPLATE_ID', negate: false, matcher: 'REGEX', value: '^(post|page)$' },
+          { type: "PATH", negate: false, matcher: "REGEX", value: "^/posts" },
+          { type: "TEMPLATE_ID", negate: false, matcher: "REGEX", value: "^(post|page)$" },
         ],
       }),
-    ).toBe('path:re:^/posts & id:re:^(post|page)$')
-  })
-})
+    ).toBe("path:re:^/posts & id:re:^(post|page)$");
+  });
+});

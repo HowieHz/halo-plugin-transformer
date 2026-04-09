@@ -1,32 +1,34 @@
 <script lang="ts" setup>
-import { computed } from 'vue'
-import { VButton } from '@halo-dev/components'
-import type { ActiveTab } from '@/types'
-import EditorToolbar from './EditorToolbar.vue'
+import { VButton } from "@halo-dev/components";
+import { computed } from "vue";
+
+import type { ActiveTab } from "@/types";
+
+import EditorToolbar from "./EditorToolbar.vue";
 
 const props = defineProps<{
-  tab: ActiveTab
-  selectedCount: number
-  processing: boolean
-  canEnable: boolean
-  canDisable: boolean
-}>()
+  tab: ActiveTab;
+  selectedCount: number;
+  processing: boolean;
+  canEnable: boolean;
+  canDisable: boolean;
+}>();
 
 const emit = defineEmits<{
-  (e: 'exit'): void
-  (e: 'import'): void
-  (e: 'export'): void
-  (e: 'enable'): void
-  (e: 'disable'): void
-  (e: 'delete'): void
-}>()
+  (e: "exit"): void;
+  (e: "import"): void;
+  (e: "export"): void;
+  (e: "enable"): void;
+  (e: "disable"): void;
+  (e: "delete"): void;
+}>();
 
-const resourceLabel = computed(() => (props.tab === 'snippets' ? '代码片段' : '转换规则'))
-const hasSelection = computed(() => props.selectedCount > 0)
+const resourceLabel = computed(() => (props.tab === "snippets" ? "代码片段" : "转换规则"));
+const hasSelection = computed(() => props.selectedCount > 0);
 </script>
 
 <template>
-  <div class=":uno: h-full flex flex-col transformer-editor-container">
+  <div class=":uno: transformer-editor-container flex h-full flex-col">
     <EditorToolbar :show-actions="false" :show-default-actions="false" title="批量操作">
       <template #actions>
         <VButton size="sm" @click="emit('exit')">退出批量操作</VButton>

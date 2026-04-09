@@ -1,41 +1,43 @@
-import { ref, type Ref } from 'vue'
-import { Toast } from '@halo-dev/components'
-import { ruleApi, snippetApi } from '@/apis'
+import { Toast } from "@halo-dev/components";
+import { ref, type Ref } from "vue";
+
+import { ruleApi, snippetApi } from "@/apis";
 import type {
   ActiveTab,
   TransformationSnippetReadModel,
   TransformationRuleReadModel,
-} from '@/types'
-import { emptyList, getErrorMessage } from './transformerShared'
-import { useEditorSelectionState } from './useEditorSelectionState'
-import { useResourceOrderState } from './useResourceOrderState'
-import { useRuleState } from './useRuleState'
-import { useSnippetState } from './useSnippetState'
+} from "@/types";
+
+import { emptyList, getErrorMessage } from "./transformerShared";
+import { useEditorSelectionState } from "./useEditorSelectionState";
+import { useResourceOrderState } from "./useResourceOrderState";
+import { useRuleState } from "./useRuleState";
+import { useSnippetState } from "./useSnippetState";
 
 /**
  * why: `useTransformerData` 现在只保留页面级编排职责：
  * 装载共享资源快照，并把 snippet / rule / order / editor-selection 这几个 bounded context 组合起来。
  */
 export function useTransformerData(activeTab: Ref<ActiveTab>) {
-  const loading = ref(false)
-  const creating = ref(false)
-  const savingEditor = ref(false)
-  const processingBulk = ref(false)
+  const loading = ref(false);
+  const creating = ref(false);
+  const savingEditor = ref(false);
+  const processingBulk = ref(false);
 
-  const snippetsResp = ref(emptyList<TransformationSnippetReadModel>())
-  const rulesResp = ref(emptyList<TransformationRuleReadModel>())
+  const snippetsResp = ref(emptyList<TransformationSnippetReadModel>());
+  const rulesResp = ref(emptyList<TransformationRuleReadModel>());
 
   const snippetOrderState = useResourceOrderState({
     itemsResp: snippetsResp,
     api: snippetApi,
-    resourceLabel: '代码片段',
-  })
+    resourceLabel: "代码片段",
+  });
 
   const ruleOrderState = useResourceOrderState({
     itemsResp: rulesResp,
     api: ruleApi,
-    resourceLabel: '转换规则',
-  })
+    resourceLabel: "转换规则",
+  });
 
   const editorSelectionState = useEditorSelectionState({
     activeTab,
@@ -43,22 +45,22 @@ export function useTransformerData(activeTab: Ref<ActiveTab>) {
     rulesResp,
     snippets: snippetOrderState.items,
     rules: ruleOrderState.items,
-  })
+  });
 
   async function refreshSnippetList() {
-    const response = await snippetApi.list()
-    snippetsResp.value = response.data
-    editorSelectionState.hydrateSelectedSnippetDraft()
+    const response = await snippetApi.list();
+    snippetsResp.value = response.data;
+    editorSelectionState.hydrateSelectedSnippetDraft();
   }
 
   async function refreshRuleList() {
-    const response = await ruleApi.list()
-    rulesResp.value = response.data
-    editorSelectionState.hydrateSelectedRuleDraft()
+    const response = await ruleApi.list();
+    rulesResp.value = response.data;
+    editorSelectionState.hydrateSelectedRuleDraft();
   }
 
   async function fetchAll() {
-    loading.value = true
+    loading.value = true;
     try {
       const [snippetResponse, ruleResponse, snippetOrderResponse, ruleOrderResponse] =
         await Promise.all([
@@ -66,18 +68,18 @@ export function useTransformerData(activeTab: Ref<ActiveTab>) {
           ruleApi.list(),
           snippetApi.getOrder(),
           ruleApi.getOrder(),
-        ])
+        ]);
 
-      snippetsResp.value = snippetResponse.data
-      rulesResp.value = ruleResponse.data
-      snippetOrderState.applyOrderSnapshot(snippetOrderResponse.data)
-      ruleOrderState.applyOrderSnapshot(ruleOrderResponse.data)
-      editorSelectionState.hydrateSelectedSnippetDraft()
-      editorSelectionState.hydrateSelectedRuleDraft()
+      snippetsResp.value = snippetResponse.data;
+      rulesResp.value = ruleResponse.data;
+      snippetOrderState.applyOrderSnapshot(snippetOrderResponse.data);
+      ruleOrderState.applyOrderSnapshot(ruleOrderResponse.data);
+      editorSelectionState.hydrateSelectedSnippetDraft();
+      editorSelectionState.hydrateSelectedRuleDraft();
     } catch (error) {
-      Toast.error(getErrorMessage(error, '加载数据失败'))
+      Toast.error(getErrorMessage(error, "加载数据失败"));
     } finally {
-      loading.value = false
+      loading.value = false;
     }
   }
 
@@ -86,7 +88,7 @@ export function useTransformerData(activeTab: Ref<ActiveTab>) {
    * 这里显式提供一个整页快照刷新入口，避免各个 delete 路径各自猜“要不要顺手刷新另一侧”。
    */
   async function refreshAllResources() {
-    await Promise.all([refreshSnippetList(), refreshRuleList()])
+    await Promise.all([refreshSnippetList(), refreshRuleList()]);
   }
 
   const snippetState = useSnippetState({
@@ -101,7 +103,7 @@ export function useTransformerData(activeTab: Ref<ActiveTab>) {
     refreshAllResources,
     saveSnippetOrderMap: snippetOrderState.saveOrderMap,
     applySavedSnippetSnapshot: editorSelectionState.applySavedSnippetSnapshot,
-  })
+  });
 
   const ruleState = useRuleState({
     creating,
@@ -116,7 +118,7 @@ export function useTransformerData(activeTab: Ref<ActiveTab>) {
     refreshAllResources,
     saveRuleOrderMap: ruleOrderState.saveOrderMap,
     applySavedRuleSnapshot: editorSelectionState.applySavedRuleSnapshot,
-  })
+  });
 
   return {
     loading,
@@ -155,5 +157,5 @@ export function useTransformerData(activeTab: Ref<ActiveTab>) {
     discardRuleEdit: editorSelectionState.discardRuleEdit,
     toggleSnippetInRuleEditor: editorSelectionState.toggleSnippetInRuleEditor,
     reorderRule: ruleOrderState.reorder,
-  }
+  };
 }

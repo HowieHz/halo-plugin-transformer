@@ -1,22 +1,24 @@
-import { computed, ref, type ComputedRef, type Ref } from 'vue'
-import { Toast } from '@halo-dev/components'
-import type { PersistedOrderState, OrderMap } from '@/apis'
-import type { ItemList } from '@/types'
-import { buildExplicitOrderMap, sortByOrderMap } from './util'
-import { getErrorMessage, type ReorderPlacement } from './transformerShared'
+import { Toast } from "@halo-dev/components";
+import { computed, ref, type ComputedRef, type Ref } from "vue";
+
+import type { PersistedOrderState, OrderMap } from "@/apis";
+import type { ItemList } from "@/types";
+
+import { getErrorMessage, type ReorderPlacement } from "./transformerShared";
+import { buildExplicitOrderMap, sortByOrderMap } from "./util";
 
 interface OrderApi {
-  getOrder: () => Promise<{ data: PersistedOrderState }>
+  getOrder: () => Promise<{ data: PersistedOrderState }>;
   updateOrder: (
     orders: OrderMap,
     version: number | null | undefined,
-  ) => Promise<{ data: PersistedOrderState }>
+  ) => Promise<{ data: PersistedOrderState }>;
 }
 
 interface UseResourceOrderStateOptions<T extends { id: string }> {
-  itemsResp: Ref<ItemList<T>>
-  api: OrderApi
-  resourceLabel: string
+  itemsResp: Ref<ItemList<T>>;
+  api: OrderApi;
+  resourceLabel: string;
 }
 
 /**
@@ -26,21 +28,21 @@ interface UseResourceOrderStateOptions<T extends { id: string }> {
 export function useResourceOrderState<T extends { id: string }>(
   options: UseResourceOrderStateOptions<T>,
 ) {
-  const orders = ref<OrderMap>({})
-  const orderVersion = ref<number | null>(null)
-  const syncingReorder = ref(false)
-  const pendingOrders = ref<OrderMap | null>(null)
+  const orders = ref<OrderMap>({});
+  const orderVersion = ref<number | null>(null);
+  const syncingReorder = ref(false);
+  const pendingOrders = ref<OrderMap | null>(null);
 
-  const items = computed(() => sortByOrderMap(options.itemsResp.value.items, orders.value))
+  const items = computed(() => sortByOrderMap(options.itemsResp.value.items, orders.value));
 
   function applyOrderSnapshot(snapshot: PersistedOrderState) {
-    orders.value = snapshot.orders
-    orderVersion.value = snapshot.version
+    orders.value = snapshot.orders;
+    orderVersion.value = snapshot.version;
   }
 
   async function reloadOrders() {
-    const response = await options.api.getOrder()
-    applyOrderSnapshot(response.data)
+    const response = await options.api.getOrder();
+    applyOrderSnapshot(response.data);
   }
 
   async function restoreOrdersAfterFailedSave(
@@ -48,82 +50,87 @@ export function useResourceOrderState<T extends { id: string }>(
     previousVersion: number | null,
   ) {
     try {
-      await reloadOrders()
+      await reloadOrders();
     } catch {
-      orders.value = { ...previousOrders }
-      orderVersion.value = previousVersion
+      orders.value = { ...previousOrders };
+      orderVersion.value = previousVersion;
     }
   }
 
   async function persistOrderSnapshot(
     nextOrders: OrderMap,
     persistOptions: {
-      errorMessage: string
+      errorMessage: string;
     },
   ) {
-    const previousOrders = { ...orders.value }
-    const previousVersion = orderVersion.value
-    orders.value = { ...nextOrders }
+    const previousOrders = { ...orders.value };
+    const previousVersion = orderVersion.value;
+    orders.value = { ...nextOrders };
     try {
-      const response = await options.api.updateOrder(nextOrders, previousVersion)
-      applyOrderSnapshot(response.data)
-      return true
+      const response = await options.api.updateOrder(nextOrders, previousVersion);
+      applyOrderSnapshot(response.data);
+      return true;
     } catch (error) {
-      await restoreOrdersAfterFailedSave(previousOrders, previousVersion)
-      return getErrorMessage(error, persistOptions.errorMessage)
+      await restoreOrdersAfterFailedSave(previousOrders, previousVersion);
+      return getErrorMessage(error, persistOptions.errorMessage);
     }
   }
 
   async function saveOrderMap(nextItems: T[]) {
-    const nextOrders = buildExplicitOrderMap(nextItems)
+    const nextOrders = buildExplicitOrderMap(nextItems);
     return persistOrderSnapshot(nextOrders, {
       errorMessage: `${options.resourceLabel}顺序保存失败`,
-    })
+    });
   }
 
   async function flushPendingReorders() {
-    let updatedOnce = false
+    let updatedOnce = false;
     while (pendingOrders.value) {
-      const snapshot = pendingOrders.value
-      pendingOrders.value = null
+      const snapshot = pendingOrders.value;
+      pendingOrders.value = null;
       const result = await persistOrderSnapshot(snapshot, {
-        errorMessage: '更新顺序失败',
-      })
+        errorMessage: "更新顺序失败",
+      });
       if (result !== true) {
-        Toast.error(result)
-        return
+        Toast.error(result);
+        return;
       }
-      updatedOnce = true
+      updatedOnce = true;
     }
     if (updatedOnce) {
-      Toast.success(`${options.resourceLabel}顺序保存成功`)
+      Toast.success(`${options.resourceLabel}顺序保存成功`);
     }
   }
 
   async function reorder(payload: {
-    sourceId: string
-    targetId: string
-    placement: ReorderPlacement
+    sourceId: string;
+    targetId: string;
+    placement: ReorderPlacement;
   }) {
-    const ordered = reorderItems(items.value, payload.sourceId, payload.targetId, payload.placement)
+    const ordered = reorderItems(
+      items.value,
+      payload.sourceId,
+      payload.targetId,
+      payload.placement,
+    );
     if (!ordered) {
-      return
+      return;
     }
 
-    orders.value = buildExplicitOrderMap(ordered)
-    pendingOrders.value = { ...orders.value }
+    orders.value = buildExplicitOrderMap(ordered);
+    pendingOrders.value = { ...orders.value };
     if (syncingReorder.value) {
-      return
+      return;
     }
 
-    syncingReorder.value = true
+    syncingReorder.value = true;
     try {
-      await flushPendingReorders()
+      await flushPendingReorders();
     } catch (error) {
-      pendingOrders.value = null
-      Toast.error(getErrorMessage(error, '更新顺序失败'))
+      pendingOrders.value = null;
+      Toast.error(getErrorMessage(error, "更新顺序失败"));
     } finally {
-      syncingReorder.value = false
+      syncingReorder.value = false;
     }
   }
 
@@ -136,7 +143,7 @@ export function useResourceOrderState<T extends { id: string }>(
     reloadOrders,
     saveOrderMap,
     reorder,
-  }
+  };
 }
 
 function reorderItems<T extends { id: string }>(
@@ -146,19 +153,19 @@ function reorderItems<T extends { id: string }>(
   placement: ReorderPlacement,
 ) {
   if (sourceId === targetId) {
-    return null
+    return null;
   }
 
-  const ordered = [...items]
-  const sourceIndex = ordered.findIndex((item) => item.id === sourceId)
-  const targetIndex = ordered.findIndex((item) => item.id === targetId)
+  const ordered = [...items];
+  const sourceIndex = ordered.findIndex((item) => item.id === sourceId);
+  const targetIndex = ordered.findIndex((item) => item.id === targetId);
   if (sourceIndex < 0 || targetIndex < 0) {
-    return null
+    return null;
   }
 
-  const [moving] = ordered.splice(sourceIndex, 1)
-  const nextTargetIndex = ordered.findIndex((item) => item.id === targetId)
-  const insertIndex = placement === 'before' ? nextTargetIndex : nextTargetIndex + 1
-  ordered.splice(insertIndex, 0, moving)
-  return ordered
+  const [moving] = ordered.splice(sourceIndex, 1);
+  const nextTargetIndex = ordered.findIndex((item) => item.id === targetId);
+  const insertIndex = placement === "before" ? nextTargetIndex : nextTargetIndex + 1;
+  ordered.splice(insertIndex, 0, moving);
+  return ordered;
 }

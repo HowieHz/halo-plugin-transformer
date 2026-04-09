@@ -2,7 +2,7 @@ import type {
   TransformationSnippetEditorDraft,
   TransformationSnippetReadModel,
   TransformationSnippetWritePayload,
-} from '@/types'
+} from "@/types";
 
 /**
  * why: 列表读模型与编辑草稿必须显式转换，避免把服务端返回对象直接当作可变表单状态复用。
@@ -22,7 +22,7 @@ export function hydrateSnippetEditorDraft(
     code: snippet.code,
     description: snippet.description,
     enabled: snippet.enabled,
-  }
+  };
 }
 
 /**
@@ -31,6 +31,6 @@ export function hydrateSnippetEditorDraft(
 export function buildSnippetWritePayload(
   snippet: TransformationSnippetEditorDraft,
 ): TransformationSnippetWritePayload {
-  const { id: _ignoredId, ...payload } = snippet
-  return payload
+  const { id: _ignoredId, ...payload } = snippet;
+  return payload;
 }

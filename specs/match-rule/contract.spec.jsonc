@@ -9,7 +9,7 @@
 //   -> `src/main/java/top/howiehz/halo/transformer/core/MatchRule.java`、Java contract test
 // - `contract.spec.jsonc`
 //   -> `ui/public/generated/match-rule.schema.json`
-//   -> `ui/public/transformer.schema.json`
+//   -> `ui/public/generated/transformer.schema.json`
 // - `contract.cases.jsonc`
 //   -> 不生成其他文件
 //   -> Java / TypeScript contract tests 直接消费

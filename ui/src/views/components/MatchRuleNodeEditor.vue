@@ -1,8 +1,8 @@
 <script lang="ts" setup>
-import { computed, inject } from 'vue'
-import { VButton } from '@halo-dev/components'
-import type { MatchRule } from '@/types'
-import type { MatchRuleValidationError } from '@/views/composables/matchRule'
+import { VButton } from "@halo-dev/components";
+import { computed, inject } from "vue";
+
+import type { MatchRule } from "@/types";
 import {
   MATCH_RULE_GROUP_OPTIONS,
   PATH_MATCHER_OPTIONS,
@@ -10,111 +10,112 @@ import {
   makeMatchRuleGroup,
   makePathMatchRule,
   makeTemplateMatchRule,
-} from '@/types'
-import { cloneMatchRule, normalizeMatchRule } from '@/views/composables/matchRule'
+} from "@/types";
+import type { MatchRuleValidationError } from "@/views/composables/matchRule";
+import { cloneMatchRule, normalizeMatchRule } from "@/views/composables/matchRule";
 import {
   isSamePath,
   MATCH_RULE_DRAG_CONTEXT_KEY,
   pathKey,
   type MatchRuleDropPlacement,
   type MatchRuleNodePath,
-} from '@/views/composables/matchRuleTreeMove'
-import { updateSelectByWheel } from '@/views/composables/selectWheel.ts'
+} from "@/views/composables/matchRuleTreeMove";
+import { updateSelectByWheel } from "@/views/composables/selectWheel.ts";
 
 defineOptions({
-  name: 'MatchRuleNodeEditor',
-})
+  name: "MatchRuleNodeEditor",
+});
 
 const props = defineProps<{
-  modelValue: MatchRule
-  root?: boolean
-  canRemove?: boolean
-  path?: string
-  nodePath?: MatchRuleNodePath
-  validationErrors?: MatchRuleValidationError[] | null
-}>()
+  modelValue: MatchRule;
+  root?: boolean;
+  canRemove?: boolean;
+  path?: string;
+  nodePath?: MatchRuleNodePath;
+  validationErrors?: MatchRuleValidationError[] | null;
+}>();
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: MatchRule): void
-  (e: 'remove'): void
-  (e: 'change'): void
-}>()
+  (e: "update:modelValue", value: MatchRule): void;
+  (e: "remove"): void;
+  (e: "change"): void;
+}>();
 
-const rule = computed(() => normalizeMatchRule(props.modelValue))
-const isGroup = computed(() => rule.value.type === 'GROUP')
-const currentPath = computed(() => props.path ?? '$')
-const currentNodePath = computed<MatchRuleNodePath>(() => props.nodePath ?? [])
-const dragContext = inject(MATCH_RULE_DRAG_CONTEXT_KEY, null)
+const rule = computed(() => normalizeMatchRule(props.modelValue));
+const isGroup = computed(() => rule.value.type === "GROUP");
+const currentPath = computed(() => props.path ?? "$");
+const currentNodePath = computed<MatchRuleNodePath>(() => props.nodePath ?? []);
+const dragContext = inject(MATCH_RULE_DRAG_CONTEXT_KEY, null);
 const matcherOptions = computed(() =>
-  rule.value.type === 'TEMPLATE_ID' ? TEMPLATE_MATCHER_OPTIONS : PATH_MATCHER_OPTIONS,
-)
+  rule.value.type === "TEMPLATE_ID" ? TEMPLATE_MATCHER_OPTIONS : PATH_MATCHER_OPTIONS,
+);
 const valuePlaceholder = computed(() => {
-  if (rule.value.type === 'PATH') {
-    if (rule.value.matcher === 'EXACT') {
-      return '/'
+  if (rule.value.type === "PATH") {
+    if (rule.value.matcher === "EXACT") {
+      return "/";
     }
-    if (rule.value.matcher === 'REGEX') {
-      return '.*'
+    if (rule.value.matcher === "REGEX") {
+      return ".*";
     }
-    return '/**'
+    return "/**";
   }
-  if (rule.value.matcher === 'REGEX') {
-    return '^(post|page)$'
+  if (rule.value.matcher === "REGEX") {
+    return "^(post|page)$";
   }
-  return 'index'
-})
+  return "index";
+});
 const ownErrors = computed(() => {
-  const errors = props.validationErrors ?? []
-  const prefix = `${currentPath.value}.`
+  const errors = props.validationErrors ?? [];
+  const prefix = `${currentPath.value}.`;
   return errors.filter((error) => {
-    const errorPath = error.path
+    const errorPath = error.path;
     if (!errorPath) {
-      return false
+      return false;
     }
     if (!errorPath.startsWith(prefix)) {
-      return errorPath === currentPath.value
+      return errorPath === currentPath.value;
     }
-    const suffix = errorPath.slice(prefix.length)
-    return ['children', 'operator', 'negate', 'type', 'matcher', 'value'].includes(suffix)
-  })
-})
-const ownErrorPaths = computed(() => new Set(ownErrors.value.map((error) => error.path)))
-const ownErrorMessages = computed(() => ownErrors.value.map((error) => error.message))
-const hasNodeError = computed(() => ownErrors.value.length > 0)
+    const suffix = errorPath.slice(prefix.length);
+    return ["children", "operator", "negate", "type", "matcher", "value"].includes(suffix);
+  });
+});
+const ownErrorPaths = computed(() => new Set(ownErrors.value.map((error) => error.path)));
+const ownErrorMessages = computed(() => ownErrors.value.map((error) => error.message));
+const hasNodeError = computed(() => ownErrors.value.length > 0);
 const isDraggingNode = computed(() =>
   isSamePath(dragContext?.draggingPath.value ?? null, currentNodePath.value),
-)
+);
 const isDropBefore = computed(
   () =>
     pathKey(dragContext?.dropTargetPath.value ?? null) === pathKey(currentNodePath.value) &&
-    dragContext?.dropPlacement.value === 'before',
-)
+    dragContext?.dropPlacement.value === "before",
+);
 const isDropAfter = computed(
   () =>
     pathKey(dragContext?.dropTargetPath.value ?? null) === pathKey(currentNodePath.value) &&
-    dragContext?.dropPlacement.value === 'after',
-)
+    dragContext?.dropPlacement.value === "after",
+);
 const isDropInside = computed(
   () =>
     pathKey(dragContext?.dropTargetPath.value ?? null) === pathKey(currentNodePath.value) &&
-    dragContext?.dropPlacement.value === 'inside',
-)
+    dragContext?.dropPlacement.value === "inside",
+);
 
 function updateRule(next: MatchRule) {
-  emit('update:modelValue', next)
-  emit('change')
+  emit("update:modelValue", next);
+  emit("change");
 }
 
 function updateGroupField<K extends keyof MatchRule>(key: K, value: MatchRule[K]) {
-  updateRule({ ...cloneMatchRule(rule.value), [key]: value })
+  updateRule({ ...cloneMatchRule(rule.value), [key]: value });
 }
 
 function updateChild(index: number, child: MatchRule) {
-  const next = cloneMatchRule(rule.value)
-  const children = [...(next.children ?? [])]
-  children[index] = child
-  next.children = children
-  updateRule(next)
+  const next = cloneMatchRule(rule.value);
+  const children = [...(next.children ?? [])];
+  children[index] = child;
+  next.children = children;
+  updateRule(next);
 }
 
 /**
@@ -122,104 +123,104 @@ function updateChild(index: number, child: MatchRule) {
  * 先保留空组并在编辑器下方提示错误，用户补完后再保存，比强行回填默认规则更符合预期。
  */
 function removeChild(index: number) {
-  const next = cloneMatchRule(rule.value)
-  const children = (next.children ?? []).filter((_, idx) => idx !== index)
-  next.children = children
-  updateRule(next)
+  const next = cloneMatchRule(rule.value);
+  const children = (next.children ?? []).filter((_, idx) => idx !== index);
+  next.children = children;
+  updateRule(next);
 }
 
 function addPathRule() {
-  const next = cloneMatchRule(rule.value)
-  next.children = [...(next.children ?? []), makePathMatchRule({ value: '' })]
-  updateRule(next)
+  const next = cloneMatchRule(rule.value);
+  next.children = [...(next.children ?? []), makePathMatchRule({ value: "" })];
+  updateRule(next);
 }
 
 function addGroupRule() {
-  const next = cloneMatchRule(rule.value)
-  next.children = [...(next.children ?? []), makeMatchRuleGroup({ children: [] })]
-  updateRule(next)
+  const next = cloneMatchRule(rule.value);
+  next.children = [...(next.children ?? []), makeMatchRuleGroup({ children: [] })];
+  updateRule(next);
 }
 
-function resolveNextMatcher(type: 'PATH' | 'TEMPLATE_ID'): MatchRule['matcher'] {
-  if (type === 'PATH') {
-    return rule.value.matcher === 'EXACT' || rule.value.matcher === 'REGEX'
+function resolveNextMatcher(type: "PATH" | "TEMPLATE_ID"): MatchRule["matcher"] {
+  if (type === "PATH") {
+    return rule.value.matcher === "EXACT" || rule.value.matcher === "REGEX"
       ? rule.value.matcher
-      : 'ANT'
+      : "ANT";
   }
-  return rule.value.matcher === 'REGEX' ? 'REGEX' : 'EXACT'
+  return rule.value.matcher === "REGEX" ? "REGEX" : "EXACT";
 }
 
-function switchLeafType(type: 'PATH' | 'TEMPLATE_ID') {
+function switchLeafType(type: "PATH" | "TEMPLATE_ID") {
   if (rule.value.type === type) {
-    return
+    return;
   }
 
   const sharedFields: Partial<MatchRule> = {
     negate: rule.value.negate,
     matcher: resolveNextMatcher(type),
-    value: rule.value.value ?? '',
-  }
+    value: rule.value.value ?? "",
+  };
   const next =
-    type === 'PATH' ? makePathMatchRule(sharedFields) : makeTemplateMatchRule(sharedFields)
-  updateRule(next)
+    type === "PATH" ? makePathMatchRule(sharedFields) : makeTemplateMatchRule(sharedFields);
+  updateRule(next);
 }
 
-function hasFieldError(field: 'children' | 'operator' | 'negate' | 'type' | 'matcher' | 'value') {
-  return ownErrorPaths.value.has(`${currentPath.value}.${field}`)
+function hasFieldError(field: "children" | "operator" | "negate" | "type" | "matcher" | "value") {
+  return ownErrorPaths.value.has(`${currentPath.value}.${field}`);
 }
 
 function startDrag(event: DragEvent) {
   if (!dragContext || props.root) {
-    return
+    return;
   }
-  dragContext.startDrag(currentNodePath.value, event)
+  dragContext.startDrag(currentNodePath.value, event);
 }
 
 function clearDragState() {
-  dragContext?.clearDragState()
+  dragContext?.clearDragState();
 }
 
 function handleDragOverNode(event: DragEvent) {
-  const sourcePath = dragContext?.draggingPath.value
+  const sourcePath = dragContext?.draggingPath.value;
   if (!sourcePath) {
-    return
+    return;
   }
 
-  const rawPlacement = resolveNodeDropPlacement(event)
+  const rawPlacement = resolveNodeDropPlacement(event);
   const target = rawPlacement
     ? dragContext.normalizeDropTarget(currentNodePath.value, rawPlacement)
-    : null
+    : null;
   if (!target || !dragContext.canDrop(sourcePath, target.path, target.placement)) {
-    dragContext.setDropTarget(null, null)
-    return
+    dragContext.setDropTarget(null, null);
+    return;
   }
 
-  event.preventDefault()
-  event.stopPropagation()
+  event.preventDefault();
+  event.stopPropagation();
   if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'move'
+    event.dataTransfer.dropEffect = "move";
   }
-  dragContext.setDropTarget(target.path, target.placement)
+  dragContext.setDropTarget(target.path, target.placement);
 }
 
 function handleDropOnNode(event: DragEvent) {
-  const sourcePath = dragContext?.draggingPath.value
+  const sourcePath = dragContext?.draggingPath.value;
   if (!dragContext || !sourcePath) {
-    return
+    return;
   }
 
-  const rawPlacement = resolveNodeDropPlacement(event)
+  const rawPlacement = resolveNodeDropPlacement(event);
   const target = rawPlacement
     ? dragContext.normalizeDropTarget(currentNodePath.value, rawPlacement)
-    : null
-  event.stopPropagation()
-  dragContext.clearDragState()
+    : null;
+  event.stopPropagation();
+  dragContext.clearDragState();
   if (!target || !dragContext.canDrop(sourcePath, target.path, target.placement)) {
-    return
+    return;
   }
 
-  event.preventDefault()
-  dragContext.moveNode(sourcePath, target.path, target.placement)
+  event.preventDefault();
+  dragContext.moveNode(sourcePath, target.path, target.placement);
 }
 
 function handleDragOverIntoGroup(event: DragEvent) {
@@ -228,52 +229,52 @@ function handleDragOverIntoGroup(event: DragEvent) {
     !isGroup.value ||
     (rule.value.children?.length ?? 0) > 0
   ) {
-    return
+    return;
   }
-  if (!dragContext.canDrop(dragContext.draggingPath.value, currentNodePath.value, 'inside')) {
-    dragContext.setDropTarget(null, null)
-    return
+  if (!dragContext.canDrop(dragContext.draggingPath.value, currentNodePath.value, "inside")) {
+    dragContext.setDropTarget(null, null);
+    return;
   }
 
-  event.preventDefault()
-  event.stopPropagation()
+  event.preventDefault();
+  event.stopPropagation();
   if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'move'
+    event.dataTransfer.dropEffect = "move";
   }
-  dragContext.setDropTarget(currentNodePath.value, 'inside')
+  dragContext.setDropTarget(currentNodePath.value, "inside");
 }
 
 function handleDropIntoGroup(event: DragEvent) {
-  const sourcePath = dragContext?.draggingPath.value
+  const sourcePath = dragContext?.draggingPath.value;
   if (!dragContext || !sourcePath || !isGroup.value || (rule.value.children?.length ?? 0) > 0) {
-    return
+    return;
   }
 
-  event.preventDefault()
-  event.stopPropagation()
-  dragContext.clearDragState()
-  if (!dragContext.canDrop(sourcePath, currentNodePath.value, 'inside')) {
-    return
+  event.preventDefault();
+  event.stopPropagation();
+  dragContext.clearDragState();
+  if (!dragContext.canDrop(sourcePath, currentNodePath.value, "inside")) {
+    return;
   }
-  dragContext.moveNode(sourcePath, currentNodePath.value, 'inside')
+  dragContext.moveNode(sourcePath, currentNodePath.value, "inside");
 }
 
 function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | null {
-  const currentTarget = event.currentTarget
+  const currentTarget = event.currentTarget;
   if (!(currentTarget instanceof HTMLElement)) {
-    return null
+    return null;
   }
 
-  const rect = currentTarget.getBoundingClientRect()
-  const ratio = rect.height > 0 ? (event.clientY - rect.top) / rect.height : 0.5
+  const rect = currentTarget.getBoundingClientRect();
+  const ratio = rect.height > 0 ? (event.clientY - rect.top) / rect.height : 0.5;
 
   if (isGroup.value) {
-    if (ratio < 0.25) return 'before'
-    if (ratio > 0.75) return 'after'
-    return (rule.value.children?.length ?? 0) > 0 ? null : 'inside'
+    if (ratio < 0.25) return "before";
+    if (ratio > 0.75) return "after";
+    return (rule.value.children?.length ?? 0) > 0 ? null : "inside";
   }
 
-  return ratio < 0.5 ? 'before' : 'after'
+  return ratio < 0.5 ? "before" : "after";
 }
 </script>
 
@@ -291,18 +292,18 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
   >
     <div
       v-if="isDropBefore"
-      class=":uno: pointer-events-none absolute z-10 left-3 right-3 -top-1 h-0.5 rounded-full bg-primary"
+      class=":uno: bg-primary pointer-events-none absolute -top-1 right-3 left-3 z-10 h-0.5 rounded-full"
     />
     <div
       v-if="isDropAfter"
-      class=":uno: pointer-events-none absolute z-10 left-3 right-3 -bottom-1 h-0.5 rounded-full bg-primary"
+      class=":uno: bg-primary pointer-events-none absolute right-3 -bottom-1 left-3 z-10 h-0.5 rounded-full"
     />
 
     <div class=":uno: space-y-3">
       <template v-if="isGroup">
         <div class=":uno: flex flex-wrap items-center gap-2">
           <span class=":uno: text-sm font-medium text-gray-700">
-            {{ root ? '根条件组' : '条件组' }}
+            {{ root ? "根条件组" : "条件组" }}
           </span>
           <select
             :value="rule.operator"
@@ -311,7 +312,7 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
             :class="
               hasFieldError('operator')
                 ? ':uno: border-red-300 focus:border-red-500'
-                : ':uno: border-gray-200 focus:border-primary'
+                : ':uno: focus:border-primary border-gray-200'
             "
             class=":uno: min-w-[7rem] shrink-0 rounded-md border bg-white px-2 py-1 pr-8 text-sm focus:outline-none"
             @wheel="updateSelectByWheel"
@@ -344,7 +345,7 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
           <div v-if="!root" class=":uno: inline-flex items-center gap-1">
             <button
               aria-label="拖动当前条件组"
-              class=":uno: inline-flex h-7 w-7 shrink-0 cursor-grab active:cursor-grabbing items-center justify-center rounded text-sm leading-none tracking-[-0.2em] text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+              class=":uno: inline-flex h-7 w-7 shrink-0 cursor-grab items-center justify-center rounded text-sm leading-none tracking-[-0.2em] text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 active:cursor-grabbing"
               draggable="true"
               title="按住拖动；拖到条件组中部可放入该组"
               type="button"
@@ -409,7 +410,7 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
             :class="
               hasFieldError('type')
                 ? ':uno: border-red-300 focus:border-red-500'
-                : ':uno: border-gray-200 focus:border-primary'
+                : ':uno: focus:border-primary border-gray-200'
             "
             class=":uno: min-w-[8rem] shrink-0 rounded-md border bg-white px-2 py-1 pr-8 text-sm focus:outline-none"
             @wheel="updateSelectByWheel"
@@ -428,7 +429,7 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
             :class="
               hasFieldError('matcher')
                 ? ':uno: border-red-300 focus:border-red-500'
-                : ':uno: border-gray-200 focus:border-primary'
+                : ':uno: focus:border-primary border-gray-200'
             "
             class=":uno: min-w-[8rem] shrink-0 rounded-md border bg-white px-2 py-1 pr-8 text-sm focus:outline-none"
             @wheel="updateSelectByWheel"
@@ -459,7 +460,7 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
           <div v-if="!root" class=":uno: inline-flex items-center gap-1">
             <button
               aria-label="拖动当前匹配条件"
-              class=":uno: inline-flex h-7 w-7 shrink-0 cursor-grab active:cursor-grabbing items-center justify-center rounded text-sm leading-none tracking-[-0.2em] text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+              class=":uno: inline-flex h-7 w-7 shrink-0 cursor-grab items-center justify-center rounded text-sm leading-none tracking-[-0.2em] text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 active:cursor-grabbing"
               draggable="true"
               title="按住拖动排序"
               type="button"
@@ -490,9 +491,9 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
           :class="
             hasFieldError('value')
               ? ':uno: border-red-300 focus:border-red-500'
-              : ':uno: border-gray-200 focus:border-primary'
+              : ':uno: focus:border-primary border-gray-200'
           "
-          class=":uno: w-full rounded-md border px-3 py-1.5 text-sm font-mono focus:outline-none"
+          class=":uno: w-full rounded-md border px-3 py-1.5 font-mono text-sm focus:outline-none"
           :placeholder="valuePlaceholder"
           @input="updateGroupField('value', ($event.target as HTMLInputElement).value)"
         />

@@ -2,9 +2,10 @@ import type {
   TransformationRuleEditorDraft,
   TransformationRuleReadModel,
   TransformationRuleWritePayload,
-} from '@/types'
-import { RUNTIME_ORDER_DEFAULT } from '@/types'
-import { normalizeMatchRule, resolveRuleMatchRule, makeRuleTreeSource } from './matchRule'
+} from "@/types";
+import { RUNTIME_ORDER_DEFAULT } from "@/types";
+
+import { normalizeMatchRule, resolveRuleMatchRule, makeRuleTreeSource } from "./matchRule";
 
 /**
  * why: 规则读模型进入编辑器前，需要显式补齐规则树与来源状态；
@@ -13,7 +14,7 @@ import { normalizeMatchRule, resolveRuleMatchRule, makeRuleTreeSource } from './
 export function hydrateRuleEditorDraft(
   rule: TransformationRuleReadModel,
 ): TransformationRuleEditorDraft {
-  const matchRule = normalizeMatchRule(rule.matchRule)
+  const matchRule = normalizeMatchRule(rule.matchRule);
   return {
     apiVersion: rule.apiVersion,
     kind: rule.kind,
@@ -33,7 +34,7 @@ export function hydrateRuleEditorDraft(
     snippetIds: [...(rule.snippetIds ?? [])],
     matchRule,
     matchRuleSource: makeRuleTreeSource(matchRule),
-  }
+  };
 }
 
 /**
@@ -44,13 +45,13 @@ export function buildRuleWritePayload(
   rule: TransformationRuleEditorDraft,
   snippetIds: string[],
 ): TransformationRuleWritePayload | null {
-  const result = resolveRuleMatchRule(rule)
+  const result = resolveRuleMatchRule(rule);
   if (!result.rule) {
-    return null
+    return null;
   }
 
-  const normalizedSnippetIds = rule.position === 'REMOVE' ? [] : snippetIds
-  const normalizedWrapMarker = rule.position === 'REMOVE' ? false : rule.wrapMarker
+  const normalizedSnippetIds = rule.position === "REMOVE" ? [] : snippetIds;
+  const normalizedWrapMarker = rule.position === "REMOVE" ? false : rule.wrapMarker;
 
   return {
     apiVersion: rule.apiVersion,
@@ -66,5 +67,5 @@ export function buildRuleWritePayload(
     wrapMarker: normalizedWrapMarker,
     runtimeOrder: rule.runtimeOrder,
     snippetIds: normalizedSnippetIds,
-  }
+  };
 }

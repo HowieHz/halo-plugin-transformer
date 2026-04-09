@@ -1,73 +1,74 @@
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue'
-import { RUNTIME_ORDER_MAX, RUNTIME_ORDER_STEPS } from '@/types'
+import { computed, ref, watch } from "vue";
+
+import { RUNTIME_ORDER_MAX, RUNTIME_ORDER_STEPS } from "@/types";
 import {
   clampRuntimeOrder,
   describeRuntimeOrderRange,
   formatRuntimeOrder,
   snapRuntimeOrderToPreset,
-} from '@/views/composables/runtimeOrder'
+} from "@/views/composables/runtimeOrder";
 
-const RUNTIME_ORDER_HORIZONTAL_INSET_PX = 16
+const RUNTIME_ORDER_HORIZONTAL_INSET_PX = 16;
 const sliderShellStyle = {
-  '--runtime-order-horizontal-inset': `${RUNTIME_ORDER_HORIZONTAL_INSET_PX}px`,
-}
+  "--runtime-order-horizontal-inset": `${RUNTIME_ORDER_HORIZONTAL_INSET_PX}px`,
+};
 
 const props = defineProps<{
-  modelValue: number
-}>()
+  modelValue: number;
+}>();
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: number): void
-}>()
+  (e: "update:modelValue", value: number): void;
+}>();
 
-const isDraggingSlider = ref(false)
-const manualMode = ref(false)
-const manualDraft = ref(String(props.modelValue))
-const sliderDraft = ref(props.modelValue)
+const isDraggingSlider = ref(false);
+const manualMode = ref(false);
+const manualDraft = ref(String(props.modelValue));
+const sliderDraft = ref(props.modelValue);
 
 watch(
   () => props.modelValue,
   (value) => {
-    manualDraft.value = String(value)
-    sliderDraft.value = value
+    manualDraft.value = String(value);
+    sliderDraft.value = value;
   },
   { immediate: true },
-)
+);
 
 const displayedRuntimeOrder = computed(() => {
   if (!manualMode.value) {
-    return sliderDraft.value
+    return sliderDraft.value;
   }
-  const parsed = Number(manualDraft.value)
-  return Number.isFinite(parsed) ? clampRuntimeOrder(parsed) : props.modelValue
-})
+  const parsed = Number(manualDraft.value);
+  return Number.isFinite(parsed) ? clampRuntimeOrder(parsed) : props.modelValue;
+});
 
 const previewRuntimeOrder = computed(() =>
   manualMode.value ? displayedRuntimeOrder.value : snapRuntimeOrderToPreset(sliderDraft.value),
-)
+);
 
 const currentStepLabel = computed(() => {
-  const exact = RUNTIME_ORDER_STEPS.find((step) => step.value === previewRuntimeOrder.value)
+  const exact = RUNTIME_ORDER_STEPS.find((step) => step.value === previewRuntimeOrder.value);
   if (exact) {
-    return `${exact.label}（${formatRuntimeOrder(exact.value)}）`
+    return `${exact.label}（${formatRuntimeOrder(exact.value)}）`;
   }
-  return `自定义 ${formatRuntimeOrder(previewRuntimeOrder.value)}`
-})
+  return `自定义 ${formatRuntimeOrder(previewRuntimeOrder.value)}`;
+});
 
-const currentRangeHint = computed(() => describeRuntimeOrderRange(previewRuntimeOrder.value))
+const currentRangeHint = computed(() => describeRuntimeOrderRange(previewRuntimeOrder.value));
 const runtimeOrderHelpText = computed(() =>
   manualMode.value
-    ? '只影响同一种注入模式下的规则顺序。数值越小越先执行；同数值按名称和 ID 排序。'
-    : '只影响同一种注入模式下的规则顺序。同优先级按名称和 ID 排序。',
-)
+    ? "只影响同一种注入模式下的规则顺序。数值越小越先执行；同数值按名称和 ID 排序。"
+    : "只影响同一种注入模式下的规则顺序。同优先级按名称和 ID 排序。",
+);
 
 function updateRuntimeOrder(value: number) {
-  emit('update:modelValue', clampRuntimeOrder(value))
+  emit("update:modelValue", clampRuntimeOrder(value));
 }
 
 function updateRuntimeOrderFromSlider(value: number) {
-  sliderDraft.value = clampRuntimeOrder(value)
+  sliderDraft.value = clampRuntimeOrder(value);
 }
 
 /**
@@ -75,52 +76,52 @@ function updateRuntimeOrderFromSlider(value: number) {
  * 字段级撤销就会退成很多个细碎小步，违背“一次拖拽 = 一次编辑”的语义。
  */
 function commitRuntimeOrderFromSlider() {
-  const snapped = snapRuntimeOrderToPreset(sliderDraft.value)
-  sliderDraft.value = snapped
-  emit('update:modelValue', snapped)
+  const snapped = snapRuntimeOrderToPreset(sliderDraft.value);
+  sliderDraft.value = snapped;
+  emit("update:modelValue", snapped);
 }
 
 function updateRuntimeOrderPresetValue(value: number) {
-  updateRuntimeOrder(value)
+  updateRuntimeOrder(value);
 }
 
 function startSliderDrag() {
-  isDraggingSlider.value = true
+  isDraggingSlider.value = true;
 }
 
 function stopSliderDrag() {
-  isDraggingSlider.value = false
+  isDraggingSlider.value = false;
 }
 
 function handleSliderChange() {
-  commitRuntimeOrderFromSlider()
-  stopSliderDrag()
+  commitRuntimeOrderFromSlider();
+  stopSliderDrag();
 }
 
 function stepTrackPositionStyle(value: number) {
   return `calc(${RUNTIME_ORDER_HORIZONTAL_INSET_PX}px + (100% - ${
     RUNTIME_ORDER_HORIZONTAL_INSET_PX * 2
-  }px) * ${value / RUNTIME_ORDER_MAX})`
+  }px) * ${value / RUNTIME_ORDER_MAX})`;
 }
 
 function handleManualInput(event: Event) {
-  manualDraft.value = (event.target as HTMLInputElement).value
+  manualDraft.value = (event.target as HTMLInputElement).value;
 }
 
 function commitManualDraft() {
-  const trimmed = manualDraft.value.trim()
+  const trimmed = manualDraft.value.trim();
   if (!trimmed) {
-    manualDraft.value = String(props.modelValue)
-    return
+    manualDraft.value = String(props.modelValue);
+    return;
   }
-  updateRuntimeOrder(Number(trimmed))
+  updateRuntimeOrder(Number(trimmed));
 }
 
 function toggleEditMode() {
-  manualMode.value = !manualMode.value
-  isDraggingSlider.value = false
-  manualDraft.value = String(props.modelValue)
-  sliderDraft.value = props.modelValue
+  manualMode.value = !manualMode.value;
+  isDraggingSlider.value = false;
+  manualDraft.value = String(props.modelValue);
+  sliderDraft.value = props.modelValue;
 }
 </script>
 
@@ -135,7 +136,7 @@ function toggleEditMode() {
         type="button"
         @click="toggleEditMode"
       >
-        {{ manualMode ? '使用滑条' : '精确输入' }}
+        {{ manualMode ? "使用滑条" : "精确输入" }}
       </button>
     </div>
 
@@ -145,7 +146,7 @@ function toggleEditMode() {
           :max="RUNTIME_ORDER_MAX"
           min="0"
           :value="manualDraft"
-          class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm font-mono focus:border-primary focus:outline-none"
+          class=":uno: focus:border-primary w-full rounded-md border border-gray-200 px-3 py-1.5 font-mono text-sm focus:outline-none"
           type="number"
           @input="handleManualInput"
           @blur="commitManualDraft"
@@ -197,7 +198,7 @@ function toggleEditMode() {
                 ? ':uno: text-primary'
                 : ':uno: text-gray-400 hover:text-gray-600'
             "
-            class="runtime-order-label :uno: absolute top-0 whitespace-nowrap bg-transparent p-0 text-[11px]"
+            class="runtime-order-label :uno: absolute top-0 bg-transparent p-0 text-[11px] whitespace-nowrap"
             type="button"
             @click="updateRuntimeOrderPresetValue(step.value)"
           >

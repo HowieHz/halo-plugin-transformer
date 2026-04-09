@@ -1,29 +1,29 @@
 <script lang="ts" setup>
-import { VButton, VModal, VSpace } from '@halo-dev/components'
+import { VButton, VModal, VSpace } from "@halo-dev/components";
 
 defineProps<{
-  title: string
-  saving: boolean
-  submitLabel?: string
-  showPicker?: boolean
-  hideDefaultTitle?: boolean
-}>()
+  title: string;
+  saving: boolean;
+  submitLabel?: string;
+  showPicker?: boolean;
+  hideDefaultTitle?: boolean;
+}>();
 
 const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'submit'): void
-}>()
+  (e: "close"): void;
+  (e: "submit"): void;
+}>();
 </script>
 
 <template>
   <VModal :title="hideDefaultTitle ? '' : title" :width="1000" @close="emit('close')">
     <div
-      class=":uno: flex transformer-editor-container"
+      class=":uno: transformer-editor-container flex"
       :class="showPicker === false ? '' : 'divide-x divide-gray-100'"
       style="min-height: 400px"
     >
       <div
-        class=":uno: px-5 py-4 space-y-4 overflow-y-auto"
+        class=":uno: space-y-4 overflow-y-auto px-5 py-4"
         :class="showPicker === false ? 'flex-1' : 'flex-1'"
         :style="showPicker === false ? 'width: 100%' : 'width: 60%'"
       >
@@ -42,7 +42,7 @@ const emit = defineEmits<{
 
       <div
         v-if="showPicker !== false"
-        class=":uno: flex-none px-4 py-4 space-y-2 overflow-y-auto"
+        class=":uno: flex-none space-y-2 overflow-y-auto px-4 py-4"
         style="width: 40%"
       >
         <slot name="picker" />
@@ -53,7 +53,7 @@ const emit = defineEmits<{
       <VSpace>
         <VButton @click="emit('close')">取消</VButton>
         <VButton :disabled="saving" type="secondary" @click="emit('submit')">
-          {{ saving ? `${submitLabel ?? '创建'}中...` : (submitLabel ?? '创建') }}
+          {{ saving ? `${submitLabel ?? "创建"}中...` : (submitLabel ?? "创建") }}
         </VButton>
       </VSpace>
     </template>

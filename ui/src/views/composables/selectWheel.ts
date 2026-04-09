@@ -3,37 +3,37 @@
  * 既减少重复模板代码，也避免鼠标只是路过时误切换下拉值。
  */
 export function updateSelectByWheel(event: WheelEvent) {
-  const select = event.currentTarget
+  const select = event.currentTarget;
   if (!(select instanceof HTMLSelectElement) || select.disabled) {
-    return
+    return;
   }
 
   if (document.activeElement !== select) {
-    return
+    return;
   }
 
-  const direction = Math.sign(event.deltaY)
+  const direction = Math.sign(event.deltaY);
   if (direction === 0) {
-    return
+    return;
   }
 
-  const enabledOptions = Array.from(select.options).filter((option) => !option.disabled)
+  const enabledOptions = Array.from(select.options).filter((option) => !option.disabled);
   if (enabledOptions.length <= 1) {
-    return
+    return;
   }
 
-  const currentIndex = enabledOptions.findIndex((option) => option.value === select.value)
-  const fallbackIndex = currentIndex >= 0 ? currentIndex : 0
+  const currentIndex = enabledOptions.findIndex((option) => option.value === select.value);
+  const fallbackIndex = currentIndex >= 0 ? currentIndex : 0;
   const nextIndex = Math.min(
     enabledOptions.length - 1,
     Math.max(0, fallbackIndex + (direction > 0 ? 1 : -1)),
-  )
+  );
 
   if (nextIndex === fallbackIndex) {
-    return
+    return;
   }
 
-  event.preventDefault()
-  select.value = enabledOptions[nextIndex].value
-  select.dispatchEvent(new Event('change', { bubbles: true }))
+  event.preventDefault();
+  select.value = enabledOptions[nextIndex].value;
+  select.dispatchEvent(new Event("change", { bubbles: true }));
 }

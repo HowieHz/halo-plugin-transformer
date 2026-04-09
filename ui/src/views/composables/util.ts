@@ -1,31 +1,31 @@
-import { type TransformationRuleReadModel, MODE_OPTIONS, POSITION_OPTIONS } from '@/types'
-import type { OrderMap } from '@/apis'
+import type { OrderMap } from "@/apis";
+import { type TransformationRuleReadModel, MODE_OPTIONS, POSITION_OPTIONS } from "@/types";
 
 export function modeLabel(mode: string) {
-  return MODE_OPTIONS.find((o) => o.value === mode)?.label ?? mode
+  return MODE_OPTIONS.find((o) => o.value === mode)?.label ?? mode;
 }
 
 export function positionLabel(pos?: string) {
-  if (!pos) return ''
-  return POSITION_OPTIONS.find((o) => o.value === pos)?.label ?? pos
+  if (!pos) return "";
+  return POSITION_OPTIONS.find((o) => o.value === pos)?.label ?? pos;
 }
 export function rulePreview(rule: TransformationRuleReadModel) {
-  return `${modeLabel(rule.mode)} · ${positionLabel(rule.position)}`
+  return `${modeLabel(rule.mode)} · ${positionLabel(rule.position)}`;
 }
 
 export function codePreview(code: string) {
-  const t = code.replace(/\s+/g, ' ').trim()
-  return t.length > 55 ? t.slice(0, 55) + '...' : t
+  const t = code.replace(/\s+/g, " ").trim();
+  return t.length > 55 ? t.slice(0, 55) + "..." : t;
 }
 
 export function uniqueStrings(values: string[]) {
-  const seen = new Set<string>()
-  return values.map((v) => v.trim()).filter((v) => v && !seen.has(v) && seen.add(v))
+  const seen = new Set<string>();
+  return values.map((v) => v.trim()).filter((v) => v && !seen.has(v) && seen.add(v));
 }
 
 export function displayNameOf(item: { id: string; name?: string | null }) {
-  const trimmed = item.name?.trim()
-  return trimmed || item.id
+  const trimmed = item.name?.trim();
+  return trimmed || item.id;
 }
 
 /**
@@ -39,24 +39,24 @@ export function sortByOrderMap<T extends { id: string; name?: string | null }>(
   return items
     .map((item) => ({ item }))
     .sort((a, b) => {
-      const aOrder = Number.isFinite(orders[a.item.id]) ? orders[a.item.id] : 0
-      const bOrder = Number.isFinite(orders[b.item.id]) ? orders[b.item.id] : 0
+      const aOrder = Number.isFinite(orders[a.item.id]) ? orders[a.item.id] : 0;
+      const bOrder = Number.isFinite(orders[b.item.id]) ? orders[b.item.id] : 0;
       if (aOrder !== bOrder) {
-        return aOrder - bOrder
+        return aOrder - bOrder;
       }
       const nameCompare = displayNameOf(a.item).localeCompare(displayNameOf(b.item), undefined, {
         numeric: true,
-        sensitivity: 'base',
-      })
+        sensitivity: "base",
+      });
       if (nameCompare !== 0) {
-        return nameCompare
+        return nameCompare;
       }
       return a.item.id.localeCompare(b.item.id, undefined, {
         numeric: true,
-        sensitivity: 'base',
-      })
+        sensitivity: "base",
+      });
     })
-    .map(({ item }) => item)
+    .map(({ item }) => item);
 }
 
 /**
@@ -65,9 +65,9 @@ export function sortByOrderMap<T extends { id: string; name?: string | null }>(
  */
 export function buildExplicitOrderMap<T extends { id: string }>(items: T[]): OrderMap {
   return items.reduce<OrderMap>((orders, item, index) => {
-    orders[item.id] = index + 1
-    return orders
-  }, {})
+    orders[item.id] = index + 1;
+    return orders;
+  }, {});
 }
 
 /**
@@ -78,20 +78,20 @@ export function appendCreatedResourcesInOrder<T extends { id: string }>(
   items: T[],
   createdIds: string[],
 ) {
-  const createdIdSet = new Set(createdIds)
-  const untouchedItems = items.filter((item) => !createdIdSet.has(item.id))
+  const createdIdSet = new Set(createdIds);
+  const untouchedItems = items.filter((item) => !createdIdSet.has(item.id));
   const createdItems = createdIds
     .map((id) => items.find((item) => item.id === id))
-    .filter((item): item is T => !!item)
-  return [...untouchedItems, ...createdItems]
+    .filter((item): item is T => !!item);
+  return [...untouchedItems, ...createdItems];
 }
 
 export function sortSelectedFirst<T extends { id: string }>(items: T[], selectedIds: string[]) {
-  const selected = new Set(selectedIds)
+  const selected = new Set(selectedIds);
   return [...items].sort((a, b) => {
-    const aSelected = selected.has(a.id)
-    const bSelected = selected.has(b.id)
-    if (aSelected === bSelected) return 0
-    return aSelected ? -1 : 1
-  })
+    const aSelected = selected.has(a.id);
+    const bSelected = selected.has(b.id);
+    if (aSelected === bSelected) return 0;
+    return aSelected ? -1 : 1;
+  });
 }

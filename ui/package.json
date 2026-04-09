@@ -1,22 +1,18 @@
 {
   "type": "module",
-  "engines": {
-    "node": ">=24",
-    "pnpm": "^10.33.0"
-  },
   "scripts": {
-    "verify:spec-artifacts": "pnpm --dir .. verify:spec-artifacts",
     "build": "run-s verify:spec-artifacts build:compiled",
-    "build:compiled": "run-p type-check \"build-only {@}\" --",
     "build-only": "rsbuild build",
+    "build:compiled": "run-p type-check \"build-only {@}\" --",
     "dev": "rsbuild build --watch --env-mode=development",
-    "fmt": "oxfmt src public env.d.ts eslint.config.ts package.json rsbuild.config.ts tsconfig.app.json tsconfig.json tsconfig.node.json tsconfig.vitest.json uno.config.ts vitest.config.ts .oxfmtrc.json --ignore-path .gitignore",
-    "fmt:check": "oxfmt src public env.d.ts eslint.config.ts package.json rsbuild.config.ts tsconfig.app.json tsconfig.json tsconfig.node.json tsconfig.vitest.json uno.config.ts vitest.config.ts .oxfmtrc.json --check --ignore-path .gitignore",
-    "lint:oxlint": "oxlint . --fix -D correctness --ignore-path ../.gitignore",
-    "lint:eslint": "eslint . --fix",
+    "fmt": "oxfmt \"**/*.{json,jsonc,yaml,md,css,js,ts,html,vue,less,scss}\"",
+    "fmt:check": "oxfmt \"**/*.{json,jsonc,yaml,md,css,js,ts,html,vue,less,scss}\" --check",
     "lint": "run-s lint:*",
+    "lint:eslint": "eslint . --fix",
+    "lint:oxlint": "oxlint . --fix -D correctness --ignore-path ../.gitignore",
     "test:unit": "vitest --passWithNoTests",
-    "type-check": "vue-tsc --build"
+    "type-check": "vue-tsc --build",
+    "verify:spec-artifacts": "pnpm --dir .. verify:spec-artifacts"
   },
   "dependencies": {
     "@halo-dev/api-client": "^2.23.0",
@@ -57,6 +53,10 @@
     "unplugin-icons": "^23.0.1",
     "vitest": "^4.1.2",
     "vue-tsc": "^3.2.6"
+  },
+  "engines": {
+    "node": ">=24",
+    "pnpm": "^10.33.0"
   },
   "packageManager": "pnpm@10.33.0"
 }

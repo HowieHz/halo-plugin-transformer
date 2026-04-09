@@ -1,149 +1,151 @@
 <script lang="ts" setup>
-import type { TransformationSnippetEditorDraft } from '@/types'
-import EditorToolbar from './EditorToolbar.vue'
-import EditorFooter from './EditorFooter.vue'
-import ExportContentModal from './ExportContentModal.vue'
-import FormField from './FormField.vue'
-import FieldUndoButton from './FieldUndoButton.vue'
-import { useFieldUndo } from '@/views/composables/useFieldUndo'
-import { computed, ref, watch } from 'vue'
-import { VButton } from '@halo-dev/components'
+import { VButton } from "@halo-dev/components";
+import { computed, ref, watch } from "vue";
+
+import type { TransformationSnippetEditorDraft } from "@/types";
 import {
   buildSnippetTransfer,
   createTransferFileDraft,
   type TransferFileDraft,
-} from '@/views/composables/transfer'
+} from "@/views/composables/transfer";
+import { useFieldUndo } from "@/views/composables/useFieldUndo";
+
+import EditorFooter from "./EditorFooter.vue";
+import EditorToolbar from "./EditorToolbar.vue";
+import ExportContentModal from "./ExportContentModal.vue";
+import FieldUndoButton from "./FieldUndoButton.vue";
+import FormField from "./FormField.vue";
 
 const props = defineProps<{
-  snippet: TransformationSnippetEditorDraft | null
-  saving: boolean
-  dirty: boolean
-}>()
+  snippet: TransformationSnippetEditorDraft | null;
+  saving: boolean;
+  dirty: boolean;
+}>();
 
 const emit = defineEmits<{
-  (e: 'save'): void
-  (e: 'delete'): void
-  (e: 'toggle-enabled'): void
-  (e: 'toggle-bulk-mode'): void
-  (e: 'field-change'): void
-  (e: 'update:snippet', snippet: TransformationSnippetEditorDraft): void
-}>()
+  (e: "save"): void;
+  (e: "delete"): void;
+  (e: "toggle-enabled"): void;
+  (e: "toggle-bulk-mode"): void;
+  (e: "field-change"): void;
+  (e: "update:snippet", snippet: TransformationSnippetEditorDraft): void;
+}>();
 
-const undo = useFieldUndo()
-const exportFallback = ref<TransferFileDraft | null>(null)
-const codeDraft = ref('')
-const codeScrollTop = ref(0)
-type UndoableSnippetField = 'name' | 'description' | 'code'
+const undo = useFieldUndo();
+const exportFallback = ref<TransferFileDraft | null>(null);
+const codeDraft = ref("");
+const codeScrollTop = ref(0);
+type UndoableSnippetField = "name" | "description" | "code";
 
 const codeLines = computed(() => {
-  const content = codeDraft.value.replace(/\r\n/g, '\n')
-  return content.split('\n').length
-})
+  const content = codeDraft.value.replace(/\r\n/g, "\n");
+  return content.split("\n").length;
+});
 
 const codeLineNumberStyle = computed(() => ({
   transform: `translateY(-${codeScrollTop.value}px)`,
-}))
-const codeFieldError = computed(() => (codeDraft.value.trim() ? null : '代码内容不能为空'))
+}));
+const codeFieldError = computed(() => (codeDraft.value.trim() ? null : "代码内容不能为空"));
 
 watch(
   () => [props.snippet?.id, props.dirty],
   () => {
     if (!props.snippet || props.dirty) {
-      return
+      return;
     }
     undo.resetBaseline({
       name: props.snippet.name,
       description: props.snippet.description,
       code: props.snippet.code,
-    })
+    });
   },
   { immediate: true },
-)
+);
 
 watch(
   () => props.snippet?.code,
   (value) => {
-    codeDraft.value = value ?? ''
+    codeDraft.value = value ?? "";
   },
   { immediate: true },
-)
+);
 
 function updateField<K extends keyof TransformationSnippetEditorDraft>(
   key: K,
   value: TransformationSnippetEditorDraft[K],
   options?: { trackHistory?: boolean },
 ) {
-  if (!props.snippet) return
+  if (!props.snippet) return;
   if (options?.trackHistory ?? true) {
-    undo.trackChange(String(key), props.snippet[key], value)
+    undo.trackChange(String(key), props.snippet[key], value);
   }
-  emit('update:snippet', { ...props.snippet, [key]: value })
-  emit('field-change')
+  emit("update:snippet", { ...props.snippet, [key]: value });
+  emit("field-change");
 }
 
 function canUndo(field: UndoableSnippetField) {
-  if (!props.snippet) return false
-  return undo.isModified(field, resolveUndoFieldCurrentValue(field))
+  if (!props.snippet) return false;
+  return undo.isModified(field, resolveUndoFieldCurrentValue(field));
 }
 
 function undoField(field: UndoableSnippetField) {
-  if (!props.snippet) return
-  const previous = undo.undo(field, resolveUndoFieldCurrentValue(field))
-  if (previous === undefined) return
-  applyUndoFieldState(field, previous)
+  if (!props.snippet) return;
+  const previous = undo.undo(field, resolveUndoFieldCurrentValue(field));
+  if (previous === undefined) return;
+  applyUndoFieldState(field, previous);
 }
 
 function resetField(field: UndoableSnippetField) {
-  if (!props.snippet) return
-  const baseline = undo.reset(field)
-  if (baseline === undefined) return
+  if (!props.snippet) return;
+  const baseline = undo.reset(field);
+  if (baseline === undefined) return;
   updateField(field, baseline as TransformationSnippetEditorDraft[typeof field], {
     trackHistory: false,
-  })
+  });
 }
 
 function resolveUndoFieldCurrentValue(field: UndoableSnippetField) {
   if (!props.snippet) {
-    return undefined
+    return undefined;
   }
-  return field === 'name'
+  return field === "name"
     ? props.snippet.name
-    : field === 'description'
+    : field === "description"
       ? props.snippet.description
-      : props.snippet.code
+      : props.snippet.code;
 }
 
 function applyUndoFieldState(field: UndoableSnippetField, value: unknown) {
   updateField(field, value as TransformationSnippetEditorDraft[typeof field], {
     trackHistory: false,
-  })
+  });
 }
 
 function syncCodeScroll(event: Event) {
-  codeScrollTop.value = (event.target as HTMLTextAreaElement).scrollTop
+  codeScrollTop.value = (event.target as HTMLTextAreaElement).scrollTop;
 }
 
 function handleCodeInput(event: Event) {
-  codeDraft.value = (event.target as HTMLTextAreaElement).value
+  codeDraft.value = (event.target as HTMLTextAreaElement).value;
 }
 
 function commitCodeDraft() {
-  updateField('code', codeDraft.value)
+  updateField("code", codeDraft.value);
 }
 
 async function exportSnippet() {
   if (!props.snippet) {
-    return
+    return;
   }
   exportFallback.value = createTransferFileDraft(
     buildSnippetTransfer(props.snippet),
-    props.snippet.name || props.snippet.id || 'code-snippet',
-  )
+    props.snippet.name || props.snippet.id || "code-snippet",
+  );
 }
 </script>
 
 <template>
-  <div class=":uno: h-full flex flex-col transformer-editor-container">
+  <div class=":uno: transformer-editor-container flex h-full flex-col">
     <ExportContentModal
       v-if="exportFallback"
       :content="exportFallback.content"
@@ -171,8 +173,8 @@ async function exportSnippet() {
       <span class=":uno: text-sm text-gray-500">从左侧选择代码片段进行编辑</span>
     </div>
 
-    <form v-else class=":uno: min-h-0 flex flex-1 flex-col" @submit.prevent="emit('save')">
-      <div class=":uno: min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-4">
+    <form v-else class=":uno: flex min-h-0 flex-1 flex-col" @submit.prevent="emit('save')">
+      <div class=":uno: min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
         <FormField label="名称">
           <template v-if="canUndo('name')" #actions>
             <FieldUndoButton @reset="resetField('name')" @undo="undoField('name')" />
@@ -181,7 +183,7 @@ async function exportSnippet() {
             <input
               :id="inputId"
               :value="snippet.name"
-              class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+              class=":uno: focus:border-primary w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:outline-none"
               placeholder="不填默认显示为 ID"
               @change="updateField('name', ($event.target as HTMLInputElement).value)"
             />
@@ -196,7 +198,7 @@ async function exportSnippet() {
             <input
               :id="inputId"
               :value="snippet.description"
-              class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+              class=":uno: focus:border-primary w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:outline-none"
               placeholder="说明此代码片段的用途"
               @change="updateField('description', ($event.target as HTMLInputElement).value)"
             />
@@ -213,14 +215,14 @@ async function exportSnippet() {
                 :class="
                   codeFieldError
                     ? ':uno: border-red-300 focus-within:border-red-500'
-                    : ':uno: border-gray-200 focus-within:border-primary'
+                    : ':uno: focus-within:border-primary border-gray-200'
                 "
                 class=":uno: relative h-60 min-h-60 resize-y overflow-hidden rounded-md border bg-white"
               >
-                <div class=":uno: relative z-1 h-full flex">
+                <div class=":uno: relative z-1 flex h-full">
                   <div
                     aria-hidden="true"
-                    class=":uno: relative h-full overflow-hidden select-none border-r border-gray-100 bg-gray-50 px-2 pt-2 pb-0 text-right text-xs text-gray-400"
+                    class=":uno: relative h-full overflow-hidden border-r border-gray-100 bg-gray-50 px-2 pt-2 pb-0 text-right text-xs text-gray-400 select-none"
                   >
                     <div :style="codeLineNumberStyle">
                       <div
@@ -237,7 +239,7 @@ async function exportSnippet() {
                     :id="inputId"
                     :aria-invalid="!!codeFieldError"
                     :value="codeDraft"
-                    class=":uno: h-full min-h-0 w-full flex-1 resize-none border-0 bg-transparent px-3 pt-2 pb-0 text-sm font-mono leading-6 focus:outline-none"
+                    class=":uno: h-full min-h-0 w-full flex-1 resize-none border-0 bg-transparent px-3 pt-2 pb-0 font-mono text-sm leading-6 focus:outline-none"
                     placeholder="输入 HTML 代码"
                     spellcheck="false"
                     wrap="off"

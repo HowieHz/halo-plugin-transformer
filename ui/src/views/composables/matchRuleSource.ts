@@ -4,20 +4,21 @@ import type {
   MatchRuleSource,
   MatchRule,
   MatchRuleEditorMode,
-} from '@/types'
+} from "@/types";
+
 import {
   formatMatchRule,
   normalizeMatchRule,
   parseMatchRuleDraft,
   validateMatchRuleTree,
   type MatchRuleParseResult,
-} from './matchRuleValidation'
+} from "./matchRuleValidation";
 
 /**
  * why: 编辑器需要“可随意修改的草稿副本”，避免直接改动响应式源对象时把未保存状态提前污染到列表数据。
  */
 export function cloneMatchRule(rule: MatchRule): MatchRule {
-  return JSON.parse(JSON.stringify(rule)) as MatchRule
+  return JSON.parse(JSON.stringify(rule)) as MatchRule;
 }
 
 /**
@@ -25,9 +26,9 @@ export function cloneMatchRule(rule: MatchRule): MatchRule {
  * 这里统一深拷贝，避免字符串草稿与规则树在多个编辑副本之间相互串改。
  */
 export function cloneMatchRuleSource(source: MatchRuleSource): MatchRuleSource {
-  return source.kind === 'JSON_DRAFT'
-    ? { kind: 'JSON_DRAFT', data: String(source.data ?? '') }
-    : { kind: 'RULE_TREE', data: cloneMatchRule(normalizeMatchRule(source.data)) }
+  return source.kind === "JSON_DRAFT"
+    ? { kind: "JSON_DRAFT", data: String(source.data ?? "") }
+    : { kind: "RULE_TREE", data: cloneMatchRule(normalizeMatchRule(source.data)) };
 }
 
 /**
@@ -35,9 +36,9 @@ export function cloneMatchRuleSource(source: MatchRuleSource): MatchRuleSource {
  */
 export function makeRuleTreeSource(rule: MatchRule): MatchRuleSource {
   return {
-    kind: 'RULE_TREE',
+    kind: "RULE_TREE",
     data: cloneMatchRule(normalizeMatchRule(rule)),
-  }
+  };
 }
 
 /**
@@ -45,9 +46,9 @@ export function makeRuleTreeSource(rule: MatchRule): MatchRuleSource {
  */
 export function makeJsonDraftSource(draft: string): MatchRuleSource {
   return {
-    kind: 'JSON_DRAFT',
+    kind: "JSON_DRAFT",
     data: draft,
-  }
+  };
 }
 
 /**
@@ -59,26 +60,26 @@ export function buildMatchRuleEditorSourceForMode(
   mode: MatchRuleEditorMode,
   rule: MatchRule,
 ): { matchRule: MatchRule; matchRuleSource: MatchRuleSource; jsonDraft: string } {
-  const normalized = normalizeMatchRule(rule)
-  const jsonDraft = formatMatchRule(normalized)
+  const normalized = normalizeMatchRule(rule);
+  const jsonDraft = formatMatchRule(normalized);
 
   return {
     matchRule: normalized,
     matchRuleSource:
-      mode === 'JSON' ? makeJsonDraftSource(jsonDraft) : makeRuleTreeSource(normalized),
+      mode === "JSON" ? makeJsonDraftSource(jsonDraft) : makeRuleTreeSource(normalized),
     jsonDraft,
-  }
+  };
 }
 
 export function resolveRuleMatchRule(
-  rule: Pick<TransformationRuleEditorDraft, 'matchRule'> & Partial<TransformationRuleEditorState>,
+  rule: Pick<TransformationRuleEditorDraft, "matchRule"> & Partial<TransformationRuleEditorState>,
 ): MatchRuleParseResult {
-  if (rule.matchRuleSource?.kind === 'JSON_DRAFT') {
-    return parseMatchRuleDraft(String(rule.matchRuleSource.data ?? ''))
+  if (rule.matchRuleSource?.kind === "JSON_DRAFT") {
+    return parseMatchRuleDraft(String(rule.matchRuleSource.data ?? ""));
   }
-  if (rule.matchRuleSource?.kind === 'RULE_TREE') {
-    return validateMatchRuleTree(normalizeMatchRule(rule.matchRuleSource.data))
+  if (rule.matchRuleSource?.kind === "RULE_TREE") {
+    return validateMatchRuleTree(normalizeMatchRule(rule.matchRuleSource.data));
   }
-  const normalized = normalizeMatchRule(rule.matchRule)
-  return validateMatchRuleTree(normalized)
+  const normalized = normalizeMatchRule(rule.matchRule);
+  return validateMatchRuleTree(normalized);
 }

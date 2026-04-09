@@ -1,27 +1,28 @@
 ﻿<script lang="ts" setup>
-import { VButton, VModal, VSpace } from '@halo-dev/components'
-import { IMPORT_SOURCE_ACTIONS, type ImportSourceAction } from './importSourceActions'
+import { VButton, VModal, VSpace } from "@halo-dev/components";
+
+import { IMPORT_SOURCE_ACTIONS, type ImportSourceAction } from "./importSourceActions";
 
 defineProps<{
-  resourceLabel: string
-}>()
+  resourceLabel: string;
+}>();
 
 const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'import-from-clipboard'): void
-  (e: 'import-from-file'): void
-}>()
+  (e: "close"): void;
+  (e: "import-from-clipboard"): void;
+  (e: "import-from-file"): void;
+}>();
 
 function emitAction(action: ImportSourceAction) {
   switch (action) {
-    case 'close':
-      emit('close')
-      return
-    case 'import-from-clipboard':
-      emit('import-from-clipboard')
-      return
-    case 'import-from-file':
-      emit('import-from-file')
+    case "close":
+      emit("close");
+      return;
+    case "import-from-clipboard":
+      emit("import-from-clipboard");
+      return;
+    case "import-from-file":
+      emit("import-from-file");
   }
 }
 </script>

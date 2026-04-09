@@ -1,170 +1,172 @@
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { VButton } from '@halo-dev/components'
+import { VButton } from "@halo-dev/components";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+
 import type {
   TransformationSnippetReadModel,
   TransformationRuleEditorDraft,
   MatchRuleSource,
-} from '@/types'
-import { MODE_OPTIONS, POSITION_OPTIONS } from '@/types'
+} from "@/types";
+import { MODE_OPTIONS, POSITION_OPTIONS } from "@/types";
 import {
   cloneMatchRule,
   cloneMatchRuleSource,
   getDomRulePerformanceWarning,
   makeRuleTreeSource,
-} from '@/views/composables/matchRule'
-import ItemPicker from './ItemPicker.vue'
-import EditorToolbar from './EditorToolbar.vue'
-import EditorFooter from './EditorFooter.vue'
-import ExportContentModal from './ExportContentModal.vue'
-import FormField from './FormField.vue'
-import MatchRuleEditor from './MatchRuleEditor.vue'
-import RuleRuntimeOrderField from './RuleRuntimeOrderField.vue'
-import { sortSelectedFirst } from '@/views/composables/util.ts'
-import { updateSelectByWheel } from '@/views/composables/selectWheel.ts'
-import FieldUndoButton from './FieldUndoButton.vue'
-import { useFieldUndo } from '@/views/composables/useFieldUndo.ts'
+} from "@/views/composables/matchRule";
 import {
   buildRuleUndoBaselineSnapshot,
   resolveRuleUndoFieldCurrentValue,
   type UndoableRuleField,
-} from '@/views/composables/ruleEditorUndo.ts'
+} from "@/views/composables/ruleEditorUndo.ts";
+import { updateSelectByWheel } from "@/views/composables/selectWheel.ts";
 import {
   buildRuleTransfer,
   createTransferFileDraft,
   type TransferFileDraft,
-} from '@/views/composables/transfer.ts'
-import DragAutoScrollOverlay from './DragAutoScrollOverlay.vue'
-import { useDragAutoScroll } from '@/views/composables/useDragAutoScroll'
+} from "@/views/composables/transfer.ts";
+import { useDragAutoScroll } from "@/views/composables/useDragAutoScroll";
+import { useFieldUndo } from "@/views/composables/useFieldUndo.ts";
+import { sortSelectedFirst } from "@/views/composables/util.ts";
+
+import DragAutoScrollOverlay from "./DragAutoScrollOverlay.vue";
+import EditorFooter from "./EditorFooter.vue";
+import EditorToolbar from "./EditorToolbar.vue";
+import ExportContentModal from "./ExportContentModal.vue";
+import FieldUndoButton from "./FieldUndoButton.vue";
+import FormField from "./FormField.vue";
+import ItemPicker from "./ItemPicker.vue";
+import MatchRuleEditor from "./MatchRuleEditor.vue";
+import RuleRuntimeOrderField from "./RuleRuntimeOrderField.vue";
 
 const props = defineProps<{
-  rule: TransformationRuleEditorDraft | null
-  snippets: TransformationSnippetReadModel[]
-  selectedSnippetIds: string[]
-  saving: boolean
-  dirty: boolean
-}>()
+  rule: TransformationRuleEditorDraft | null;
+  snippets: TransformationSnippetReadModel[];
+  selectedSnippetIds: string[];
+  saving: boolean;
+  dirty: boolean;
+}>();
 
 const emit = defineEmits<{
-  (e: 'save'): void
-  (e: 'delete'): void
-  (e: 'toggle-enabled'): void
-  (e: 'toggle-bulk-mode'): void
-  (e: 'replace-snippet-ids', snippetIds: string[]): void
-  (e: 'toggle-snippet', snippetId: string): void
-  (e: 'field-change'): void
-  (e: 'update:rule', rule: TransformationRuleEditorDraft): void
-}>()
+  (e: "save"): void;
+  (e: "delete"): void;
+  (e: "toggle-enabled"): void;
+  (e: "toggle-bulk-mode"): void;
+  (e: "replace-snippet-ids", snippetIds: string[]): void;
+  (e: "toggle-snippet", snippetId: string): void;
+  (e: "field-change"): void;
+  (e: "update:rule", rule: TransformationRuleEditorDraft): void;
+}>();
 
-const sortedSnippets = computed(() => sortSelectedFirst(props.snippets, props.selectedSnippetIds))
-const pendingRule = ref<TransformationRuleEditorDraft | null>(null)
-const currentRule = computed(() => pendingRule.value ?? props.rule)
-const exportFallback = ref<TransferFileDraft | null>(null)
-const editorScrollContainer = ref<HTMLElement | null>(null)
-const editorToolbarShell = ref<HTMLElement | null>(null)
-const editorFooterShell = ref<HTMLElement | null>(null)
+const sortedSnippets = computed(() => sortSelectedFirst(props.snippets, props.selectedSnippetIds));
+const pendingRule = ref<TransformationRuleEditorDraft | null>(null);
+const currentRule = computed(() => pendingRule.value ?? props.rule);
+const exportFallback = ref<TransferFileDraft | null>(null);
+const editorScrollContainer = ref<HTMLElement | null>(null);
+const editorToolbarShell = ref<HTMLElement | null>(null);
+const editorFooterShell = ref<HTMLElement | null>(null);
 const matchRuleEditorRef = ref<{
-  commitPendingDrop: () => void
-} | null>(null)
-const RULE_EDITOR_EDGE_OVERLAP_PX = 8
-const dragOverlayTopHeight = ref(48 + RULE_EDITOR_EDGE_OVERLAP_PX)
-const dragOverlayBottomHeight = ref(52 + RULE_EDITOR_EDGE_OVERLAP_PX)
-const autoScroll = useDragAutoScroll(editorScrollContainer)
-let dragOverlayResizeObserver: ResizeObserver | null = null
+  commitPendingDrop: () => void;
+} | null>(null);
+const RULE_EDITOR_EDGE_OVERLAP_PX = 8;
+const dragOverlayTopHeight = ref(48 + RULE_EDITOR_EDGE_OVERLAP_PX);
+const dragOverlayBottomHeight = ref(52 + RULE_EDITOR_EDGE_OVERLAP_PX);
+const autoScroll = useDragAutoScroll(editorScrollContainer);
+let dragOverlayResizeObserver: ResizeObserver | null = null;
 
-const needsTarget = computed(() => currentRule.value?.mode === 'SELECTOR')
-const needsSnippets = computed(() => currentRule.value?.position !== 'REMOVE')
-const needsWrapMarker = computed(() => currentRule.value?.position !== 'REMOVE')
-const matchDraft = ref('')
-const matchInitialValue = ref('')
+const needsTarget = computed(() => currentRule.value?.mode === "SELECTOR");
+const needsSnippets = computed(() => currentRule.value?.position !== "REMOVE");
+const needsWrapMarker = computed(() => currentRule.value?.position !== "REMOVE");
+const matchDraft = ref("");
+const matchInitialValue = ref("");
 const matchFieldError = computed(() => {
   if (!needsTarget.value || !currentRule.value) {
-    return null
+    return null;
   }
-  return matchDraft.value.trim() ? null : '请填写匹配内容'
-})
+  return matchDraft.value.trim() ? null : "请填写匹配内容";
+});
 const performanceWarning = computed(() =>
   currentRule.value ? getDomRulePerformanceWarning(currentRule.value) : null,
-)
-const undo = useFieldUndo()
+);
+const undo = useFieldUndo();
 
 function updateDragOverlayHeights() {
   dragOverlayTopHeight.value =
-    (editorToolbarShell.value?.offsetHeight ?? 48) + RULE_EDITOR_EDGE_OVERLAP_PX
+    (editorToolbarShell.value?.offsetHeight ?? 48) + RULE_EDITOR_EDGE_OVERLAP_PX;
   dragOverlayBottomHeight.value =
-    (editorFooterShell.value?.offsetHeight ?? 52) + RULE_EDITOR_EDGE_OVERLAP_PX
+    (editorFooterShell.value?.offsetHeight ?? 52) + RULE_EDITOR_EDGE_OVERLAP_PX;
 }
 
 function handleEditorContainerDragOver(event: DragEvent) {
   autoScroll.handleContainerDragOver(event, {
     topZoneHeight: dragOverlayTopHeight.value,
     bottomZoneHeight: dragOverlayBottomHeight.value,
-  })
+  });
 }
 
 function handleEditorContainerDragLeave(event: DragEvent) {
-  autoScroll.handleContainerDragLeave(event)
+  autoScroll.handleContainerDragLeave(event);
 }
 
 function handleEditorContainerDropCapture() {
-  matchRuleEditorRef.value?.commitPendingDrop()
+  matchRuleEditorRef.value?.commitPendingDrop();
 }
 
 function observeDragOverlayShell() {
-  dragOverlayResizeObserver?.disconnect()
-  if (typeof ResizeObserver === 'undefined') {
-    updateDragOverlayHeights()
-    return
+  dragOverlayResizeObserver?.disconnect();
+  if (typeof ResizeObserver === "undefined") {
+    updateDragOverlayHeights();
+    return;
   }
 
   dragOverlayResizeObserver = new ResizeObserver(() => {
-    updateDragOverlayHeights()
-  })
+    updateDragOverlayHeights();
+  });
 
   if (editorToolbarShell.value) {
-    dragOverlayResizeObserver.observe(editorToolbarShell.value)
+    dragOverlayResizeObserver.observe(editorToolbarShell.value);
   }
   if (editorFooterShell.value) {
-    dragOverlayResizeObserver.observe(editorFooterShell.value)
+    dragOverlayResizeObserver.observe(editorFooterShell.value);
   }
 
-  updateDragOverlayHeights()
+  updateDragOverlayHeights();
 }
 
 watch(
   () => props.rule,
   () => {
-    pendingRule.value = null
+    pendingRule.value = null;
   },
-)
+);
 
 watch(
   () => currentRule.value?.id ?? null,
   async () => {
-    await nextTick()
-    observeDragOverlayShell()
+    await nextTick();
+    observeDragOverlayShell();
   },
   { immediate: true },
-)
+);
 
 watch(
   () => currentRule.value?.match,
   (value) => {
-    matchDraft.value = value ?? ''
+    matchDraft.value = value ?? "";
   },
   { immediate: true },
-)
+);
 
 watch(
   () => [currentRule.value?.id, props.dirty],
   () => {
     if (!currentRule.value || props.dirty) {
-      return
+      return;
     }
-    undo.resetBaseline(buildRuleUndoBaselineSnapshot(currentRule.value, props.selectedSnippetIds))
+    undo.resetBaseline(buildRuleUndoBaselineSnapshot(currentRule.value, props.selectedSnippetIds));
   },
   { immediate: true },
-)
+);
 
 /**
  * why: 正常编辑需要记录撤销历史，但撤销/重置本身不能再次入栈，
@@ -175,178 +177,178 @@ function updateField<K extends keyof TransformationRuleEditorDraft>(
   value: TransformationRuleEditorDraft[K],
   options?: { trackHistory?: boolean },
 ) {
-  if (!currentRule.value) return
-  const trackHistory = options?.trackHistory ?? true
-  const next = { ...currentRule.value, [key]: value }
-  if (trackHistory && key !== 'matchRule') {
-    undo.trackChange(String(key), currentRule.value[key], next[key])
+  if (!currentRule.value) return;
+  const trackHistory = options?.trackHistory ?? true;
+  const next = { ...currentRule.value, [key]: value };
+  if (trackHistory && key !== "matchRule") {
+    undo.trackChange(String(key), currentRule.value[key], next[key]);
   }
-  pendingRule.value = next
-  emit('update:rule', next)
-  emit('field-change')
+  pendingRule.value = next;
+  emit("update:rule", next);
+  emit("field-change");
 }
 
 function updateRuleSnapshot(next: TransformationRuleEditorDraft) {
-  pendingRule.value = next
-  emit('update:rule', next)
-  emit('field-change')
+  pendingRule.value = next;
+  emit("update:rule", next);
+  emit("field-change");
 }
 
 function currentMatchRuleSnapshot() {
   return {
     matchRule: currentRule.value ? cloneMatchRule(currentRule.value.matchRule) : undefined,
     matchRuleSource: currentRule.value ? cloneCurrentMatchRuleSource() : undefined,
-  }
+  };
 }
 
 function cloneCurrentMatchRuleSource() {
   if (!currentRule.value) {
-    return makeRuleTreeSource({ type: 'GROUP', negate: false, operator: 'AND', children: [] })
+    return makeRuleTreeSource({ type: "GROUP", negate: false, operator: "AND", children: [] });
   }
   return cloneMatchRuleSource(
     currentRule.value.matchRuleSource ?? makeRuleTreeSource(currentRule.value.matchRule),
-  )
+  );
 }
 
 function updateMatchRuleField(patch: Partial<TransformationRuleEditorDraft>) {
-  if (!currentRule.value) return
-  const previous = currentMatchRuleSnapshot()
+  if (!currentRule.value) return;
+  const previous = currentMatchRuleSnapshot();
   const next = {
     ...currentRule.value,
     ...patch,
-  }
+  };
   const after = {
     matchRule: cloneMatchRule(next.matchRule),
     matchRuleSource: cloneMatchRuleSource(
       next.matchRuleSource ?? makeRuleTreeSource(next.matchRule),
     ),
-  }
-  undo.trackChange('matchRule', previous, after)
-  updateRuleSnapshot(next)
+  };
+  undo.trackChange("matchRule", previous, after);
+  updateRuleSnapshot(next);
 }
 
 function handleToggleSnippet(snippetId: string) {
-  const previous = props.selectedSnippetIds
+  const previous = props.selectedSnippetIds;
   const next = previous.includes(snippetId)
     ? previous.filter((id) => id !== snippetId)
-    : [...previous, snippetId]
-  undo.trackChange('snippetIds', previous, next)
-  emit('toggle-snippet', snippetId)
+    : [...previous, snippetId];
+  undo.trackChange("snippetIds", previous, next);
+  emit("toggle-snippet", snippetId);
 }
 
 function beginMatchEdit() {
-  matchInitialValue.value = currentRule.value?.match ?? matchDraft.value
+  matchInitialValue.value = currentRule.value?.match ?? matchDraft.value;
 }
 
 function handleMatchInput(event: Event) {
-  const value = (event.target as HTMLInputElement).value
-  matchDraft.value = value
-  updateField('match', value as TransformationRuleEditorDraft['match'], { trackHistory: false })
+  const value = (event.target as HTMLInputElement).value;
+  matchDraft.value = value;
+  updateField("match", value as TransformationRuleEditorDraft["match"], { trackHistory: false });
 }
 
 function commitMatchDraft() {
   if (matchInitialValue.value === matchDraft.value) {
-    return
+    return;
   }
-  undo.trackChange('match', matchInitialValue.value, matchDraft.value)
+  undo.trackChange("match", matchInitialValue.value, matchDraft.value);
 }
 
 function canUndo(field: UndoableRuleField) {
-  if (!currentRule.value) return false
+  if (!currentRule.value) return false;
   return undo.isModified(
     field,
     resolveRuleUndoFieldCurrentValue(field, currentRule.value, props.selectedSnippetIds),
-  )
+  );
 }
 
 function undoField(field: UndoableRuleField) {
-  if (!currentRule.value) return
+  if (!currentRule.value) return;
   const previous = undo.undo(
     field,
     resolveRuleUndoFieldCurrentValue(field, currentRule.value, props.selectedSnippetIds),
-  )
-  if (previous === undefined) return
-  applyUndoFieldState(field, previous)
+  );
+  if (previous === undefined) return;
+  applyUndoFieldState(field, previous);
 }
 
 function applyUndoFieldState(field: UndoableRuleField, value: unknown) {
-  if (!currentRule.value) return
+  if (!currentRule.value) return;
 
-  if (field === 'matchRule') {
+  if (field === "matchRule") {
     const snapshot = value as {
-      matchRule: TransformationRuleEditorDraft['matchRule']
-      matchRuleSource?: MatchRuleSource
-    }
+      matchRule: TransformationRuleEditorDraft["matchRule"];
+      matchRuleSource?: MatchRuleSource;
+    };
     const next = {
       ...currentRule.value,
       matchRule: snapshot.matchRule,
       matchRuleSource: snapshot.matchRuleSource ?? makeRuleTreeSource(snapshot.matchRule),
-    }
-    updateRuleSnapshot(next)
-    return
+    };
+    updateRuleSnapshot(next);
+    return;
   }
 
-  if (field === 'snippetIds') {
-    emit('replace-snippet-ids', value as string[])
-    emit('field-change')
-    return
+  if (field === "snippetIds") {
+    emit("replace-snippet-ids", value as string[]);
+    emit("field-change");
+    return;
   }
 
-  updateField(field, value as TransformationRuleEditorDraft[typeof field], { trackHistory: false })
+  updateField(field, value as TransformationRuleEditorDraft[typeof field], { trackHistory: false });
 }
 function resetField(field: UndoableRuleField) {
-  if (!currentRule.value) return
-  const baseline = undo.reset(field)
-  if (baseline === undefined) return
+  if (!currentRule.value) return;
+  const baseline = undo.reset(field);
+  if (baseline === undefined) return;
 
-  if (field === 'matchRule') {
+  if (field === "matchRule") {
     const snapshot = baseline as {
-      matchRule: TransformationRuleEditorDraft['matchRule']
-      matchRuleSource?: MatchRuleSource
-    }
+      matchRule: TransformationRuleEditorDraft["matchRule"];
+      matchRuleSource?: MatchRuleSource;
+    };
     const next = {
       ...currentRule.value,
       matchRule: snapshot.matchRule,
       matchRuleSource: snapshot.matchRuleSource ?? makeRuleTreeSource(snapshot.matchRule),
-    }
-    updateRuleSnapshot(next)
-    return
+    };
+    updateRuleSnapshot(next);
+    return;
   }
 
-  if (field === 'snippetIds') {
-    emit('replace-snippet-ids', baseline as string[])
-    emit('field-change')
-    return
+  if (field === "snippetIds") {
+    emit("replace-snippet-ids", baseline as string[]);
+    emit("field-change");
+    return;
   }
 
   updateField(field, baseline as TransformationRuleEditorDraft[typeof field], {
     trackHistory: false,
-  })
+  });
 }
 
 async function exportRule() {
   if (!currentRule.value) {
-    return
+    return;
   }
   exportFallback.value = createTransferFileDraft(
     buildRuleTransfer(currentRule.value),
-    currentRule.value.name || currentRule.value.id || 'transformation-rule',
-  )
+    currentRule.value.name || currentRule.value.id || "transformation-rule",
+  );
 }
 
 onMounted(async () => {
-  await nextTick()
-  observeDragOverlayShell()
-})
+  await nextTick();
+  observeDragOverlayShell();
+});
 
 onBeforeUnmount(() => {
-  dragOverlayResizeObserver?.disconnect()
-})
+  dragOverlayResizeObserver?.disconnect();
+});
 </script>
 
 <template>
   <div
-    class=":uno: relative h-full flex flex-col transformer-editor-container"
+    class=":uno: transformer-editor-container relative flex h-full flex-col"
     @dragover.capture="handleEditorContainerDragOver"
     @dragleave.capture="handleEditorContainerDragLeave"
     @drop.capture="handleEditorContainerDropCapture"
@@ -389,10 +391,10 @@ onBeforeUnmount(() => {
       <span class=":uno: text-sm text-gray-500">从左侧选择规则进行编辑</span>
     </div>
 
-    <form v-else class=":uno: min-h-0 flex flex-1 flex-col" @submit.prevent="emit('save')">
+    <form v-else class=":uno: flex min-h-0 flex-1 flex-col" @submit.prevent="emit('save')">
       <div
         ref="editorScrollContainer"
-        class=":uno: relative min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-4"
+        class=":uno: relative min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4"
         @scroll="autoScroll.handleContainerScroll"
       >
         <FormField label="名称">
@@ -403,7 +405,7 @@ onBeforeUnmount(() => {
             <input
               :id="inputId"
               :value="currentRule.name"
-              class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+              class=":uno: focus:border-primary w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:outline-none"
               placeholder="不填默认为 ID"
               @change="updateField('name', ($event.target as HTMLInputElement).value)"
             />
@@ -418,7 +420,7 @@ onBeforeUnmount(() => {
             <input
               :id="inputId"
               :value="currentRule.description"
-              class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none"
+              class=":uno: focus:border-primary w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:outline-none"
               placeholder="说明此规则的用途"
               @change="updateField('description', ($event.target as HTMLInputElement).value)"
             />
@@ -450,7 +452,7 @@ onBeforeUnmount(() => {
             <select
               :id="inputId"
               :value="currentRule.mode"
-              class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none bg-white"
+              class=":uno: focus:border-primary w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm focus:outline-none"
               @wheel="updateSelectByWheel"
               @change="
                 updateField(
@@ -482,9 +484,9 @@ onBeforeUnmount(() => {
                   :class="
                     matchFieldError
                       ? ':uno: border-red-300 bg-red-50/40 focus:border-red-500'
-                      : ':uno: border-gray-200 focus:border-primary'
+                      : ':uno: focus:border-primary border-gray-200'
                   "
-                  class=":uno: w-full rounded-md border px-3 py-1.5 text-sm font-mono focus:outline-none"
+                  class=":uno: w-full rounded-md border px-3 py-1.5 font-mono text-sm focus:outline-none"
                   @focus="beginMatchEdit"
                   @input="handleMatchInput"
                   @change="commitMatchDraft"
@@ -509,7 +511,7 @@ onBeforeUnmount(() => {
               <select
                 :id="inputId"
                 :value="currentRule.position"
-                class=":uno: w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-primary focus:outline-none bg-white"
+                class=":uno: focus:border-primary w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm focus:outline-none"
                 @wheel="updateSelectByWheel"
                 @change="
                   updateField(

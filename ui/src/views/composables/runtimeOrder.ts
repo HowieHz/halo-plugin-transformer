@@ -1,23 +1,23 @@
-import { RUNTIME_ORDER_MAX, RUNTIME_ORDER_STEPS } from '@/types'
+import { RUNTIME_ORDER_MAX, RUNTIME_ORDER_STEPS } from "@/types";
 
-const PRESET_SNAP_RATIO = 0.08
+const PRESET_SNAP_RATIO = 0.08;
 
 function getPresetSnapDistance(index: number) {
-  const step = RUNTIME_ORDER_STEPS[index]
+  const step = RUNTIME_ORDER_STEPS[index];
   if (!step) {
-    return 0
+    return 0;
   }
 
-  const previous = RUNTIME_ORDER_STEPS[index - 1]
-  const next = RUNTIME_ORDER_STEPS[index + 1]
+  const previous = RUNTIME_ORDER_STEPS[index - 1];
+  const next = RUNTIME_ORDER_STEPS[index + 1];
   const nearestGap = Math.min(
     previous ? step.value - previous.value : Number.POSITIVE_INFINITY,
     next ? next.value - step.value : Number.POSITIVE_INFINITY,
-  )
+  );
 
   return Number.isFinite(nearestGap) && nearestGap > 0
     ? Math.max(1, Math.round(nearestGap * PRESET_SNAP_RATIO))
-    : 0
+    : 0;
 }
 
 /**
@@ -26,13 +26,13 @@ function getPresetSnapDistance(index: number) {
  */
 export function clampRuntimeOrder(value: number) {
   if (!Number.isFinite(value)) {
-    return RUNTIME_ORDER_MAX
+    return RUNTIME_ORDER_MAX;
   }
-  return Math.min(RUNTIME_ORDER_MAX, Math.max(0, Math.trunc(value)))
+  return Math.min(RUNTIME_ORDER_MAX, Math.max(0, Math.trunc(value)));
 }
 
 export function formatRuntimeOrder(value: number) {
-  return value.toLocaleString('en-US')
+  return value.toLocaleString("en-US");
 }
 
 /**
@@ -40,15 +40,15 @@ export function formatRuntimeOrder(value: number) {
  * 接近预设档位时自动吸附，能让交互更稳，但又保留离档位较远时的连续调节空间。
  */
 export function snapRuntimeOrderToPreset(value: number) {
-  const normalized = clampRuntimeOrder(value)
+  const normalized = clampRuntimeOrder(value);
 
   for (const [index, step] of RUNTIME_ORDER_STEPS.entries()) {
     if (Math.abs(normalized - step.value) <= getPresetSnapDistance(index)) {
-      return step.value
+      return step.value;
     }
   }
 
-  return normalized
+  return normalized;
 }
 
 /**
@@ -56,20 +56,20 @@ export function snapRuntimeOrderToPreset(value: number) {
  * 而不是再把大整数原样抛回界面，增加理解成本。
  */
 export function describeRuntimeOrderRange(value: number) {
-  const normalized = clampRuntimeOrder(value)
-  const exactStep = RUNTIME_ORDER_STEPS.find((step) => step.value === normalized)
+  const normalized = clampRuntimeOrder(value);
+  const exactStep = RUNTIME_ORDER_STEPS.find((step) => step.value === normalized);
   if (exactStep) {
-    return `当前档位：${exactStep.label}`
+    return `当前档位：${exactStep.label}`;
   }
 
   for (let index = 0; index < RUNTIME_ORDER_STEPS.length - 1; index += 1) {
-    const lower = RUNTIME_ORDER_STEPS[index]
-    const upper = RUNTIME_ORDER_STEPS[index + 1]
+    const lower = RUNTIME_ORDER_STEPS[index];
+    const upper = RUNTIME_ORDER_STEPS[index + 1];
     if (normalized > lower.value && normalized < upper.value) {
-      return `当前范围：${lower.label} ～ ${upper.label}`
+      return `当前范围：${lower.label} ～ ${upper.label}`;
     }
   }
 
-  const lastStep = RUNTIME_ORDER_STEPS[RUNTIME_ORDER_STEPS.length - 1]
-  return `当前档位：${lastStep?.label ?? '最低'}`
+  const lastStep = RUNTIME_ORDER_STEPS[RUNTIME_ORDER_STEPS.length - 1];
+  return `当前档位：${lastStep?.label ?? "最低"}`;
 }

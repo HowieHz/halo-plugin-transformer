@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/HowieHz/halo-plugin-transformer/main/ui/public/transformer.schema.json",
+  "$id": "https://raw.githubusercontent.com/HowieHz/halo-plugin-transformer/main/ui/public/generated/transformer.schema.json",
   "title": "Halo Plugin Transformer Transfer",
   "description": "JSON import/export schema for Halo Plugin Transformer resources.",
   "type": "object",
@@ -174,7 +174,7 @@
           "maximum": 2147483647
         },
         "matchRuleSource": {
-          "$ref": "./generated/match-rule.schema.json#/$defs/matchRuleSource"
+          "$ref": "./match-rule.schema.json#/$defs/matchRuleSource"
         }
       },
       "additionalProperties": false
