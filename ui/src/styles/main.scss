@@ -3,12 +3,16 @@ $main-width: 60%;
 
 #transformer-view {
   .transformer-workspace {
+    display: flex;
+    flex-direction: column;
     height: 100%;
     position: relative;
   }
 
   .transformer-layout {
+    flex: 1;
     height: 100%;
+    min-height: 0;
     position: relative;
   }
 
@@ -17,6 +21,8 @@ $main-width: 60%;
   }
 
   .main {
+    min-height: 0;
+    min-width: 0;
     width: $main-width;
   }
 
@@ -63,7 +69,9 @@ $main-width: 60%;
     }
 
     .transformer-layout {
-      display: block;
+      display: flex;
+      flex: 1;
+      min-height: 0;
     }
 
     .mobile-drawer-toolbar {
@@ -95,6 +103,9 @@ $main-width: 60%;
     }
 
     .main {
+      flex: 1 1 auto;
+      height: 100%;
+      min-height: 0;
       width: 100%;
     }
 
