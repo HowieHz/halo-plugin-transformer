@@ -9,6 +9,11 @@ $main-width: 60%;
    */
   --transformer-host-mobile-nav-height: 50px;
   --transformer-editor-footer-height: 56px;
+  /**
+   * why: 移动端三栏需要共用同一套“上方工具条 / 下方留白”尺寸，
+   * 否则左右列表会各算各的高度，视觉上就会和中间编辑器错位。
+   */
+  --transformer-mobile-pane-footer-height: var(--transformer-editor-footer-height);
   --transformer-mobile-bottom-reserved-height: calc(
     var(--transformer-host-mobile-nav-height) + var(--transformer-editor-footer-height)
   );
@@ -40,6 +45,10 @@ $main-width: 60%;
   .mobile-drawer-toolbar,
   .mobile-drawer-header,
   .mobile-drawer-backdrop {
+    display: none;
+  }
+
+  .transformer-mobile-pane-footer-spacer {
     display: none;
   }
 
@@ -121,7 +130,7 @@ $main-width: 60%;
       background: rgb(17 24 39 / 0.38);
       border: 0;
       display: block;
-      inset: 3.75rem 0 0;
+      inset: 0;
       position: absolute;
       width: 100%;
       z-index: 15;
@@ -134,13 +143,17 @@ $main-width: 60%;
       width: 100%;
     }
 
+    /**
+     * why: 侧栏抽屉和中间编辑器必须共用同一块可视区域；
+     * 如果这里再额外扣掉工具条高度，就会形成“顶部下沉、底部更短”的错位。
+     */
     .aside {
       background: white;
       bottom: 0;
       box-shadow: 0 20px 48px rgb(15 23 42 / 0.18);
       max-width: min(88vw, 26rem);
       position: absolute;
-      top: 3.75rem;
+      top: 0;
       transition:
         transform 180ms ease,
         visibility 180ms ease;
@@ -164,27 +177,18 @@ $main-width: 60%;
       visibility: visible;
     }
 
+    // why: 顶部已经有统一的移动端工具条；抽屉里再叠一层标题，
+    // 会把左右列表的起点压低，和中间编辑器不再对齐。
     .mobile-drawer-header {
-      align-items: center;
-      border-bottom: 1px solid rgb(229, 231, 235);
-      display: flex;
-      justify-content: space-between;
-      padding: 0.75rem 1rem;
+      display: none;
     }
 
-    .mobile-drawer-header span {
-      color: rgb(17, 24, 39);
-      font-size: 0.875rem;
-      font-weight: 600;
+    .transformer-mobile-pane-footer {
+      min-height: var(--transformer-mobile-pane-footer-height);
     }
 
-    .mobile-drawer-header button {
-      background: transparent;
-      border: 0;
-      color: rgb(107, 114, 128);
-      cursor: pointer;
-      font-size: 0.875rem;
-      padding: 0;
+    .transformer-mobile-pane-footer-spacer {
+      display: block;
     }
   }
 }

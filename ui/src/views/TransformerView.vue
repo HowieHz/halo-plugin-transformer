@@ -874,15 +874,15 @@ function jumpToSnippet(id: string) {
             </VButton>
           </div>
 
-          <button
-            v-if="mobileDrawer.backdropVisible.value"
-            aria-label="关闭侧边栏"
-            class="mobile-drawer-backdrop"
-            type="button"
-            @click="mobileDrawer.closeDrawer()"
-          />
-
           <div class="transformer-layout :uno: flex h-full divide-x divide-gray-100">
+            <button
+              v-if="mobileDrawer.backdropVisible.value"
+              aria-label="关闭侧边栏"
+              class="mobile-drawer-backdrop"
+              type="button"
+              @click="mobileDrawer.closeDrawer()"
+            />
+
             <div
               :id="mobileLeftDrawerId"
               :aria-hidden="
@@ -997,7 +997,7 @@ function jumpToSnippet(id: string) {
 
               <div
                 v-if="!bulkSelectionState.isBulkMode.value"
-                class=":uno: flex h-12 shrink-0 items-center justify-center border-t bg-white"
+                class="transformer-mobile-pane-footer :uno: flex shrink-0 items-center justify-center border-t bg-white px-4"
               >
                 <VButton size="sm" type="secondary" @click="handleOpenCreateModal(activeTab)">
                   {{ activeTab === "snippets" ? "新建代码片段" : "新建转换规则" }}
@@ -1076,6 +1076,11 @@ function jumpToSnippet(id: string) {
                 :snippets-in-rule="snippetsInRule"
                 @jump-to-rule="jumpToRule"
                 @jump-to-snippet="jumpToSnippet"
+              />
+              <div
+                v-if="!bulkSelectionState.isBulkMode.value"
+                aria-hidden="true"
+                class="transformer-mobile-pane-footer transformer-mobile-pane-footer-spacer :uno: border-t bg-white"
               />
             </div>
           </div>
