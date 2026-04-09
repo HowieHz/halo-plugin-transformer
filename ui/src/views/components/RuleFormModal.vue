@@ -33,11 +33,10 @@ defineProps<{
 
 const emit = defineEmits<{
   (e: "close"): void;
-  (e: "submit", rule: TransformationRuleEditorDraft, snippetIds: string[]): void;
+  (e: "submit", rule: TransformationRuleEditorDraft): void;
 }>();
 
 const rule = ref<TransformationRuleEditorDraft>(makeRuleEditorDraft());
-const selectedSnippetIds = ref<string[]>([]);
 const fileInput = ref<HTMLInputElement | null>(null);
 const importSourceVisible = ref(false);
 const initialRule = makeRuleEditorDraft();
@@ -46,7 +45,6 @@ onMounted(reset);
 
 function reset() {
   rule.value = makeRuleEditorDraft();
-  selectedSnippetIds.value = [];
 }
 
 const needsTarget = computed(() => rule.value.mode === "SELECTOR");
@@ -61,13 +59,14 @@ const matchFieldError = computed(() => {
 const performanceWarning = computed(() => getDomRulePerformanceWarning(rule.value));
 
 function toggleSnippet(id: string) {
-  const idx = selectedSnippetIds.value.indexOf(id);
-  if (idx === -1) selectedSnippetIds.value.push(id);
-  else selectedSnippetIds.value.splice(idx, 1);
+  const currentSnippetIds = rule.value.snippetIds;
+  rule.value.snippetIds = currentSnippetIds.includes(id)
+    ? currentSnippetIds.filter((snippetId) => snippetId !== id)
+    : [...currentSnippetIds, id];
 }
 
 function handleSubmit() {
-  emit("submit", rule.value, selectedSnippetIds.value);
+  emit("submit", rule.value);
 }
 
 function openImportSourceModal() {
@@ -80,7 +79,6 @@ function closeImportSourceModal() {
 
 async function applyImportedRule(raw: string, sourceLabel: "剪贴板" | "文件") {
   rule.value = parseRuleTransfer(raw);
-  selectedSnippetIds.value = [];
   const importedValidationError = resolveImportedRuleValidationError(rule.value);
   if (importedValidationError) {
     Toast.warning(
@@ -157,7 +155,7 @@ const dirty = computed(() => {
       wrapMarker: rule.value.wrapMarker,
       runtimeOrder: rule.value.runtimeOrder,
       matchRuleSource: rule.value.matchRuleSource,
-      snippetIds: selectedSnippetIds.value,
+      snippetIds: rule.value.snippetIds,
     }) !==
     JSON.stringify({
       enabled: initialRule.enabled,
@@ -189,7 +187,6 @@ function getSubmitPayload() {
       ...rule.value,
       matchRule: JSON.parse(JSON.stringify(rule.value.matchRule)),
     },
-    snippetIds: [...selectedSnippetIds.value],
   };
 }
 
@@ -335,12 +332,12 @@ defineExpose({
     <template v-if="needsSnippets" #picker>
       <div class=":uno: flex items-center justify-between">
         <label class=":uno: text-xs font-medium text-gray-600">关联代码片段</label>
-        <span class=":uno: text-xs text-gray-400"> {{ selectedSnippetIds.length }} 个已选 </span>
+        <span class=":uno: text-xs text-gray-400"> {{ rule.snippetIds.length }} 个已选 </span>
       </div>
       <ItemPicker
         :items="snippets"
         label="关联代码片段选择列表"
-        :selected-ids="selectedSnippetIds"
+        :selected-ids="rule.snippetIds"
         empty-text="暂无代码片段, 请先创建"
         @toggle="toggleSnippet"
       />

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import run.halo.app.extension.Metadata;
+import top.howiehz.halo.transformer.core.MatchRule;
 import top.howiehz.halo.transformer.scheme.TransformationRule;
 import top.howiehz.halo.transformer.scheme.TransformationSnippet;
 
@@ -59,6 +60,27 @@ class ConsoleReadModelMapperTest {
         assertEquals(5L, readModel.metadata().version());
         assertEquals(42, readModel.runtimeOrder());
         assertEquals(Set.of("snippet-a"), readModel.snippetIds());
+    }
+
+    // why: 读投影应主动输出 canonical 的 `matchRule` 形状；
+    // 这样旧脏数据不会在控制台里再被原样回写给写接口。
+    @Test
+    void shouldCanonicalizeMatchRuleInRuleReadModel() {
+        TransformationRule rule = new TransformationRule();
+        Metadata metadata = new Metadata();
+        metadata.setName("rule-a");
+        rule.setMetadata(metadata);
+        MatchRule dirtyLeaf = MatchRule.pathRule(MatchRule.Matcher.ANT, "/**");
+        dirtyLeaf.setChildren(List.of());
+        MatchRule dirtyRoot = new MatchRule();
+        dirtyRoot.setNegate(false);
+        dirtyRoot.setOperator(MatchRule.Operator.AND);
+        dirtyRoot.setChildren(List.of(dirtyLeaf));
+        rule.setMatchRule(dirtyRoot);
+
+        TransformationRuleReadModel readModel = mapper.toReadModel(rule);
+
+        assertTrue(readModel.matchRule().getChildren().getFirst().getChildren() == null);
     }
 
     // why: 代码片段删除走 finalizer 最终一致；控制台列表必须立刻把 deleting 资源隐藏掉，

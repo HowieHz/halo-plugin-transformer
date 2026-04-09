@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.web.server.ServerWebInputException;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 import run.halo.app.extension.Metadata;
@@ -25,6 +26,7 @@ import top.howiehz.halo.transformer.util.TransformationSnippetValidator;
 class TransformationSnippetEndpointTest {
     private ReactiveExtensionClient client;
     private TransformationSnippetValidator validator;
+    private TransformationSnippetLifecycleService lifecycleService;
     private TransformationRuleRuntimeStore ruleRuntimeStore;
     private TransformationSnippetEndpoint endpoint;
 
@@ -32,11 +34,12 @@ class TransformationSnippetEndpointTest {
     void setUp() {
         client = mock(ReactiveExtensionClient.class);
         validator = mock(TransformationSnippetValidator.class);
+        lifecycleService = mock(TransformationSnippetLifecycleService.class);
         ruleRuntimeStore = mock(TransformationRuleRuntimeStore.class);
         endpoint = new TransformationSnippetEndpoint(
             client,
             validator,
-            mock(TransformationSnippetLifecycleService.class),
+            lifecycleService,
             ruleRuntimeStore,
             mock(ConsoleReadModelMapper.class)
         );
@@ -115,6 +118,73 @@ class TransformationSnippetEndpointTest {
         verify(client, never()).update(any(TransformationSnippet.class));
     }
 
+    // why: deleting 资源已经退出控制台当前可编辑集合；
+    // 启停接口也必须复用同一套可见性语义，避免列表已隐藏但单项写口仍可继续修改。
+    @Test
+    void shouldRejectTogglingDeletingSnippet() {
+        TransformationSnippet snippet = snippet("snippet-a", "<div>ok</div>", false);
+        snippet.getMetadata().setDeletionTimestamp(java.time.Instant.now());
+        when(client.fetch(TransformationSnippet.class, "snippet-a")).thenReturn(Mono.just(snippet));
+
+        ServerWebInputException error = assertThrows(
+            ServerWebInputException.class,
+            () -> endpoint.updateSnippetEnabled("snippet-a", enabledPayload(true, 7L)).block()
+        );
+
+        assertEquals("未找到要更新的代码片段", error.getReason());
+        verify(client, never()).update(any(TransformationSnippet.class));
+    }
+
+    // why: 删除也是写路径；如果不复用 metadata.version，控制台里最后一个 mutation 漏洞就会留在 delete 上。
+    @Test
+    void shouldRejectDeletingSnippetWithStaleVersion() {
+        TransformationSnippet snippet = snippet("snippet-a", "<div>ok</div>", false);
+        snippet.getMetadata().setVersion(7L);
+        when(client.fetch(TransformationSnippet.class, "snippet-a")).thenReturn(Mono.just(snippet));
+
+        ResponseStatusException error = assertThrows(
+            ResponseStatusException.class,
+            () -> endpoint.deleteSnippet("snippet-a", deletePayload(6L)).block()
+        );
+
+        assertEquals(409, error.getStatusCode().value());
+        assertEquals("代码片段已被其他人修改，请刷新后重试", error.getReason());
+        verify(lifecycleService, never()).markForDeletion(any(TransformationSnippet.class));
+    }
+
+    // why: deleting 代码片段已经退出“当前可删资源”集合；
+    // delete 写口也应复用同一套可见性语义，避免重复点击删除时得到和其它写口不一致的结果。
+    @Test
+    void shouldRejectDeletingSnippetThatIsAlreadyDeleting() {
+        TransformationSnippet snippet = snippet("snippet-a", "<div>ok</div>", false);
+        snippet.getMetadata().setDeletionTimestamp(java.time.Instant.now());
+        when(client.fetch(TransformationSnippet.class, "snippet-a")).thenReturn(Mono.just(snippet));
+
+        ServerWebInputException error = assertThrows(
+            ServerWebInputException.class,
+            () -> endpoint.deleteSnippet("snippet-a", deletePayload(7L)).block()
+        );
+
+        assertEquals("未找到要删除的代码片段", error.getReason());
+        verify(lifecycleService, never()).markForDeletion(any(TransformationSnippet.class));
+    }
+
+    // why: 代码片段删除成功的真实语义是“进入 finalizer 生命周期”，
+    // 测试要锁这个领域动作，而不是误验一个根本不会发生的物理 delete 调用。
+    @Test
+    void shouldDeleteSnippetWithMatchingVersion() {
+        TransformationSnippet snippet = snippet("snippet-a", "<div>ok</div>", false);
+        snippet.getMetadata().setVersion(7L);
+        when(client.fetch(TransformationSnippet.class, "snippet-a")).thenReturn(Mono.just(snippet));
+        when(lifecycleService.markForDeletion(any(TransformationSnippet.class)))
+            .thenReturn(Mono.empty());
+
+        endpoint.deleteSnippet("snippet-a", deletePayload(7L)).block();
+
+        verify(lifecycleService).markForDeletion(snippet);
+        verify(ruleRuntimeStore).invalidateAndWarmUpAsync();
+    }
+
     private TransformationSnippet snippet(String id, String code, boolean enabled) {
         TransformationSnippet snippet = new TransformationSnippet();
         Metadata metadata = new Metadata();
@@ -135,5 +205,13 @@ class TransformationSnippetEndpointTest {
         payload.setMetadata(metadata);
         return payload;
     }
-}
 
+    private TransformationSnippetEndpoint.DeletePayload deletePayload(long version) {
+        TransformationSnippetEndpoint.DeletePayload payload =
+            new TransformationSnippetEndpoint.DeletePayload();
+        Metadata metadata = new Metadata();
+        metadata.setVersion(version);
+        payload.setMetadata(metadata);
+        return payload;
+    }
+}

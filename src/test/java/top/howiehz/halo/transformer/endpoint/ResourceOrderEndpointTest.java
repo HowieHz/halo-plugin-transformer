@@ -71,6 +71,22 @@ class ResourceOrderEndpointTest {
         assertEquals(Map.of("snippet-a", 1), sanitized);
     }
 
+    // why: 排序映射一旦进入后端，就应收敛成单一规范形状；
+    // 即使客户端传了稀疏值或重复值，持久化结果也必须被标准化为稳定的 1..n。
+    @Test
+    void shouldCanonicalizeOrdersIntoSequentialRanking() {
+        TransformationRule zebra = rule("rule-z", "Zebra");
+        TransformationRule alpha = rule("rule-a", "Alpha");
+
+        Map<String, Integer> sanitized = endpoint.sanitizeOrders(
+            Map.of("rule-z", 50, "rule-a", 50),
+            List.of(zebra, alpha),
+            TransformationRule::getName
+        );
+
+        assertEquals(Map.of("rule-a", 1, "rule-z", 2), sanitized);
+    }
+
     // why: 删除中的资源仍可能暂时出现在底层 list 结果里；
     // 排序读模型不能继续把它当成有效资源，否则控制台左侧顺序会比可见列表慢一拍。
     @Test

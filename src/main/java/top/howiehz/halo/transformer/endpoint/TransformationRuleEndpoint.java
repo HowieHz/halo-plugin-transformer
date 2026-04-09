@@ -19,7 +19,9 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 import org.springframework.web.server.ServerWebInputException;
 import reactor.core.publisher.Mono;
 import run.halo.app.core.extension.endpoint.CustomEndpoint;
+import run.halo.app.extension.ExtensionUtil;
 import run.halo.app.extension.GroupVersion;
+import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
 import top.howiehz.halo.transformer.core.MatchRule;
 import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
@@ -66,8 +68,7 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
 
     private Mono<ServerResponse> getRule(ServerRequest request) {
         String name = request.pathVariable("name");
-        return client.fetch(TransformationRule.class, name)
-            .switchIfEmpty(Mono.error(new ServerWebInputException("未找到转换规则")))
+        return fetchVisibleRule(name, "未找到转换规则")
             .map(readModelMapper::toReadModel)
             .flatMap(response -> ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
@@ -81,9 +82,9 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
     private Mono<ServerResponse> createRule(ServerRequest request) {
         return request.bodyToMono(TransformationRule.class)
             .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
+            .map(this::canonicalizeRuleForStorage)
             .flatMap(validator::validateForWrite)
             .flatMap(this::normalizeAndValidateSnippetReferences)
-            .map(this::canonicalizeRuleForStorage)
             .flatMap(client::create)
             .doOnSuccess(created -> ruleRuntimeStore.invalidateAndWarmUpAsync())
             .flatMap(created -> ServerResponse.created(
@@ -99,8 +100,7 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
      */
     private Mono<ServerResponse> updateRule(ServerRequest request) {
         String name = request.pathVariable("name");
-        return client.fetch(TransformationRule.class, name)
-            .switchIfEmpty(Mono.error(new ServerWebInputException("未找到要更新的规则")))
+        return fetchVisibleRule(name, "未找到要更新的规则")
             .zipWhen(existing -> request.bodyToMono(TransformationRule.class)
                 .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空"))))
             .map(tuple -> {
@@ -119,10 +119,11 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
                 );
                 return tuple;
             })
+            .map(tuple -> reactor.util.function.Tuples.of(tuple.getT1(),
+                canonicalizeRuleForStorage(tuple.getT2())))
             .flatMap(tuple -> validator.validateForWrite(tuple.getT2())
                 .flatMap(ignored -> normalizeAndValidateAddedSnippetReferences(tuple.getT1(),
                     tuple.getT2())))
-            .map(this::canonicalizeRuleForStorage)
             .flatMap(client::update)
             .doOnSuccess(updated -> ruleRuntimeStore.invalidateAndWarmUpAsync())
             .flatMap(updated -> ServerResponse.ok()
@@ -151,11 +152,28 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
      */
     private Mono<ServerResponse> deleteRule(ServerRequest request) {
         String name = request.pathVariable("name");
-        return client.fetch(TransformationRule.class, name)
-            .switchIfEmpty(Mono.error(new ServerWebInputException("未找到要删除的规则")))
-            .flatMap(client::delete)
-            .doOnSuccess(ignored -> ruleRuntimeStore.invalidateAndWarmUpAsync())
+        return request.bodyToMono(DeletePayload.class)
+            .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
+            .flatMap(payload -> deleteRule(name, payload))
             .then(ServerResponse.noContent().build());
+    }
+
+    /**
+     * why: 删除同样属于写操作，也必须复用 `metadata.version`；
+     * 否则前端其余写口都有并发保护，唯独删除还在 silent last-write-wins。
+     */
+    Mono<Void> deleteRule(String name, DeletePayload payload) {
+        return fetchVisibleRule(name, "未找到要删除的规则")
+            .flatMap(rule -> {
+                OptimisticConcurrencyGuard.requireMatchingVersion(
+                    rule.getMetadata(),
+                    payload.metadata,
+                    "转换规则"
+                );
+                return client.delete(rule);
+            })
+            .doOnSuccess(ignored -> ruleRuntimeStore.invalidateAndWarmUpAsync())
+            .then();
     }
 
     /**
@@ -170,8 +188,7 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
         if (!StringUtils.hasText(name)) {
             return Mono.error(new ServerWebInputException("未找到要更新的规则"));
         }
-        return client.fetch(TransformationRule.class, name)
-            .switchIfEmpty(Mono.error(new ServerWebInputException("未找到要更新的规则")))
+        return fetchVisibleRule(name, "未找到要更新的规则")
             .flatMap(rule -> {
                 OptimisticConcurrencyGuard.requireMatchingVersion(
                     rule.getMetadata(),
@@ -228,6 +245,12 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
         return rule;
     }
 
+    private Mono<TransformationRule> fetchVisibleRule(String name, String notFoundReason) {
+        return client.fetch(TransformationRule.class, name)
+            .filter(rule -> !ExtensionUtil.isDeleted(rule))
+            .switchIfEmpty(Mono.error(new ServerWebInputException(notFoundReason)));
+    }
+
     @Override
     public GroupVersion groupVersion() {
         return GroupVersion.parseAPIVersion(CONSOLE_API_VERSION);
@@ -236,7 +259,11 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
     @lombok.Data
     static final class EnabledPayload {
         private Boolean enabled;
-        private run.halo.app.extension.Metadata metadata;
+        private Metadata metadata;
+    }
+
+    @lombok.Data
+    static final class DeletePayload {
+        private Metadata metadata;
     }
 }
-

@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.web.server.ServerWebInputException;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 import run.halo.app.extension.Metadata;
@@ -162,6 +163,54 @@ class TransformationRuleEndpointTest {
         verify(client, never()).update(any(TransformationRule.class));
     }
 
+    // why: 删除规则同样属于 mutation；旧页面发出的删除请求必须被 409 拦下，不能绕过其它写口的并发保护。
+    @Test
+    void shouldRejectDeletingRuleWithStaleVersion() {
+        TransformationRule rule = rule("rule-a", false);
+        rule.getMetadata().setVersion(8L);
+        when(client.fetch(TransformationRule.class, "rule-a")).thenReturn(Mono.just(rule));
+
+        ResponseStatusException error = assertThrows(
+            ResponseStatusException.class,
+            () -> endpoint.deleteRule("rule-a", deletePayload(7L)).block()
+        );
+
+        assertEquals(409, error.getStatusCode().value());
+        assertEquals("转换规则已被其他人修改，请刷新后重试", error.getReason());
+        verify(client, never()).delete(any(TransformationRule.class));
+    }
+
+    // why: 规则删除也应沿用同一份版本语义；只有版本匹配时才允许真正发出 delete。
+    @Test
+    void shouldDeleteRuleWithMatchingVersion() {
+        TransformationRule rule = rule("rule-a", false);
+        rule.getMetadata().setVersion(8L);
+        when(client.fetch(TransformationRule.class, "rule-a")).thenReturn(Mono.just(rule));
+        when(client.delete(any(TransformationRule.class))).thenReturn(Mono.empty());
+
+        endpoint.deleteRule("rule-a", deletePayload(8L)).block();
+
+        verify(client).delete(any(TransformationRule.class));
+        verify(ruleRuntimeStore).invalidateAndWarmUpAsync();
+    }
+
+    // why: deleting 规则已经不再属于当前控制台可编辑资源；
+    // 启停接口必须和列表/运行时保持同一套可见性语义。
+    @Test
+    void shouldRejectTogglingDeletingRule() {
+        TransformationRule rule = rule("rule-a", false);
+        rule.getMetadata().setDeletionTimestamp(java.time.Instant.now());
+        when(client.fetch(TransformationRule.class, "rule-a")).thenReturn(Mono.just(rule));
+
+        ServerWebInputException error = assertThrows(
+            ServerWebInputException.class,
+            () -> endpoint.updateRuleEnabled("rule-a", enabledPayload(true, 8L)).block()
+        );
+
+        assertEquals("未找到要更新的规则", error.getReason());
+        verify(client, never()).update(any(TransformationRule.class));
+    }
+
     private TransformationRule rule(String id, boolean enabled) {
         TransformationRule rule = new TransformationRule();
         Metadata metadata = new Metadata();
@@ -182,6 +231,15 @@ class TransformationRuleEndpointTest {
         TransformationRuleEndpoint.EnabledPayload payload =
             new TransformationRuleEndpoint.EnabledPayload();
         payload.setEnabled(enabled);
+        Metadata metadata = new Metadata();
+        metadata.setVersion(version);
+        payload.setMetadata(metadata);
+        return payload;
+    }
+
+    private TransformationRuleEndpoint.DeletePayload deletePayload(long version) {
+        TransformationRuleEndpoint.DeletePayload payload =
+            new TransformationRuleEndpoint.DeletePayload();
         Metadata metadata = new Metadata();
         metadata.setVersion(version);
         payload.setMetadata(metadata);

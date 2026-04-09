@@ -42,7 +42,6 @@ import RuleRuntimeOrderField from "./RuleRuntimeOrderField.vue";
 const props = defineProps<{
   rule: TransformationRuleEditorDraft | null;
   snippets: TransformationSnippetReadModel[];
-  selectedSnippetIds: string[];
   saving: boolean;
   dirty: boolean;
 }>();
@@ -52,13 +51,13 @@ const emit = defineEmits<{
   (e: "delete"): void;
   (e: "toggle-enabled"): void;
   (e: "toggle-bulk-mode"): void;
-  (e: "replace-snippet-ids", snippetIds: string[]): void;
-  (e: "toggle-snippet", snippetId: string): void;
   (e: "field-change"): void;
   (e: "update:rule", rule: TransformationRuleEditorDraft): void;
 }>();
 
-const sortedSnippets = computed(() => sortSelectedFirst(props.snippets, props.selectedSnippetIds));
+const sortedSnippets = computed(() =>
+  sortSelectedFirst(props.snippets, currentRule.value?.snippetIds ?? []),
+);
 const pendingRule = ref<TransformationRuleEditorDraft | null>(null);
 const currentRule = computed(() => pendingRule.value ?? props.rule);
 const exportFallback = ref<TransferFileDraft | null>(null);
@@ -89,6 +88,10 @@ const performanceWarning = computed(() =>
   currentRule.value ? getDomRulePerformanceWarning(currentRule.value) : null,
 );
 const undo = useFieldUndo();
+const textFieldInitialValue = ref<Record<"name" | "description", string>>({
+  name: "",
+  description: "",
+});
 
 function updateDragOverlayHeights() {
   dragOverlayTopHeight.value =
@@ -163,7 +166,7 @@ watch(
     if (!currentRule.value || props.dirty) {
       return;
     }
-    undo.resetBaseline(buildRuleUndoBaselineSnapshot(currentRule.value, props.selectedSnippetIds));
+    undo.resetBaseline(buildRuleUndoBaselineSnapshot(currentRule.value));
   },
   { immediate: true },
 );
@@ -228,12 +231,17 @@ function updateMatchRuleField(patch: Partial<TransformationRuleEditorDraft>) {
 }
 
 function handleToggleSnippet(snippetId: string) {
-  const previous = props.selectedSnippetIds;
+  if (!currentRule.value) {
+    return;
+  }
+  const previous = currentRule.value.snippetIds;
   const next = previous.includes(snippetId)
     ? previous.filter((id) => id !== snippetId)
     : [...previous, snippetId];
   undo.trackChange("snippetIds", previous, next);
-  emit("toggle-snippet", snippetId);
+  updateField("snippetIds", next as TransformationRuleEditorDraft["snippetIds"], {
+    trackHistory: false,
+  });
 }
 
 function beginMatchEdit() {
@@ -253,20 +261,33 @@ function commitMatchDraft() {
   undo.trackChange("match", matchInitialValue.value, matchDraft.value);
 }
 
+function beginTextFieldEdit(field: "name" | "description") {
+  textFieldInitialValue.value = {
+    ...textFieldInitialValue.value,
+    [field]: currentRule.value?.[field] ?? "",
+  };
+}
+
+function handleTextFieldInput(field: "name" | "description", value: string) {
+  updateField(field, value as TransformationRuleEditorDraft[typeof field], { trackHistory: false });
+}
+
+function commitTextFieldDraft(field: "name" | "description") {
+  const currentValue = currentRule.value?.[field] ?? "";
+  if (textFieldInitialValue.value[field] === currentValue) {
+    return;
+  }
+  undo.trackChange(field, textFieldInitialValue.value[field], currentValue);
+}
+
 function canUndo(field: UndoableRuleField) {
   if (!currentRule.value) return false;
-  return undo.isModified(
-    field,
-    resolveRuleUndoFieldCurrentValue(field, currentRule.value, props.selectedSnippetIds),
-  );
+  return undo.isModified(field, resolveRuleUndoFieldCurrentValue(field, currentRule.value));
 }
 
 function undoField(field: UndoableRuleField) {
   if (!currentRule.value) return;
-  const previous = undo.undo(
-    field,
-    resolveRuleUndoFieldCurrentValue(field, currentRule.value, props.selectedSnippetIds),
-  );
+  const previous = undo.undo(field, resolveRuleUndoFieldCurrentValue(field, currentRule.value));
   if (previous === undefined) return;
   applyUndoFieldState(field, previous);
 }
@@ -289,8 +310,9 @@ function applyUndoFieldState(field: UndoableRuleField, value: unknown) {
   }
 
   if (field === "snippetIds") {
-    emit("replace-snippet-ids", value as string[]);
-    emit("field-change");
+    updateField("snippetIds", value as TransformationRuleEditorDraft["snippetIds"], {
+      trackHistory: false,
+    });
     return;
   }
 
@@ -316,8 +338,9 @@ function resetField(field: UndoableRuleField) {
   }
 
   if (field === "snippetIds") {
-    emit("replace-snippet-ids", baseline as string[]);
-    emit("field-change");
+    updateField("snippetIds", baseline as TransformationRuleEditorDraft["snippetIds"], {
+      trackHistory: false,
+    });
     return;
   }
 
@@ -407,7 +430,9 @@ onBeforeUnmount(() => {
               :value="currentRule.name"
               class=":uno: focus:border-primary w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:outline-none"
               placeholder="不填默认为 ID"
-              @change="updateField('name', ($event.target as HTMLInputElement).value)"
+              @focus="beginTextFieldEdit('name')"
+              @input="handleTextFieldInput('name', ($event.target as HTMLInputElement).value)"
+              @change="commitTextFieldDraft('name')"
             />
           </template>
         </FormField>
@@ -422,7 +447,11 @@ onBeforeUnmount(() => {
               :value="currentRule.description"
               class=":uno: focus:border-primary w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:outline-none"
               placeholder="说明此规则的用途"
-              @change="updateField('description', ($event.target as HTMLInputElement).value)"
+              @focus="beginTextFieldEdit('description')"
+              @input="
+                handleTextFieldInput('description', ($event.target as HTMLInputElement).value)
+              "
+              @change="commitTextFieldDraft('description')"
             />
           </template>
         </FormField>
@@ -550,7 +579,7 @@ onBeforeUnmount(() => {
           <template #actions>
             <div class=":uno: flex items-center gap-2">
               <span aria-live="polite" class=":uno: text-xs text-gray-400">
-                {{ selectedSnippetIds.length }} 个已选
+                {{ currentRule.snippetIds.length }} 个已选
               </span>
               <FieldUndoButton
                 v-if="canUndo('snippetIds')"
@@ -563,7 +592,7 @@ onBeforeUnmount(() => {
             <ItemPicker
               :items="sortedSnippets"
               label="关联代码片段选择列表"
-              :selected-ids="selectedSnippetIds"
+              :selected-ids="currentRule.snippetIds"
               empty-text="暂无代码片段, 请先创建"
               @toggle="handleToggleSnippet"
             />

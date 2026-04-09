@@ -18,7 +18,9 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 import org.springframework.web.server.ServerWebInputException;
 import reactor.core.publisher.Mono;
 import run.halo.app.core.extension.endpoint.CustomEndpoint;
+import run.halo.app.extension.ExtensionUtil;
 import run.halo.app.extension.GroupVersion;
+import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
 import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
 import top.howiehz.halo.transformer.scheme.TransformationSnippet;
@@ -64,8 +66,7 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
 
     private Mono<ServerResponse> getSnippet(ServerRequest request) {
         String name = request.pathVariable("name");
-        return client.fetch(TransformationSnippet.class, name)
-            .switchIfEmpty(Mono.error(new ServerWebInputException("未找到代码片段")))
+        return fetchVisibleSnippet(name, "未找到代码片段")
             .map(readModelMapper::toReadModel)
             .flatMap(response -> ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
@@ -96,8 +97,7 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
      */
     private Mono<ServerResponse> updateSnippet(ServerRequest request) {
         String name = request.pathVariable("name");
-        return client.fetch(TransformationSnippet.class, name)
-            .switchIfEmpty(Mono.error(new ServerWebInputException("未找到要更新的代码片段")))
+        return fetchVisibleSnippet(name, "未找到要更新的代码片段")
             .zipWhen(existing -> request.bodyToMono(TransformationSnippet.class)
                 .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空"))))
             .map(tuple -> {
@@ -145,11 +145,28 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
      */
     private Mono<ServerResponse> deleteSnippet(ServerRequest request) {
         String name = request.pathVariable("name");
-        return client.fetch(TransformationSnippet.class, name)
-            .switchIfEmpty(Mono.error(new ServerWebInputException("未找到要删除的代码片段")))
-            .flatMap(lifecycleService::markForDeletion)
-            .doOnSuccess(ignored -> ruleRuntimeStore.invalidateAndWarmUpAsync())
+        return request.bodyToMono(DeletePayload.class)
+            .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
+            .flatMap(payload -> deleteSnippet(name, payload))
             .then(ServerResponse.noContent().build());
+    }
+
+    /**
+     * why: 删除也是写路径的一部分，必须和其它 mutation 一样复用 `metadata.version`；
+     * 否则 stale 页面仍能把更晚的管理员操作静默覆盖。
+     */
+    Mono<Void> deleteSnippet(String name, DeletePayload payload) {
+        return fetchVisibleSnippet(name, "未找到要删除的代码片段")
+            .flatMap(snippet -> {
+                OptimisticConcurrencyGuard.requireMatchingVersion(
+                    snippet.getMetadata(),
+                    payload.metadata,
+                    "代码片段"
+                );
+                return lifecycleService.markForDeletion(snippet);
+            })
+            .doOnSuccess(ignored -> ruleRuntimeStore.invalidateAndWarmUpAsync())
+            .then();
     }
 
     /**
@@ -164,8 +181,7 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
         if (!StringUtils.hasText(name)) {
             return Mono.error(new ServerWebInputException("未找到要更新的代码片段"));
         }
-        return client.fetch(TransformationSnippet.class, name)
-            .switchIfEmpty(Mono.error(new ServerWebInputException("未找到要更新的代码片段")))
+        return fetchVisibleSnippet(name, "未找到要更新的代码片段")
             .flatMap(snippet -> {
                 OptimisticConcurrencyGuard.requireMatchingVersion(
                     snippet.getMetadata(),
@@ -180,6 +196,12 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
             .doOnSuccess(updated -> ruleRuntimeStore.invalidateAndWarmUpAsync());
     }
 
+    private Mono<TransformationSnippet> fetchVisibleSnippet(String name, String notFoundReason) {
+        return client.fetch(TransformationSnippet.class, name)
+            .filter(snippet -> !ExtensionUtil.isDeleted(snippet))
+            .switchIfEmpty(Mono.error(new ServerWebInputException(notFoundReason)));
+    }
+
     @Override
     public GroupVersion groupVersion() {
         return GroupVersion.parseAPIVersion(CONSOLE_API_VERSION);
@@ -188,7 +210,11 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
     @lombok.Data
     static final class EnabledPayload {
         private Boolean enabled;
-        private run.halo.app.extension.Metadata metadata;
+        private Metadata metadata;
+    }
+
+    @lombok.Data
+    static final class DeletePayload {
+        private Metadata metadata;
     }
 }
-

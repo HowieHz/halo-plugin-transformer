@@ -345,7 +345,6 @@ describe("useTransformerData", () => {
     store.selectedRuleId.value = "rule-a";
     await nextTick();
 
-    expect(store.editRuleSnippetIds.value).toEqual([]);
     expect(store.editRule.value?.snippetIds).toEqual([]);
 
     await store.saveRule();

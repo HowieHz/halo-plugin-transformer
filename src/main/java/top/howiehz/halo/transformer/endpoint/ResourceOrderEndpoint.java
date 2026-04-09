@@ -123,19 +123,17 @@ public class ResourceOrderEndpoint implements CustomEndpoint {
                         return persistOrder(order);
                     })
                     .map(saved -> new OrderState(
-                        sanitizedOrders,
+                        saved.getOrders() == null ? Map.of() : saved.getOrders(),
                         saved.getMetadata() == null ? null : saved.getMetadata().getVersion()
                     ));
             });
     }
 
     Mono<ResourceOrder> persistOrder(ResourceOrder order) {
-        return findStoredOrder(order.getMetadata().getName())
-            .flatMap(existing -> {
-                order.setMetadata(existing.getMetadata());
-                return client.update(order);
-            })
-            .switchIfEmpty(client.create(order));
+        if (order.getMetadata() != null && order.getMetadata().getVersion() != null) {
+            return client.update(order);
+        }
+        return client.create(order);
     }
 
     /**
@@ -221,7 +219,9 @@ public class ResourceOrderEndpoint implements CustomEndpoint {
                 String.CASE_INSENSITIVE_ORDER)
             .thenComparing(Map.Entry::getKey, String.CASE_INSENSITIVE_ORDER));
         Map<String, Integer> sanitized = new LinkedHashMap<>();
-        validEntries.forEach(entry -> sanitized.put(entry.getKey(), entry.getValue()));
+        for (int index = 0; index < validEntries.size(); index++) {
+            sanitized.put(validEntries.get(index).getKey(), index + 1);
+        }
         return sanitized;
     }
 

@@ -17,10 +17,7 @@ export type UndoableRuleField =
  * why: 字段级撤销的 authoritative source 应该是“每个字段自己的语义值”；
  * 不能把 `position` 和 `wrapMarker` 这类相邻字段偷偷打包成复合快照，否则 UI 会把独立修改误判成联动修改。
  */
-export function buildRuleUndoBaselineSnapshot(
-  rule: TransformationRuleEditorDraft,
-  selectedSnippetIds: string[],
-) {
+export function buildRuleUndoBaselineSnapshot(rule: TransformationRuleEditorDraft) {
   return {
     name: rule.name,
     description: rule.description,
@@ -33,14 +30,13 @@ export function buildRuleUndoBaselineSnapshot(
       matchRule: cloneMatchRule(rule.matchRule),
       matchRuleSource: cloneRuleMatchRuleSource(rule),
     },
-    snippetIds: [...selectedSnippetIds],
+    snippetIds: [...rule.snippetIds],
   };
 }
 
 export function resolveRuleUndoFieldCurrentValue(
   field: UndoableRuleField,
   rule: TransformationRuleEditorDraft,
-  selectedSnippetIds: string[],
 ) {
   return field === "matchRule"
     ? {
@@ -48,7 +44,7 @@ export function resolveRuleUndoFieldCurrentValue(
         matchRuleSource: cloneRuleMatchRuleSource(rule),
       }
     : field === "snippetIds"
-      ? [...selectedSnippetIds]
+      ? [...rule.snippetIds]
       : rule[field];
 }
 

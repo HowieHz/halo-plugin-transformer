@@ -204,7 +204,7 @@ export function useSnippetState(options: UseSnippetStateOptions) {
       confirmType: "danger",
       async onConfirm() {
         try {
-          await snippetApi.delete(id);
+          await snippetApi.delete(id, options.editSnippet.value?.metadata.version);
           if (options.selectedSnippetId.value === id) options.selectedSnippetId.value = null;
           options.editSnippet.value = null;
           options.editDirty.value = false;
@@ -239,7 +239,7 @@ export function useSnippetState(options: UseSnippetStateOptions) {
         try {
           for (const snippet of targetSnippets) {
             try {
-              await snippetApi.delete(snippet.id);
+              await snippetApi.delete(snippet.id, snippet.metadata.version);
               successCount += 1;
             } catch {
               continue;

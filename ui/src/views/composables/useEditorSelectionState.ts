@@ -30,7 +30,6 @@ interface SnippetEditorSession {
 interface RuleEditorSession {
   tab: "rules";
   draft: TransformationRuleEditorDraft | null;
-  snippetIds: string[];
   dirty: boolean;
 }
 
@@ -99,22 +98,6 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
     },
   });
 
-  const editRuleSnippetIds = computed({
-    get: () => (editorSession.value.tab === "rules" ? editorSession.value.snippetIds : []),
-    set: (snippetIds: string[]) => {
-      if (editorSession.value.tab !== "rules") {
-        return;
-      }
-      editorSession.value = {
-        ...editorSession.value,
-        snippetIds: [...snippetIds],
-      };
-      if (editorSession.value.draft) {
-        editorSession.value.draft.snippetIds = [...snippetIds];
-      }
-    },
-  });
-
   const editDirty = computed({
     get: () => editorSession.value.dirty,
     set: (dirty: boolean) => {
@@ -168,7 +151,7 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
     if (draft) {
       draft.snippetIds = [...snippetIds];
     }
-    editorSession.value = createRuleEditorSession(draft, snippetIds);
+    editorSession.value = createRuleEditorSession(draft);
   }
 
   /**
@@ -179,17 +162,20 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
     if (editorSession.value.tab !== "rules") {
       return;
     }
-    const nextSnippetIds = filterExistingSnippetIds(editorSession.value.snippetIds);
-    if (nextSnippetIds.length === editorSession.value.snippetIds.length) {
+    if (!editorSession.value.draft) {
+      return;
+    }
+    const nextSnippetIds = filterExistingSnippetIds(editorSession.value.draft.snippetIds);
+    if (nextSnippetIds.length === editorSession.value.draft.snippetIds.length) {
       return;
     }
     editorSession.value = {
       ...editorSession.value,
-      snippetIds: nextSnippetIds,
+      draft: {
+        ...editorSession.value.draft,
+        snippetIds: [...nextSnippetIds],
+      },
     };
-    if (editorSession.value.draft) {
-      editorSession.value.draft.snippetIds = [...nextSnippetIds];
-    }
   }
 
   /**
@@ -222,23 +208,6 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
     }
   }
 
-  function toggleSnippetInRuleEditor(snippetId: string) {
-    if (editorSession.value.tab !== "rules") {
-      return;
-    }
-    const nextSnippetIds = editorSession.value.snippetIds.includes(snippetId)
-      ? editorSession.value.snippetIds.filter((id) => id !== snippetId)
-      : [...editorSession.value.snippetIds, snippetId];
-    editorSession.value = {
-      ...editorSession.value,
-      snippetIds: nextSnippetIds,
-      dirty: true,
-    };
-    if (editorSession.value.draft) {
-      editorSession.value.draft.snippetIds = [...nextSnippetIds];
-    }
-  }
-
   function discardSnippetEdit() {
     hydrateSelectedSnippetDraft();
   }
@@ -261,7 +230,6 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
     selectedRuleId,
     editSnippet,
     editRule,
-    editRuleSnippetIds,
     editDirty,
     rulesUsingSnippet,
     snippetsInRule,
@@ -269,7 +237,6 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
     hydrateSelectedRuleDraft,
     applySavedSnippetSnapshot,
     applySavedRuleSnapshot,
-    toggleSnippetInRuleEditor,
     discardSnippetEdit,
     discardRuleEdit,
   };
@@ -287,12 +254,10 @@ function createSnippetEditorSession(
 
 function createRuleEditorSession(
   draft: TransformationRuleEditorDraft | null = null,
-  snippetIds: string[] = [],
 ): RuleEditorSession {
   return {
     tab: "rules",
     draft,
-    snippetIds,
     dirty: false,
   };
 }

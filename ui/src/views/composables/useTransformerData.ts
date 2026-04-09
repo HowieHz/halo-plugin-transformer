@@ -111,7 +111,6 @@ export function useTransformerData(activeTab: Ref<ActiveTab>) {
     processingBulk,
     rules: ruleOrderState.items,
     editRule: editorSelectionState.editRule,
-    editRuleSnippetIds: editorSelectionState.editRuleSnippetIds,
     editDirty: editorSelectionState.editDirty,
     selectedRuleId: editorSelectionState.selectedRuleId,
     refreshRuleList,
@@ -131,7 +130,6 @@ export function useTransformerData(activeTab: Ref<ActiveTab>) {
     selectedRuleId: editorSelectionState.selectedRuleId,
     editSnippet: editorSelectionState.editSnippet,
     editRule: editorSelectionState.editRule,
-    editRuleSnippetIds: editorSelectionState.editRuleSnippetIds,
     editDirty: editorSelectionState.editDirty,
     snippetEditorError: snippetState.snippetEditorError,
     ruleEditorError: ruleState.ruleEditorError,
@@ -155,7 +153,6 @@ export function useTransformerData(activeTab: Ref<ActiveTab>) {
     confirmDeleteRule: ruleState.confirmDeleteRule,
     confirmDeleteRules: ruleState.confirmDeleteRules,
     discardRuleEdit: editorSelectionState.discardRuleEdit,
-    toggleSnippetInRuleEditor: editorSelectionState.toggleSnippetInRuleEditor,
     reorderRule: ruleOrderState.reorder,
   };
 }

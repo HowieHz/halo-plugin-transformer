@@ -15,7 +15,6 @@ interface UseRuleStateOptions {
   processingBulk: Ref<boolean>;
   rules: ComputedRef<TransformationRuleReadModel[]>;
   editRule: Ref<TransformationRuleEditorDraft | null>;
-  editRuleSnippetIds: Ref<string[]>;
   editDirty: Ref<boolean>;
   selectedRuleId: Ref<string | null>;
   refreshRuleList: () => Promise<void>;
@@ -34,10 +33,9 @@ export function useRuleState(options: UseRuleStateOptions) {
    * 这里集中收口 REMOVE 等模式差异，保证所有写路径都走同一套规则。
    */
   function resolvePersistedSnippetIdsForRule(
-    rule: Pick<TransformationRuleEditorDraft, "position">,
-    snippetIds: string[],
+    rule: Pick<TransformationRuleEditorDraft, "position" | "snippetIds">,
   ) {
-    return rule.position === "REMOVE" ? [] : uniqueStrings(snippetIds);
+    return rule.position === "REMOVE" ? [] : uniqueStrings(rule.snippetIds);
   }
 
   /**
@@ -63,19 +61,18 @@ export function useRuleState(options: UseRuleStateOptions) {
     return validateRuleDraft(options.editRule.value);
   });
 
-  async function addRule(
-    rule: TransformationRuleEditorDraft,
-    snippetIds: string[],
-  ): Promise<string | null> {
+  async function addRule(rule: TransformationRuleEditorDraft): Promise<string | null> {
     const error = validateRuleDraft(rule);
     if (error) {
       Toast.error(error);
       return null;
     }
-    const nextSnippetIds = resolvePersistedSnippetIdsForRule(rule, snippetIds);
     options.creating.value = true;
     try {
-      const payload = buildRuleWritePayload(rule, nextSnippetIds);
+      const payload = buildRuleWritePayload({
+        ...rule,
+        snippetIds: resolvePersistedSnippetIdsForRule(rule),
+      });
       if (!payload) {
         Toast.error("匹配规则有误，请先修正后再保存");
         return null;
@@ -119,13 +116,11 @@ export function useRuleState(options: UseRuleStateOptions) {
         }
 
         try {
-          const payload = buildRuleWritePayload(
-            {
-              ...rule,
-              enabled,
-            },
-            resolvePersistedSnippetIdsForRule(rule, []),
-          );
+          const payload = buildRuleWritePayload({
+            ...rule,
+            enabled,
+            snippetIds: resolvePersistedSnippetIdsForRule(rule),
+          });
           if (!payload) {
             failures.push("匹配规则有误，请先修正后再保存");
             continue;
@@ -167,13 +162,12 @@ export function useRuleState(options: UseRuleStateOptions) {
       Toast.error(error);
       return false;
     }
-    const nextSnippetIds = resolvePersistedSnippetIdsForRule(
-      options.editRule.value,
-      options.editRuleSnippetIds.value,
-    );
     options.savingEditor.value = true;
     try {
-      const payload = buildRuleWritePayload(options.editRule.value, nextSnippetIds);
+      const payload = buildRuleWritePayload({
+        ...options.editRule.value,
+        snippetIds: resolvePersistedSnippetIdsForRule(options.editRule.value),
+      });
       if (!payload) {
         Toast.error("匹配规则有误，请先修正后再保存");
         return false;
@@ -255,10 +249,9 @@ export function useRuleState(options: UseRuleStateOptions) {
       confirmType: "danger",
       async onConfirm() {
         try {
-          await ruleApi.delete(id);
+          await ruleApi.delete(id, options.editRule.value?.metadata.version);
           if (options.selectedRuleId.value === id) options.selectedRuleId.value = null;
           options.editRule.value = null;
-          options.editRuleSnippetIds.value = [];
           options.editDirty.value = false;
           await options.refreshAllResources();
           const orderResult = await options.saveRuleOrderMap(options.rules.value);
@@ -291,7 +284,7 @@ export function useRuleState(options: UseRuleStateOptions) {
         try {
           for (const rule of targetRules) {
             try {
-              await ruleApi.delete(rule.id);
+              await ruleApi.delete(rule.id, rule.metadata.version);
               successCount += 1;
             } catch {
               continue;
@@ -301,7 +294,6 @@ export function useRuleState(options: UseRuleStateOptions) {
           if (targetRules.some((rule) => rule.id === options.selectedRuleId.value)) {
             options.selectedRuleId.value = null;
             options.editRule.value = null;
-            options.editRuleSnippetIds.value = [];
             options.editDirty.value = false;
           }
 

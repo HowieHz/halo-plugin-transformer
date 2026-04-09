@@ -33,19 +33,23 @@ const emit = defineEmits<{
 
 const undo = useFieldUndo();
 const exportFallback = ref<TransferFileDraft | null>(null);
-const codeDraft = ref("");
 const codeScrollTop = ref(0);
 type UndoableSnippetField = "name" | "description" | "code";
+const fieldInitialValue = ref<Record<UndoableSnippetField, string>>({
+  name: "",
+  description: "",
+  code: "",
+});
 
 const codeLines = computed(() => {
-  const content = codeDraft.value.replace(/\r\n/g, "\n");
+  const content = (props.snippet?.code ?? "").replace(/\r\n/g, "\n");
   return content.split("\n").length;
 });
 
 const codeLineNumberStyle = computed(() => ({
   transform: `translateY(-${codeScrollTop.value}px)`,
 }));
-const codeFieldError = computed(() => (codeDraft.value.trim() ? null : "代码内容不能为空"));
+const codeFieldError = computed(() => (props.snippet?.code.trim() ? null : "代码内容不能为空"));
 
 watch(
   () => [props.snippet?.id, props.dirty],
@@ -58,14 +62,6 @@ watch(
       description: props.snippet.description,
       code: props.snippet.code,
     });
-  },
-  { immediate: true },
-);
-
-watch(
-  () => props.snippet?.code,
-  (value) => {
-    codeDraft.value = value ?? "";
   },
   { immediate: true },
 );
@@ -125,12 +121,25 @@ function syncCodeScroll(event: Event) {
   codeScrollTop.value = (event.target as HTMLTextAreaElement).scrollTop;
 }
 
-function handleCodeInput(event: Event) {
-  codeDraft.value = (event.target as HTMLTextAreaElement).value;
+function beginFieldEdit(field: UndoableSnippetField) {
+  fieldInitialValue.value = {
+    ...fieldInitialValue.value,
+    [field]: resolveUndoFieldCurrentValue(field) ?? "",
+  };
 }
 
-function commitCodeDraft() {
-  updateField("code", codeDraft.value);
+function handleFieldInput(field: UndoableSnippetField, value: string) {
+  updateField(field, value as TransformationSnippetEditorDraft[typeof field], {
+    trackHistory: false,
+  });
+}
+
+function commitFieldDraft(field: UndoableSnippetField) {
+  const currentValue = resolveUndoFieldCurrentValue(field);
+  if (currentValue === undefined || fieldInitialValue.value[field] === currentValue) {
+    return;
+  }
+  undo.trackChange(field, fieldInitialValue.value[field], currentValue);
 }
 
 async function exportSnippet() {
@@ -185,7 +194,9 @@ async function exportSnippet() {
               :value="snippet.name"
               class=":uno: focus:border-primary w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:outline-none"
               placeholder="不填默认显示为 ID"
-              @change="updateField('name', ($event.target as HTMLInputElement).value)"
+              @focus="beginFieldEdit('name')"
+              @input="handleFieldInput('name', ($event.target as HTMLInputElement).value)"
+              @change="commitFieldDraft('name')"
             />
           </template>
         </FormField>
@@ -200,7 +211,9 @@ async function exportSnippet() {
               :value="snippet.description"
               class=":uno: focus:border-primary w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:outline-none"
               placeholder="说明此代码片段的用途"
-              @change="updateField('description', ($event.target as HTMLInputElement).value)"
+              @focus="beginFieldEdit('description')"
+              @input="handleFieldInput('description', ($event.target as HTMLInputElement).value)"
+              @change="commitFieldDraft('description')"
             />
           </template>
         </FormField>
@@ -238,13 +251,14 @@ async function exportSnippet() {
                   <textarea
                     :id="inputId"
                     :aria-invalid="!!codeFieldError"
-                    :value="codeDraft"
+                    :value="snippet.code"
                     class=":uno: h-full min-h-0 w-full flex-1 resize-none border-0 bg-transparent px-3 pt-2 pb-0 font-mono text-sm leading-6 focus:outline-none"
                     placeholder="输入 HTML 代码"
                     spellcheck="false"
                     wrap="off"
-                    @change="commitCodeDraft"
-                    @input="handleCodeInput"
+                    @focus="beginFieldEdit('code')"
+                    @change="commitFieldDraft('code')"
+                    @input="handleFieldInput('code', ($event.target as HTMLTextAreaElement).value)"
                     @scroll="syncCodeScroll"
                   />
                 </div>

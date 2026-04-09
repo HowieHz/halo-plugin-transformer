@@ -22,6 +22,12 @@ export interface PersistedOrderState {
   version: number | null;
 }
 
+interface DeletePayload {
+  metadata: {
+    version: number | null;
+  };
+}
+
 export const snippetApi = {
   list() {
     return axiosInstance.get<ItemList<TransformationSnippetReadModel>>(SNIPPETS);
@@ -53,8 +59,12 @@ export const snippetApi = {
     });
   },
 
-  delete(id: string) {
-    return axiosInstance.delete(`${SNIPPETS_WRITE}/${id}`);
+  delete(id: string, version: number | null | undefined) {
+    return axiosInstance.delete(`${SNIPPETS_WRITE}/${id}`, {
+      data: {
+        metadata: { version: version ?? null },
+      } satisfies DeletePayload,
+    });
   },
 };
 
@@ -89,7 +99,11 @@ export const ruleApi = {
     });
   },
 
-  delete(id: string) {
-    return axiosInstance.delete(`${RULES_WRITE}/${id}`);
+  delete(id: string, version: number | null | undefined) {
+    return axiosInstance.delete(`${RULES_WRITE}/${id}`, {
+      data: {
+        metadata: { version: version ?? null },
+      } satisfies DeletePayload,
+    });
   },
 };

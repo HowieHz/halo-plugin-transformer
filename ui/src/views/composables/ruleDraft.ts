@@ -43,14 +43,13 @@ export function hydrateRuleEditorDraft(
  */
 export function buildRuleWritePayload(
   rule: TransformationRuleEditorDraft,
-  snippetIds: string[],
 ): TransformationRuleWritePayload | null {
   const result = resolveRuleMatchRule(rule);
   if (!result.rule) {
     return null;
   }
 
-  const normalizedSnippetIds = rule.position === "REMOVE" ? [] : snippetIds;
+  const normalizedSnippetIds = rule.position === "REMOVE" ? [] : [...rule.snippetIds];
   const normalizedWrapMarker = rule.position === "REMOVE" ? false : rule.wrapMarker;
 
   return {

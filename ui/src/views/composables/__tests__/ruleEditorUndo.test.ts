@@ -14,14 +14,14 @@ describe("ruleEditorUndo", () => {
       wrapMarker: true,
     });
 
-    const baseline = buildRuleUndoBaselineSnapshot(rule, []);
+    const baseline = buildRuleUndoBaselineSnapshot(rule);
     const nextRule = {
       ...rule,
       wrapMarker: false,
     };
 
     expect(baseline.position).toBe("APPEND");
-    expect(resolveRuleUndoFieldCurrentValue("position", nextRule, [])).toBe("APPEND");
-    expect(resolveRuleUndoFieldCurrentValue("wrapMarker", nextRule, [])).toBe(false);
+    expect(resolveRuleUndoFieldCurrentValue("position", nextRule)).toBe("APPEND");
+    expect(resolveRuleUndoFieldCurrentValue("wrapMarker", nextRule)).toBe(false);
   });
 });

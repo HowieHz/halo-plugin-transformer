@@ -78,7 +78,7 @@ const ruleFormRef = ref<{
   reset: () => void;
   hasUnsavedChanges: () => boolean;
   getValidationError: () => string | null;
-  getSubmitPayload: () => { rule: TransformationRuleEditorDraft; snippetIds: string[] };
+  getSubmitPayload: () => { rule: TransformationRuleEditorDraft };
 } | null>(null);
 const resourceListRef = ref<{
   getScrollContainer: () => HTMLElement | null;
@@ -99,7 +99,6 @@ const {
   selectedRuleId,
   editSnippet,
   editRule,
-  editRuleSnippetIds,
   editDirty,
   snippetEditorError,
   ruleEditorError,
@@ -123,7 +122,6 @@ const {
   confirmDeleteRule,
   confirmDeleteRules,
   discardRuleEdit,
-  toggleSnippetInRuleEditor,
   reorderRule,
 } = useTransformerData(activeTab);
 
@@ -358,7 +356,7 @@ async function saveCurrentChanges() {
     }
   } else if (createModalTab.value === "rules") {
     const payload = ruleFormRef.value?.getSubmitPayload();
-    saved = payload ? !!(await addRule(payload.rule, payload.snippetIds)) : false;
+    saved = payload ? !!(await addRule(payload.rule)) : false;
     if (saved) {
       createModalTab.value = null;
     }
@@ -923,15 +921,12 @@ function jumpToSnippet(id: string) {
               :dirty="editDirty"
               :rule="editRule"
               :saving="savingEditor"
-              :selected-snippet-ids="editRuleSnippetIds"
               :snippets="snippets"
               @delete="confirmDeleteRule"
               @save="saveRule"
               @field-change="editDirty = true"
-              @replace-snippet-ids="editRuleSnippetIds = $event"
               @toggle-bulk-mode="enterBulkMode"
               @toggle-enabled="toggleRuleEnabled"
-              @toggle-snippet="toggleSnippetInRuleEditor"
               @update:rule="editRule = $event"
             />
           </div>
