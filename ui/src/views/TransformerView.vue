@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { Toast, VButton, VCard, VLoading, VModal, VPageHeader, VSpace } from "@halo-dev/components";
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, useId, watch } from "vue";
 import {
   onBeforeRouteLeave,
   onBeforeRouteUpdate,
@@ -87,6 +87,11 @@ const resourceListRef = ref<{
 const resourceListScrollContainer = ref<HTMLElement | null>(null);
 const leftPaneAutoScroll = useDragAutoScroll(resourceListScrollContainer);
 const LEFT_PANE_EDGE_OVERLAP_PX = 5;
+const tabGroupId = useId();
+const TAB_DEFINITIONS = [
+  { key: "snippets", label: "代码片段" },
+  { key: "rules", label: "转换规则" },
+] as const satisfies ReadonlyArray<{ key: ActiveTab; label: string }>;
 
 const {
   loading,
@@ -144,6 +149,18 @@ const canBulkDisable = computed(() => selectedBulkResources.value.some((item) =>
 onMounted(fetchAll);
 
 const postCreatePrompt = ref<null | { tab: ActiveTab; id: string }>(null);
+
+function tabButtonId(tab: ActiveTab) {
+  return `transformer-tab-${tabGroupId}-${tab}`;
+}
+
+function tabPanelId(tab: ActiveTab) {
+  return `transformer-tabpanel-${tabGroupId}-${tab}`;
+}
+
+function focusTabButton(tab: ActiveTab) {
+  document.getElementById(tabButtonId(tab))?.focus();
+}
 
 function handleLeftPaneDragOver(event: DragEvent) {
   leftPaneAutoScroll.handleContainerDragOver(event, {
@@ -427,6 +444,39 @@ function handleTabSwitch(tab: ActiveTab) {
   });
 }
 
+/**
+ * why: 左侧页签不能只靠鼠标点击；补上方向键 / Home / End 后，
+ * 键盘用户才可以按标准页签习惯切换资源类型。
+ */
+function handleTabKeydown(event: KeyboardEvent, currentTab: ActiveTab) {
+  const currentIndex = TAB_DEFINITIONS.findIndex((tab) => tab.key === currentTab);
+  if (currentIndex === -1) {
+    return;
+  }
+
+  let nextTab: ActiveTab | null = null;
+  if (event.key === "ArrowLeft") {
+    nextTab =
+      TAB_DEFINITIONS[(currentIndex - 1 + TAB_DEFINITIONS.length) % TAB_DEFINITIONS.length].key;
+  } else if (event.key === "ArrowRight") {
+    nextTab = TAB_DEFINITIONS[(currentIndex + 1) % TAB_DEFINITIONS.length].key;
+  } else if (event.key === "Home") {
+    nextTab = TAB_DEFINITIONS[0].key;
+  } else if (event.key === "End") {
+    nextTab = TAB_DEFINITIONS[TAB_DEFINITIONS.length - 1].key;
+  }
+
+  if (!nextTab || nextTab === currentTab) {
+    return;
+  }
+
+  event.preventDefault();
+  handleTabSwitch(nextTab);
+  nextTick(() => {
+    focusTabButton(activeTab.value);
+  });
+}
+
 function handleSnippetSelect(id: string) {
   if (activeTab.value === "snippets" && selectedSnippetId.value === id) {
     return;
@@ -633,6 +683,11 @@ watch([activeTab, loading], async () => {
   resourceListScrollContainer.value = resourceListRef.value?.getScrollContainer() ?? null;
 });
 
+watch(activeTab, async (tab) => {
+  await nextTick();
+  focusTabButton(tab);
+});
+
 async function handleAddSnippet(...args: Parameters<typeof addSnippet>) {
   const id = await addSnippet(...args);
   if (id) {
@@ -797,21 +852,31 @@ function jumpToSnippet(id: string) {
             @drop.capture="handleLeftPaneDropCapture"
           >
             <div
+              aria-label="资源类型"
               class=":uno: sticky top-0 z-10 flex h-12 shrink-0 items-center gap-4 border-b bg-white px-4"
+              role="tablist"
             >
               <button
-                v-for="tab in [
-                  { key: 'snippets', label: '代码片段', count: snippets.length },
-                  { key: 'rules', label: '转换规则', count: rules.length },
-                ]"
+                v-for="tab in TAB_DEFINITIONS.map((tab) => ({
+                  ...tab,
+                  count: tab.key === 'snippets' ? snippets.length : rules.length,
+                }))"
                 :key="tab.key"
+                :id="tabButtonId(tab.key)"
+                :aria-controls="tabPanelId(tab.key)"
+                :aria-selected="activeTab === tab.key"
                 :class="
                   activeTab === tab.key
                     ? ':uno: text-primary'
                     : ':uno: text-gray-500 hover:text-gray-800'
                 "
+                :data-transformer-tab="tab.key"
                 class=":uno: text-sm font-medium whitespace-nowrap transition-colors"
+                role="tab"
+                :tabindex="activeTab === tab.key ? 0 : -1"
+                type="button"
                 @click="handleTabSwitch(tab.key as ActiveTab)"
+                @keydown="handleTabKeydown($event, tab.key as ActiveTab)"
               >
                 {{ tab.label }}
                 <span class=":uno: ml-0.5 text-xs">({{ tab.count }})</span>
@@ -836,9 +901,11 @@ function jumpToSnippet(id: string) {
               :bulk-selected-ids="bulkSelectionState.bulkSnippetIds.value"
               :items="snippets"
               list-label="代码片段列表"
+              :panel-id="tabPanelId('snippets')"
               :reorderable="!bulkSelectionState.isBulkMode.value"
               :selected-id="currentSelectedId('snippets')"
               :stretch="true"
+              :tab-labelledby="tabButtonId('snippets')"
               empty-text="暂无代码片段"
               @drag-state-change="leftPaneAutoScroll.setDragActive"
               @reorder="reorderSnippet"
@@ -856,9 +923,11 @@ function jumpToSnippet(id: string) {
               :bulk-selected-ids="bulkSelectionState.bulkRuleIds.value"
               :items="rules"
               list-label="转换规则列表"
+              :panel-id="tabPanelId('rules')"
               :reorderable="!bulkSelectionState.isBulkMode.value"
               :selected-id="currentSelectedId('rules')"
               :stretch="true"
+              :tab-labelledby="tabButtonId('rules')"
               empty-text="暂无转换规则"
               @drag-state-change="leftPaneAutoScroll.setDragActive"
               @reorder="reorderRule"

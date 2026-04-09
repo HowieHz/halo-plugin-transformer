@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, watch } from "vue";
+import { computed, ref, useId, watch } from "vue";
 
 import { RUNTIME_ORDER_MAX, RUNTIME_ORDER_STEPS } from "@/types";
 import {
@@ -26,6 +26,8 @@ const isDraggingSlider = ref(false);
 const manualMode = ref(false);
 const manualDraft = ref(String(props.modelValue));
 const sliderDraft = ref(props.modelValue);
+const helpTextId = useId();
+const rangeHintId = useId();
 
 watch(
   () => props.modelValue,
@@ -128,10 +130,12 @@ function toggleEditMode() {
 <template>
   <div class=":uno: space-y-2">
     <div class=":uno: flex items-center justify-between gap-3">
-      <p class=":uno: text-xs leading-5 text-gray-500">
+      <p :id="helpTextId" class=":uno: text-xs leading-5 text-gray-500">
         {{ runtimeOrderHelpText }}
       </p>
       <button
+        :aria-label="manualMode ? '切换为滑条设置运行顺序' : '切换为精确输入运行顺序'"
+        :aria-pressed="manualMode"
         class=":uno: shrink-0 bg-transparent p-0 text-xs text-gray-400 hover:text-gray-600"
         type="button"
         @click="toggleEditMode"
@@ -143,6 +147,8 @@ function toggleEditMode() {
     <template v-if="manualMode">
       <div class=":uno: space-y-2">
         <input
+          aria-label="运行顺序精确值"
+          :aria-describedby="`${helpTextId} ${rangeHintId}`"
           :max="RUNTIME_ORDER_MAX"
           min="0"
           :value="manualDraft"
@@ -152,13 +158,15 @@ function toggleEditMode() {
           @blur="commitManualDraft"
           @keydown.enter.prevent="commitManualDraft"
         />
-        <p class=":uno: text-xs text-gray-500">{{ currentRangeHint }}</p>
+        <p :id="rangeHintId" class=":uno: text-xs text-gray-500">{{ currentRangeHint }}</p>
       </div>
     </template>
     <template v-else>
       <div>
         <div :style="sliderShellStyle" class="runtime-order-slider-shell">
           <input
+            aria-label="运行顺序滑条"
+            :aria-describedby="helpTextId"
             :aria-valuetext="currentStepLabel"
             :max="RUNTIME_ORDER_MAX"
             min="0"
@@ -198,6 +206,8 @@ function toggleEditMode() {
                 ? ':uno: text-primary'
                 : ':uno: text-gray-400 hover:text-gray-600'
             "
+            :aria-label="`将运行顺序设为 ${step.label}`"
+            :aria-pressed="step.value === previewRuntimeOrder"
             class="runtime-order-label :uno: absolute top-0 bg-transparent p-0 text-[11px] whitespace-nowrap"
             type="button"
             @click="updateRuntimeOrderPresetValue(step.value)"

@@ -3,7 +3,7 @@
   lang="ts"
   setup
 >
-import { ref } from "vue";
+import { ref, type ComponentPublicInstance } from "vue";
 
 import StatusDot from "./StatusDot.vue";
 
@@ -18,6 +18,8 @@ const props = defineProps<{
   stretch?: boolean;
   reorderable?: boolean;
   listLabel?: string;
+  panelId?: string;
+  tabLabelledby?: string;
 }>();
 
 const emit = defineEmits<{
@@ -37,6 +39,7 @@ const draggingId = ref<string | null>(null);
 const dropTargetId = ref<string | null>(null);
 const dropPlacement = ref<ReorderPlacement | null>(null);
 const scrollContainer = ref<HTMLElement | null>(null);
+const itemElements = ref<Record<string, HTMLElement | null>>({});
 
 defineExpose({
   getScrollContainer() {
@@ -152,11 +155,37 @@ function handleSelect(id: string) {
 }
 
 function handleItemKeydown(event: KeyboardEvent, id: string) {
-  if (event.key !== "Enter" && event.key !== " ") {
+  const currentIndex = props.items.findIndex((item) => item.id === id);
+  if (currentIndex === -1) {
     return;
   }
+
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    handleSelect(id);
+    return;
+  }
+
+  let nextIndex: number | null = null;
+  if (event.key === "ArrowUp") {
+    nextIndex = Math.max(0, currentIndex - 1);
+  } else if (event.key === "ArrowDown") {
+    nextIndex = Math.min(props.items.length - 1, currentIndex + 1);
+  } else if (event.key === "Home") {
+    nextIndex = 0;
+  } else if (event.key === "End") {
+    nextIndex = props.items.length - 1;
+  }
+
+  if (nextIndex === null || nextIndex === currentIndex) {
+    return;
+  }
+
   event.preventDefault();
-  handleSelect(id);
+  focusItem(props.items[nextIndex].id);
+  if (!props.bulkMode) {
+    emit("select", props.items[nextIndex].id);
+  }
 }
 
 function handleReorderButtonKeydown(event: KeyboardEvent, index: number) {
@@ -187,13 +216,32 @@ function handleCheckboxClick(event: Event, id: string) {
 function handleToggleBulkAll() {
   emit("toggle-bulk-all");
 }
+
+/**
+ * why: 键盘排序与上下导航都要把焦点移到目标项；
+ * 这里提前收集每一项的 DOM 引用，避免后面再去靠脆弱的选择器回查。
+ */
+const setItemElement = (id: string, element: Element | ComponentPublicInstance | null) => {
+  itemElements.value[id] = element instanceof HTMLElement ? element : null;
+};
+
+/**
+ * why: 列表声明了 `role="listbox"` 后，方向键移动焦点就是用户的默认预期；
+ * 至少保证上下 / Home / End 能走通，键盘用户才不会被困在当前项上。
+ */
+function focusItem(id: string) {
+  itemElements.value[id]?.focus();
+}
 </script>
 
 <template>
   <div
     ref="scrollContainer"
+    :aria-labelledby="props.tabLabelledby"
     :class="props.stretch ? ':uno: min-h-0 flex-1 overflow-y-auto' : ''"
+    :id="props.panelId"
     class=":uno: relative"
+    :role="props.panelId ? 'tabpanel' : undefined"
     @dragover="handleContainerDragOver"
     @drop="handleContainerDrop"
     @scroll="emit('scroll-container')"
@@ -202,6 +250,7 @@ function handleToggleBulkAll() {
 
     <ul
       :aria-label="props.listLabel ?? '资源列表'"
+      :aria-multiselectable="props.bulkMode || undefined"
       class=":uno: divide-y divide-gray-100"
       role="listbox"
     >
@@ -211,6 +260,7 @@ function handleToggleBulkAll() {
       >
         <label class=":uno: flex cursor-pointer items-center gap-2 text-sm text-gray-700">
           <input
+            aria-label="全选当前列表项"
             :checked="
               props.items.length > 0 && props.items.every((item) => isBulkSelected(item.id))
             "
@@ -236,6 +286,7 @@ function handleToggleBulkAll() {
       <li
         v-for="(item, index) in props.items"
         :key="item.id"
+        :ref="(element) => setItemElement(item.id, element)"
         :aria-selected="props.selectedId !== undefined && props.selectedId === item.id"
         :class="draggingId === item.id ? ':uno: opacity-60' : ''"
         class=":uno: group focus-visible:ring-primary/40 relative cursor-pointer focus:outline-none focus-visible:ring-2"
@@ -266,6 +317,7 @@ function handleToggleBulkAll() {
             @click.stop
           >
             <input
+              :aria-label="`选择 ${item.name || item.id}`"
               :checked="isBulkSelected(item.id)"
               type="checkbox"
               @change="handleCheckboxClick($event, item.id)"
