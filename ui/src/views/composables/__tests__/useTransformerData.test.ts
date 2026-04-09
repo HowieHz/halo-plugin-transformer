@@ -6,6 +6,7 @@ import {
   makeSnippetEditorDraft,
   type ActiveTab,
   type ItemList,
+  type OrderedItemList,
 } from "@/types";
 
 const { toast, dialog, snippetApi, ruleApi } = vi.hoisted(() => ({
@@ -19,6 +20,7 @@ const { toast, dialog, snippetApi, ruleApi } = vi.hoisted(() => ({
   },
   snippetApi: {
     list: vi.fn(),
+    getSnapshot: vi.fn(),
     add: vi.fn(),
     update: vi.fn(),
     updateEnabled: vi.fn(),
@@ -28,6 +30,7 @@ const { toast, dialog, snippetApi, ruleApi } = vi.hoisted(() => ({
   },
   ruleApi: {
     list: vi.fn(),
+    getSnapshot: vi.fn(),
     add: vi.fn(),
     update: vi.fn(),
     updateEnabled: vi.fn(),
@@ -63,9 +66,44 @@ function listOf<T>(items: T[]): ItemList<T> {
   };
 }
 
+function snapshotOf<T>(
+  items: T[],
+  orders: Record<string, number> = {},
+  orderVersion = 1,
+): OrderedItemList<T> {
+  return {
+    ...listOf(items),
+    orders,
+    orderVersion,
+  };
+}
+
 describe("useTransformerData", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    snippetApi.getSnapshot.mockImplementation(async () => {
+      const [listResponse, orderResponse] = await Promise.all([
+        snippetApi.list(),
+        snippetApi.getOrder(),
+      ]);
+      return {
+        data: snapshotOf(
+          listResponse.data.items,
+          orderResponse.data.orders,
+          orderResponse.data.version,
+        ),
+      };
+    });
+    ruleApi.getSnapshot.mockImplementation(async () => {
+      const [listResponse, orderResponse] = await Promise.all([ruleApi.list(), ruleApi.getOrder()]);
+      return {
+        data: snapshotOf(
+          listResponse.data.items,
+          orderResponse.data.orders,
+          orderResponse.data.version,
+        ),
+      };
+    });
   });
 
   // why: 启停现在应走独立写口，并只改已保存规则的 enabled；
@@ -270,9 +308,80 @@ describe("useTransformerData", () => {
     await store.saveRule();
 
     expect(ruleApi.list).toHaveBeenCalledTimes(2);
-    expect(ruleApi.getOrder).toHaveBeenCalledTimes(1);
+    expect(ruleApi.getOrder).toHaveBeenCalledTimes(2);
     expect(snippetApi.list).toHaveBeenCalledTimes(1);
     expect(snippetApi.getOrder).toHaveBeenCalledTimes(1);
+  });
+
+  // why: 规则保存后的常规刷新必须把最新 `rule-order` version 一起带回；
+  // 否则用户下一次拖拽仍会拿旧 version 提交，跨管理员协作时就会平白撞上冲突。
+  it("uses the refreshed rule order version for later reorders after saving", async () => {
+    const activeTab = ref<ActiveTab>("rules");
+    const ruleA = makeRuleEditorDraft({
+      id: "rule-a",
+      metadata: { name: "rule-a", version: 1 },
+      name: "Rule A",
+      matchRule: {
+        type: "GROUP",
+        negate: false,
+        operator: "AND",
+        children: [
+          {
+            type: "PATH",
+            negate: false,
+            matcher: "ANT",
+            value: "/a/**",
+          },
+        ],
+      },
+    });
+    const ruleB = makeRuleEditorDraft({
+      id: "rule-b",
+      metadata: { name: "rule-b", version: 1 },
+      name: "Rule B",
+      matchRule: {
+        type: "GROUP",
+        negate: false,
+        operator: "AND",
+        children: [
+          {
+            type: "PATH",
+            negate: false,
+            matcher: "ANT",
+            value: "/b/**",
+          },
+        ],
+      },
+    });
+    delete (ruleA as { matchRuleSource?: unknown }).matchRuleSource;
+    delete (ruleB as { matchRuleSource?: unknown }).matchRuleSource;
+
+    snippetApi.list.mockResolvedValue({ data: listOf([]) });
+    snippetApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } });
+    ruleApi.list
+      .mockResolvedValueOnce({ data: listOf([ruleA, ruleB]) })
+      .mockResolvedValueOnce({ data: listOf([ruleA, ruleB]) });
+    ruleApi.getOrder
+      .mockResolvedValueOnce({ data: { orders: { "rule-a": 1, "rule-b": 2 }, version: 1 } })
+      .mockResolvedValueOnce({ data: { orders: { "rule-a": 1, "rule-b": 2 }, version: 9 } });
+    ruleApi.update.mockResolvedValue({ data: ruleA });
+    ruleApi.updateOrder.mockResolvedValue({
+      data: { orders: { "rule-b": 1, "rule-a": 2 }, version: 10 },
+    });
+
+    const store = useTransformerData(activeTab);
+    await store.fetchAll();
+    store.selectedRuleId.value = "rule-a";
+    await nextTick();
+
+    await store.saveRule();
+    await store.reorderRule({
+      sourceId: "rule-a",
+      targetId: "rule-b",
+      placement: "after",
+    });
+
+    expect(ruleApi.updateOrder).toHaveBeenCalledWith({ "rule-b": 1, "rule-a": 2 }, 9);
   });
 
   // why: 代码片段保存只应刷新代码片段上下文；规则列表和规则顺序不该因为一次 snippet 保存被整页重拉。
@@ -305,7 +414,7 @@ describe("useTransformerData", () => {
     await store.saveSnippet();
 
     expect(snippetApi.list).toHaveBeenCalledTimes(2);
-    expect(snippetApi.getOrder).toHaveBeenCalledTimes(1);
+    expect(snippetApi.getOrder).toHaveBeenCalledTimes(2);
     expect(ruleApi.list).toHaveBeenCalledTimes(1);
     expect(ruleApi.getOrder).toHaveBeenCalledTimes(1);
   });
@@ -414,7 +523,7 @@ describe("useTransformerData", () => {
     expect(snippetApi.list).toHaveBeenCalledTimes(2);
   });
 
-  // why: 左侧排序保存失败时，只应回拉排序映射；右侧未保存的规则草稿不能被整页重载冲掉。
+  // why: 左侧排序保存失败时，应回到后端最新快照；右侧未保存的规则草稿不能被整页重载冲掉。
   it("keeps unsaved rule editor state when rule reorder persistence fails", async () => {
     const activeTab = ref<ActiveTab>("rules");
     const ruleA = makeRuleEditorDraft({
@@ -483,12 +592,12 @@ describe("useTransformerData", () => {
 
     expect(store.editRule.value?.name).toBe("draft rule name");
     expect(store.editDirty.value).toBe(true);
-    expect(ruleApi.list).toHaveBeenCalledTimes(1);
+    expect(ruleApi.list).toHaveBeenCalledTimes(2);
     expect(snippetApi.list).toHaveBeenCalledTimes(1);
     expect(ruleApi.getOrder).toHaveBeenCalledTimes(2);
   });
 
-  // why: 代码片段排序失败同理只能恢复左侧顺序，不能把右侧未保存代码内容覆盖掉。
+  // why: 代码片段排序失败同理也应回到最新快照，不能把右侧未保存代码内容覆盖掉。
   it("keeps unsaved snippet editor state when snippet reorder persistence fails", async () => {
     const snippetA = makeSnippetEditorDraft({
       id: "snippet-a",
@@ -534,7 +643,7 @@ describe("useTransformerData", () => {
 
     expect(store.editSnippet.value?.code).toBe("<div>draft</div>");
     expect(store.editDirty.value).toBe(true);
-    expect(snippetApi.list).toHaveBeenCalledTimes(1);
+    expect(snippetApi.list).toHaveBeenCalledTimes(2);
     expect(ruleApi.list).toHaveBeenCalledTimes(1);
     expect(snippetApi.getOrder).toHaveBeenCalledTimes(2);
   });

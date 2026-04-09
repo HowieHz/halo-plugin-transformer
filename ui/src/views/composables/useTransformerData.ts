@@ -8,9 +8,9 @@ import type {
   TransformationRuleReadModel,
 } from "@/types";
 
-import { emptyList, getErrorMessage } from "./transformerShared";
+import { getErrorMessage } from "./transformerShared";
 import { useEditorSelectionState } from "./useEditorSelectionState";
-import { useResourceOrderState } from "./useResourceOrderState";
+import { useResourceSnapshotState } from "./useResourceSnapshotState";
 import { useRuleState } from "./useRuleState";
 import { useSnippetState } from "./useSnippetState";
 
@@ -24,58 +24,56 @@ export function useTransformerData(activeTab: Ref<ActiveTab>) {
   const savingEditor = ref(false);
   const processingBulk = ref(false);
 
-  const snippetsResp = ref(emptyList<TransformationSnippetReadModel>());
-  const rulesResp = ref(emptyList<TransformationRuleReadModel>());
-
-  const snippetOrderState = useResourceOrderState({
-    itemsResp: snippetsResp,
+  const snippetSnapshotState = useResourceSnapshotState<TransformationSnippetReadModel>({
     api: snippetApi,
     resourceLabel: "代码片段",
   });
 
-  const ruleOrderState = useResourceOrderState({
-    itemsResp: rulesResp,
+  const ruleSnapshotState = useResourceSnapshotState<TransformationRuleReadModel>({
     api: ruleApi,
     resourceLabel: "转换规则",
   });
 
   const editorSelectionState = useEditorSelectionState({
     activeTab,
-    snippetsResp,
-    rulesResp,
-    snippets: snippetOrderState.items,
-    rules: ruleOrderState.items,
+    snippets: snippetSnapshotState.items,
+    rules: ruleSnapshotState.items,
   });
 
-  async function refreshSnippetList() {
-    const response = await snippetApi.list();
-    snippetsResp.value = response.data;
+  function applySavedSnippetSnapshot(snippet: TransformationSnippetReadModel) {
+    snippetSnapshotState.replacePersistedItem(snippet);
+    editorSelectionState.syncSavedSnippetDraft(snippet);
+  }
+
+  function applySavedRuleSnapshot(rule: TransformationRuleReadModel) {
+    ruleSnapshotState.replacePersistedItem(rule);
+    editorSelectionState.syncSavedRuleDraft(rule);
+  }
+
+  function applySnippetSnapshot(snapshot: typeof snippetSnapshotState.snapshot.value) {
+    snippetSnapshotState.applySnapshot(snapshot);
     editorSelectionState.hydrateSelectedSnippetDraft();
   }
 
-  async function refreshRuleList() {
-    const response = await ruleApi.list();
-    rulesResp.value = response.data;
+  function applyRuleSnapshot(snapshot: typeof ruleSnapshotState.snapshot.value) {
+    ruleSnapshotState.applySnapshot(snapshot);
     editorSelectionState.hydrateSelectedRuleDraft();
+  }
+
+  async function refreshSnippetSnapshot() {
+    const response = await snippetApi.getSnapshot();
+    applySnippetSnapshot(response.data);
+  }
+
+  async function refreshRuleSnapshot() {
+    const response = await ruleApi.getSnapshot();
+    applyRuleSnapshot(response.data);
   }
 
   async function fetchAll() {
     loading.value = true;
     try {
-      const [snippetResponse, ruleResponse, snippetOrderResponse, ruleOrderResponse] =
-        await Promise.all([
-          snippetApi.list(),
-          ruleApi.list(),
-          snippetApi.getOrder(),
-          ruleApi.getOrder(),
-        ]);
-
-      snippetsResp.value = snippetResponse.data;
-      rulesResp.value = ruleResponse.data;
-      snippetOrderState.applyOrderSnapshot(snippetOrderResponse.data);
-      ruleOrderState.applyOrderSnapshot(ruleOrderResponse.data);
-      editorSelectionState.hydrateSelectedSnippetDraft();
-      editorSelectionState.hydrateSelectedRuleDraft();
+      await Promise.all([refreshSnippetSnapshot(), refreshRuleSnapshot()]);
     } catch (error) {
       Toast.error(getErrorMessage(error, "加载数据失败"));
     } finally {
@@ -88,35 +86,35 @@ export function useTransformerData(activeTab: Ref<ActiveTab>) {
    * 这里显式提供一个整页快照刷新入口，避免各个 delete 路径各自猜“要不要顺手刷新另一侧”。
    */
   async function refreshAllResources() {
-    await Promise.all([refreshSnippetList(), refreshRuleList()]);
+    await Promise.all([refreshSnippetSnapshot(), refreshRuleSnapshot()]);
   }
 
   const snippetState = useSnippetState({
     creating,
     savingEditor,
     processingBulk,
-    snippets: snippetOrderState.items,
+    snippets: snippetSnapshotState.items,
     editSnippet: editorSelectionState.editSnippet,
     editDirty: editorSelectionState.editDirty,
     selectedSnippetId: editorSelectionState.selectedSnippetId,
-    refreshSnippetList,
+    refreshSnippetSnapshot,
     refreshAllResources,
-    saveSnippetOrderMap: snippetOrderState.saveOrderMap,
-    applySavedSnippetSnapshot: editorSelectionState.applySavedSnippetSnapshot,
+    saveSnippetOrderMap: snippetSnapshotState.saveOrderMap,
+    applySavedSnippetSnapshot,
   });
 
   const ruleState = useRuleState({
     creating,
     savingEditor,
     processingBulk,
-    rules: ruleOrderState.items,
+    rules: ruleSnapshotState.items,
     editRule: editorSelectionState.editRule,
     editDirty: editorSelectionState.editDirty,
     selectedRuleId: editorSelectionState.selectedRuleId,
-    refreshRuleList,
+    refreshRuleSnapshot,
     refreshAllResources,
-    saveRuleOrderMap: ruleOrderState.saveOrderMap,
-    applySavedRuleSnapshot: editorSelectionState.applySavedRuleSnapshot,
+    saveRuleOrderMap: ruleSnapshotState.saveOrderMap,
+    applySavedRuleSnapshot,
   });
 
   return {
@@ -124,8 +122,8 @@ export function useTransformerData(activeTab: Ref<ActiveTab>) {
     creating,
     savingEditor,
     processingBulk,
-    snippets: snippetOrderState.items,
-    rules: ruleOrderState.items,
+    snippets: snippetSnapshotState.items,
+    rules: ruleSnapshotState.items,
     selectedSnippetId: editorSelectionState.selectedSnippetId,
     selectedRuleId: editorSelectionState.selectedRuleId,
     editSnippet: editorSelectionState.editSnippet,
@@ -144,7 +142,7 @@ export function useTransformerData(activeTab: Ref<ActiveTab>) {
     confirmDeleteSnippet: snippetState.confirmDeleteSnippet,
     confirmDeleteSnippets: snippetState.confirmDeleteSnippets,
     discardSnippetEdit: editorSelectionState.discardSnippetEdit,
-    reorderSnippet: snippetOrderState.reorder,
+    reorderSnippet: snippetSnapshotState.reorder,
     addRule: ruleState.addRule,
     importRules: ruleState.importRules,
     saveRule: ruleState.saveRule,
@@ -153,6 +151,6 @@ export function useTransformerData(activeTab: Ref<ActiveTab>) {
     confirmDeleteRule: ruleState.confirmDeleteRule,
     confirmDeleteRules: ruleState.confirmDeleteRules,
     discardRuleEdit: editorSelectionState.discardRuleEdit,
-    reorderRule: ruleOrderState.reorder,
+    reorderRule: ruleSnapshotState.reorder,
   };
 }

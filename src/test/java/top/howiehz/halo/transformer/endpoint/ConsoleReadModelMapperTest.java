@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import run.halo.app.extension.Metadata;
@@ -128,5 +129,26 @@ class ConsoleReadModelMapperTest {
         assertEquals(1, list.items().size());
         assertEquals("rule-active", list.items().getFirst().id());
         assertTrue(list.items().stream().noneMatch(item -> item.id().equals("rule-deleting")));
+    }
+
+    // why: 前端左侧顺序真正依赖“列表 + 排序映射 + 排序版本”这一个快照；
+    // 读模型映射必须把三者一起输出，避免前端常规刷新时再拼成跨时刻混合态。
+    @Test
+    void shouldProjectSnippetSnapshotWithOrdersAndVersion() {
+        TransformationSnippet snippet = new TransformationSnippet();
+        Metadata metadata = new Metadata();
+        metadata.setName("snippet-a");
+        snippet.setMetadata(metadata);
+        snippet.setName("Snippet A");
+
+        ConsoleOrderedItemList<TransformationSnippetReadModel> snapshot = mapper.toSnippetSnapshot(
+            List.of(snippet),
+            Map.of("snippet-a", 1),
+            7L
+        );
+
+        assertEquals(1, snapshot.items().size());
+        assertEquals(Map.of("snippet-a", 1), snapshot.orders());
+        assertEquals(7L, snapshot.orderVersion());
     }
 }

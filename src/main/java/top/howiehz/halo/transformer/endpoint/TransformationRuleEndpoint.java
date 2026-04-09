@@ -36,16 +36,19 @@ import top.howiehz.halo.transformer.util.TransformationRuleValidator;
 public class TransformationRuleEndpoint implements CustomEndpoint {
     private static final String CONSOLE_API_VERSION =
         "console.api.transformer.howiehz.top/v1alpha1";
+    private static final String RULE_SNAPSHOT_PATH = "/transformationRules/-/snapshot";
 
     private final ReactiveExtensionClient client;
     private final TransformationRuleValidator validator;
     private final TransformationRuleRuntimeStore ruleRuntimeStore;
     private final TransformationSnippetReferenceService snippetReferenceService;
     private final ConsoleReadModelMapper readModelMapper;
+    private final ResourceOrderService resourceOrderService;
 
     @Override
     public RouterFunction<ServerResponse> endpoint() {
-        return route(GET("/transformationRules"), this::listRules)
+        return route(GET(RULE_SNAPSHOT_PATH), this::getRuleSnapshot)
+            .andRoute(GET("/transformationRules"), this::listRules)
             .andRoute(GET("/transformationRules/{name}"), this::getRule)
             .andRoute(POST("/transformationRules"), this::createRule)
             .andRoute(PUT("/transformationRules/{name}"), this::updateRule)
@@ -61,6 +64,20 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
         return client.list(TransformationRule.class, null, null)
             .collectList()
             .map(readModelMapper::toRuleList)
+            .flatMap(response -> ServerResponse.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(response));
+    }
+
+    /**
+     * why: 规则列表刷新必须与 `rule-order` 的最新映射和 version 同步前进；
+     * 否则跨管理员协作时，前端会在旧 version 上继续拖拽和保存顺序。
+     */
+    private Mono<ServerResponse> getRuleSnapshot(ServerRequest request) {
+        return resourceOrderService.buildCollectionSnapshot(ResourceOrderService.RULE_ORDER_NAME,
+                TransformationRule.class, TransformationRule::getName)
+            .map(snapshot -> readModelMapper.toRuleSnapshot(snapshot.resources(),
+                snapshot.orders(), snapshot.orderVersion()))
             .flatMap(response -> ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(response));

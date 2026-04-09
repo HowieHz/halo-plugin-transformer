@@ -34,16 +34,19 @@ import top.howiehz.halo.transformer.util.TransformationSnippetValidator;
 public class TransformationSnippetEndpoint implements CustomEndpoint {
     private static final String CONSOLE_API_VERSION =
         "console.api.transformer.howiehz.top/v1alpha1";
+    private static final String SNIPPET_SNAPSHOT_PATH = "/transformationSnippets/-/snapshot";
 
     private final ReactiveExtensionClient client;
     private final TransformationSnippetValidator validator;
     private final TransformationSnippetLifecycleService lifecycleService;
     private final TransformationSnippetRuntimeStore snippetRuntimeStore;
     private final ConsoleReadModelMapper readModelMapper;
+    private final ResourceOrderService resourceOrderService;
 
     @Override
     public RouterFunction<ServerResponse> endpoint() {
-        return route(GET("/transformationSnippets"), this::listSnippets)
+        return route(GET(SNIPPET_SNAPSHOT_PATH), this::getSnippetSnapshot)
+            .andRoute(GET("/transformationSnippets"), this::listSnippets)
             .andRoute(GET("/transformationSnippets/{name}"), this::getSnippet)
             .andRoute(POST("/transformationSnippets"), this::createSnippet)
             .andRoute(PUT("/transformationSnippets/{name}"), this::updateSnippet)
@@ -59,6 +62,20 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
         return client.list(TransformationSnippet.class, null, null)
             .collectList()
             .map(readModelMapper::toSnippetList)
+            .flatMap(response -> ServerResponse.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(response));
+    }
+
+    /**
+     * why: 控制台左侧顺序由“资源列表 + 排序映射版本”共同决定；
+     * 这里把它们聚合成一次读快照返回，避免前端刷新时再拼出“新列表 + 旧排序”的裂脑状态。
+     */
+    private Mono<ServerResponse> getSnippetSnapshot(ServerRequest request) {
+        return resourceOrderService.buildCollectionSnapshot(ResourceOrderService.SNIPPET_ORDER_NAME,
+                TransformationSnippet.class, TransformationSnippet::getName)
+            .map(snapshot -> readModelMapper.toSnippetSnapshot(snapshot.resources(),
+                snapshot.orders(), snapshot.orderVersion()))
             .flatMap(response -> ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(response));

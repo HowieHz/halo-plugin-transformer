@@ -41,7 +41,8 @@ class TransformationSnippetEndpointTest {
             validator,
             lifecycleService,
             snippetRuntimeStore,
-            mock(ConsoleReadModelMapper.class)
+            mock(ConsoleReadModelMapper.class),
+            mock(ResourceOrderService.class)
         );
     }
 

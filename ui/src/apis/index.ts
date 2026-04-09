@@ -6,13 +6,16 @@ import type {
   TransformationRuleReadModel,
   TransformationRuleWritePayload,
   ItemList,
+  OrderedItemList,
 } from "@/types";
 
 const CONSOLE_BASE = "/apis/console.api.transformer.howiehz.top/v1alpha1";
 const SNIPPETS = `${CONSOLE_BASE}/transformationSnippets`;
+const SNIPPET_SNAPSHOT = `${SNIPPETS}/-/snapshot`;
 const SNIPPETS_WRITE = `${CONSOLE_BASE}/transformationSnippets`;
 const SNIPPET_ORDER = `${CONSOLE_BASE}/snippet-order`;
 const RULES = `${CONSOLE_BASE}/transformationRules`;
+const RULE_SNAPSHOT = `${RULES}/-/snapshot`;
 const RULES_WRITE = `${CONSOLE_BASE}/transformationRules`;
 const RULE_ORDER = `${CONSOLE_BASE}/rule-order`;
 
@@ -31,6 +34,10 @@ interface DeletePayload {
 export const snippetApi = {
   list() {
     return axiosInstance.get<ItemList<TransformationSnippetReadModel>>(SNIPPETS);
+  },
+
+  getSnapshot() {
+    return axiosInstance.get<OrderedItemList<TransformationSnippetReadModel>>(SNIPPET_SNAPSHOT);
   },
 
   add(snippet: TransformationSnippetWritePayload) {
@@ -71,6 +78,10 @@ export const snippetApi = {
 export const ruleApi = {
   list() {
     return axiosInstance.get<ItemList<TransformationRuleReadModel>>(RULES);
+  },
+
+  getSnapshot() {
+    return axiosInstance.get<OrderedItemList<TransformationRuleReadModel>>(RULE_SNAPSHOT);
   },
 
   add(rule: TransformationRuleWritePayload) {

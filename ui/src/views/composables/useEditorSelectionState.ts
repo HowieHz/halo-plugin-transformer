@@ -6,7 +6,6 @@ import type {
   TransformationSnippetReadModel,
   TransformationRuleEditorDraft,
   TransformationRuleReadModel,
-  ItemList,
 } from "@/types";
 
 import { hydrateRuleEditorDraft } from "./ruleDraft";
@@ -15,8 +14,6 @@ import { mergeSavedMetadata } from "./transformerShared";
 
 interface UseEditorSelectionStateOptions {
   activeTab: Ref<ActiveTab>;
-  snippetsResp: Ref<ItemList<TransformationSnippetReadModel>>;
-  rulesResp: Ref<ItemList<TransformationRuleReadModel>>;
   snippets: ComputedRef<TransformationSnippetReadModel[]>;
   rules: ComputedRef<TransformationRuleReadModel[]>;
 }
@@ -183,10 +180,9 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
 
   /**
    * why: 启停接口现在只返回最新已保存资源；
-   * 这里仅把列表里的已保存快照替换掉，避免再用整页 reload 把右侧未保存草稿整体冲掉。
+   * 编辑器这里只同步当前草稿里真正受影响的字段，已保存列表快照由 snapshot state 负责替换。
    */
-  function applySavedSnippetSnapshot(snippet: TransformationSnippetReadModel) {
-    options.snippetsResp.value = replaceItemInList(options.snippetsResp.value, snippet);
+  function syncSavedSnippetDraft(snippet: TransformationSnippetReadModel) {
     if (editorSession.value.tab === "snippets" && editorSession.value.draft?.id === snippet.id) {
       editorSession.value.draft.enabled = snippet.enabled;
       editorSession.value.draft.metadata = mergeSavedMetadata(
@@ -198,10 +194,9 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
 
   /**
    * why: 规则启停属于资源级动作，不应顺带重置当前编辑中的 matchRule / snippetIds 草稿；
-   * 这里只同步最新的已保存启停状态，其余编辑态原样保留。
+   * 列表快照与草稿同步现在职责分离，这里只保留草稿侧最小同步。
    */
-  function applySavedRuleSnapshot(rule: TransformationRuleReadModel) {
-    options.rulesResp.value = replaceItemInList(options.rulesResp.value, rule);
+  function syncSavedRuleDraft(rule: TransformationRuleReadModel) {
     if (editorSession.value.tab === "rules" && editorSession.value.draft?.id === rule.id) {
       editorSession.value.draft.enabled = rule.enabled;
       editorSession.value.draft.metadata = mergeSavedMetadata(
@@ -238,8 +233,8 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
     snippetsInRule,
     hydrateSelectedSnippetDraft,
     hydrateSelectedRuleDraft,
-    applySavedSnippetSnapshot,
-    applySavedRuleSnapshot,
+    syncSavedSnippetDraft,
+    syncSavedRuleDraft,
     discardSnippetEdit,
     discardRuleEdit,
   };
@@ -262,12 +257,5 @@ function createRuleEditorSession(
     tab: "rules",
     draft,
     dirty: false,
-  };
-}
-
-function replaceItemInList<T extends { id: string }>(list: ItemList<T>, updated: T): ItemList<T> {
-  return {
-    ...list,
-    items: list.items.map((item) => (item.id === updated.id ? updated : item)),
   };
 }

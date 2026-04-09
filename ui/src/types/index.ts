@@ -120,6 +120,11 @@ export interface ItemList<T> {
   totalPages: number;
 }
 
+export interface OrderedItemList<T> extends ItemList<T> {
+  orders: Record<string, number>;
+  orderVersion: number | null;
+}
+
 export interface RuntimeOrderStep {
   value: number;
   label: string;

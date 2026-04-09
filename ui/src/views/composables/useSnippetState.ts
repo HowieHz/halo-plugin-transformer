@@ -17,7 +17,7 @@ interface UseSnippetStateOptions {
   editSnippet: Ref<TransformationSnippetEditorDraft | null>;
   editDirty: Ref<boolean>;
   selectedSnippetId: Ref<string | null>;
-  refreshSnippetList: () => Promise<void>;
+  refreshSnippetSnapshot: () => Promise<void>;
   refreshAllResources: () => Promise<void>;
   saveSnippetOrderMap: (items: TransformationSnippetReadModel[]) => Promise<true | string>;
   applySavedSnippetSnapshot: (snippet: TransformationSnippetReadModel) => void;
@@ -42,7 +42,7 @@ export function useSnippetState(options: UseSnippetStateOptions) {
     try {
       const response = await snippetApi.add(buildSnippetWritePayload(snippet));
       const id = response.data.id;
-      await options.refreshSnippetList();
+      await options.refreshSnippetSnapshot();
       const orderResult = await options.saveSnippetOrderMap(options.snippets.value);
       options.selectedSnippetId.value = id;
       if (orderResult === true) {
@@ -93,7 +93,7 @@ export function useSnippetState(options: UseSnippetStateOptions) {
       }
 
       if (createdIds.length > 0) {
-        await options.refreshSnippetList();
+        await options.refreshSnippetSnapshot();
         const orderedItems = appendCreatedResourcesInOrder(options.snippets.value, createdIds);
         const orderResult = await options.saveSnippetOrderMap(orderedItems);
         if (orderResult !== true) {
@@ -129,7 +129,7 @@ export function useSnippetState(options: UseSnippetStateOptions) {
         options.editSnippet.value.id,
         buildSnippetWritePayload(options.editSnippet.value),
       );
-      await options.refreshSnippetList();
+      await options.refreshSnippetSnapshot();
       options.editDirty.value = false;
       Toast.success("保存成功");
       return true;
@@ -178,7 +178,7 @@ export function useSnippetState(options: UseSnippetStateOptions) {
         }
       }
 
-      await options.refreshSnippetList();
+      await options.refreshSnippetSnapshot();
 
       if (successCount === targetSnippets.length) {
         Toast.success(`已${enabled ? "启用" : "禁用"} ${successCount} 个代码片段`);

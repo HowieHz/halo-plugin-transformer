@@ -17,7 +17,7 @@ interface UseRuleStateOptions {
   editRule: Ref<TransformationRuleEditorDraft | null>;
   editDirty: Ref<boolean>;
   selectedRuleId: Ref<string | null>;
-  refreshRuleList: () => Promise<void>;
+  refreshRuleSnapshot: () => Promise<void>;
   refreshAllResources: () => Promise<void>;
   saveRuleOrderMap: (items: TransformationRuleReadModel[]) => Promise<true | string>;
   applySavedRuleSnapshot: (rule: TransformationRuleReadModel) => void;
@@ -60,7 +60,7 @@ export function useRuleState(options: UseRuleStateOptions) {
         return null;
       }
       const response = await ruleApi.add(payload);
-      await options.refreshRuleList();
+      await options.refreshRuleSnapshot();
       const orderResult = await options.saveRuleOrderMap(options.rules.value);
       options.selectedRuleId.value = response.data.id;
       if (orderResult === true) {
@@ -115,7 +115,7 @@ export function useRuleState(options: UseRuleStateOptions) {
       }
 
       if (createdIds.length > 0) {
-        await options.refreshRuleList();
+        await options.refreshRuleSnapshot();
         const orderedItems = appendCreatedResourcesInOrder(options.rules.value, createdIds);
         const orderResult = await options.saveRuleOrderMap(orderedItems);
         if (orderResult !== true) {
@@ -155,7 +155,7 @@ export function useRuleState(options: UseRuleStateOptions) {
         return false;
       }
       await ruleApi.update(options.editRule.value.id, payload);
-      await options.refreshRuleList();
+      await options.refreshRuleSnapshot();
       options.editDirty.value = false;
       Toast.success("保存成功");
       return true;
@@ -204,7 +204,7 @@ export function useRuleState(options: UseRuleStateOptions) {
         }
       }
 
-      await options.refreshRuleList();
+      await options.refreshRuleSnapshot();
 
       if (successCount === targetRules.length) {
         Toast.success(`已${enabled ? "启用" : "禁用"} ${successCount} 个转换规则`);

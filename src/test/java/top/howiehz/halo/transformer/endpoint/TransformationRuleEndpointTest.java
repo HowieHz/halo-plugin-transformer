@@ -47,7 +47,8 @@ class TransformationRuleEndpointTest {
             validator,
             ruleRuntimeStore,
             snippetReferenceService,
-            mock(ConsoleReadModelMapper.class)
+            mock(ConsoleReadModelMapper.class),
+            mock(ResourceOrderService.class)
         );
     }
 
@@ -105,7 +106,8 @@ class TransformationRuleEndpointTest {
             new TransformationRuleValidator(),
             ruleRuntimeStore,
             snippetReferenceService,
-            mock(ConsoleReadModelMapper.class)
+            mock(ConsoleReadModelMapper.class),
+            mock(ResourceOrderService.class)
         );
 
         TransformationRuleValidationException validationError = assertThrows(
@@ -134,7 +136,8 @@ class TransformationRuleEndpointTest {
             new TransformationRuleValidator(),
             ruleRuntimeStore,
             snippetReferenceService,
-            mock(ConsoleReadModelMapper.class)
+            mock(ConsoleReadModelMapper.class),
+            mock(ResourceOrderService.class)
         );
 
         TransformationRule updated =
