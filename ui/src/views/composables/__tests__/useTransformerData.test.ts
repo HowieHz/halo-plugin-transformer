@@ -5,7 +5,6 @@ import {
   makeRuleEditorDraft,
   makeSnippetEditorDraft,
   type ActiveTab,
-  type ItemList,
   type OrderedItemList,
 } from "@/types";
 
@@ -19,22 +18,18 @@ const { toast, dialog, snippetApi, ruleApi } = vi.hoisted(() => ({
     warning: vi.fn(),
   },
   snippetApi: {
-    list: vi.fn(),
     getSnapshot: vi.fn(),
     add: vi.fn(),
     update: vi.fn(),
     updateEnabled: vi.fn(),
-    getOrder: vi.fn(),
     updateOrder: vi.fn(),
     delete: vi.fn(),
   },
   ruleApi: {
-    list: vi.fn(),
     getSnapshot: vi.fn(),
     add: vi.fn(),
     update: vi.fn(),
     updateEnabled: vi.fn(),
-    getOrder: vi.fn(),
     updateOrder: vi.fn(),
     delete: vi.fn(),
   },
@@ -52,7 +47,11 @@ vi.mock("@/apis", () => ({
 
 import { useTransformerData } from "../useTransformerData";
 
-function listOf<T>(items: T[]): ItemList<T> {
+function snapshotOf<T>(
+  items: T[],
+  orders: Record<string, number> = {},
+  orderVersion = 1,
+): OrderedItemList<T> {
   return {
     first: true,
     hasNext: false,
@@ -63,16 +62,6 @@ function listOf<T>(items: T[]): ItemList<T> {
     totalPages: 1,
     items,
     total: items.length,
-  };
-}
-
-function snapshotOf<T>(
-  items: T[],
-  orders: Record<string, number> = {},
-  orderVersion = 1,
-): OrderedItemList<T> {
-  return {
-    ...listOf(items),
     orders,
     orderVersion,
   };
@@ -81,29 +70,8 @@ function snapshotOf<T>(
 describe("useTransformerData", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    snippetApi.getSnapshot.mockImplementation(async () => {
-      const [listResponse, orderResponse] = await Promise.all([
-        snippetApi.list(),
-        snippetApi.getOrder(),
-      ]);
-      return {
-        data: snapshotOf(
-          listResponse.data.items,
-          orderResponse.data.orders,
-          orderResponse.data.version,
-        ),
-      };
-    });
-    ruleApi.getSnapshot.mockImplementation(async () => {
-      const [listResponse, orderResponse] = await Promise.all([ruleApi.list(), ruleApi.getOrder()]);
-      return {
-        data: snapshotOf(
-          listResponse.data.items,
-          orderResponse.data.orders,
-          orderResponse.data.version,
-        ),
-      };
-    });
+    snippetApi.getSnapshot.mockResolvedValue({ data: snapshotOf([]) });
+    ruleApi.getSnapshot.mockResolvedValue({ data: snapshotOf([]) });
   });
 
   // why: 启停现在应走独立写口，并只改已保存规则的 enabled；
@@ -133,10 +101,8 @@ describe("useTransformerData", () => {
     });
     delete (savedRule as { matchRuleSource?: unknown }).matchRuleSource;
 
-    snippetApi.list.mockResolvedValue({ data: listOf([]) });
-    snippetApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } });
-    ruleApi.list.mockResolvedValue({ data: listOf([savedRule]) });
-    ruleApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } });
+    snippetApi.getSnapshot.mockResolvedValue({ data: snapshotOf([]) });
+    ruleApi.getSnapshot.mockResolvedValue({ data: snapshotOf([savedRule]) });
     ruleApi.updateEnabled.mockResolvedValue({
       data: {
         ...savedRule,
@@ -162,7 +128,7 @@ describe("useTransformerData", () => {
 
     expect(ruleApi.updateEnabled).toHaveBeenCalledTimes(1);
     expect(ruleApi.update).not.toHaveBeenCalled();
-    expect(ruleApi.list).toHaveBeenCalledTimes(1);
+    expect(ruleApi.getSnapshot).toHaveBeenCalledTimes(1);
     expect(store.editRule.value?.enabled).toBe(true);
     expect(store.editRule.value?.mode).toBe("SELECTOR");
     expect(store.editRule.value?.name).toBe("draft name");
@@ -181,8 +147,7 @@ describe("useTransformerData", () => {
       code: "<div>ok</div>",
     });
 
-    snippetApi.list.mockResolvedValue({ data: listOf([savedSnippet]) });
-    snippetApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } });
+    snippetApi.getSnapshot.mockResolvedValue({ data: snapshotOf([savedSnippet]) });
     snippetApi.updateEnabled.mockResolvedValue({
       data: {
         ...savedSnippet,
@@ -190,8 +155,7 @@ describe("useTransformerData", () => {
         metadata: { ...savedSnippet.metadata, version: 2 },
       },
     });
-    ruleApi.list.mockResolvedValue({ data: listOf([]) });
-    ruleApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } });
+    ruleApi.getSnapshot.mockResolvedValue({ data: snapshotOf([]) });
 
     const store = useTransformerData(ref<ActiveTab>("snippets"));
     await store.fetchAll();
@@ -209,7 +173,7 @@ describe("useTransformerData", () => {
 
     expect(snippetApi.updateEnabled).toHaveBeenCalledTimes(1);
     expect(snippetApi.update).not.toHaveBeenCalled();
-    expect(snippetApi.list).toHaveBeenCalledTimes(1);
+    expect(snippetApi.getSnapshot).toHaveBeenCalledTimes(1);
     expect(store.editSnippet.value?.enabled).toBe(true);
     expect(store.editSnippet.value?.code).toBe("");
     expect(store.editSnippet.value?.name).toBe("draft snippet");
@@ -246,10 +210,8 @@ describe("useTransformerData", () => {
       code: "<div>ok</div>",
     });
 
-    snippetApi.list.mockResolvedValue({ data: listOf([savedSnippet]) });
-    snippetApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } });
-    ruleApi.list.mockResolvedValue({ data: listOf([savedRule]) });
-    ruleApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } });
+    snippetApi.getSnapshot.mockResolvedValue({ data: snapshotOf([savedSnippet]) });
+    ruleApi.getSnapshot.mockResolvedValue({ data: snapshotOf([savedRule]) });
     ruleApi.update.mockResolvedValue({ data: savedRule });
 
     const store = useTransformerData(activeTab);
@@ -292,12 +254,10 @@ describe("useTransformerData", () => {
       code: "<div>ok</div>",
     });
 
-    snippetApi.list.mockResolvedValue({ data: listOf([savedSnippet]) });
-    snippetApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } });
-    ruleApi.list
-      .mockResolvedValueOnce({ data: listOf([savedRule]) })
-      .mockResolvedValueOnce({ data: listOf([savedRule]) });
-    ruleApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } });
+    snippetApi.getSnapshot.mockResolvedValue({ data: snapshotOf([savedSnippet]) });
+    ruleApi.getSnapshot
+      .mockResolvedValueOnce({ data: snapshotOf([savedRule]) })
+      .mockResolvedValueOnce({ data: snapshotOf([savedRule]) });
     ruleApi.update.mockResolvedValue({ data: savedRule });
 
     const store = useTransformerData(activeTab);
@@ -307,10 +267,8 @@ describe("useTransformerData", () => {
 
     await store.saveRule();
 
-    expect(ruleApi.list).toHaveBeenCalledTimes(2);
-    expect(ruleApi.getOrder).toHaveBeenCalledTimes(2);
-    expect(snippetApi.list).toHaveBeenCalledTimes(1);
-    expect(snippetApi.getOrder).toHaveBeenCalledTimes(1);
+    expect(ruleApi.getSnapshot).toHaveBeenCalledTimes(2);
+    expect(snippetApi.getSnapshot).toHaveBeenCalledTimes(1);
   });
 
   // why: 规则保存后的常规刷新必须把最新 `rule-order` version 一起带回；
@@ -356,14 +314,14 @@ describe("useTransformerData", () => {
     delete (ruleA as { matchRuleSource?: unknown }).matchRuleSource;
     delete (ruleB as { matchRuleSource?: unknown }).matchRuleSource;
 
-    snippetApi.list.mockResolvedValue({ data: listOf([]) });
-    snippetApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } });
-    ruleApi.list
-      .mockResolvedValueOnce({ data: listOf([ruleA, ruleB]) })
-      .mockResolvedValueOnce({ data: listOf([ruleA, ruleB]) });
-    ruleApi.getOrder
-      .mockResolvedValueOnce({ data: { orders: { "rule-a": 1, "rule-b": 2 }, version: 1 } })
-      .mockResolvedValueOnce({ data: { orders: { "rule-a": 1, "rule-b": 2 }, version: 9 } });
+    snippetApi.getSnapshot.mockResolvedValue({ data: snapshotOf([]) });
+    ruleApi.getSnapshot
+      .mockResolvedValueOnce({
+        data: snapshotOf([ruleA, ruleB], { "rule-a": 1, "rule-b": 2 }, 1),
+      })
+      .mockResolvedValueOnce({
+        data: snapshotOf([ruleA, ruleB], { "rule-a": 1, "rule-b": 2 }, 9),
+      });
     ruleApi.update.mockResolvedValue({ data: ruleA });
     ruleApi.updateOrder.mockResolvedValue({
       data: { orders: { "rule-b": 1, "rule-a": 2 }, version: 10 },
@@ -398,13 +356,11 @@ describe("useTransformerData", () => {
     });
     delete (savedRule as { matchRuleSource?: unknown }).matchRuleSource;
 
-    snippetApi.list
-      .mockResolvedValueOnce({ data: listOf([savedSnippet]) })
-      .mockResolvedValueOnce({ data: listOf([savedSnippet]) });
-    snippetApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } });
+    snippetApi.getSnapshot
+      .mockResolvedValueOnce({ data: snapshotOf([savedSnippet]) })
+      .mockResolvedValueOnce({ data: snapshotOf([savedSnippet]) });
     snippetApi.update.mockResolvedValue({ data: savedSnippet });
-    ruleApi.list.mockResolvedValue({ data: listOf([savedRule]) });
-    ruleApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } });
+    ruleApi.getSnapshot.mockResolvedValue({ data: snapshotOf([savedRule]) });
 
     const store = useTransformerData(ref<ActiveTab>("snippets"));
     await store.fetchAll();
@@ -413,10 +369,8 @@ describe("useTransformerData", () => {
 
     await store.saveSnippet();
 
-    expect(snippetApi.list).toHaveBeenCalledTimes(2);
-    expect(snippetApi.getOrder).toHaveBeenCalledTimes(2);
-    expect(ruleApi.list).toHaveBeenCalledTimes(1);
-    expect(ruleApi.getOrder).toHaveBeenCalledTimes(1);
+    expect(snippetApi.getSnapshot).toHaveBeenCalledTimes(2);
+    expect(ruleApi.getSnapshot).toHaveBeenCalledTimes(1);
   });
 
   // why: snippet 删除和 rule 引用清理是最终一致；当前端发现 rule draft 里的 snippet 已不存在时，
@@ -443,12 +397,10 @@ describe("useTransformerData", () => {
     });
     delete (savedRule as { matchRuleSource?: unknown }).matchRuleSource;
 
-    snippetApi.list.mockResolvedValue({ data: listOf([]) });
-    snippetApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } });
-    ruleApi.list
-      .mockResolvedValueOnce({ data: listOf([savedRule]) })
-      .mockResolvedValueOnce({ data: listOf([savedRule]) });
-    ruleApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } });
+    snippetApi.getSnapshot.mockResolvedValue({ data: snapshotOf([]) });
+    ruleApi.getSnapshot
+      .mockResolvedValueOnce({ data: snapshotOf([savedRule]) })
+      .mockResolvedValueOnce({ data: snapshotOf([savedRule]) });
     ruleApi.update.mockResolvedValue({ data: { ...savedRule, snippetIds: [] } });
 
     const store = useTransformerData(activeTab);
@@ -497,14 +449,12 @@ describe("useTransformerData", () => {
       code: "<div>ok</div>",
     });
 
-    snippetApi.list
-      .mockResolvedValueOnce({ data: listOf([savedSnippet]) })
-      .mockResolvedValueOnce({ data: listOf([savedSnippet]) });
-    snippetApi.getOrder.mockResolvedValue({ data: { orders: { "snippet-a": 1 }, version: 1 } });
-    ruleApi.list
-      .mockResolvedValueOnce({ data: listOf([savedRule]) })
-      .mockResolvedValueOnce({ data: listOf([]) });
-    ruleApi.getOrder.mockResolvedValue({ data: { orders: { "rule-a": 1 }, version: 1 } });
+    snippetApi.getSnapshot
+      .mockResolvedValueOnce({ data: snapshotOf([savedSnippet], { "snippet-a": 1 }, 1) })
+      .mockResolvedValueOnce({ data: snapshotOf([savedSnippet], { "snippet-a": 1 }, 1) });
+    ruleApi.getSnapshot
+      .mockResolvedValueOnce({ data: snapshotOf([savedRule], { "rule-a": 1 }, 1) })
+      .mockResolvedValueOnce({ data: snapshotOf([], { "rule-a": 1 }, 1) });
     ruleApi.delete.mockResolvedValue({});
     ruleApi.updateOrder.mockResolvedValue({ data: { orders: {}, version: 2 } });
 
@@ -519,8 +469,8 @@ describe("useTransformerData", () => {
 
     await deleteDialogConfig?.onConfirm?.();
 
-    expect(ruleApi.list).toHaveBeenCalledTimes(2);
-    expect(snippetApi.list).toHaveBeenCalledTimes(2);
+    expect(ruleApi.getSnapshot).toHaveBeenCalledTimes(2);
+    expect(snippetApi.getSnapshot).toHaveBeenCalledTimes(2);
   });
 
   // why: 左侧排序保存失败时，应回到后端最新快照；右侧未保存的规则草稿不能被整页重载冲掉。
@@ -565,12 +515,14 @@ describe("useTransformerData", () => {
     delete (ruleA as { matchRuleSource?: unknown }).matchRuleSource;
     delete (ruleB as { matchRuleSource?: unknown }).matchRuleSource;
 
-    snippetApi.list.mockResolvedValue({ data: listOf([]) });
-    snippetApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } });
-    ruleApi.list.mockResolvedValue({ data: listOf([ruleA, ruleB]) });
-    ruleApi.getOrder
-      .mockResolvedValueOnce({ data: { orders: { "rule-a": 10, "rule-b": 20 }, version: 1 } })
-      .mockResolvedValueOnce({ data: { orders: { "rule-a": 10, "rule-b": 20 }, version: 1 } });
+    snippetApi.getSnapshot.mockResolvedValue({ data: snapshotOf([]) });
+    ruleApi.getSnapshot
+      .mockResolvedValueOnce({
+        data: snapshotOf([ruleA, ruleB], { "rule-a": 10, "rule-b": 20 }, 1),
+      })
+      .mockResolvedValueOnce({
+        data: snapshotOf([ruleA, ruleB], { "rule-a": 10, "rule-b": 20 }, 1),
+      });
     ruleApi.updateOrder.mockRejectedValue(new Error("boom"));
 
     const store = useTransformerData(activeTab);
@@ -592,9 +544,8 @@ describe("useTransformerData", () => {
 
     expect(store.editRule.value?.name).toBe("draft rule name");
     expect(store.editDirty.value).toBe(true);
-    expect(ruleApi.list).toHaveBeenCalledTimes(2);
-    expect(snippetApi.list).toHaveBeenCalledTimes(1);
-    expect(ruleApi.getOrder).toHaveBeenCalledTimes(2);
+    expect(ruleApi.getSnapshot).toHaveBeenCalledTimes(2);
+    expect(snippetApi.getSnapshot).toHaveBeenCalledTimes(1);
   });
 
   // why: 代码片段排序失败同理也应回到最新快照，不能把右侧未保存代码内容覆盖掉。
@@ -612,17 +563,15 @@ describe("useTransformerData", () => {
       code: "<div>b</div>",
     });
 
-    snippetApi.list.mockResolvedValue({ data: listOf([snippetA, snippetB]) });
-    snippetApi.getOrder
+    snippetApi.getSnapshot
       .mockResolvedValueOnce({
-        data: { orders: { "snippet-a": 10, "snippet-b": 20 }, version: 1 },
+        data: snapshotOf([snippetA, snippetB], { "snippet-a": 10, "snippet-b": 20 }, 1),
       })
       .mockResolvedValueOnce({
-        data: { orders: { "snippet-a": 10, "snippet-b": 20 }, version: 1 },
+        data: snapshotOf([snippetA, snippetB], { "snippet-a": 10, "snippet-b": 20 }, 1),
       });
     snippetApi.updateOrder.mockRejectedValue(new Error("boom"));
-    ruleApi.list.mockResolvedValue({ data: listOf([]) });
-    ruleApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } });
+    ruleApi.getSnapshot.mockResolvedValue({ data: snapshotOf([]) });
 
     const store = useTransformerData(ref<ActiveTab>("snippets"));
     await store.fetchAll();
@@ -643,9 +592,8 @@ describe("useTransformerData", () => {
 
     expect(store.editSnippet.value?.code).toBe("<div>draft</div>");
     expect(store.editDirty.value).toBe(true);
-    expect(snippetApi.list).toHaveBeenCalledTimes(2);
-    expect(ruleApi.list).toHaveBeenCalledTimes(1);
-    expect(snippetApi.getOrder).toHaveBeenCalledTimes(2);
+    expect(snippetApi.getSnapshot).toHaveBeenCalledTimes(2);
+    expect(ruleApi.getSnapshot).toHaveBeenCalledTimes(1);
   });
 
   // why: editor draft 必须由当前 tab 的单一活动会话承载；
@@ -678,10 +626,8 @@ describe("useTransformerData", () => {
     });
     delete (savedRule as { matchRuleSource?: unknown }).matchRuleSource;
 
-    snippetApi.list.mockResolvedValue({ data: listOf([savedSnippet]) });
-    snippetApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } });
-    ruleApi.list.mockResolvedValue({ data: listOf([savedRule]) });
-    ruleApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } });
+    snippetApi.getSnapshot.mockResolvedValue({ data: snapshotOf([savedSnippet]) });
+    ruleApi.getSnapshot.mockResolvedValue({ data: snapshotOf([savedRule]) });
 
     const store = useTransformerData(activeTab);
     await store.fetchAll();
@@ -752,10 +698,8 @@ describe("useTransformerData", () => {
     });
     delete (savedRule as { matchRuleSource?: unknown }).matchRuleSource;
 
-    snippetApi.list.mockResolvedValue({ data: listOf([snippetA, snippetB]) });
-    snippetApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } });
-    ruleApi.list.mockResolvedValue({ data: listOf([savedRule]) });
-    ruleApi.getOrder.mockResolvedValue({ data: { orders: {}, version: 1 } });
+    snippetApi.getSnapshot.mockResolvedValue({ data: snapshotOf([snippetA, snippetB]) });
+    ruleApi.getSnapshot.mockResolvedValue({ data: snapshotOf([savedRule]) });
 
     const store = useTransformerData(activeTab);
     await store.fetchAll();

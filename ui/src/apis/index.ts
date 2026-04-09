@@ -5,7 +5,6 @@ import type {
   TransformationSnippetWritePayload,
   TransformationRuleReadModel,
   TransformationRuleWritePayload,
-  ItemList,
   OrderedItemList,
 } from "@/types";
 
@@ -32,10 +31,6 @@ interface DeletePayload {
 }
 
 export const snippetApi = {
-  list() {
-    return axiosInstance.get<ItemList<TransformationSnippetReadModel>>(SNIPPETS);
-  },
-
   getSnapshot() {
     return axiosInstance.get<OrderedItemList<TransformationSnippetReadModel>>(SNIPPET_SNAPSHOT);
   },
@@ -55,10 +50,6 @@ export const snippetApi = {
     });
   },
 
-  getOrder() {
-    return axiosInstance.get<PersistedOrderState>(SNIPPET_ORDER);
-  },
-
   updateOrder(orders: OrderMap, version: number | null | undefined) {
     return axiosInstance.put<PersistedOrderState>(SNIPPET_ORDER, {
       orders,
@@ -76,10 +67,6 @@ export const snippetApi = {
 };
 
 export const ruleApi = {
-  list() {
-    return axiosInstance.get<ItemList<TransformationRuleReadModel>>(RULES);
-  },
-
   getSnapshot() {
     return axiosInstance.get<OrderedItemList<TransformationRuleReadModel>>(RULE_SNAPSHOT);
   },
@@ -97,10 +84,6 @@ export const ruleApi = {
       enabled,
       metadata: { version: version ?? null },
     });
-  },
-
-  getOrder() {
-    return axiosInstance.get<PersistedOrderState>(RULE_ORDER);
   },
 
   updateOrder(orders: OrderMap, version: number | null | undefined) {

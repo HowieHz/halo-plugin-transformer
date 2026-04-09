@@ -46,25 +46,11 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
     @Override
     public RouterFunction<ServerResponse> endpoint() {
         return route(GET(SNIPPET_SNAPSHOT_PATH), this::getSnippetSnapshot)
-            .andRoute(GET("/transformationSnippets"), this::listSnippets)
             .andRoute(GET("/transformationSnippets/{name}"), this::getSnippet)
             .andRoute(POST("/transformationSnippets"), this::createSnippet)
             .andRoute(PUT("/transformationSnippets/{name}"), this::updateSnippet)
             .andRoute(PUT("/transformationSnippets/{name}/enabled"), this::updateSnippetEnabled)
             .andRoute(DELETE("/transformationSnippets/{name}"), this::deleteSnippet);
-    }
-
-    /**
-     * why: 控制台列表应读取明确的响应映射结果，而不是把存储实体直接暴露给前端；
-     * 这样 `id` 等派生字段就收敛在响应层，不再反向污染持久化模型。
-     */
-    private Mono<ServerResponse> listSnippets(ServerRequest request) {
-        return client.list(TransformationSnippet.class, null, null)
-            .collectList()
-            .map(readModelMapper::toSnippetList)
-            .flatMap(response -> ServerResponse.ok()
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(response));
     }
 
     /**

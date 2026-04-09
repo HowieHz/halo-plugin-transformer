@@ -1,6 +1,5 @@
 package top.howiehz.halo.transformer.endpoint;
 
-import static org.springframework.web.reactive.function.server.RequestPredicates.GET;
 import static org.springframework.web.reactive.function.server.RequestPredicates.PUT;
 import static org.springframework.web.reactive.function.server.RouterFunctions.route;
 
@@ -31,31 +30,14 @@ public class ResourceOrderEndpoint implements CustomEndpoint {
 
     @Override
     public RouterFunction<ServerResponse> endpoint() {
-        return route(GET("/snippet-order"), request ->
-            getOrder(request, ResourceOrderService.SNIPPET_ORDER_NAME, TransformationSnippet.class,
+        return route(PUT("/snippet-order"), request ->
+            putOrder(request, ResourceOrderService.SNIPPET_ORDER_NAME, "代码片段",
+                TransformationSnippet.class,
                 TransformationSnippet::getName))
-            .andRoute(PUT("/snippet-order"), request ->
-                putOrder(request, ResourceOrderService.SNIPPET_ORDER_NAME, "代码片段",
-                    TransformationSnippet.class,
-                    TransformationSnippet::getName))
-            .andRoute(GET("/rule-order"), request ->
-                getOrder(request, ResourceOrderService.RULE_ORDER_NAME, TransformationRule.class,
-                    TransformationRule::getName))
             .andRoute(PUT("/rule-order"), request ->
                 putOrder(request, ResourceOrderService.RULE_ORDER_NAME, "转换规则",
                     TransformationRule.class,
                     TransformationRule::getName));
-    }
-
-    private <T extends AbstractExtension> Mono<ServerResponse> getOrder(ServerRequest request,
-        String orderName,
-        Class<T> resourceType,
-        Function<T, String> displayNameGetter) {
-        return resourceOrderService.buildEffectiveOrderState(orderName, resourceType,
-                displayNameGetter)
-            .flatMap(orderState -> ServerResponse.ok()
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(orderState));
     }
 
     private <T extends AbstractExtension> Mono<ServerResponse> putOrder(ServerRequest request,

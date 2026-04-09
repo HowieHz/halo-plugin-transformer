@@ -52,12 +52,6 @@ public class ResourceOrderService {
             });
     }
 
-    <T extends AbstractExtension> Mono<OrderState> buildEffectiveOrderState(String orderName,
-        Class<T> resourceType, Function<T, String> displayNameGetter) {
-        return buildCollectionSnapshot(orderName, resourceType, displayNameGetter)
-            .map(snapshot -> new OrderState(snapshot.orders(), snapshot.orderVersion()));
-    }
-
     <T extends AbstractExtension> Mono<OrderState> saveOrder(
         ResourceOrderEndpoint.OrderPayload payload,
         String orderName, String resourceLabel, Class<T> resourceType,

@@ -48,25 +48,11 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
     @Override
     public RouterFunction<ServerResponse> endpoint() {
         return route(GET(RULE_SNAPSHOT_PATH), this::getRuleSnapshot)
-            .andRoute(GET("/transformationRules"), this::listRules)
             .andRoute(GET("/transformationRules/{name}"), this::getRule)
             .andRoute(POST("/transformationRules"), this::createRule)
             .andRoute(PUT("/transformationRules/{name}"), this::updateRule)
             .andRoute(PUT("/transformationRules/{name}/enabled"), this::updateRuleEnabled)
             .andRoute(DELETE("/transformationRules/{name}"), this::deleteRule);
-    }
-
-    /**
-     * why: 控制台读规则时应消费响应映射结果，而不是直接反序列化存储实体；
-     * 这样 UI 特有的 `id` 读字段就不会再回流到写模型。
-     */
-    private Mono<ServerResponse> listRules(ServerRequest request) {
-        return client.list(TransformationRule.class, null, null)
-            .collectList()
-            .map(readModelMapper::toRuleList)
-            .flatMap(response -> ServerResponse.ok()
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(response));
     }
 
     /**
