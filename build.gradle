@@ -4,7 +4,7 @@ plugins {
     id "run.halo.plugin.devtools" version "0.6.2"
 }
 
-group 'top.howiehz.halo.transformer'
+group = 'top.howiehz.halo.transformer'
 
 def nodeCommand = System.getProperty('os.name').toLowerCase().contains('windows') ? 'node.exe' : 'node'
 
@@ -71,4 +71,3 @@ halo {
     version = '2.23.2'
     debug = true
 }
-

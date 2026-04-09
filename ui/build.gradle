@@ -3,7 +3,7 @@ plugins {
     id "com.github.node-gradle.node" version "7.1.0"
 }
 
-group 'top.howiehz.halo.transformer.ui'
+group = 'top.howiehz.halo.transformer.ui'
 
 node {
     version.set("24.14.1")
