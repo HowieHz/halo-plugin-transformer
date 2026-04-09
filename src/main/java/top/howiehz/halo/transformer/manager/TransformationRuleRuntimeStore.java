@@ -19,6 +19,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import run.halo.app.extension.Extension;
+import run.halo.app.extension.ExtensionUtil;
 import run.halo.app.extension.GroupVersionKind;
 import run.halo.app.extension.ReactiveExtensionClient;
 import run.halo.app.extension.Watcher;
@@ -98,7 +99,8 @@ public class TransformationRuleRuntimeStore {
             reconnectFailureCount = 0;
             refreshFailureCount = 0;
         }
-        connectWatch("startup");
+        requestRefreshAsync();
+        connectWatch("startup", false);
     }
 
     public void stopWatching() {
@@ -333,6 +335,9 @@ public class TransformationRuleRuntimeStore {
         if (describeRuleId(rule) == null) {
             return RuntimeSkipReason.MISSING_RESOURCE_NAME;
         }
+        if (ExtensionUtil.isDeleted(rule)) {
+            return RuntimeSkipReason.DELETING_RESOURCE;
+        }
         if (rule.getMode() == null) {
             return RuntimeSkipReason.MISSING_MODE;
         }
@@ -436,7 +441,7 @@ public class TransformationRuleRuntimeStore {
             );
     }
 
-    private void connectWatch(String reason) {
+    private void connectWatch(String reason, boolean refreshOnConnect) {
         synchronized (watchMonitor) {
             if (!watching || (watcher != null && !watcher.isDisposed())) {
                 return;
@@ -468,7 +473,9 @@ public class TransformationRuleRuntimeStore {
         } else {
             log.info("Started TransformationRule watch");
         }
-        requestRefreshAsync();
+        if (refreshOnConnect) {
+            requestRefreshAsync();
+        }
     }
 
     private void scheduleWatchReconnect(String reason, RuntimeException error) {
@@ -523,7 +530,7 @@ public class TransformationRuleRuntimeStore {
                 synchronized (watchMonitor) {
                     reconnectTask = null;
                 }
-                connectWatch("reconnect");
+                connectWatch("reconnect", true);
             }, delayMillis, TimeUnit.MILLISECONDS);
         }
     }
@@ -607,6 +614,7 @@ public class TransformationRuleRuntimeStore {
     }
 
     private enum RuntimeSkipReason {
+        DELETING_RESOURCE("deleting_resource", "资源已进入 deleting 生命周期，不应继续参与运行时执行"),
         MISSING_RESOURCE_NAME("missing_resource_name", "缺少 metadata.name，无法建立稳定运行时主键"),
         MISSING_MODE("missing_mode", "运行时需要明确的执行阶段"),
         BLANK_SELECTOR_MATCH("blank_selector_match", "CSS 选择器模式要求非空 match"),

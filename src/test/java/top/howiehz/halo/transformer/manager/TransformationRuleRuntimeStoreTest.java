@@ -4,9 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
@@ -57,6 +59,26 @@ class TransformationRuleRuntimeStoreTest {
         assertEquals(List.of("rule-a"),
             rules.stream().map(RuntimeTransformationRule::resourceName).toList());
         verify(client).watch(any(Watcher.class));
+    }
+
+    // why: 首轮 warm-up 是运行时缓存的独立职责，不能被 watch 握手是否成功绑死；
+    // 即使启动期 watch 暂时连不上，也必须先把已保存快照装进内存，避免请求先看到空规则集。
+    @Test
+    void shouldWarmUpSnapshotEvenWhenInitialWatchConnectionFails() {
+        when(client.list(TransformationRule.class, null, null))
+            .thenReturn(Flux.just(rule("rule-a", TransformationRule.Mode.SELECTOR, true, "main")));
+        doThrow(new IllegalStateException("watch unavailable"))
+            .when(client).watch(any(Watcher.class));
+
+        manager.startWatching();
+
+        waitUntil(() -> manager.listActiveByMode(TransformationRule.Mode.SELECTOR)
+            .collectList()
+            .block()
+            .stream()
+            .map(RuntimeTransformationRule::resourceName)
+            .toList()
+            .equals(List.of("rule-a")));
     }
 
     // why: 当前快照应由 Halo watch 事件直接增量更新；
@@ -150,6 +172,28 @@ class TransformationRuleRuntimeStoreTest {
                 "rule-a",
                 "blank_selector_match",
                 "CSS 选择器模式要求非空 match"
+            )),
+            manager.skippedEnabledRules()
+        );
+    }
+
+    // why: 控制台、endpoint 和排序层都已经把 deleting 资源视为不可见；
+    // runtime snapshot 也必须沿用同一条生命周期语义，避免“正在删除的规则”继续执行。
+    @Test
+    void shouldSkipDeletingRulesFromRuntimeSnapshot() {
+        TransformationRule deletingRule =
+            rule("rule-a", TransformationRule.Mode.SELECTOR, true, ".main");
+        deletingRule.getMetadata().setDeletionTimestamp(Instant.now());
+
+        TransformationRuleRuntimeStore.RuleSnapshot snapshot =
+            manager.buildSnapshot(List.of(deletingRule));
+
+        assertTrue(snapshot.activeRules(TransformationRule.Mode.SELECTOR).isEmpty());
+        assertEquals(
+            List.of(new TransformationRuleRuntimeStore.SkippedEnabledRule(
+                "rule-a",
+                "deleting_resource",
+                "资源已进入 deleting 生命周期，不应继续参与运行时执行"
             )),
             manager.skippedEnabledRules()
         );
