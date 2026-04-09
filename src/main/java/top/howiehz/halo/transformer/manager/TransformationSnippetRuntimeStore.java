@@ -79,6 +79,43 @@ public class TransformationSnippetRuntimeStore extends AbstractWatchDrivenExtens
         return List.copyOf(cachedSnippetsById.values());
     }
 
+    /**
+     * why: 控制台写口在成功持久化后，需要立刻把最新已保存代码片段回灌进可见快照；
+     * watch 仍负责最终一致自愈，但不能让“创建后立刻刷新”继续读到旧状态。
+     */
+    public void applyPersistedSnippet(TransformationSnippet snippet) {
+        String snippetId = describeSnippetId(snippet);
+        if (snippetId == null) {
+            requestRefreshAsync();
+            return;
+        }
+        synchronized (snapshotMonitor) {
+            Map<String, TransformationSnippet> next = new LinkedHashMap<>(cachedSnippetsById);
+            if (ExtensionUtil.isDeleted(snippet)) {
+                next.remove(snippetId);
+            } else {
+                next.put(snippetId, snippet);
+            }
+            cachedSnippetsById = next;
+        }
+    }
+
+    /**
+     * why: 代码片段一旦进入 deleting 生命周期，就应立刻退出控制台可见集合；
+     * 这里提供同步摘除入口，避免删除成功后下一次 snapshot 仍短暂返回旧列表。
+     */
+    public void removeSnippet(String snippetId) {
+        if (snippetId == null || snippetId.isBlank()) {
+            requestRefreshAsync();
+            return;
+        }
+        synchronized (snapshotMonitor) {
+            Map<String, TransformationSnippet> next = new LinkedHashMap<>(cachedSnippetsById);
+            next.remove(snippetId);
+            cachedSnippetsById = next;
+        }
+    }
+
     @Override
     protected Mono<Map<String, TransformationSnippet>> refreshSnapshot() {
         return client().list(TransformationSnippet.class, null, null)
@@ -123,19 +160,28 @@ public class TransformationSnippetRuntimeStore extends AbstractWatchDrivenExtens
             return;
         }
         synchronized (snapshotMonitor) {
-            Map<String, TransformationSnippet> next = new LinkedHashMap<>(cachedSnippetsById);
-            if (eventType == WatchEventType.DELETE || ExtensionUtil.isDeleted(snippet)) {
-                next.remove(snippetId);
-            } else {
-                next.put(snippetId, snippet);
-            }
-            cachedSnippetsById = next;
+            cachedSnippetsById = applyIncrementalSnapshotEvent(cachedSnippetsById, eventType,
+                snippetId, snippet);
         }
     }
 
     @Override
     protected int snapshotSize(Map<String, TransformationSnippet> snapshot) {
         return snapshot.size();
+    }
+
+    private Map<String, TransformationSnippet> applyIncrementalSnapshotEvent(
+        Map<String, TransformationSnippet> currentSnapshot,
+        WatchEventType eventType,
+        String snippetId,
+        TransformationSnippet snippet) {
+        Map<String, TransformationSnippet> next = new LinkedHashMap<>(currentSnapshot);
+        if (eventType == WatchEventType.DELETE || ExtensionUtil.isDeleted(snippet)) {
+            next.remove(snippetId);
+        } else {
+            next.put(snippetId, snippet);
+        }
+        return next;
     }
 
     private String describeSnippetId(TransformationSnippet snippet) {

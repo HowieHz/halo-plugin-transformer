@@ -77,6 +77,60 @@ public class TransformationRuleRuntimeStore extends AbstractWatchDrivenExtension
         return cachedSnapshot.visibleRules();
     }
 
+    /**
+     * why: 控制台写口在成功持久化后，必须立刻把最新已保存规则回灌进可见快照；
+     * watch 负责自愈与跨实例同步，但不应让当前写请求后的下一次读取继续看到旧规则集。
+     */
+    public void applyPersistedRule(TransformationRule rule) {
+        if (rule == null) {
+            requestRefreshAsync();
+            return;
+        }
+        String ruleId = describeRuleId(rule);
+        if (ruleId == null) {
+            requestRefreshAsync();
+            return;
+        }
+        synchronized (snapshotMonitor) {
+            cachedSnapshot = applyIncrementalSnapshotEvent(cachedSnapshot, WatchEventType.UPDATE,
+                ruleId, rule);
+        }
+    }
+
+    /**
+     * why: 规则删除成功后，控制台列表与排序保存都应立即以“已移除”视图继续推进；
+     * 否则前端紧接着刷新快照时，仍可能在 watch 自愈前短暂看到已删规则。
+     */
+    public void removeRule(String ruleId) {
+        if (ruleId == null || ruleId.isBlank()) {
+            requestRefreshAsync();
+            return;
+        }
+        synchronized (snapshotMonitor) {
+            Map<String, TransformationRule> nextRulesById =
+                new LinkedHashMap<>(cachedSnapshot.rulesById());
+            Map<TransformationRule.Mode, List<RuntimeTransformationRule>> nextRulesByMode =
+                copyRulesByMode(cachedSnapshot.rulesByMode());
+            Map<String, SkippedEnabledRule> nextSkippedEnabledRulesById =
+                new LinkedHashMap<>(cachedSnapshot.skippedEnabledRulesById());
+
+            TransformationRule previousRule = nextRulesById.remove(ruleId);
+            nextSkippedEnabledRulesById.remove(ruleId);
+            TransformationRule.Mode previousActiveMode = activeMode(previousRule);
+            if (previousActiveMode != null) {
+                nextRulesByMode.put(previousActiveMode,
+                    rebuildActiveRulesForMode(nextRulesById.values(), previousActiveMode));
+            }
+            List<TransformationRule> nextVisibleRules = nextRulesById.values().stream()
+                .filter(this::isConsoleVisibleRule)
+                .toList();
+            RuleSnapshot snapshot = new RuleSnapshot(nextRulesById, nextVisibleRules,
+                nextRulesByMode, nextSkippedEnabledRulesById);
+            logSkippedEnabledRules(snapshot.skippedEnabledRules());
+            cachedSnapshot = snapshot;
+        }
+    }
+
     @Override
     protected Mono<RuleSnapshot> refreshSnapshot() {
         return client().list(TransformationRule.class, null, null)
@@ -220,15 +274,24 @@ public class TransformationRuleRuntimeStore extends AbstractWatchDrivenExtension
         for (TransformationRule.Mode mode : affectedModes) {
             nextRulesByMode.put(mode, rebuildActiveRulesForMode(nextRulesById.values(), mode));
         }
-        List<TransformationRule> nextVisibleRules = nextRulesById.values().stream()
-            .filter(this::isConsoleVisibleRule)
-            .toList();
-
-        RuleSnapshot snapshot =
-            new RuleSnapshot(nextRulesById, nextVisibleRules, nextRulesByMode,
-                nextSkippedEnabledRulesById);
+        RuleSnapshot snapshot = new RuleSnapshot(
+            nextRulesById,
+            visibleRules(nextRulesById.values()),
+            nextRulesByMode,
+            nextSkippedEnabledRulesById
+        );
         logSkippedEnabledRules(snapshot.skippedEnabledRules());
         return snapshot;
+    }
+
+    private List<TransformationRule> visibleRules(Iterable<TransformationRule> rules) {
+        List<TransformationRule> visibleRules = new ArrayList<>();
+        for (TransformationRule rule : rules) {
+            if (isConsoleVisibleRule(rule)) {
+                visibleRules.add(rule);
+            }
+        }
+        return List.copyOf(visibleRules);
     }
 
     private Map<TransformationRule.Mode, List<RuntimeTransformationRule>> copyRulesByMode(

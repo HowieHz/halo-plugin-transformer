@@ -89,7 +89,10 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
             .flatMap(validator::validateForWrite)
             .flatMap(this::normalizeAndValidateSnippetReferences)
             .flatMap(client::create)
-            .doOnSuccess(created -> ruleRuntimeStore.invalidateAndWarmUpAsync())
+            .doOnSuccess(created -> {
+                ruleRuntimeStore.applyPersistedRule(created);
+                ruleRuntimeStore.invalidateAndWarmUpAsync();
+            })
             .flatMap(created -> ServerResponse.created(
                     URI.create("/apis/" + CONSOLE_API_VERSION + "/transformationRules/"
                         + created.getMetadata().getName()))
@@ -128,7 +131,10 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
                 .flatMap(ignored -> normalizeAndValidateAddedSnippetReferences(tuple.getT1(),
                     tuple.getT2())))
             .flatMap(client::update)
-            .doOnSuccess(updated -> ruleRuntimeStore.invalidateAndWarmUpAsync())
+            .doOnSuccess(updated -> {
+                ruleRuntimeStore.applyPersistedRule(updated);
+                ruleRuntimeStore.invalidateAndWarmUpAsync();
+            })
             .flatMap(updated -> ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(readModelMapper.toReadModel(updated)));
@@ -175,7 +181,10 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
                 );
                 return client.delete(rule);
             })
-            .doOnSuccess(ignored -> ruleRuntimeStore.invalidateAndWarmUpAsync())
+            .doOnSuccess(ignored -> {
+                ruleRuntimeStore.removeRule(name);
+                ruleRuntimeStore.invalidateAndWarmUpAsync();
+            })
             .then();
     }
 
@@ -207,7 +216,10 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
                     .flatMap(ignored -> normalizeAndValidateSnippetReferences(rule));
             })
             .flatMap(client::update)
-            .doOnSuccess(updated -> ruleRuntimeStore.invalidateAndWarmUpAsync());
+            .doOnSuccess(updated -> {
+                ruleRuntimeStore.applyPersistedRule(updated);
+                ruleRuntimeStore.invalidateAndWarmUpAsync();
+            });
     }
 
     /**

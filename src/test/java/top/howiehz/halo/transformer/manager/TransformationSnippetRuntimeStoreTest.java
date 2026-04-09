@@ -150,6 +150,29 @@ class TransformationSnippetRuntimeStoreTest {
             .equals(List.of("snippet-a")));
     }
 
+    // why: 代码片段创建成功后，控制台下一次读取必须立刻拿到这条已保存资源；
+    // 否则创建后紧跟的刷新与排序保存会先看到旧快照，导致新片段短暂“丢失”。
+    @Test
+    void shouldExposePersistedSnippetImmediatelyBeforeAsyncWarmUpCompletes() {
+        store.applyPersistedSnippet(snippet("snippet-a", "before"));
+
+        assertEquals(List.of("snippet-a"),
+            store.listVisibleSnippets().stream()
+                .map(snippet -> snippet.getMetadata().getName())
+                .toList());
+    }
+
+    // why: 代码片段进入 deleting 生命周期后，控制台可见快照应立即摘除它；
+    // 否则删除成功后紧接着刷新列表，用户仍会短暂看到一条已进入 finalizer 的旧资源。
+    @Test
+    void shouldRemoveSnippetImmediatelyFromVisibleSnapshot() {
+        store.applyPersistedSnippet(snippet("snippet-a", "before"));
+
+        store.removeSnippet("snippet-a");
+
+        assertTrue(store.listVisibleSnippets().isEmpty());
+    }
+
     // why: watch 自愈之外，还要兜住首轮全量加载失败的场景；
     // 否则既没连上 watch、又没后续事件时，snippet snapshot 会永久停在空状态。
     @Test

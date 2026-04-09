@@ -86,7 +86,10 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
             .map(lifecycleService::prepareForPersist)
             .flatMap(validator::validateForWrite)
             .flatMap(client::create)
-            .doOnSuccess(created -> snippetRuntimeStore.invalidateAndWarmUpAsync())
+            .doOnSuccess(created -> {
+                snippetRuntimeStore.applyPersistedSnippet(created);
+                snippetRuntimeStore.invalidateAndWarmUpAsync();
+            })
             .flatMap(created -> ServerResponse.created(
                     URI.create("/apis/" + CONSOLE_API_VERSION + "/transformationSnippets/"
                         + created.getMetadata().getName()))
@@ -121,7 +124,10 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
             })
             .flatMap(validator::validateForWrite)
             .flatMap(client::update)
-            .doOnSuccess(updated -> snippetRuntimeStore.invalidateAndWarmUpAsync())
+            .doOnSuccess(updated -> {
+                snippetRuntimeStore.applyPersistedSnippet(updated);
+                snippetRuntimeStore.invalidateAndWarmUpAsync();
+            })
             .flatMap(updated -> ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(readModelMapper.toReadModel(updated)));
@@ -168,7 +174,10 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
                 );
                 return lifecycleService.markForDeletion(snippet);
             })
-            .doOnSuccess(ignored -> snippetRuntimeStore.invalidateAndWarmUpAsync())
+            .doOnSuccess(ignored -> {
+                snippetRuntimeStore.removeSnippet(name);
+                snippetRuntimeStore.invalidateAndWarmUpAsync();
+            })
             .then();
     }
 
@@ -196,7 +205,10 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
                 return enabled ? validator.validateForWrite(snippet) : Mono.just(snippet);
             })
             .flatMap(client::update)
-            .doOnSuccess(updated -> snippetRuntimeStore.invalidateAndWarmUpAsync());
+            .doOnSuccess(updated -> {
+                snippetRuntimeStore.applyPersistedSnippet(updated);
+                snippetRuntimeStore.invalidateAndWarmUpAsync();
+            });
     }
 
     private Mono<TransformationSnippet> fetchVisibleSnippet(String name, String notFoundReason) {

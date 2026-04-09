@@ -219,6 +219,34 @@ class TransformationRuleRuntimeStoreTest {
             .equals(List.of("rule-a")));
     }
 
+    // why: 控制台读取在当前写请求之后必须立刻看到新规则；
+    // 否则“创建成功后立刻刷新并保存顺序”会先读到旧快照，再把新规则静默排除在排序映射之外。
+    @Test
+    void shouldExposePersistedRuleImmediatelyBeforeAsyncWarmUpCompletes() {
+        TransformationRule persistedRule =
+            rule("rule-a", TransformationRule.Mode.FOOTER, false, "");
+
+        manager.applyPersistedRule(persistedRule);
+
+        assertEquals(List.of("rule-a"),
+            manager.listVisibleRules().stream()
+                .map(rule -> rule.getMetadata().getName())
+                .toList());
+    }
+
+    // why: 规则删除成功后，控制台快照也必须同步摘除；
+    // 不能等后台 watch 自愈后才反映，否则删除后紧接着的刷新/排序保存仍会带着旧规则。
+    @Test
+    void shouldRemoveRuleImmediatelyFromVisibleSnapshot() {
+        TransformationRule persistedRule =
+            rule("rule-a", TransformationRule.Mode.FOOTER, false, "");
+
+        manager.applyPersistedRule(persistedRule);
+        manager.removeRule("rule-a");
+
+        assertTrue(manager.listVisibleRules().isEmpty());
+    }
+
     // why: watch 不是永不掉线的“神链路”；一旦底层 watch 被释放，管理器应自动按退避策略重连，
     // 而不是让运行时快照永久停留在一条已经失效的订阅上。
     @Test

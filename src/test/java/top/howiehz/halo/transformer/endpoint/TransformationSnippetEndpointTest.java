@@ -63,6 +63,7 @@ class TransformationSnippetEndpointTest {
 
         assertTrue(updated.isEnabled());
         verify(client).update(any(TransformationSnippet.class));
+        verify(snippetRuntimeStore).applyPersistedSnippet(updated);
         verify(snippetRuntimeStore).invalidateAndWarmUpAsync();
     }
 
@@ -183,6 +184,7 @@ class TransformationSnippetEndpointTest {
         endpoint.deleteSnippet("snippet-a", deletePayload(7L)).block();
 
         verify(lifecycleService).markForDeletion(snippet);
+        verify(snippetRuntimeStore).removeSnippet("snippet-a");
         verify(snippetRuntimeStore).invalidateAndWarmUpAsync();
     }
 

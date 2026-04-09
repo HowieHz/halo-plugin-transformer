@@ -71,6 +71,7 @@ class TransformationRuleEndpointTest {
 
         assertTrue(updated.isEnabled());
         verify(client).update(any(TransformationRule.class));
+        verify(ruleRuntimeStore).applyPersistedRule(updated);
         verify(ruleRuntimeStore).invalidateAndWarmUpAsync();
     }
 
@@ -194,6 +195,7 @@ class TransformationRuleEndpointTest {
         endpoint.deleteRule("rule-a", deletePayload(8L)).block();
 
         verify(client).delete(any(TransformationRule.class));
+        verify(ruleRuntimeStore).removeRule("rule-a");
         verify(ruleRuntimeStore).invalidateAndWarmUpAsync();
     }
 
