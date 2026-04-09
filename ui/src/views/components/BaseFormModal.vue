@@ -23,8 +23,7 @@ const emit = defineEmits<{
       style="min-height: 400px"
     >
       <div
-        class=":uno: space-y-4 overflow-y-auto px-5 py-4"
-        :class="showPicker === false ? 'flex-1' : 'flex-1'"
+        class=":uno: flex-1 space-y-4 overflow-y-auto px-5 py-4"
         :style="showPicker === false ? 'width: 100%' : 'width: 60%'"
       >
         <div
