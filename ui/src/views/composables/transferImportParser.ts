@@ -73,6 +73,7 @@ function parseSnippetTransferData(data: SnippetTransferData): TransformationSnip
 }
 
 function parseRuleTransferData(data: RuleTransferData): TransformationRuleEditorDraft {
+  const baseline = makeRuleEditorDraft();
   ensureAllowedFields(
     data,
     [
@@ -88,31 +89,35 @@ function parseRuleTransferData(data: RuleTransferData): TransformationRuleEditor
     ],
     "转换规则",
   );
-  if (typeof data.enabled !== "boolean") {
+  if (data.enabled !== undefined && typeof data.enabled !== "boolean") {
     throw new Error("导入失败：`enabled` 必须是布尔值；仅支持 true 或 false");
   }
-  if (typeof data.name !== "string") {
+  if (data.name !== undefined && typeof data.name !== "string") {
     throw new Error("导入失败：`name` 必须是字符串");
   }
-  if (typeof data.description !== "string") {
+  if (data.description !== undefined && typeof data.description !== "string") {
     throw new Error("导入失败：`description` 必须是字符串");
   }
-  validateEnumField("mode", data.mode, ["HEAD", "FOOTER", "SELECTOR"]);
-  if (typeof data.match !== "string") {
+  if (data.mode !== undefined) {
+    validateEnumField("mode", data.mode, ["HEAD", "FOOTER", "SELECTOR"]);
+  }
+  if (data.match !== undefined && typeof data.match !== "string") {
     throw new Error("导入失败：`match` 必须是字符串");
   }
-  validateEnumField("position", data.position, [
-    "APPEND",
-    "PREPEND",
-    "BEFORE",
-    "AFTER",
-    "REPLACE",
-    "REMOVE",
-  ]);
-  if (typeof data.wrapMarker !== "boolean") {
+  if (data.position !== undefined) {
+    validateEnumField("position", data.position, [
+      "APPEND",
+      "PREPEND",
+      "BEFORE",
+      "AFTER",
+      "REPLACE",
+      "REMOVE",
+    ]);
+  }
+  if (data.wrapMarker !== undefined && typeof data.wrapMarker !== "boolean") {
     throw new Error("导入失败：`wrapMarker` 必须是布尔值；仅支持 true 或 false");
   }
-  const runtimeOrder = data.runtimeOrder ?? RUNTIME_ORDER_DEFAULT;
+  const runtimeOrder = data.runtimeOrder ?? baseline.runtimeOrder ?? RUNTIME_ORDER_DEFAULT;
   if (typeof runtimeOrder !== "number" || !Number.isInteger(runtimeOrder)) {
     throw new Error("导入失败：`runtimeOrder` 必须是整数");
   }
@@ -122,16 +127,21 @@ function parseRuleTransferData(data: RuleTransferData): TransformationRuleEditor
   if (runtimeOrder > RUNTIME_ORDER_MAX) {
     throw new Error(`导入失败：\`runtimeOrder\` 不能大于 ${RUNTIME_ORDER_MAX}`);
   }
-  const matchRuleState = parseImportedMatchRuleSource(data.matchRuleSource);
+  const matchRuleState = data.matchRuleSource
+    ? parseImportedMatchRuleSource(data.matchRuleSource)
+    : {
+        matchRule: baseline.matchRule,
+        matchRuleSource: baseline.matchRuleSource ?? makeRuleTreeSource(baseline.matchRule),
+      };
   return makeRuleEditorDraft({
-    enabled: data.enabled,
-    name: data.name,
-    description: data.description,
-    mode: data.mode,
-    match: data.match,
+    enabled: typeof data.enabled === "boolean" ? data.enabled : baseline.enabled,
+    name: typeof data.name === "string" ? data.name : baseline.name,
+    description: typeof data.description === "string" ? data.description : baseline.description,
+    mode: data.mode ?? baseline.mode,
+    match: typeof data.match === "string" ? data.match : baseline.match,
     matchRule: matchRuleState.matchRule,
-    position: data.position,
-    wrapMarker: data.wrapMarker,
+    position: data.position ?? baseline.position,
+    wrapMarker: typeof data.wrapMarker === "boolean" ? data.wrapMarker : baseline.wrapMarker,
     runtimeOrder,
     matchRuleSource: matchRuleState.matchRuleSource,
   });

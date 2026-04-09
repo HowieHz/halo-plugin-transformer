@@ -272,6 +272,7 @@ pnpm dev
     - 顶层可额外带一个可选的 `$schema`
     - 顶层字段会分别校验是否缺失、是否为字符串、以及是否落在允许值里，例如 `mode`、`position`、`matchRuleSource.kind`
     - 顶层布尔字段会校验是否为 `true` / `false`，例如 `enabled`、`wrapMarker`
+    - 如果只是缺少可补默认值的顶层字段，导入时也会回落到规则编辑器 baseline 默认值，而不是直接拒绝
     - `runtimeOrder` 若存在，必须是 `0 ~ 2147483647` 之间的整数
     - `matchRule` 会先校验是否还能稳定进入编辑器
     - `matchRule` 中的布尔字段会校验是否为 `true` / `false`

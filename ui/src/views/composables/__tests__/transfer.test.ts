@@ -14,6 +14,32 @@ import {
 } from "../transfer";
 
 describe("parseRuleTransfer", () => {
+  // why: 规则导入也应像代码片段一样围绕统一 baseline 补默认值；
+  // 否则导入恢复语义会因为资源类型不同而分裂成两套规则。
+  it("fills missing rule fields with editor defaults during import", () => {
+    const raw = JSON.stringify({
+      version: 1,
+      resourceType: "rule",
+      data: {},
+    });
+
+    const rule = parseRuleTransfer(raw);
+    const baseline = makeRuleEditorDraft();
+
+    expect(rule).toMatchObject({
+      enabled: baseline.enabled,
+      name: baseline.name,
+      description: baseline.description,
+      mode: baseline.mode,
+      match: baseline.match,
+      position: baseline.position,
+      wrapMarker: baseline.wrapMarker,
+      runtimeOrder: baseline.runtimeOrder,
+      matchRule: baseline.matchRule,
+      matchRuleSource: baseline.matchRuleSource,
+    });
+  });
+
   // why: 导入时若只是把字段名写错，应丢弃错键并回退到该类型的默认匹配方式，避免整份 JSON 直接失效。
   it("drops unknown matchRule keys and falls back to default matcher", () => {
     const raw = JSON.stringify({
@@ -527,6 +553,30 @@ describe("batch transfer", () => {
 
     expect(rules).toHaveLength(1);
     expect(rules[0].matchRuleSource).toMatchObject({ kind: "JSON_DRAFT" });
+  });
+
+  // why: 规则批量导入也应和单条规则导入共享同一份 baseline；
+  // 这样“可补默认值”的字段不会因为放进数组里就突然变成必填。
+  it("fills missing rule fields with defaults in batches", () => {
+    const raw = JSON.stringify({
+      version: 1,
+      resourceType: "rule-batch",
+      data: {
+        items: [{}],
+      },
+    });
+
+    const [rule] = parseRuleBatchTransfer(raw);
+    const baseline = makeRuleEditorDraft();
+
+    expect(rule).toMatchObject({
+      enabled: baseline.enabled,
+      mode: baseline.mode,
+      position: baseline.position,
+      wrapMarker: baseline.wrapMarker,
+      runtimeOrder: baseline.runtimeOrder,
+      matchRuleSource: baseline.matchRuleSource,
+    });
   });
 
   // why: 批量导入报错必须指出第几项坏了；否则一大包 JSON 失败时用户没有办法定位。
