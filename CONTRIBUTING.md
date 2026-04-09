@@ -49,11 +49,11 @@ pnpm dev
 
 前端资源状态按三层区分：
 
-- `ReadModel`
-    - 接口读取结果，只用于列表与已保存快照
-- `EditorDraft`
-    - 编辑器草稿，只用于右侧表单与导入态
-- `WritePayload`
+- 读取模型（`ReadModel`）
+    - 接口返回给前端的读取结果，只用于列表与已保存内容展示
+- 编辑草稿（`EditorDraft`）
+    - 编辑器里的草稿，只用于右侧表单与导入后的临时编辑态
+- 写入载荷（`WritePayload`）
     - 提交给后端的最小持久化字段集合
 
 这样可以避免把 `id`、临时编辑状态、JSON 草稿等前端态字段混进写接口。
@@ -65,20 +65,20 @@ pnpm dev
 - 规则 transfer 不承载 `snippetIds`
 - 跨环境关系迁移如果以后要支持，应单独设计显式协议，而不是把关系字段偷偷塞回当前 transfer
 - create / edit / import 三条写路径必须复用同一份前端 validator；不要让弹窗、右侧编辑器和导入提示各自复制校验条件
-- 新建弹窗同样要复用共享 draft controller，统一 `baseline / dirty / submit snapshot` 语义；不要把这些领域逻辑重新塞回组件本身
+- 新建弹窗同样要复用共享草稿控制器（draft controller），统一“初始值（`baseline`）/ 是否已修改（`dirty`）/ 提交快照（`submit snapshot`）”这几个语义；不要把这些领域逻辑重新塞回组件本身
 
 ### 控制台状态模型
 
 编辑器会额外遵循“单活动会话”约束：
 
-- 当前 tab 只允许存在一份活动 `EditorDraft`
-- `tab -> selectedId` 可以按标签页分别记忆，方便路由恢复与面板跳转
-- 未保存草稿不会在两个 tab 后面各藏一份；切换时总是重新 hydrate 当前 tab 的活动会话，避免共享一个 `dirty` 标记却同时维护两份隐式草稿
-- 中间编辑器与右侧关系面板在当前 tab 下都必须从同一份活动 `EditorDraft` 派生；不能让“右侧关系”偷偷回退到 saved list，导致一个页面里同时出现两份真相
-- `bulk / create` 只会隐藏当前的 visible selection，不会顺手清掉 remembered selection；退出这些页面语义后应能回到该 tab 上次打开的资源
-- 新建弹窗用单一 `ActiveTab | null` 判别状态表达，不再维护两颗互斥布尔；避免出现 `snippet/rule` 弹窗同时为真或同时忘记收口的隐式组合态
-- 多步流程弹窗（例如批量导入）用单一 flow-state 判别对象表达 `source/options/result`，不要再并列维护多颗 `visible/result/pending` 状态去手动拼阶段
-- route intent 只改当前 tab 的页面语义；不要让 `mode=bulk`、`action=create` 这类 URL 状态顺手清掉另一个 tab 的 remembered selection
+- 当前标签页（tab）只允许存在一份活动编辑草稿（`EditorDraft`）
+- `tab -> selectedId` 可以按标签页分别记忆当前选中项，方便路由恢复与面板跳转
+- 未保存草稿不会在两个 tab 后面各藏一份；切换时总是重新恢复（hydrate）当前 tab 的活动会话，避免共享一个“已修改”标记（`dirty`），却同时维护两份隐式草稿
+- 中间编辑器与右侧关系面板在当前 tab 下都必须从同一份活动编辑草稿（`EditorDraft`）派生；不能让“右侧关系”偷偷回退到已保存列表（saved list），变成左边看到的是当前草稿，右边看到的却是已保存内容，前后对不上
+- `bulk / create` 只会隐藏当前可见选中项（visible selection），不会顺手清掉记住的选中项（remembered selection）；退出这些页面语义后应能回到该 tab 上次打开的资源
+- 新建弹窗用单一当前活动标签（`ActiveTab | null`）表达状态，不再维护两颗互斥布尔；避免出现代码片段 / 规则弹窗同时为真，或同时忘记收口的隐式组合态
+- 多步流程弹窗（例如批量导入）用单一流程状态（flow-state）对象表达 `source/options/result`，不要再并列维护多颗“是否显示 / 结果 / 进行中”状态去手动拼阶段
+- 路由意图（route intent）只改当前 tab 的页面语义；不要让 `mode=bulk`、`action=create` 这类 URL 状态顺手清掉另一个 tab 里记住的选中项（remembered selection）
 
 ### 配置页交互语义
 
@@ -287,17 +287,17 @@ pnpm dev
 
 本插件优先复用 Halo CMS 的原生资源模型与控制面能力，而不是在业务层重复发明平台机制。
 
-- 并发写入优先使用 `metadata.version` 做乐观并发控制，而不是退回 silent last-write-wins
-- 涉及“删除前先清理引用”的资源生命周期，优先使用 `metadata.deletionTimestamp + finalizers`
-- 凡是异步收敛、失败可重试、事件驱动刷新这类后台流程，优先使用 `controller / reconciler / watch`
-- 插件主生命周期只应管理自己显式聚合的 controllers；不要直接注入容器里的全量 `Controller` 列表去统一 start/stop
-- 运行时缓存优先做成“实时 runtime snapshot”，由 Halo `watch` 驱动的内存视图来维护，而不是请求路径上的 TTL 回源
-- 控制台读接口优先返回显式 projection / read model，而不是把存储实体直接暴露给 UI
-- 一旦资源进入 deleting 状态，控制台读接口、单项写接口、排序读模型和运行时装载都不应再把它当成“可见资源”；否则 `finalizer` 的最终一致删除会在 UI 上表现成滞后一拍
-- 运行时执行链路优先消费独立 runtime projection，而不是把 extension 存储实体继续透传到 filter / processor
-- 资源查询遵循平台模型：能 `fetch(name)` 就不用 `list + filter(name)`；能 `fieldQuery` 就不做全量扫描
-- `annotations / labels` 只用于轻量元信息、兼容标记与索引辅助，不承载结构化业务状态，也不替代独立资源建模
-- 业务语义校验仍由插件自己负责，例如 `unknownFields`、match-rule contract、导入导出约束；这些属于插件领域规则，不属于 Halo 通用扩展层职责
+- 并发写入优先使用 `metadata.version` 做乐观并发控制，而不是退回“静默的最后一次写入生效”（silent last-write-wins）
+- 涉及“删除前先清理引用”的资源生命周期，优先使用 `metadata.deletionTimestamp + finalizers`（删除时间戳 + 终结器）
+- 凡是异步收敛、失败可重试、事件驱动刷新这类后台流程，优先使用 `controller / reconciler / watch`（控制器 / 协调器 / 监听）
+- 插件主生命周期只应管理自己显式聚合的控制器（controllers）；不要直接注入容器里的全量 `Controller` 列表去统一 start/stop
+- 运行时缓存优先做成“运行时内存快照”，由 Halo `watch`（监听）驱动维护，而不是在请求进来时再按 TTL 回源重查
+- 控制台读接口优先返回明确的响应模型（read model），而不是把存储实体原样暴露给 UI
+- 一旦资源进入 deleting（删除中）状态，控制台读接口、单项写接口、排序读模型和运行时装载都不应再把它当成“可见资源”；否则 `finalizer`（终结器）的最终一致删除会在 UI 上表现成滞后一拍
+- 运行时执行链路优先消费独立的运行时模型，而不是把 extension（扩展资源）存储实体继续直接传给过滤器 / 处理器（`filter / processor`）
+- 资源查询遵循平台模型：能 `fetch(name)`（按名称直接取）就不用 `list + filter(name)`（先列全表再过滤）；能 `fieldQuery`（字段查询）就不做全量扫描
+- `annotations / labels`（注解 / 标签）只用于轻量元信息、兼容标记与索引辅助，不承载结构化业务状态，也不替代独立资源建模
+- 业务语义校验仍由插件自己负责，例如 `unknownFields`（未知字段）、`match-rule` 合同（contract）、导入导出约束；这些属于插件领域规则，不属于 Halo 通用扩展层职责
 
 ### 当前运行时收敛链路
 
@@ -306,13 +306,13 @@ pnpm dev
 - 匹配规则在运行时会先做一轮布尔最小化，再参与路径预筛、表达式分析与实际匹配
     - 目标是尽量收缩表达式、减少操作数，而不是把表达式继续展开
     - 这样可以让路径预筛更早收窄范围，也减少真正进入 HTML 改写前的无效判断
-- 实时规则快照与代码片段快照都由 Halo `watch` 驱动，并带自动重连与退避重试；启动期或连接短暂抖动后会自动自愈
-- 启动期的首轮 runtime warm-up 是独立职责，不能和 watch 握手成功与否绑死；即使 watch 暂时连不上，也要先把已保存规则 / 代码片段装进快照
-- 请求热路径只从 runtime snapshot 读取规则与代码片段；规则匹配后不再逐个 snippet 回源 `fetch`
+- 实时规则快照与代码片段快照都由 Halo `watch`（监听）驱动，并带自动重连与退避重试；启动期或连接短暂抖动后会自动自愈
+- 插件启动时第一次预热是独立职责，不能和 `watch` 是否连上绑死；即使 `watch` 暂时连不上，也要先把已保存的规则 / 代码片段装进快照
+- 请求处理时只从内存快照读取规则与代码片段；规则匹配后不再逐个代码片段（snippet）回源 `fetch`
 - 若 `CSS 选择器` 规则还不能先按页面路径缩小范围，插件仍会继续工作，但会带来额外处理开销
-- 删除代码片段走 Halo `finalizer` 生命周期：先进入 deleting 状态，再由后端协调器摘掉规则引用，最后完成真正删除
-- 进入 deleting 的代码片段会被视为“当前无法关联”，运行时也不会再继续加载它
-- 同时，控制台列表读模型、单项读写接口、排序清洗与 runtime snapshot 也必须过滤 deleting 资源；这不是 UI 小修补，而是 `finalizer` 生命周期在读写两侧的一致性约束
+- 删除代码片段走 Halo `finalizer`（终结器）生命周期：先进入 deleting（删除中）状态，再由后端协调器摘掉规则引用，最后完成真正删除
+- 进入 deleting（删除中）的代码片段会被视为“当前无法关联”，运行时也不会再继续加载它
+- 同时，控制台列表读模型、单项读写接口、排序清理和运行时快照也必须过滤 deleting（删除中）资源；这不是 UI 小修补，而是 `finalizer` 生命周期在读写两侧都要遵守的一条一致性约束
 
 ## 排序与并发语义
 
@@ -335,39 +335,39 @@ pnpm dev
 这些问题的共同原则是：
 
 - 先承认平台边界，不伪造“看起来像事务 / 像索引”的业务层补偿
-- 保持单一 authoritative source，不为了绕过限制重新引入双真源
+- 保持唯一数据来源，不为了绕过限制又把同一份数据拆成两边分别维护
 - 如果 Halo 后续补齐原生能力，再顺势切换到平台能力，而不是在插件里长期堆过渡方案
 
 ### 删除代码片段时，反向引用查询仍需全表扫规则
 
 - 当前删除协调器需要找出所有引用某个代码片段的 `TransformationRule`
 - 关系真源已经收敛到 `TransformationRule.snippetIds`
-- Halo 当前没有直接提供“集合成员反向索引 / membership fieldQuery”这类查询能力
+- Halo 当前没有直接提供“集合成员反向索引 / membership fieldQuery（按集合成员反查的字段查询）”这类查询能力
 - 因此这一步仍然需要基于规则列表做过滤，而不是按 `snippetId` 直接反查
 
 在平台能力出现之前，不建议回退到：
 
-- 前端自己维护 snippet -> rules 的镜像关系
+- 前端自己维护 `snippet -> rules` 的镜像关系
 - endpoint 同步补写另一侧资源
 - `annotations / labels` 承载结构化关系真源
 
 ### 删除代码片段是最终一致，不是跨资源原子事务
 
-- 删除代码片段当前走 Halo `finalizer + reconciler` 生命周期
-- 删除请求本身只负责把 `TransformationSnippet` 送入 deleting 状态
+- 删除代码片段当前走 Halo `finalizer + reconciler`（终结器 + 协调器）生命周期
+- 删除请求本身只负责把 `TransformationSnippet` 送入 deleting（删除中）状态
 - 后端协调器随后摘掉所有引用它的 `TransformationRule.snippetIds`
 - 全部清理完成后，才移除 finalizer，交还 Halo 完成真正删除
 
-这条链路属于**最终一致**，不是跨多个 extension 资源的一笔原子事务。  
+这条链路属于**最终一致**，不是跨多个 extension（扩展资源）的一笔原子事务。  
 原因不是插件继续“没收口”，而是 Halo 当前并没有直接提供：
 
-- 跨多个 extension 资源的单事务原子提交
-- 字段级 partial update / merge patch
+- 跨多个 extension（扩展资源）的单事务原子提交
+- 字段级 `partial update / merge patch`（部分更新 / 合并补丁）
 
 因此这里的设计目标不是伪造事务语义，而是在 Halo 原生能力内做到“现在最好”：
 
 - 关系真源只保留在 `TransformationRule.snippetIds`
-- 删除收敛交给 `finalizer + reconciler`
+- 删除收敛交给 `finalizer + reconciler`（终结器 + 协调器）
 - 每次都基于最新资源读取后再更新
 - 失败时保留 finalizer，让平台后续继续重试
 
