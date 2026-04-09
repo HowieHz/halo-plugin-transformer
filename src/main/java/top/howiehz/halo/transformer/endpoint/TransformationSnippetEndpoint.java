@@ -52,7 +52,7 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
     }
 
     /**
-     * why: 控制台列表应读取显式 read model projection，而不是把存储实体直接暴露给 UI；
+     * why: 控制台列表应读取明确的响应映射结果，而不是把存储实体直接暴露给前端；
      * 这样 `id` 等派生字段就收敛在响应层，不再反向污染持久化模型。
      */
     private Mono<ServerResponse> listSnippets(ServerRequest request) {
@@ -141,7 +141,7 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
 
     /**
      * why: 删除代码片段改为走 Halo finalizer 生命周期；
-     * endpoint 只负责把资源送入 deleting 状态，后续摘引用与最终删除由后台 reconciler 完成。
+     * 接口端（endpoint）只负责把资源送入“删除中”状态，后续摘引用与最终删除由后台 reconciler 完成。
      */
     private Mono<ServerResponse> deleteSnippet(ServerRequest request) {
         String name = request.pathVariable("name");

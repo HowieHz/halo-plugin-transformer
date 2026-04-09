@@ -24,7 +24,7 @@ class TransformationSnippetLifecycleServiceTest {
         service = new TransformationSnippetLifecycleService(client);
     }
 
-    // why: 只有带着 finalizer 进入 delete，Halo 才会先标记 deleting 再交给 reconciler 清理引用；
+    // why: 只有带着 finalizer 进入 delete，Halo 才会先标记“删除中”，再交给 reconciler 清理引用；
     // 旧数据若缺 finalizer，删除入口必须先补齐，不能退回同步补偿写。
     @Test
     void shouldAddFinalizerBeforeRequestingDeletion() {
@@ -52,7 +52,7 @@ class TransformationSnippetLifecycleServiceTest {
             .contains(TransformationSnippetLifecycleService.DELETION_FINALIZER));
     }
 
-    // why: 已经处于 deleting 状态的代码片段，不需要重复发起 delete；
+    // why: 已经处于“删除中”状态的代码片段，不需要重复发起 delete；
     // 否则重复点击删除会制造多余写请求，却不会带来更强的一致性。
     @Test
     void shouldSkipDuplicateDeleteRequestForDeletingSnippet() {
@@ -73,4 +73,3 @@ class TransformationSnippetLifecycleServiceTest {
         return snippet;
     }
 }
-

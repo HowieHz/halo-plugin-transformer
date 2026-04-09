@@ -183,7 +183,7 @@ class TransformerWebFilterTest {
         assertTrue(result.contains("<div class=\"slot\">A<span class=\"selector\">S</span></div>"));
     }
 
-    // why: 请求侧 `Accept` 只是客户端偏好，不是最终响应类型真相；
+    // why: 请求侧 `Accept` 只是客户端偏好，不是最终响应类型的唯一依据；
     // 只要最终写出的是可注入 HTML，过滤器就不该因为请求没带 `Accept: text/html` 而漏掉整条注入链路。
     @Test
     void shouldNotRequireHtmlAcceptHeaderBeforeDecoratingResponse() {
@@ -352,4 +352,3 @@ class TransformerWebFilterTest {
         }
     }
 }
-

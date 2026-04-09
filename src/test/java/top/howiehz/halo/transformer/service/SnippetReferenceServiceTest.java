@@ -112,7 +112,7 @@ class TransformationSnippetReferenceServiceTest {
         verify(client, never()).list(any(), any(), any());
     }
 
-    // why: deleting 中的代码片段已经进入最终删除流程，不应再允许被新规则引用。
+    // why: “删除中”的代码片段已经进入最终删除流程，不应再允许被新规则引用。
     @Test
     void shouldRejectDeletingSnippetReference() {
         TransformationSnippet deletingSnippet = snippet("snippet-a");
@@ -160,4 +160,3 @@ class TransformationSnippetReferenceServiceTest {
         return snippet;
     }
 }
-

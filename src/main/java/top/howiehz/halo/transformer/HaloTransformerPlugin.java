@@ -54,7 +54,7 @@ public class HaloTransformerPlugin extends BasePlugin {
     }
 
     /**
-     * why: Halo controller 负责把 deleting 资源收敛到最终一致状态；
+     * why: Halo controller 负责把“删除中”的资源收敛到最终一致状态；
      * 插件启动时必须显式拉起这些后台协调器，避免 finalizer 卡住却无人处理。
      */
     private void startControllers() {

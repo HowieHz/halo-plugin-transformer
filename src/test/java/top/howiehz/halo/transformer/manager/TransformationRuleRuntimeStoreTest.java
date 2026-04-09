@@ -177,8 +177,8 @@ class TransformationRuleRuntimeStoreTest {
         );
     }
 
-    // why: 控制台、endpoint 和排序层都已经把 deleting 资源视为不可见；
-    // runtime snapshot 也必须沿用同一条生命周期语义，避免“正在删除的规则”继续执行。
+    // why: 控制台、接口端和排序层都已经把“删除中”的资源视为不可见；
+    // 运行时快照也必须沿用同一条生命周期语义，避免“正在删除的规则”继续执行。
     @Test
     void shouldSkipDeletingRulesFromRuntimeSnapshot() {
         TransformationRule deletingRule =
@@ -193,7 +193,7 @@ class TransformationRuleRuntimeStoreTest {
             List.of(new TransformationRuleRuntimeStore.SkippedEnabledRule(
                 "rule-a",
                 "deleting_resource",
-                "资源已进入 deleting 生命周期，不应继续参与运行时执行"
+                "资源已进入“删除中”生命周期，不应继续参与运行时执行"
             )),
             manager.skippedEnabledRules()
         );

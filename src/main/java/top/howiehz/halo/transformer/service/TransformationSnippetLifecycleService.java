@@ -48,7 +48,7 @@ public class TransformationSnippetLifecycleService {
     }
 
     /**
-     * why: 删除清理依赖 Halo finalizer 才能把“先标记删除，再异步摘引用，最后真正删除”
+     * why: 删除清理依赖 Halo finalizer 才能把“先标记为删除中，再异步摘引用，最后真正删除”
      * 收敛成平台原生生命周期；因此代码片段在创建/更新落库前就要补齐 finalizer。
      */
     public TransformationSnippet prepareForPersist(TransformationSnippet snippet) {
@@ -58,7 +58,7 @@ public class TransformationSnippetLifecycleService {
     }
 
     /**
-     * why: 删除请求本身只负责让资源进入 Halo deleting 生命周期；
+     * why: 删除请求本身只负责让资源进入 Halo “删除中”生命周期；
      * 真正的摘引用和最终删除由后端 reconciler 接手，避免再次回到脆弱的同步补偿写。
      */
     public Mono<Void> markForDeletion(TransformationSnippet snippet) {
@@ -78,4 +78,3 @@ public class TransformationSnippetLifecycleService {
         }
     }
 }
-

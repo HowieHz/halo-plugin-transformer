@@ -43,7 +43,7 @@ class TransformationSnippetDeletionReconcilerTest {
         reconciler = new TransformationSnippetDeletionReconciler(client, ruleRuntimeStore);
     }
 
-    // why: finalizer 协调器的核心职责，就是在 Halo 标记 deleting 后先摘掉规则真源里的引用，
+    // why: finalizer 协调器的核心职责，就是在 Halo 标记“删除中”后先摘掉规则真源里的引用，
     // 再移除 finalizer 让平台完成最终删除；这条主链路必须被测试锁住。
     @Test
     void shouldDetachReferencingRulesBeforeRemovingSnippetFinalizer() {

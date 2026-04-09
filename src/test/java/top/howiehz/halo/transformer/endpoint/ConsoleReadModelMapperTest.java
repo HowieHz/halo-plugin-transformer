@@ -17,7 +17,7 @@ class ConsoleReadModelMapperTest {
     private final ConsoleReadModelMapper mapper = new ConsoleReadModelMapper();
 
     // why: `id` 已从持久化实体 JSON 中移除后，控制台仍需要稳定的读模型主键；
-    // projection 必须统一从 `metadata.name` 派生它，而不是让前端自己猜。
+    // 响应模型必须统一从 `metadata.name` 派生这个字段，而不是让前端自己猜。
     @Test
     void shouldProjectSnippetIdFromMetadataName() {
         TransformationSnippet snippet = new TransformationSnippet();
@@ -37,7 +37,7 @@ class ConsoleReadModelMapperTest {
         assertEquals(3L, readModel.metadata().version());
     }
 
-    // why: 规则 read model 也必须由同一 projection 统一生成，
+    // why: 规则响应模型（read model）也必须由同一套映射逻辑统一生成，
     // 这样控制台列表与写接口响应就不会再直接耦合到存储实体的序列化细节。
     @Test
     void shouldProjectRuleReadModelFromStoredRule() {
@@ -83,7 +83,7 @@ class ConsoleReadModelMapperTest {
         assertTrue(readModel.matchRule().getChildren().getFirst().getChildren() == null);
     }
 
-    // why: 代码片段删除走 finalizer 最终一致；控制台列表必须立刻把 deleting 资源隐藏掉，
+    // why: 代码片段删除走 finalizer 最终一致流程；控制台列表必须立刻把“删除中”的资源隐藏掉，
     // 否则左侧列表会滞后一拍，用户会误以为第一次删除没有生效。
     @Test
     void shouldHideDeletingSnippetFromSnippetList() {
@@ -107,8 +107,8 @@ class ConsoleReadModelMapperTest {
         assertEquals("snippet-active", list.items().getFirst().id());
     }
 
-    // why: 控制台读模型应对 deleting 资源保持同一套可见性语义；
-    // 即使规则删除通常更快完成，也不该把 deleting 规则继续暴露给左侧列表。
+    // why: 控制台读模型应对“删除中”的资源保持同一套可见性语义；
+    // 即使规则删除通常更快完成，也不该把“删除中”的规则继续暴露给左侧列表。
     @Test
     void shouldHideDeletingRuleFromRuleList() {
         TransformationRule activeRule = new TransformationRule();

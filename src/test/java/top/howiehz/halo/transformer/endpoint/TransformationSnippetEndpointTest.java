@@ -118,7 +118,7 @@ class TransformationSnippetEndpointTest {
         verify(client, never()).update(any(TransformationSnippet.class));
     }
 
-    // why: deleting 资源已经退出控制台当前可编辑集合；
+    // why: “删除中”的资源已经退出控制台当前可编辑集合；
     // 启停接口也必须复用同一套可见性语义，避免列表已隐藏但单项写口仍可继续修改。
     @Test
     void shouldRejectTogglingDeletingSnippet() {
@@ -152,7 +152,7 @@ class TransformationSnippetEndpointTest {
         verify(lifecycleService, never()).markForDeletion(any(TransformationSnippet.class));
     }
 
-    // why: deleting 代码片段已经退出“当前可删资源”集合；
+    // why: “删除中”的代码片段已经退出“当前可删资源”集合；
     // delete 写口也应复用同一套可见性语义，避免重复点击删除时得到和其它写口不一致的结果。
     @Test
     void shouldRejectDeletingSnippetThatIsAlreadyDeleting() {

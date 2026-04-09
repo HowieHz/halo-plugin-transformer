@@ -82,7 +82,7 @@ export function isSameTransformerRouteState(
 
 /**
  * why: route 只表达“当前 tab 想进入什么页面语义”，
- * `bulk / create` 并不代表“把 remembered selection 真删掉”；否则退出这些模式后就无法回到原先打开的资源。
+ * `bulk / create` 并不代表“把记住的选中项（remembered selection）真删掉”；否则退出这些模式后就无法回到原先打开的资源。
  */
 export function applyTransformerRouteSelection(
   currentSelection: TransformerRememberedSelection,
@@ -100,7 +100,7 @@ export function applyTransformerRouteSelection(
 
 /**
  * why: 左侧列表高亮和 URL `id` 一样，都属于“当前界面正在展示哪条资源”的可见语义；
- * create / bulk 只需要隐藏这个可见选中态，不应该把 remembered selection 本身清掉。
+ * create / bulk 只需要隐藏这个可见选中态，不应该把记住的选中项（remembered selection）本身清掉。
  */
 export function resolveVisibleTransformerSelection(
   state: Pick<TransformerRouteState, "action" | "viewMode">,

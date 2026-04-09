@@ -29,7 +29,7 @@ public class TransformationSnippetDeletionReconciler implements Reconciler<Recon
     private final TransformationRuleRuntimeStore ruleRuntimeStore;
 
     /**
-     * why: 一旦代码片段进入 Halo deleting 状态，就要由单一后端协调器负责摘掉所有规则引用，
+     * why: 一旦代码片段进入 Halo “删除中”状态，就要由单一后端协调器负责摘掉所有规则引用，
      * 再移除 finalizer 交还给平台完成真正删除，避免前端或多个 service 各自拼删除流程。
      */
     @Override
@@ -50,7 +50,7 @@ public class TransformationSnippetDeletionReconciler implements Reconciler<Recon
         }
 
         removeSnippetDeletionFinalizerWithRetry(request.name());
-        log.info("Completed finalizer cleanup for deleting snippet [{}]", request.name());
+        log.info("已完成处于“删除中”状态的代码片段 [{}] 的 finalizer 清理", request.name());
         return Result.doNotRetry();
     }
 
@@ -90,7 +90,7 @@ public class TransformationSnippetDeletionReconciler implements Reconciler<Recon
      */
     private boolean detachSnippetReferenceWithRetry(String ruleName, String snippetId) {
         return retryOnConflict(
-            "detach deleting snippet [" + snippetId + "] from rule [" + ruleName + "]",
+            "从规则 [" + ruleName + "] 中摘除处于“删除中”状态的代码片段 [" + snippetId + "]",
             () -> {
                 var latestRuleOptional = client.fetch(TransformationRule.class, ruleName);
                 if (latestRuleOptional.isEmpty()) {
@@ -166,4 +166,3 @@ public class TransformationSnippetDeletionReconciler implements Reconciler<Recon
         boolean run();
     }
 }
-

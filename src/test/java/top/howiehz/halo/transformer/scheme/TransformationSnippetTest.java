@@ -24,7 +24,7 @@ class TransformationSnippetTest {
         assertFalse(json.contains("\"valid\""));
     }
 
-    // why: 存储实体不再承担控制台读模型职责；`id` 应由响应 projection 派生，
+    // why: 存储实体不再承担控制台读模型职责；`id` 应由响应映射统一派生，
     // 而不是继续从持久化模型直接序列化出去。
     @Test
     void shouldNotSerializeIdFromStoredEntity() throws Exception {

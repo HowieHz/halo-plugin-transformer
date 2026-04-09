@@ -194,7 +194,7 @@ class TransformationRuleEndpointTest {
         verify(ruleRuntimeStore).invalidateAndWarmUpAsync();
     }
 
-    // why: deleting 规则已经不再属于当前控制台可编辑资源；
+    // why: “删除中”的规则已经不再属于当前控制台可编辑资源；
     // 启停接口必须和列表/运行时保持同一套可见性语义。
     @Test
     void shouldRejectTogglingDeletingRule() {

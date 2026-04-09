@@ -14,7 +14,7 @@ export type UndoableRuleField =
   | "snippetIds";
 
 /**
- * why: 字段级撤销的 authoritative source 应该是“每个字段自己的语义值”；
+ * why: 字段级撤销的唯一数据来源应该是“每个字段自己的语义值”；
  * 不能把 `position` 和 `wrapMarker` 这类相邻字段偷偷打包成复合快照，否则 UI 会把独立修改误判成联动修改。
  */
 export function buildRuleUndoBaselineSnapshot(rule: TransformationRuleEditorDraft) {

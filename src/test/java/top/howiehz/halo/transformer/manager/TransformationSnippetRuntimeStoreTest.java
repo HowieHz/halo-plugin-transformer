@@ -120,7 +120,7 @@ class TransformationSnippetRuntimeStoreTest {
         waitUntil(() -> store.getByIds(List.of("snippet-a")).block().isEmpty());
     }
 
-    // why: entering deleting 生命周期的 snippet 已经退出当前运行时可见集合；
+    // why: 进入“删除中”生命周期的代码片段已经退出当前运行时可见集合；
     // 全量重建快照时也必须沿用同一条过滤语义。
     @Test
     void shouldSkipDeletingSnippetsFromSnapshot() {

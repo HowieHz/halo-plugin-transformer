@@ -14,7 +14,7 @@ public class ConsoleReadModelMapper {
     static final String API_VERSION = "transformer.howiehz.top/v1alpha1";
 
     /**
-     * why: 存储实体只保留持久化语义；控制台需要的 `id` 等派生字段由 projection 统一生成，
+     * why: 存储实体只保留持久化语义；控制台需要的 `id` 等派生字段由统一映射生成，
      * 避免以后每多一个只读展示字段，都再长回实体层或字段清洗补丁。
      */
     public TransformationSnippetReadModel toReadModel(TransformationSnippet snippet) {

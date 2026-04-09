@@ -11,7 +11,7 @@ public final class OptimisticConcurrencyGuard {
 
     /**
      * why: Halo 已经提供 `metadata.version` 作为乐观并发语义；
-     * 插件写接口必须显式复用这份约束，避免重新退回 silent last-write-wins。
+     * 插件写接口必须显式复用这份约束，避免重新退回“最后一次写入静默生效”。
      */
     public static void requireMatchingVersion(MetadataOperator persistedMetadata,
         MetadataOperator incomingMetadata,

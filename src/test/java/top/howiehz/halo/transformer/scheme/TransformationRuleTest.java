@@ -60,7 +60,7 @@ class TransformationRuleTest {
         assertFalse(json.contains("\"valid\""));
     }
 
-    // why: 控制台只读字段应由响应 projection 承担；
+    // why: 控制台只读字段应由响应映射承担；
     // 持久化实体自身不应继续把 `id` 暴露成对外 JSON 字段。
     @Test
     void shouldNotSerializeIdFromStoredEntity() throws Exception {

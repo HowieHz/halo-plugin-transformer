@@ -614,7 +614,7 @@ public class TransformationRuleRuntimeStore {
     }
 
     private enum RuntimeSkipReason {
-        DELETING_RESOURCE("deleting_resource", "资源已进入 deleting 生命周期，不应继续参与运行时执行"),
+        DELETING_RESOURCE("deleting_resource", "资源已进入“删除中”生命周期，不应继续参与运行时执行"),
         MISSING_RESOURCE_NAME("missing_resource_name", "缺少 metadata.name，无法建立稳定运行时主键"),
         MISSING_MODE("missing_mode", "运行时需要明确的执行阶段"),
         BLANK_SELECTOR_MATCH("blank_selector_match", "CSS 选择器模式要求非空 match"),

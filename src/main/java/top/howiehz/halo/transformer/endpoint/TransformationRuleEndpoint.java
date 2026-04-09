@@ -54,7 +54,7 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
     }
 
     /**
-     * why: 控制台读规则时应消费 projection，而不是直接反序列化存储实体；
+     * why: 控制台读规则时应消费响应映射结果，而不是直接反序列化存储实体；
      * 这样 UI 特有的 `id` 读字段就不会再回流到写模型。
      */
     private Mono<ServerResponse> listRules(ServerRequest request) {
@@ -160,7 +160,7 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
 
     /**
      * why: 删除同样属于写操作，也必须复用 `metadata.version`；
-     * 否则前端其余写口都有并发保护，唯独删除还在 silent last-write-wins。
+     * 否则前端其余写口都有并发保护，唯独删除还在“最后一次写入静默生效”。
      */
     Mono<Void> deleteRule(String name, DeletePayload payload) {
         return fetchVisibleRule(name, "未找到要删除的规则")
