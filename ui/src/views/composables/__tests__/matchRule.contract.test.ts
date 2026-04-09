@@ -4,8 +4,8 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import { MATCH_RULE_ENUM_SPECS, MATCH_RULE_NODE_SPECS } from "../generated/matchRuleContract";
 import { matchRuleSummary, parseMatchRuleDraft, supportsDomPathPrecheck } from "../matchRule";
-import { MATCH_RULE_ENUM_SPECS, MATCH_RULE_NODE_SPECS } from "../matchRuleContract.generated";
 
 interface WriteValidationExpectation {
   ok?: boolean;

@@ -12,7 +12,7 @@ import {
   formatInvalidEnumFieldValueMessage,
   formatMissingEnumFieldMessage,
   formatUnsupportedFieldMessage,
-} from "./matchRuleContract.generated";
+} from "./generated/matchRuleContract";
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);

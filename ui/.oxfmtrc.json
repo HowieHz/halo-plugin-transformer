@@ -3,7 +3,7 @@
   "ignorePatterns": [
     "public/generated/match-rule.schema.json",
     "public/generated/transformer.schema.json",
-    "src/views/composables/matchRuleContract.generated.ts"
+    "src/views/composables/generated/matchRuleContract.ts"
   ],
   "overrides": [
     {

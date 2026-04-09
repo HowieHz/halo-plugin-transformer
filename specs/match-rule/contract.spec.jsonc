@@ -2,10 +2,10 @@
 // 前端 helper、后端错误消息模板、共享 checklist 与 schema 都从这里生成或校验。
 // source -> generated artifacts -> consumers:
 // - `contract.spec.jsonc`
-//   -> `ui/src/views/composables/matchRuleContract.generated.ts`
+//   -> `ui/src/views/composables/generated/matchRuleContract.ts`
 //   -> `ui/src/views/composables/matchRule.ts`、前端 contract test
 // - `contract.spec.jsonc`
-//   -> `src/main/java/top/howiehz/halo/transformer/core/MatchRuleContractMessages.java`
+//   -> `src/main/java/top/howiehz/halo/transformer/core/generated/MatchRuleContractMessages.java`
 //   -> `src/main/java/top/howiehz/halo/transformer/core/MatchRule.java`、Java contract test
 // - `contract.spec.jsonc`
 //   -> `ui/public/generated/match-rule.schema.json`
