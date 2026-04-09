@@ -45,6 +45,31 @@ describe("useTransformerViewSessionState", () => {
     expect(state.createModalTab.value).toBeNull();
   });
 
+  // why: 按 tab 隔离的 bulk 选择集只有在切 tab 时继续保留 bulk 语义才有意义；
+  // 否则用户一切 tab 就被静默踢回单项模式，批量上下文会变成“看起来有状态、实际上进不去”。
+  it("preserves bulk mode across tab switches but still closes create mode", () => {
+    const { activeTab, viewMode, state } = createState();
+
+    state.enterBulkMode("snippets");
+    state.switchTab("rules");
+
+    expect(activeTab.value).toBe("rules");
+    expect(viewMode.value).toBe("bulk");
+    expect(state.currentRouteState()).toEqual({
+      tab: "rules",
+      action: null,
+      viewMode: "bulk",
+      selectedId: null,
+    });
+
+    state.openCreate("snippets");
+    state.switchTab("rules");
+
+    expect(activeTab.value).toBe("rules");
+    expect(viewMode.value).toBe("single");
+    expect(state.createModalTab.value).toBeNull();
+  });
+
   // why: create / bulk 只是隐藏当前可见选中态；remembered selection 仍然要保住，
   // 否则用户离开这两种页面语义后就回不到刚才正在看的资源。
   it("keeps remembered selection while hiding visible selection outside single mode", () => {

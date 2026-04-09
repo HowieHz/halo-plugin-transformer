@@ -67,7 +67,9 @@ export function useTransformerViewSessionState(options: UseTransformerViewSessio
 
   function switchTab(tab: ActiveTab) {
     options.activeTab.value = tab;
-    options.viewMode.value = "single";
+    if (options.viewMode.value !== "bulk") {
+      options.viewMode.value = "single";
+    }
   }
 
   function openCreate(tab: ActiveTab) {
