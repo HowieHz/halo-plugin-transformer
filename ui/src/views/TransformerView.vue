@@ -88,6 +88,11 @@ const resourceListRef = ref<{
 const resourceListScrollContainer = ref<HTMLElement | null>(null);
 const leftPaneAutoScroll = useDragAutoScroll(resourceListScrollContainer);
 const LEFT_PANE_EDGE_OVERLAP_PX = 5;
+/**
+ * why: Halo 宿主页头当前会占掉 48px；
+ * 先集中收在这里，后面如果宿主布局再调，只改这一处就行。
+ */
+const HOST_LAYOUT_OFFSET_PX = 48;
 const tabGroupId = useId();
 const mobileLeftDrawerId = `transformer-mobile-left-${tabGroupId}`;
 const mobileRightDrawerId = `transformer-mobile-right-${tabGroupId}`;
@@ -162,6 +167,9 @@ const mobileMainLabel = computed(() =>
       ? "代码片段编辑区"
       : "转换规则编辑区",
 );
+const transformerCardStyle = {
+  height: `calc(100vh - ${HOST_LAYOUT_OFFSET_PX}px)`,
+};
 
 onMounted(fetchAll);
 
@@ -868,7 +876,7 @@ function jumpToSnippet(id: string) {
         @change="handleBulkImportFileChange"
       />
 
-      <VCard :body-class="['transformer-view-card-body']" style="height: calc(100vh - 48px)">
+      <VCard :body-class="['transformer-view-card-body']" :style="transformerCardStyle">
         <div class="transformer-workspace :uno: relative h-full">
           <div class="mobile-drawer-toolbar">
             <VButton
