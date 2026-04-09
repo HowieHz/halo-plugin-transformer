@@ -23,16 +23,23 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div
-    class=":uno: sticky top-0 z-10 flex h-12 shrink-0 items-center justify-between border-b bg-white px-4"
-  >
-    <div class=":uno: flex min-w-0 items-center gap-2">
+  <div class=":uno: sticky top-0 z-10 flex h-12 shrink-0 items-center gap-3 border-b bg-white px-4">
+    <div
+      class=":uno: group/title flex min-w-0 flex-1 items-center gap-2 overflow-hidden focus-within:outline-none"
+      :tabindex="idText ? 0 : undefined"
+    >
       <h2 class=":uno: shrink-0 text-sm font-semibold text-gray-900">{{ title }}</h2>
-      <span v-if="idText" class=":uno: min-w-0 truncate font-mono text-xs text-gray-500">
+      <span v-if="idText" class=":uno: sr-only"> ID: {{ idText }} </span>
+      <span
+        v-if="idText"
+        aria-hidden="true"
+        class=":uno: pointer-events-none min-w-0 truncate font-mono text-xs text-gray-500 opacity-0 transition-opacity duration-150 group-focus-within/title:opacity-100 group-hover/title:opacity-100"
+        :title="`ID: ${idText}`"
+      >
         ID: {{ idText }}
       </span>
     </div>
-    <VSpace v-if="showActions || !!$slots.actions">
+    <VSpace v-if="showActions || !!$slots.actions" class=":uno: shrink-0">
       <slot name="actions" />
       <VButton
         v-if="showActions && showDefaultActions !== false && showExport"
