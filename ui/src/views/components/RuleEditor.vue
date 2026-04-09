@@ -64,11 +64,10 @@ const emit = defineEmits<{
   (e: "update:rule", rule: TransformationRuleEditorDraft): void;
 }>();
 
+const currentRule = computed(() => props.rule);
 const sortedSnippets = computed(() =>
   sortSelectedFirst(props.snippets, currentRule.value?.snippetIds ?? []),
 );
-const pendingRule = ref<TransformationRuleEditorDraft | null>(null);
-const currentRule = computed(() => pendingRule.value ?? props.rule);
 const exportFallback = ref<TransferFileDraft | null>(null);
 const editorId = useId();
 const matchFieldErrorId = `rule-editor-match-error-${editorId}`;
@@ -160,13 +159,6 @@ function observeDragOverlayShell() {
 }
 
 watch(
-  () => props.rule,
-  () => {
-    pendingRule.value = null;
-  },
-);
-
-watch(
   () => currentRule.value?.id ?? null,
   async () => {
     await nextTick();
@@ -209,13 +201,11 @@ function updateField<K extends keyof TransformationRuleEditorDraft>(
   if (trackHistory && key !== "matchRule") {
     undo.trackChange(String(key), currentRule.value[key], next[key]);
   }
-  pendingRule.value = next;
   emit("update:rule", next);
   emit("field-change");
 }
 
 function updateRuleSnapshot(next: TransformationRuleEditorDraft) {
-  pendingRule.value = next;
   emit("update:rule", next);
   emit("field-change");
 }
