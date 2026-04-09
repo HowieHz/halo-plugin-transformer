@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from "vue";
+import { computed, onBeforeUnmount, ref } from "vue";
 
 const props = withDefaults(
   defineProps<{
@@ -93,6 +93,10 @@ function handleClick() {
   }
   emit("undo");
 }
+
+onBeforeUnmount(() => {
+  stopProgress(false);
+});
 
 const buttonStateClass = computed(() =>
   progress.value >= 100 ? ":uno: border-red-600 text-white" : ":uno: border-gray-200 text-gray-500",
