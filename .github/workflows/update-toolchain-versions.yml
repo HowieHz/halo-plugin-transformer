@@ -22,7 +22,7 @@ jobs:
             - name: Setup Node.js
               uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # https://github.com/actions/setup-node/tree/v6
               with:
-                  node-version: 24
+                  node-version: lts/*
 
             - name: Update toolchain versions
               id: update-toolchain
