@@ -7,7 +7,7 @@ on:
 
 jobs:
   cd:
-    uses: halo-sigs/reusable-workflows/.github/workflows/plugin-cd.yaml@v4
+    uses: halo-sigs/reusable-workflows/.github/workflows/plugin-cd.yaml@574420d846900eb5e6b25af72d43dca475583eac # https://github.com/halo-sigs/reusable-workflows/tree/v4
     secrets:
       halo-pat: ${{ secrets.HALO_PAT }}
     permissions:
