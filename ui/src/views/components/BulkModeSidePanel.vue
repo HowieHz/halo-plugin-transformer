@@ -21,7 +21,7 @@ const resourceLabel = computed(() => (props.tab === "snippets" ? "代码片段" 
 
     <div class=":uno: flex flex-1 items-center justify-center px-5 text-center">
       <p class=":uno: text-sm leading-6 text-gray-500">
-        批量模式下右侧不展示单项关联详情；如需查看引用关系，请先退出批量操作。
+        批量模式下不展示单项关联详情；如需查看引用关系，请先退出批量操作。
       </p>
     </div>
   </div>

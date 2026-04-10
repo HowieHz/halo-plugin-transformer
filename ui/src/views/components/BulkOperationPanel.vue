@@ -67,7 +67,7 @@ const hasSelection = computed(() => props.selectedCount > 0);
           已选择 {{ selectedCount }} 个{{ resourceLabel }}
         </h3>
         <p class=":uno: text-sm leading-6 text-gray-500">
-          批量模式下不会打开单项编辑器；左侧勾选集合即为当前批量操作目标。
+          批量模式下不会打开单项编辑器；当前已勾选的项目就是本次批量操作目标。
         </p>
       </div>
     </div>
