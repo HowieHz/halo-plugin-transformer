@@ -1,5 +1,6 @@
 package top.howiehz.halo.transformer.manager;
 
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -40,6 +41,8 @@ abstract class AbstractWatchDrivenExtensionStore<R extends Extension, S> {
     private volatile int reconnectFailureCount;
     private volatile int refreshFailureCount;
     private volatile boolean initialSnapshotReady;
+    private final AtomicLong observedWatchEventCount = new AtomicLong();
+    private final AtomicLong watchConnectionVersion = new AtomicLong();
 
     AbstractWatchDrivenExtensionStore(ReactiveExtensionClient client, Class<R> resourceType,
         GroupVersionKind resourceGroupVersionKind, String resourceDisplayName,
@@ -67,9 +70,10 @@ abstract class AbstractWatchDrivenExtensionStore<R extends Extension, S> {
             reconnectFailureCount = 0;
             refreshFailureCount = 0;
             initialSnapshotReady = false;
+            observedWatchEventCount.set(0);
         }
-        requestRefreshAsync();
         connectWatch("startup", false);
+        requestRefreshAsync();
     }
 
     public final void stopWatching() {
@@ -85,10 +89,12 @@ abstract class AbstractWatchDrivenExtensionStore<R extends Extension, S> {
             reconnectFailureCount = 0;
             refreshFailureCount = 0;
             initialSnapshotReady = false;
+            observedWatchEventCount.set(0);
             currentWatcher = watcher;
             watcher = null;
             currentSupervisor = watchSupervisor;
             watchSupervisor = null;
+            watchConnectionVersion.incrementAndGet();
         }
         if (currentWatcher != null) {
             currentWatcher.disposeFromManager();
@@ -121,13 +127,22 @@ abstract class AbstractWatchDrivenExtensionStore<R extends Extension, S> {
         return initialSnapshotReady;
     }
 
+    protected final boolean hasActiveWatchConnection() {
+        RuntimeStoreWatcher currentWatcher = watcher;
+        return currentWatcher != null && !currentWatcher.isDisposed();
+    }
+
     protected abstract Mono<S> refreshSnapshot();
+
+    protected abstract void replaceSnapshot(S snapshot);
 
     protected abstract void applyWatchEvent(WatchEventType eventType, R resource);
 
     protected abstract int snapshotSize(S snapshot);
 
     private void runRefreshLoopAsync() {
+        long refreshStartWatchEventCount = observedWatchEventCount.get();
+        long refreshStartConnectionVersion = watchConnectionVersion.get();
         synchronized (refreshMonitor) {
             refreshRequested = false;
         }
@@ -147,6 +162,19 @@ abstract class AbstractWatchDrivenExtensionStore<R extends Extension, S> {
             })
             .subscribe(
                 snapshot -> {
+                    if (!canApplyRefreshedSnapshot(
+                        refreshStartConnectionVersion,
+                        refreshStartWatchEventCount
+                    )) {
+                        log.debug(
+                            "Discarded stale {} snapshot refresh because a newer watch state "
+                                + "arrived before it completed",
+                            resourceDisplayName
+                        );
+                        requestRefreshAsync();
+                        return;
+                    }
+                    replaceSnapshot(snapshot);
                     initialSnapshotReady = true;
                     int recoveredFailures = resetRefreshFailureCount();
                     if (recoveredFailures > 0) {
@@ -191,6 +219,7 @@ abstract class AbstractWatchDrivenExtensionStore<R extends Extension, S> {
             cancelReconnectTaskLocked();
             recoveredFailures = reconnectFailureCount;
             reconnectFailureCount = 0;
+            watchConnectionVersion.incrementAndGet();
         }
         if (recoveredFailures > 0) {
             log.info("Recovered {} watch after {} failed reconnect attempt(s)",
@@ -226,6 +255,8 @@ abstract class AbstractWatchDrivenExtensionStore<R extends Extension, S> {
                 return;
             }
             watcher = null;
+            initialSnapshotReady = false;
+            watchConnectionVersion.incrementAndGet();
             if (!watching || disconnectedWatcher.wasDisposedByManager()) {
                 return;
             }
@@ -327,6 +358,16 @@ abstract class AbstractWatchDrivenExtensionStore<R extends Extension, S> {
         refreshRetryTask = null;
     }
 
+    /**
+     * why: watch-driven cache 只能被“当前连接世代下、且期间没有更新 watch 事件”的 refresh 覆盖；
+     * 否则稍晚返回的旧 list 结果会把已经看到的新状态回滚掉。
+     */
+    private boolean canApplyRefreshedSnapshot(long refreshStartConnectionVersion,
+        long refreshStartWatchEventCount) {
+        return watchConnectionVersion.get() == refreshStartConnectionVersion
+            && observedWatchEventCount.get() == refreshStartWatchEventCount;
+    }
+
     protected enum WatchEventType {
         ADD,
         UPDATE,
@@ -389,12 +430,14 @@ abstract class AbstractWatchDrivenExtensionStore<R extends Extension, S> {
                 return;
             }
             if (resourceType.isInstance(extension)) {
+                observedWatchEventCount.incrementAndGet();
                 applyWatchEvent(eventType, resourceType.cast(extension));
                 return;
             }
             if (!resourceGroupVersionKind.equals(extension.groupVersionKind())) {
                 return;
             }
+            observedWatchEventCount.incrementAndGet();
             requestRefreshAsync();
         }
     }

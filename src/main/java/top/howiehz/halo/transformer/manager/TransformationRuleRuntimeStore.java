@@ -91,11 +91,11 @@ public class TransformationRuleRuntimeStore extends AbstractWatchDrivenExtension
     }
 
     /**
-     * why: 删除协调器只有在首轮整表 warm-up 完成后，才能把这份 watch-driven 快照当成
-     * “规则引用关系”的权威来源；否则空快照只代表“还没装载完”，不是“确实没有引用”。
+     * why: 删除协调器只有在“当前 live watch 已连上，且该连接世代下至少完成过一次整表 warm-up”
+     * 后，才能把这份快照当成规则引用关系 authority；否则它要么还没装载完，要么只是断线前的旧视图。
      */
     public boolean isReadyForReferenceReads() {
-        return hasCompletedInitialSnapshotRefresh();
+        return hasCompletedInitialSnapshotRefresh() && hasActiveWatchConnection();
     }
 
     /**
@@ -137,7 +137,7 @@ public class TransformationRuleRuntimeStore extends AbstractWatchDrivenExtension
     protected Mono<RuleSnapshot> refreshSnapshot() {
         return client().list(TransformationRule.class, null, null)
             .collectList()
-            .map(this::replaceSnapshot);
+            .map(this::buildSnapshot);
     }
 
     RuleSnapshot buildSnapshot(List<TransformationRule> rules) {
@@ -230,11 +230,10 @@ public class TransformationRuleRuntimeStore extends AbstractWatchDrivenExtension
         return snapshot.allRules().size();
     }
 
-    private RuleSnapshot replaceSnapshot(List<TransformationRule> rules) {
+    @Override
+    protected void replaceSnapshot(RuleSnapshot snapshot) {
         synchronized (snapshotMonitor) {
-            RuleSnapshot snapshot = buildSnapshot(rules);
             cachedSnapshot = snapshot;
-            return snapshot;
         }
     }
 

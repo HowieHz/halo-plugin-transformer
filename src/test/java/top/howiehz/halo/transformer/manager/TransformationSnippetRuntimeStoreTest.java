@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -224,6 +225,40 @@ class TransformationSnippetRuntimeStoreTest {
             .containsKey("snippet-a"));
 
         assertTrue(listCount.get() >= 2);
+    }
+
+    // why: snippet snapshot 和 rule snapshot 共用同一套 watch-driven refresh 骨架；
+    // refresh 若晚于更近的 watch 事件完成，也必须被丢弃，不能把新代码回滚成旧内容。
+    @Test
+    void shouldDiscardStaleRefreshResultThatStartedBeforeNewerWatchEvent() {
+        AtomicInteger listCount = new AtomicInteger();
+        AtomicReference<reactor.core.publisher.FluxSink<TransformationSnippet>> firstRefreshSink =
+            new AtomicReference<>();
+        TransformationSnippet staleSnippet = snippet("snippet-a", "before");
+        TransformationSnippet latestSnippet = snippet("snippet-a", "after");
+        when(client.list(TransformationSnippet.class, null, null)).thenAnswer(invocation -> {
+            int round = listCount.incrementAndGet();
+            return round == 1 ? Flux.create(firstRefreshSink::set) : Flux.just(latestSnippet);
+        });
+
+        ArgumentCaptor<Watcher> watcherCaptor = ArgumentCaptor.forClass(Watcher.class);
+        store.startWatching();
+        verify(client).watch(watcherCaptor.capture());
+
+        watcherCaptor.getValue().onAdd(latestSnippet);
+        waitUntil(() -> "after".equals(store.getByIds(List.of("snippet-a"))
+            .block()
+            .get("snippet-a")
+            .getCode()));
+
+        firstRefreshSink.get().next(staleSnippet);
+        firstRefreshSink.get().complete();
+
+        waitUntil(() -> listCount.get() >= 2);
+        waitUntil(() -> "after".equals(store.getByIds(List.of("snippet-a"))
+            .block()
+            .get("snippet-a")
+            .getCode()));
     }
 
     // why: 运行时解析不该依赖“调用方一定已经 trim 过 snippetIds”这种隐式前提；

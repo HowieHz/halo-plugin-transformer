@@ -123,7 +123,7 @@ public class TransformationSnippetRuntimeStore extends AbstractWatchDrivenExtens
     protected Mono<Map<String, TransformationSnippet>> refreshSnapshot() {
         return client().list(TransformationSnippet.class, null, null)
             .collectList()
-            .map(this::replaceSnapshot);
+            .map(this::buildSnapshot);
     }
 
     Map<String, TransformationSnippet> buildSnapshot(
@@ -142,12 +142,10 @@ public class TransformationSnippetRuntimeStore extends AbstractWatchDrivenExtens
         return snapshot;
     }
 
-    private Map<String, TransformationSnippet> replaceSnapshot(
-        java.util.List<TransformationSnippet> snippets) {
+    @Override
+    protected void replaceSnapshot(Map<String, TransformationSnippet> snapshot) {
         synchronized (snapshotMonitor) {
-            Map<String, TransformationSnippet> snapshot = buildSnapshot(snippets);
             cachedSnippetsById = snapshot;
-            return snapshot;
         }
     }
 

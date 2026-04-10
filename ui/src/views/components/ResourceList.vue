@@ -150,13 +150,15 @@ function commitPendingDrop(placement: ReorderPlacement | null, targetId: string 
 
 function handleSelect(id: string) {
   if (props.bulkMode) {
-    emit("toggle-bulk-item", id);
     return;
   }
   emit("select", id);
 }
 
 function handlePrimaryActionKeydown(event: KeyboardEvent, id: string) {
+  if (props.bulkMode) {
+    return;
+  }
   const currentIndex = props.items.findIndex((item) => item.id === id);
   if (currentIndex === -1) {
     return;
@@ -206,6 +208,24 @@ function isBulkSelected(id: string) {
   return props.bulkSelectedIds?.includes(id) ?? false;
 }
 
+/**
+ * why: 批量模式下仍保留“点整行即可勾选”的鼠标/触屏便利，但真正的已选语义只属于 checkbox；
+ * 因此整行命中区只处理 pointer click，不再把主内容区做成第二个可聚焦 toggle 控件。
+ */
+function handleRowClick(event: MouseEvent, id: string) {
+  if (!props.bulkMode) {
+    return;
+  }
+  const clickTarget = event.target;
+  if (!(clickTarget instanceof HTMLElement)) {
+    return;
+  }
+  if (clickTarget.closest("input, label, button, a")) {
+    return;
+  }
+  emit("toggle-bulk-item", id);
+}
+
 function handleCheckboxClick(event: Event, id: string) {
   event.stopPropagation();
   emit("toggle-bulk-item", id);
@@ -224,12 +244,24 @@ const setItemElement = (id: string, element: Element | ComponentPublicInstance |
   itemElements.value[id] = element instanceof HTMLElement ? element : null;
 };
 
+const bindItemElement = (id: string) => {
+  return (element: Element | ComponentPublicInstance | null) => {
+    setItemElement(id, element);
+  };
+};
+
 /**
  * why: 重排句柄在拖动和键盘调整两条路径里都是同一个权威焦点落点；
  * 这里提前收集每一项的 DOM 引用，避免后面再去靠脆弱的选择器回查。
  */
 const setReorderButtonElement = (id: string, element: Element | ComponentPublicInstance | null) => {
   reorderButtonElements.value[id] = element instanceof HTMLButtonElement ? element : null;
+};
+
+const bindReorderButtonElement = (id: string) => {
+  return (element: Element | ComponentPublicInstance | null) => {
+    setReorderButtonElement(id, element);
+  };
 };
 
 /**
@@ -315,6 +347,7 @@ watch(
         :key="item.id"
         :class="draggingId === item.id ? ':uno: opacity-60' : ''"
         class=":uno: group focus-within:ring-primary/40 relative focus-within:ring-2"
+        @click="handleRowClick($event, item.id)"
         @dragover="handleDragOver($event, item.id)"
         @drop="handleDrop($event, item.id)"
       >
@@ -345,15 +378,16 @@ watch(
             />
           </label>
 
-          <button
-            :ref="(element) => setItemElement(item.id, element)"
+          <component
+            :is="props.bulkMode ? 'div' : 'button'"
+            :ref="bindItemElement(item.id)"
             :aria-current="
               !props.bulkMode && props.selectedId !== undefined && props.selectedId === item.id
                 ? 'true'
                 : undefined
             "
+            v-bind="props.bulkMode ? {} : { type: 'button', tabindex: 0 }"
             class=":uno: min-w-0 flex-1 text-left focus:outline-none"
-            type="button"
             @click="handleSelect(item.id)"
             @keydown="handlePrimaryActionKeydown($event, item.id)"
           >
@@ -370,12 +404,12 @@ watch(
 
               <slot :item="item" name="hint" />
             </div>
-          </button>
+          </component>
 
           <div class=":uno: flex shrink-0 items-center gap-1 self-start">
             <button
               v-if="props.reorderable && !props.bulkMode && props.items.length > 1"
-              :ref="(element) => setReorderButtonElement(item.id, element)"
+              :ref="bindReorderButtonElement(item.id)"
               :aria-label="`拖动排序：${item.name || item.id}`"
               aria-keyshortcuts="ArrowUp ArrowDown"
               class=":uno: inline-flex h-5 w-5 shrink-0 cursor-grab items-center justify-center rounded text-sm leading-none tracking-[-0.2em] text-gray-400 transition hover:text-gray-600 active:cursor-grabbing"

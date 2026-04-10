@@ -40,9 +40,9 @@ function reorderItems(
 }
 
 describe("ResourceList accessibility", () => {
-  // why: 资源列表行里同时存在主操作、复选框和拖动句柄；
-  // 这里必须锁住“普通列表 + 明确按钮”的语义，避免再回退成错误的 listbox 复合组件。
-  it("exposes tab panel semantics and bulk checkbox labels without faking listbox semantics", () => {
+  // why: 批量模式允许“点整行即可勾选”作为命中区便利，
+  // 但真正的已选语义必须只由 checkbox 暴露，不能再留下第二个可聚焦 toggle 控件。
+  it("keeps the checkbox as the only bulk selection control", async () => {
     const wrapper = mount(ResourceList, {
       props: {
         items: [
@@ -68,13 +68,16 @@ describe("ResourceList accessibility", () => {
     expect(list.attributes("aria-label")).toBe("代码片段列表");
     expect(wrapper.find('[role="listbox"]').exists()).toBe(false);
 
-    const primaryButton = wrapper.get('button[type="button"]');
-    expect(primaryButton.text()).toContain("页头脚本");
-    expect(primaryButton.attributes("aria-pressed")).toBeUndefined();
+    expect(wrapper.find('button[type="button"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain("页头脚本");
 
     const checkboxes = wrapper.findAll('input[type="checkbox"]');
     expect(checkboxes[0].attributes("aria-label")).toBe("全选当前列表项");
     expect(checkboxes[1].attributes("aria-label")).toBe("选择 页头脚本");
+
+    await wrapper.get("li:last-child").trigger("click");
+    expect(wrapper.emitted("toggle-bulk-item")).toEqual([["snippet-a"]]);
+    expect(wrapper.emitted("select")).toBeUndefined();
   });
 
   // why: 非批量模式下左侧资源列表是 master-detail 导航；

@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -314,6 +315,37 @@ class TransformationRuleRuntimeStoreTest {
         waitUntil(() -> watchCount.get() >= 2);
     }
 
+    // why: 删除协调器依赖的“规则引用关系快照”只在当前 live watch 仍托底时才可信；
+    // watch 意外断开后，即使历史上 warm-up 过，也必须重新等待重连后的新快照落地。
+    @Test
+    void shouldResetReferenceReadinessAfterUnexpectedDisposeUntilReconnectRefreshCompletes() {
+        AtomicInteger listCount = new AtomicInteger();
+        AtomicReference<reactor.core.publisher.FluxSink<TransformationRule>> reconnectRefreshSink =
+            new AtomicReference<>();
+        when(client.list(TransformationRule.class, null, null)).thenAnswer(invocation -> {
+            int round = listCount.incrementAndGet();
+            return round == 1
+                ? Flux.just(rule("rule-a", TransformationRule.Mode.SELECTOR, true, "main"))
+                : Flux.create(reconnectRefreshSink::set);
+        });
+
+        ArgumentCaptor<Watcher> watcherCaptor = ArgumentCaptor.forClass(Watcher.class);
+        manager.startWatching();
+        verify(client).watch(watcherCaptor.capture());
+        waitUntil(manager::isReadyForReferenceReads);
+
+        watcherCaptor.getValue().dispose();
+
+        waitUntil(() -> listCount.get() >= 2);
+        assertFalse(manager.isReadyForReferenceReads());
+
+        reconnectRefreshSink.get().next(
+            rule("rule-a", TransformationRule.Mode.SELECTOR, true, "main"));
+        reconnectRefreshSink.get().complete();
+
+        waitUntil(manager::isReadyForReferenceReads);
+    }
+
     // why: 自愈不能只靠 watch 事件；如果启动时那次全量加载短暂失败，又迟迟没有后续事件，
     // 管理器也应按退避策略自行补一次刷新，把缓存从空状态拉回已保存快照。
     @Test
@@ -337,6 +369,48 @@ class TransformationRuleRuntimeStoreTest {
             .equals(List.of("rule-a")));
 
         assertTrue(fetchCount.get() >= 2);
+    }
+
+    // why: refresh 期间如果已经收到更晚的 watch 事件，这次整表结果就只能算旧视图；
+    // 它必须被丢弃并再刷一次，不能把当前快照回滚到更早状态。
+    @Test
+    void shouldDiscardStaleRefreshResultThatStartedBeforeNewerWatchEvent() {
+        AtomicInteger listCount = new AtomicInteger();
+        AtomicReference<reactor.core.publisher.FluxSink<TransformationRule>> firstRefreshSink =
+            new AtomicReference<>();
+        TransformationRule staleRule =
+            namedRule("rule-a", "Before", TransformationRule.Mode.SELECTOR, true, ".before");
+        TransformationRule latestRule =
+            namedRule("rule-a", "After", TransformationRule.Mode.SELECTOR, true, ".after");
+        when(client.list(TransformationRule.class, null, null)).thenAnswer(invocation -> {
+            int round = listCount.incrementAndGet();
+            return round == 1 ? Flux.create(firstRefreshSink::set) : Flux.just(latestRule);
+        });
+
+        ArgumentCaptor<Watcher> watcherCaptor = ArgumentCaptor.forClass(Watcher.class);
+        manager.startWatching();
+        verify(client).watch(watcherCaptor.capture());
+
+        watcherCaptor.getValue().onAdd(latestRule);
+        waitUntil(() -> manager.listActiveByMode(TransformationRule.Mode.SELECTOR)
+            .collectList()
+            .block()
+            .stream()
+            .map(RuntimeTransformationRule::match)
+            .toList()
+            .equals(List.of(".after")));
+
+        firstRefreshSink.get().next(staleRule);
+        firstRefreshSink.get().complete();
+
+        waitUntil(() -> listCount.get() >= 2);
+        waitUntil(() -> manager.listActiveByMode(TransformationRule.Mode.SELECTOR)
+            .collectList()
+            .block()
+            .stream()
+            .map(RuntimeTransformationRule::match)
+            .toList()
+            .equals(List.of(".after")));
     }
 
     // why: 写接口成功后仍会主动请求一次 refresh；即使多个 refresh 紧挨着到来，
