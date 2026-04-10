@@ -9,7 +9,7 @@
 ## 开发环境
 
 - Java 21+
-- Node.js 25+
+- Node.js 24+
 - pnpm 10+
 
 ## 开发
