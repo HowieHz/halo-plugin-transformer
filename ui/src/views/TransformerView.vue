@@ -859,9 +859,13 @@ function jumpToSnippet(id: string) {
 
           <div class="transformer-layout :uno: flex h-full divide-x divide-gray-100">
             <button
-              v-if="mobileDrawer.backdropVisible.value"
+              :aria-hidden="mobileDrawer.backdropVisible.value ? undefined : 'true'"
               aria-label="关闭当前侧边栏"
+              :class="{
+                'mobile-drawer-backdrop-visible': mobileDrawer.backdropVisible.value,
+              }"
               class="mobile-drawer-backdrop"
+              :tabindex="mobileDrawer.backdropVisible.value ? 0 : -1"
               type="button"
               @click="closeMobileDrawer()"
             />
