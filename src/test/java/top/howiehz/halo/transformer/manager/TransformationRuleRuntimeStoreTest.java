@@ -400,6 +400,7 @@ class TransformationRuleRuntimeStoreTest {
             .toList()
             .equals(List.of(".after")));
 
+        waitUntil(() -> firstRefreshSink.get() != null);
         firstRefreshSink.get().next(staleRule);
         firstRefreshSink.get().complete();
 

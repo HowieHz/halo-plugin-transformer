@@ -251,6 +251,7 @@ class TransformationSnippetRuntimeStoreTest {
             .get("snippet-a")
             .getCode()));
 
+        waitUntil(() -> firstRefreshSink.get() != null);
         firstRefreshSink.get().next(staleSnippet);
         firstRefreshSink.get().complete();
 
