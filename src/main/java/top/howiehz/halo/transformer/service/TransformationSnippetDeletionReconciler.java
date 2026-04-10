@@ -1,5 +1,6 @@
 package top.howiehz.halo.transformer.service;
 
+import java.time.Duration;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
@@ -25,6 +26,7 @@ import top.howiehz.halo.transformer.util.TransformationSnippetReferenceIds;
 @RequiredArgsConstructor
 public class TransformationSnippetDeletionReconciler implements Reconciler<Reconciler.Request> {
     private static final int MAX_CONFLICT_RETRIES = 3;
+    private static final Duration SNAPSHOT_WARM_UP_RETRY_DELAY = Duration.ofMillis(250);
 
     private final ExtensionClient client;
     private final TransformationRuleRuntimeStore ruleRuntimeStore;
@@ -42,6 +44,14 @@ public class TransformationSnippetDeletionReconciler implements Reconciler<Recon
         TransformationSnippet snippet = snippetOptional.get();
         if (!TransformationSnippetLifecycleService.isDeletionPendingCleanup(snippet)) {
             return Result.doNotRetry();
+        }
+        if (!ruleRuntimeStore.isReadyForReferenceReads()) {
+            log.info(
+                "Deferring deletion cleanup for snippet [{}] until the rule runtime snapshot "
+                    + "has completed its initial warm-up",
+                request.name()
+            );
+            return Result.requeue(SNAPSHOT_WARM_UP_RETRY_DELAY);
         }
 
         boolean detachedAnyRule =

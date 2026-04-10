@@ -91,6 +91,14 @@ public class TransformationRuleRuntimeStore extends AbstractWatchDrivenExtension
     }
 
     /**
+     * why: 删除协调器只有在首轮整表 warm-up 完成后，才能把这份 watch-driven 快照当成
+     * “规则引用关系”的权威来源；否则空快照只代表“还没装载完”，不是“确实没有引用”。
+     */
+    public boolean isReadyForReferenceReads() {
+        return hasCompletedInitialSnapshotRefresh();
+    }
+
+    /**
      * why: 控制台写口在成功持久化后，必须立刻把最新已保存规则回灌进可见快照；
      * watch 负责自愈与跨实例同步，但不应让当前写请求后的下一次读取继续看到旧规则集。
      */

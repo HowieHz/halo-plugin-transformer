@@ -14,6 +14,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.time.Duration;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
@@ -40,6 +41,7 @@ class TransformationSnippetDeletionReconcilerTest {
         client = mock(ExtensionClient.class);
         ruleRuntimeStore = mock(TransformationRuleRuntimeStore.class);
         reconciler = new TransformationSnippetDeletionReconciler(client, ruleRuntimeStore);
+        when(ruleRuntimeStore.isReadyForReferenceReads()).thenReturn(true);
     }
 
     // why: finalizer 协调器的核心职责，就是在 Halo 标记“删除中”后先摘掉规则真源里的引用，
@@ -86,6 +88,24 @@ class TransformationSnippetDeletionReconcilerTest {
         reconciler.reconcile(new Reconciler.Request("snippet-a"));
 
         verify(ruleRuntimeStore, never()).listVisibleRuleNamesReferencingSnippet("snippet-a");
+        verify(client, never()).update(any(TransformationSnippet.class));
+    }
+
+    // why: watch-driven rule快照在启动期尚未完成首轮 warm-up 时，
+    // 空快照只表示“暂未就绪”，不能被误当成“已无引用”去提前移除 snippet finalizer。
+    @Test
+    void shouldRequeueWhenRuleRuntimeSnapshotIsNotReady() {
+        TransformationSnippet deletingSnippet = deletingSnippet("snippet-a");
+        when(client.fetch(TransformationSnippet.class, "snippet-a"))
+            .thenReturn(Optional.of(deletingSnippet));
+        when(ruleRuntimeStore.isReadyForReferenceReads()).thenReturn(false);
+
+        Reconciler.Result result = reconciler.reconcile(new Reconciler.Request("snippet-a"));
+
+        assertTrue(result.reEnqueue());
+        assertEquals(Duration.ofMillis(250), result.retryAfter());
+        verify(ruleRuntimeStore, never()).listVisibleRuleNamesReferencingSnippet("snippet-a");
+        verify(client, never()).update(any(TransformationRule.class));
         verify(client, never()).update(any(TransformationSnippet.class));
     }
 

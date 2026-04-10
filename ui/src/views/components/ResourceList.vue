@@ -352,7 +352,6 @@ watch(
                 ? 'true'
                 : undefined
             "
-            :aria-pressed="props.bulkMode ? isBulkSelected(item.id) : undefined"
             class=":uno: min-w-0 flex-1 text-left focus:outline-none"
             type="button"
             @click="handleSelect(item.id)"

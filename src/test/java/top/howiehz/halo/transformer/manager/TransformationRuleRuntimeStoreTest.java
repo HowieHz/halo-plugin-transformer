@@ -38,6 +38,26 @@ class TransformationRuleRuntimeStoreTest {
         manager = new TransformationRuleRuntimeStore(client, 10, 40);
     }
 
+    @Test
+    void shouldOnlyMarkReferenceReadsReadyAfterInitialSnapshotRefreshSucceeds() {
+        TransformationRule persistedRule =
+            rule("rule-a", TransformationRule.Mode.FOOTER, false, "");
+        when(client.list(TransformationRule.class, null, null))
+            .thenReturn(Flux.just(persistedRule));
+
+        assertFalse(manager.isReadyForReferenceReads());
+
+        manager.applyPersistedRule(persistedRule);
+        assertFalse(manager.isReadyForReferenceReads());
+
+        manager.startWatching();
+        waitUntil(manager::isReadyForReferenceReads);
+        assertTrue(manager.isReadyForReferenceReads());
+
+        manager.stopWatching();
+        assertFalse(manager.isReadyForReferenceReads());
+    }
+
     // why: watch-driven cache 启动后应先主动回源装载一次快照；
     // 否则运行时第一批请求会看到空规则集，而不是当前已保存状态。
     @Test

@@ -39,6 +39,7 @@ abstract class AbstractWatchDrivenExtensionStore<R extends Extension, S> {
     private volatile ScheduledFuture<?> refreshRetryTask;
     private volatile int reconnectFailureCount;
     private volatile int refreshFailureCount;
+    private volatile boolean initialSnapshotReady;
 
     AbstractWatchDrivenExtensionStore(ReactiveExtensionClient client, Class<R> resourceType,
         GroupVersionKind resourceGroupVersionKind, String resourceDisplayName,
@@ -65,6 +66,7 @@ abstract class AbstractWatchDrivenExtensionStore<R extends Extension, S> {
             cancelRefreshRetryTaskLocked();
             reconnectFailureCount = 0;
             refreshFailureCount = 0;
+            initialSnapshotReady = false;
         }
         requestRefreshAsync();
         connectWatch("startup", false);
@@ -82,6 +84,7 @@ abstract class AbstractWatchDrivenExtensionStore<R extends Extension, S> {
             cancelRefreshRetryTaskLocked();
             reconnectFailureCount = 0;
             refreshFailureCount = 0;
+            initialSnapshotReady = false;
             currentWatcher = watcher;
             watcher = null;
             currentSupervisor = watchSupervisor;
@@ -114,6 +117,10 @@ abstract class AbstractWatchDrivenExtensionStore<R extends Extension, S> {
         runRefreshLoopAsync();
     }
 
+    protected final boolean hasCompletedInitialSnapshotRefresh() {
+        return initialSnapshotReady;
+    }
+
     protected abstract Mono<S> refreshSnapshot();
 
     protected abstract void applyWatchEvent(WatchEventType eventType, R resource);
@@ -140,6 +147,7 @@ abstract class AbstractWatchDrivenExtensionStore<R extends Extension, S> {
             })
             .subscribe(
                 snapshot -> {
+                    initialSnapshotReady = true;
                     int recoveredFailures = resetRefreshFailureCount();
                     if (recoveredFailures > 0) {
                         log.info("Recovered {} snapshot refresh after {} failed attempt(s)",

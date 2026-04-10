@@ -41,11 +41,11 @@ pnpm dev
 这两个文档分工很明确，不建议混着写：
 
 - `README.md`
-    - 写给用户看
-    - 重点回答“这个插件能做什么、该怎么配、运行起来会怎样”
+  - 写给用户看
+  - 重点回答“这个插件能做什么、该怎么配、运行起来会怎样”
 - `CONTRIBUTING.md`
-    - 写给贡献者看
-    - 重点回答“项目怎么构建、哪些约束不能碰、为什么现在这样设计”
+  - 写给贡献者看
+  - 重点回答“项目怎么构建、哪些约束不能碰、为什么现在这样设计”
 
 ## 前端状态模型
 
@@ -55,16 +55,16 @@ pnpm dev
 前端资源状态固定分三层：
 
 - 读取模型（`ReadModel`）
-    - 接口返回给前端的读取结果，只用于列表与已保存内容展示
-    - 左侧列表场景下，读取模型应进一步聚合成资源快照（`list + orders + orderVersion`）
-    - 常规刷新必须整体替换这份快照；不要再分别刷新列表和 `snippet-order / rule-order`
+  - 接口返回给前端的读取结果，只用于列表与已保存内容展示
+  - 左侧列表场景下，读取模型应进一步聚合成资源快照（`list + orders + orderVersion`）
+  - 常规刷新必须整体替换这份快照；不要再分别刷新列表和 `snippet-order / rule-order`
 - 编辑草稿（`EditorDraft`）
-    - 编辑器里的草稿，只用于右侧表单与导入后的临时编辑态
+  - 编辑器里的草稿，只用于右侧表单与导入后的临时编辑态
 - 写入载荷（`WritePayload`）
-    - 提交给后端的最小持久化字段集合
+  - 提交给后端的最小持久化字段集合
 - 前端可为了编辑体验提前整理 `snippetIds`（例如 `trim`、去空、去重）
-    - 但这只是 UX 层便利，不是权威规范化
-    - `snippetIds` 的 authoritative normalization 必须只在后端写链路执行，并被删除协调器与运行时读取复用；不要把同一份规则再拆回前端或多个后端模块各自维护
+  - 但这只是 UX 层便利，不是权威规范化
+  - `snippetIds` 的 authoritative normalization 必须只在后端写链路执行，并被删除协调器与运行时读取复用；不要把同一份规则再拆回前端或多个后端模块各自维护
 
 这样做的目的很直接：  
 不要把 `id`、临时编辑状态、JSON 草稿这些前端态字段顺手混进写接口。
@@ -77,11 +77,11 @@ pnpm dev
 - 前端应优先通过共享 snapshot controller 统一承载这份快照；不要在页面层再手动并排维护 `itemsResp`、`orders`、`orderVersion`
 
 - 控制台左侧列表如果同时依赖“资源本体 + 排序资源”，前端读取时必须把它们收敛成同一次快照（snapshot）
-    - 代码片段读快照要同时返回：列表、`snippet-order`、`orderVersion`
-    - 规则读快照要同时返回：列表、`rule-order`、`orderVersion`
-    - 集合读取只保留快照（`snapshot`）；禁止新增“列表 + 排序”（`list + order`）重组路径
-    - 常规刷新不能只拉列表再继续复用旧排序；那会把页面读模型拆成“新列表 + 旧顺序”的混合态
-    - 排序资源的唯一写真源仍然只保留在 `snippet-order` / `rule-order`；不要为了修刷新一致性，再把顺序冗余写回资源本体
+  - 代码片段读快照要同时返回：列表、`snippet-order`、`orderVersion`
+  - 规则读快照要同时返回：列表、`rule-order`、`orderVersion`
+  - 集合读取只保留快照（`snapshot`）；禁止新增“列表 + 排序”（`list + order`）重组路径
+  - 常规刷新不能只拉列表再继续复用旧排序；那会把页面读模型拆成“新列表 + 旧顺序”的混合态
+  - 排序资源的唯一写真源仍然只保留在 `snippet-order` / `rule-order`；不要为了修刷新一致性，再把顺序冗余写回资源本体
 
 导入 / 导出也遵循同一条边界。  
 它描述的是“这份内容能不能被带走、再带回来继续编辑”，不是“把数据库里那条资源原样倒出来”。
@@ -105,8 +105,8 @@ pnpm dev
 - 未保存草稿不会在两个标签页（tab）后面各藏一份；切换时总是重新恢复当前标签页的活动会话（hydrate），避免共享一个“已修改”标记（`dirty`），却同时维护两份隐式草稿
 - 中间编辑器与右侧关系面板在当前标签页（tab）下都必须从同一份活动编辑草稿（`EditorDraft`）派生；不能让“右侧关系”偷偷回退到已保存列表，变成左边看到的是当前草稿，右边看到的却是已保存内容，前后对不上
 - Transformer 页面语义本身只允许由一份共享 page session controller 表达 `single / create / bulk`
-    - `activeTab`、当前页面模式和 remembered selection 的迁移必须统一收口
-    - 不要在 `TransformerView` 里再手工拼 `createModalTab + bulkMode + selectedId` 去反推“当前在什么页面”
+  - `activeTab`、当前页面模式和 remembered selection 的迁移必须统一收口
+  - 不要在 `TransformerView` 里再手工拼 `createModalTab + bulkMode + selectedId` 去反推“当前在什么页面”
 - `bulk / create` 只会隐藏当前显示的选中项，不会顺手清掉之前记住的选中项；退出这些页面语义后，应该还能回到该标签页（tab）上次打开的资源
 - 新建弹窗用单一当前活动标签（`ActiveTab | null`）表达状态，不再维护两颗互斥布尔；避免出现代码片段 / 规则弹窗同时为真，或者两边都没收好口的隐式组合态
 - 多步流程弹窗（例如批量导入）只用一个流程状态对象表达 `source/options/result`，不要再并列维护多颗“是否显示 / 结果 / 进行中”状态去手动拼阶段
@@ -118,12 +118,12 @@ pnpm dev
 
 - 简单模式能立即定位多个错误；高级模式尽最大可能定位到具体字段路径和 JSON 行列
 - 当前标签页、选中项和新建弹窗状态会同步到地址栏，例如：
-    - `?tab=snippets`
-    - `?tab=rules`
-    - `?tab=snippets&id=代码片段 ID`
-    - `?tab=rules&id=规则 ID`
-    - `?tab=snippets&action=create`
-    - `?tab=rules&action=create`
+  - `?tab=snippets`
+  - `?tab=rules`
+  - `?tab=snippets&id=代码片段 ID`
+  - `?tab=rules&id=规则 ID`
+  - `?tab=snippets&action=create`
+  - `?tab=rules&action=create`
 - 左侧“代码片段”和“转换规则”列表支持按住拖动手柄调整顺序；拖拽、新建、删除后都会立即尝试保存顺序，保存失败时会提示
 - 左侧排序使用独立的 `snippet-order` / `rule-order` 映射，不会因为右侧尚未保存、或暂时无法保存的内容编辑而被一并拦住
 - 常规列表刷新必须走聚合快照读口，把列表、排序映射和排序版本一起替换；不要再把“刷新列表”和“刷新排序”拆成两个独立入口
@@ -140,10 +140,11 @@ pnpm dev
 - 右侧编辑面板支持进入“批量操作”模式；进入后会暂时收起当前单项选中，退出后会回到该标签页上次打开的资源
 - 批量模式下，左侧列表会出现“全选”和逐项勾选框；中间面板会切换成批量操作面板
 - 批量模式下支持批量导入、批量导出、批量启用、批量禁用、批量删除；执行后不会自动退出批量模式
+- 批量模式下，逐项勾选框是唯一的“已勾选状态”权威语义；整行点击只作为扩大命中区的便捷操作，不应再额外暴露第二套 toggle 状态
 - 控制台响应式布局约定：
-    - 视口宽度 `< 1300px` 时，三栏布局切换为窄宽度抽屉布局
-    - 视口宽度 `>= 1300px` 时，保持桌面三栏常驻布局
-    - 窄宽度抽屉支持 `Esc` 关闭，打开后自动把焦点移入抽屉，关闭后返回触发按钮
+  - 视口宽度 `< 1300px` 时，三栏布局切换为窄宽度抽屉布局
+  - 视口宽度 `>= 1300px` 时，保持桌面三栏常驻布局
+  - 窄宽度抽屉支持 `Esc` 关闭，打开后自动把焦点移入抽屉，关闭后返回触发按钮
 - 新建代码片段 / 转换规则时，可先点“导入”把已有模板带入表单
 - 新建代码片段 / 转换规则时，也可在导入按钮左侧先决定创建后默认是启用还是禁用
 - 点“导出”后，会先弹出导出窗口；可以选择“复制全部”或“另存为”
@@ -156,16 +157,16 @@ pnpm dev
 - 已修改但尚未保存的字段，会在字段标题旁显示“撤销修改”
 - 下拉框需要先点中，再滚动滚轮，才会切换选项；鼠标悬停时不会误切换
 - 撤回按钮：
-    - 单击，或按住 0.3 秒内松开：回到上一步
-    - 按住超过 0.3 秒但不足 2 秒：按钮开始出现从左到右的提示动画，此时松开仍然只是回到上一步
-    - 继续按到 2 秒：自动回到未修改状态
+  - 单击，或按住 0.3 秒内松开：回到上一步
+  - 按住超过 0.3 秒但不足 2 秒：按钮开始出现从左到右的提示动画，此时松开仍然只是回到上一步
+  - 继续按到 2 秒：自动回到未修改状态
 - 在高级模式下：
-    - JSON 合法时可执行“格式化 JSON”
-    - JSON 非法时可执行“重建 JSON”，按当前简单模式配置重新生成
+  - JSON 合法时可执行“格式化 JSON”
+  - JSON 非法时可执行“重建 JSON”，按当前简单模式配置重新生成
 - 无障碍约束：
-    - 声明成 `tablist / tab / tabpanel` 的控件，必须同时提供 `aria-selected`、方向键 / Home / End 键盘导航，以及和面板一一对应的 `aria-controls / aria-labelledby`
-    - 字段错误不能只把红字渲染出来；输入控件本身必须通过 `aria-describedby` 指向对应错误消息，让读屏能知道“这条错误属于哪个字段”
-    - 只在鼠标悬停时出现的提示，键盘聚焦时也必须可见；不要把操作指引做成 hover-only
+  - 声明成 `tablist / tab / tabpanel` 的控件，必须同时提供 `aria-selected`、方向键 / Home / End 键盘导航，以及和面板一一对应的 `aria-controls / aria-labelledby`
+  - 字段错误不能只把红字渲染出来；输入控件本身必须通过 `aria-describedby` 指向对应错误消息，让读屏能知道“这条错误属于哪个字段”
+  - 只在鼠标悬停时出现的提示，键盘聚焦时也必须可见；不要把操作指引做成 hover-only
 
 ## 匹配规则规范
 
@@ -173,12 +174,12 @@ pnpm dev
 所以 `match-rule` 现在拆成两份规范，各自负责一类约束：
 
 - 前后端共用的约束（contract）
-    - 规范文件：`specs/match-rule/contract.spec.jsonc`
-    - 样例文件：`specs/match-rule/contract.cases.jsonc`
-    - 允许哪些字段、错误文案怎么写、Schema 长什么样，都从这里生成
+  - 规范文件：`specs/match-rule/contract.spec.jsonc`
+  - 样例文件：`specs/match-rule/contract.cases.jsonc`
+  - 允许哪些字段、错误文案怎么写、Schema 长什么样，都从这里生成
 - 只在前端生效的行为
-    - 仍记录在 spec / cases 中，但不强制要求后端共享同一语义
-    - 典型例子包括模式切换确认、JSON 行高亮、导入后退回 `JSON_DRAFT`
+  - 仍记录在 spec / cases 中，但不强制要求后端共享同一语义
+  - 典型例子包括模式切换确认、JSON 行高亮、导入后退回 `JSON_DRAFT`
 
 ### 生成链路
 
@@ -186,22 +187,22 @@ pnpm dev
 “规范文件、生成文件、校验结果”必须一起对齐。
 
 - `pnpm generate:spec-artifacts`
-    - 从仓库根的 `specs/match-rule/contract.spec.jsonc` 刷新生成文件
+  - 从仓库根的 `specs/match-rule/contract.spec.jsonc` 刷新生成文件
 - `pnpm verify:spec-artifacts`
-    - 只校验生成文件是否与规范（spec）一致
+  - 只校验生成文件是否与规范（spec）一致
 - `./gradlew verifyMatchRuleSpecArtifacts`
-    - 后端构建链路里的同一类校验，避免只跑 Gradle 时漏掉规范（spec）一致性检查
+  - 后端构建链路里的同一类校验，避免只跑 Gradle 时漏掉规范（spec）一致性检查
 
 ### JSON 结构约束（JSON Schema）
 
 - `ui/public/generated/transformer.schema.json`
-    - 负责导入导出的外层结构
-    - 描述顶层 `version`、`resourceType`、`data`
+  - 负责导入导出的外层结构
+  - 描述顶层 `version`、`resourceType`、`data`
 - `ui/public/generated/match-rule.schema.json`
-    - 从 `specs/match-rule/contract.spec.jsonc` 生成
-    - 负责 `match-rule` 领域结构
+  - 从 `specs/match-rule/contract.spec.jsonc` 生成
+  - 负责 `match-rule` 领域结构
 - `ui/public/generated/transformer.schema.json`
-    - 通过 `$ref` 引用 `match-rule` 生成后的结构约束（Schema），而不是在导入导出的外层结构里手写一遍规则树结构
+  - 通过 `$ref` 引用 `match-rule` 生成后的结构约束（Schema），而不是在导入导出的外层结构里手写一遍规则树结构
 
 ## 导入 / 导出协议
 
@@ -227,8 +228,8 @@ pnpm dev
 ### 规则导出时的额外约定
 
 - 规则若当前停留在高级模式：
-    - 可成功解析的 JSON 草稿会在导出时自动规范化为 `RULE_TREE`
-    - 仍然无效的 JSON 草稿会继续按 `JSON_DRAFT` 导出，避免把错误内容悄悄改写成另一棵规则树
+  - 可成功解析的 JSON 草稿会在导出时自动规范化为 `RULE_TREE`
+  - 仍然无效的 JSON 草稿会继续按 `JSON_DRAFT` 导出，避免把错误内容悄悄改写成另一棵规则树
 
 ### 导入后的处理方式
 
@@ -260,66 +261,66 @@ pnpm dev
 在配置页里，下面这些情况会直接提示：
 
 - 目标匹配
-    - `CSS 选择器` 模式下，匹配内容不能为空
+  - `CSS 选择器` 模式下，匹配内容不能为空
 - 匹配规则结构
-    - 匹配规则根节点必须是条件组
-    - JSON 高级模式下，`GROUP` / `PATH` / `TEMPLATE_ID` 只允许使用各自支持的字段名；写错字段名会直接提示
-    - 条件组不能是空组
-    - `type`、`negate`、`operator`、`matcher`、`value` 这类必填字段缺失时会直接提示
-    - `negate` 也要求显式写出 `true` / `false`，不会再按“省略就默认 false”处理
+  - 匹配规则根节点必须是条件组
+  - JSON 高级模式下，`GROUP` / `PATH` / `TEMPLATE_ID` 只允许使用各自支持的字段名；写错字段名会直接提示
+  - 条件组不能是空组
+  - `type`、`negate`、`operator`、`matcher`、`value` 这类必填字段缺失时会直接提示
+  - `negate` 也要求显式写出 `true` / `false`，不会再按“省略就默认 false”处理
 - 字段取值
-    - 布尔字段会分别校验是否缺失、以及是否为 `true` / `false`
-    - 匹配方式必须和规则类型对应
-    - 匹配内容不能为空
-    - 正则表达式必须合法
+  - 布尔字段会分别校验是否缺失、以及是否为 `true` / `false`
+  - 匹配方式必须和规则类型对应
+  - 匹配内容不能为空
+  - 正则表达式必须合法
 
 ### 导入时校验
 
 导入代码片段 / 转换规则 JSON 时，也会先做一轮前端校验。
 
 - 代码片段
-    - 批量导入要求 `resourceType = "snippet-batch"`，且 `data.items` 至少包含 1 项
-    - 顶层字段只允许 `enabled`、`name`、`description`、`code`
-    - 顶层可额外带一个可选的 `$schema`，仅供编辑器提示使用；导入时会忽略它的业务含义
-    - 布尔字段会校验是否为 `true` / `false`
-    - 如果只是缺少可补默认值的字段，导入时会自动补上默认配置
-    - 代码内容允许先空着导入；导入后会继续提示“代码内容不能为空”，修正后才能保存
+  - 批量导入要求 `resourceType = "snippet-batch"`，且 `data.items` 至少包含 1 项
+  - 顶层字段只允许 `enabled`、`name`、`description`、`code`
+  - 顶层可额外带一个可选的 `$schema`，仅供编辑器提示使用；导入时会忽略它的业务含义
+  - 布尔字段会校验是否为 `true` / `false`
+  - 如果只是缺少可补默认值的字段，导入时会自动补上默认配置
+  - 代码内容允许先空着导入；导入后会继续提示“代码内容不能为空”，修正后才能保存
 - 转换规则
-    - 批量导入要求 `resourceType = "rule-batch"`，且 `data.items` 至少包含 1 项
-    - 顶层可额外带一个可选的 `$schema`
-    - 顶层字段会分别校验是否缺失、是否为字符串、以及是否落在允许值里，例如 `mode`、`position`、`matchRuleSource.kind`
-    - 顶层布尔字段会校验是否为 `true` / `false`，例如 `enabled`、`wrapMarker`
-    - 如果只是缺少可补默认值的顶层字段，导入时也会回落到规则编辑器默认草稿（`baseline`），而不是直接拒绝
-    - `runtimeOrder` 若存在，必须是 `0 ~ 2147483647` 之间的整数
-    - `matchRule` 会先校验是否还能稳定进入编辑器
-    - `matchRule` 中的布尔字段会校验是否为 `true` / `false`
-    - `matchRule` 中的枚举字段也会分别校验是否缺失、是否为字符串、以及是否落在允许值里，例如 `type` / `operator` / `matcher`
+  - 批量导入要求 `resourceType = "rule-batch"`，且 `data.items` 至少包含 1 项
+  - 顶层可额外带一个可选的 `$schema`
+  - 顶层字段会分别校验是否缺失、是否为字符串、以及是否落在允许值里，例如 `mode`、`position`、`matchRuleSource.kind`
+  - 顶层布尔字段会校验是否为 `true` / `false`，例如 `enabled`、`wrapMarker`
+  - 如果只是缺少可补默认值的顶层字段，导入时也会回落到规则编辑器默认草稿（`baseline`），而不是直接拒绝
+  - `runtimeOrder` 若存在，必须是 `0 ~ 2147483647` 之间的整数
+  - `matchRule` 会先校验是否还能稳定进入编辑器
+  - `matchRule` 中的布尔字段会校验是否为 `true` / `false`
+  - `matchRule` 中的枚举字段也会分别校验是否缺失、是否为字符串、以及是否落在允许值里，例如 `type` / `operator` / `matcher`
 
 ### 保存时校验
 
 创建 / 更新代码片段、转换规则时，后端还会再次校验：
 
 - 代码片段
-    - 是否出现不支持的字段名
-    - 代码内容是否为空
+  - 是否出现不支持的字段名
+  - 代码内容是否为空
 - 转换规则
-    - 目标匹配
-        - `CSS 选择器` 模式下，匹配内容不能为空
-        - `position` 只属于 `CSS 选择器` 规则的 DOM 操作语义；切到 `<head>` / `<footer>` 后，不会再继续继承旧的 `REMOVE` 语义去清空 `snippetIds` 或关闭 `wrapMarker`
-        - 非 `REMOVE` 规则允许先不关联代码片段，作为可继续编辑的草稿态；只有 `CSS 选择器 + REMOVE` 会显式清空 `snippetIds` 并关闭 `wrapMarker`
-    - 匹配规则结构
-        - 根节点是否为 `GROUP`
-        - 是否出现不支持的字段名
-        - 条件组是否为空组
-        - `type`、`negate`、`operator`、`matcher`、`value` 等结构字段是否缺失或不合法
-    - 字段取值
-        - 匹配方式（`matcher`）是否与节点类型匹配
-        - 匹配内容（`value`）是否为空
-        - `REGEX` 是否可正常编译
-        - `snippetIds` 会在后端统一执行 `trim + 去空 + 保序去重`；前端可做同语义的提前整理，但不能代替这条权威收口
-    - `REMOVE` 特殊约束
-        - 是否错误关联了代码片段（内部字段名为 `snippetIds`）
-        - 是否错误开启了注释标记（内部字段名为 `wrapMarker`）
+  - 目标匹配
+    - `CSS 选择器` 模式下，匹配内容不能为空
+    - `position` 只属于 `CSS 选择器` 规则的 DOM 操作语义；切到 `<head>` / `<footer>` 后，不会再继续继承旧的 `REMOVE` 语义去清空 `snippetIds` 或关闭 `wrapMarker`
+    - 非 `REMOVE` 规则允许先不关联代码片段，作为可继续编辑的草稿态；只有 `CSS 选择器 + REMOVE` 会显式清空 `snippetIds` 并关闭 `wrapMarker`
+  - 匹配规则结构
+    - 根节点是否为 `GROUP`
+    - 是否出现不支持的字段名
+    - 条件组是否为空组
+    - `type`、`negate`、`operator`、`matcher`、`value` 等结构字段是否缺失或不合法
+  - 字段取值
+    - 匹配方式（`matcher`）是否与节点类型匹配
+    - 匹配内容（`value`）是否为空
+    - `REGEX` 是否可正常编译
+    - `snippetIds` 会在后端统一执行 `trim + 去空 + 保序去重`；前端可做同语义的提前整理，但不能代替这条权威收口
+  - `REMOVE` 特殊约束
+    - 是否错误关联了代码片段（内部字段名为 `snippetIds`）
+    - 是否错误开启了注释标记（内部字段名为 `wrapMarker`）
 
 ## 运行时架构约定
 
@@ -369,8 +370,8 @@ pnpm dev
 - 高频正则表达式匹配会缓存编译结果，避免同一规则在高频请求下重复 `Pattern.compile`
 - `ANT` 风格的页面路径匹配复用统一的 `RouteMatcher`
 - 匹配规则在运行时会先做一轮布尔最小化，再参与路径预筛、表达式分析与实际匹配
-    - 目标是尽量收缩表达式、减少操作数，而不是把表达式继续展开
-    - 这样可以让路径预筛更早收窄范围，也减少真正进入 HTML 改写前的无效判断
+  - 目标是尽量收缩表达式、减少操作数，而不是把表达式继续展开
+  - 这样可以让路径预筛更早收窄范围，也减少真正进入 HTML 改写前的无效判断
 - 实时规则快照与代码片段快照都由 Halo `watch`（监听）驱动，并带自动重连与退避重试；启动期或连接短暂抖动后会自动自愈
 - 插件启动时第一次预热是独立职责，不能和 `watch` 是否连上绑死；即使 `watch` 暂时连不上，也要先把已保存的规则 / 代码片段装进快照
 - 请求处理时只从内存快照读取规则与代码片段；规则匹配后不再逐个代码片段（snippet）回源 `fetch`
@@ -378,6 +379,7 @@ pnpm dev
 - 删除代码片段走 Halo `finalizer`（终结器）生命周期：先进入“删除中”状态，再由后端协调器摘掉规则引用，最后完成真正删除
 - 进入“删除中”的代码片段会被视为“当前无法关联”，因此控制台列表读模型、单项读写接口与排序清理都必须把它排除在“当前可操作资源”之外
 - 运行时快照与控制台可见列表不是同一语义视图：如果代码片段只是进入“删除中”且仍带着删除清理 finalizer，运行时仍会继续按 id 解析它，直到引用清理完成
+- 删除协调器若要复用 watch-driven 规则快照做“谁还引用了这个 snippet”查询，必须先等待该快照完成首轮整表 warm-up；在此之前只能显式 `requeue`，不能把空快照误当成“没有引用”
 - 原因: 这套双视图语义的目标是同时满足两件事
   1. 控制台必须立刻隐藏 deleting 资源，避免用户继续编辑一条已进入删除流程的对象
   2. 运行时必须在 finalizer 清理完成前继续兜住历史规则输出，避免删除刚发起就把页面内容意外清空
@@ -396,7 +398,7 @@ pnpm dev
 ## 并发控制
 
 - 规则、代码片段、排序配置的所有写接口都会复用 Halo 自带的 `metadata.version` 做乐观并发控制
-    - 包括更新、启用 / 禁用、删除与排序保存
+  - 包括更新、启用 / 禁用、删除与排序保存
 - 如果别的管理员已经先保存了更新，当前这次保存会返回冲突，前端提示刷新后重试，而不是静默覆盖对方修改
 
 ## 已知问题
@@ -438,22 +440,6 @@ pnpm dev
 - 键盘重排的 authoritative 操作模型
 - 同级移动与“进入条件组”的显式手势
 - 焦点保持与读屏播报语义
-
-### 删除代码片段时，反向引用查询仍需全表扫规则
-
-这个问题的本质很直接：删一个代码片段前，后端得先找出哪些规则还在引用它。
-
-现在关系只放在 `TransformationRule.snippetIds` 这一处。  
-这样做的好处是没有第二份关系数据，不会越修越乱；代价也很明确：要反过来找“谁引用了这个片段”时，只能去规则列表里筛。
-
-Halo 目前没有直接提供“按集合成员反查”的原生字段查询能力。  
-所以这一步现在还做不到按 `snippetId` 直接命中，只能基于规则列表过滤。
-
-在平台能力出现之前，不建议回退到：
-
-- 前端自己再维护一份 `snippet -> rules` 对照表
-- 接口层（endpoint）同步补写另一侧资源
-- 用 `annotations / labels` 承载这类结构化关系数据
 
 ### 删除代码片段是分步完成的，不是跨资源原子事务
 
@@ -502,13 +488,13 @@ Halo 目前没有直接提供“按集合成员反查”的原生字段查询能
 GitHub 自动化遵循一个原则：能复用 Halo 官方和仓库现成能力的，就不要自己再造一套。
 
 - `.github/workflows/ci.yaml` / `.github/workflows/cd.yaml`
-    - 继续复用 Halo 官方 reusable workflows
+  - 继续复用 Halo 官方 reusable workflows
 - `.github/dependabot.yml`
-    - 负责 Gradle、UI npm、GitHub Actions 的依赖更新
+  - 负责 Gradle、UI npm、GitHub Actions 的依赖更新
 - `.github/workflows/update-toolchain-versions.yml`
-    - 负责把 `package.json`、`ui/package.json` 和 workflow 里的 Node / pnpm 版本保持同步
+  - 负责把 `package.json`、`ui/package.json` 和 workflow 里的 Node / pnpm 版本保持同步
 - `.github/scripts/update-toolchain-versions.js`
-    - 参考 `halo-plugin-extra-api` 的治理思路，但只管理本仓库里真实存在的文件，不做多余兼容
+  - 参考 `halo-plugin-extra-api` 的治理思路，但只管理本仓库里真实存在的文件，不做多余兼容
 
 ## 提交前检查
 

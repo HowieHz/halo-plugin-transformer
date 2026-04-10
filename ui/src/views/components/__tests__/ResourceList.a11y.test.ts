@@ -68,8 +68,9 @@ describe("ResourceList accessibility", () => {
     expect(list.attributes("aria-label")).toBe("代码片段列表");
     expect(wrapper.find('[role="listbox"]').exists()).toBe(false);
 
-    const primaryButton = wrapper.get('button[aria-pressed="false"]');
+    const primaryButton = wrapper.get('button[type="button"]');
     expect(primaryButton.text()).toContain("页头脚本");
+    expect(primaryButton.attributes("aria-pressed")).toBeUndefined();
 
     const checkboxes = wrapper.findAll('input[type="checkbox"]');
     expect(checkboxes[0].attributes("aria-label")).toBe("全选当前列表项");
