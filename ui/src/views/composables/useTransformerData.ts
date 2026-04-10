@@ -1,5 +1,5 @@
 import { Toast } from "@halo-dev/components";
-import { ref, type Ref } from "vue";
+import { ref, watch, type Ref } from "vue";
 
 import { ruleApi, snippetApi } from "@/apis";
 import type {
@@ -50,24 +50,14 @@ export function useTransformerData(activeTab: Ref<ActiveTab>) {
     editorSelectionState.syncSavedRuleDraft(rule);
   }
 
-  function applySnippetSnapshot(snapshot: typeof snippetSnapshotState.snapshot.value) {
-    snippetSnapshotState.applySnapshot(snapshot);
+  async function refreshSnippetSnapshot() {
+    await snippetSnapshotState.reloadSnapshot();
     editorSelectionState.hydrateSelectedSnippetDraft();
   }
 
-  function applyRuleSnapshot(snapshot: typeof ruleSnapshotState.snapshot.value) {
-    ruleSnapshotState.applySnapshot(snapshot);
-    editorSelectionState.hydrateSelectedRuleDraft();
-  }
-
-  async function refreshSnippetSnapshot() {
-    const response = await snippetApi.getSnapshot();
-    applySnippetSnapshot(response.data);
-  }
-
   async function refreshRuleSnapshot() {
-    const response = await ruleApi.getSnapshot();
-    applyRuleSnapshot(response.data);
+    await ruleSnapshotState.reloadSnapshot();
+    editorSelectionState.hydrateSelectedRuleDraft();
   }
 
   async function fetchAll() {
@@ -88,6 +78,62 @@ export function useTransformerData(activeTab: Ref<ActiveTab>) {
   async function refreshAllResources() {
     await Promise.all([refreshSnippetSnapshot(), refreshRuleSnapshot()]);
   }
+
+  /**
+   * why: route / remembered selection 的 authority 不是“任一列表刚好先回来的中间态”，
+   * 而是对应资源快照在当前轮刷新完成后的稳定结果；按资源类型分别校验，
+   * 才不会把并发刷新时的临时空列表误判成“资源已被删除”。
+   */
+  function reconcileSelectedSnippet() {
+    if (!snippetSnapshotState.hasLoaded.value || snippetSnapshotState.refreshing.value) {
+      return;
+    }
+    const selectedSnippetId = editorSelectionState.selectedSnippetId.value;
+    if (!selectedSnippetId) {
+      return;
+    }
+    const hasSelectedSnippet = snippetSnapshotState.items.value.some(
+      (snippet) => snippet.id === selectedSnippetId,
+    );
+    if (!hasSelectedSnippet) {
+      editorSelectionState.selectedSnippetId.value = null;
+    }
+  }
+
+  function reconcileSelectedRule() {
+    if (!ruleSnapshotState.hasLoaded.value || ruleSnapshotState.refreshing.value) {
+      return;
+    }
+    const selectedRuleId = editorSelectionState.selectedRuleId.value;
+    if (!selectedRuleId) {
+      return;
+    }
+    const hasSelectedRule = ruleSnapshotState.items.value.some(
+      (rule) => rule.id === selectedRuleId,
+    );
+    if (!hasSelectedRule) {
+      editorSelectionState.selectedRuleId.value = null;
+    }
+  }
+
+  watch(
+    [
+      editorSelectionState.selectedSnippetId,
+      snippetSnapshotState.items,
+      snippetSnapshotState.hasLoaded,
+      snippetSnapshotState.refreshing,
+    ],
+    reconcileSelectedSnippet,
+  );
+  watch(
+    [
+      editorSelectionState.selectedRuleId,
+      ruleSnapshotState.items,
+      ruleSnapshotState.hasLoaded,
+      ruleSnapshotState.refreshing,
+    ],
+    reconcileSelectedRule,
+  );
 
   const snippetState = useSnippetState({
     creating,

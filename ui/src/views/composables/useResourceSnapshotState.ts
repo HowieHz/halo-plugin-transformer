@@ -45,13 +45,17 @@ export function useResourceSnapshotState<T extends { id: string; name?: string |
   options: UseResourceSnapshotStateOptions<T>,
 ) {
   const snapshot = shallowRef<OrderedItemList<T>>(emptyOrderedList<T>());
+  const hasLoaded = ref(false);
+  const pendingRefreshCount = ref(0);
   const syncingReorder = ref(false);
   const pendingOrders = ref<OrderMap | null>(null);
 
   const items = computed(() => sortByOrderMap(snapshot.value.items, snapshot.value.orders));
+  const refreshing = computed(() => pendingRefreshCount.value > 0);
 
   function applySnapshot(nextSnapshot: OrderedItemList<T>) {
     snapshot.value = cloneSnapshot(nextSnapshot);
+    hasLoaded.value = true;
   }
 
   function applyOrderSnapshot(nextOrderState: PersistedOrderState) {
@@ -70,8 +74,13 @@ export function useResourceSnapshotState<T extends { id: string; name?: string |
   }
 
   async function reloadSnapshot() {
-    const response = await options.api.getSnapshot();
-    applySnapshot(response.data);
+    pendingRefreshCount.value += 1;
+    try {
+      const response = await options.api.getSnapshot();
+      applySnapshot(response.data);
+    } finally {
+      pendingRefreshCount.value -= 1;
+    }
   }
 
   async function restoreSnapshotAfterFailedSave(previousSnapshot: OrderedItemList<T>) {
@@ -166,7 +175,9 @@ export function useResourceSnapshotState<T extends { id: string; name?: string |
 
   return {
     snapshot,
+    hasLoaded,
     items: items as ComputedRef<T[]>,
+    refreshing,
     syncingReorder,
     applySnapshot,
     applyOrderSnapshot,

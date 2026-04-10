@@ -67,11 +67,108 @@ function snapshotOf<T>(
   };
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
+async function flushAsyncState() {
+  await Promise.resolve();
+  await nextTick();
+}
+
 describe("useTransformerData", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     snippetApi.getSnapshot.mockResolvedValue({ data: snapshotOf([]) });
     ruleApi.getSnapshot.mockResolvedValue({ data: snapshotOf([]) });
+  });
+
+  // why: 深链选中态的 authority 是对应资源快照本身；
+  // 并发拉取另一侧资源时，不能因为中间态空列表就把 route 选中的 rule 提前清掉。
+  it("keeps a route-selected rule until the rule snapshot settles", async () => {
+    const activeTab = ref<ActiveTab>("rules");
+    const savedRule = makeRuleEditorDraft({
+      id: "rule-a",
+      metadata: { name: "rule-a", version: 1 },
+      matchRule: {
+        type: "GROUP",
+        negate: false,
+        operator: "AND",
+        children: [
+          {
+            type: "PATH",
+            negate: false,
+            matcher: "ANT",
+            value: "/**",
+          },
+        ],
+      },
+    });
+    delete (savedRule as { matchRuleSource?: unknown }).matchRuleSource;
+    const snippetDeferred = createDeferred<{
+      data: OrderedItemList<ReturnType<typeof makeSnippetEditorDraft>>;
+    }>();
+    const ruleDeferred = createDeferred<{
+      data: OrderedItemList<ReturnType<typeof makeRuleEditorDraft>>;
+    }>();
+
+    snippetApi.getSnapshot.mockReturnValueOnce(snippetDeferred.promise);
+    ruleApi.getSnapshot.mockReturnValueOnce(ruleDeferred.promise);
+
+    const store = useTransformerData(activeTab);
+    store.selectedRuleId.value = "rule-a";
+
+    const fetchPromise = store.fetchAll();
+
+    snippetDeferred.resolve({ data: snapshotOf([]) });
+    await flushAsyncState();
+
+    expect(store.selectedRuleId.value).toBe("rule-a");
+
+    ruleDeferred.resolve({ data: snapshotOf([savedRule]) });
+    await fetchPromise;
+    await flushAsyncState();
+
+    expect(store.selectedRuleId.value).toBe("rule-a");
+    expect(store.editRule.value?.id).toBe("rule-a");
+  });
+
+  // why: 只有当对应资源快照自己完成并确认缺失时，选中态才应被清掉；
+  // 这能区分“资源真的没了”和“另一侧列表先刷新完了”两种完全不同的状态。
+  it("clears a missing route-selected rule only after the rule snapshot settles", async () => {
+    const activeTab = ref<ActiveTab>("rules");
+    const snippetDeferred = createDeferred<{
+      data: OrderedItemList<ReturnType<typeof makeSnippetEditorDraft>>;
+    }>();
+    const ruleDeferred = createDeferred<{
+      data: OrderedItemList<ReturnType<typeof makeRuleEditorDraft>>;
+    }>();
+
+    snippetApi.getSnapshot.mockReturnValueOnce(snippetDeferred.promise);
+    ruleApi.getSnapshot.mockReturnValueOnce(ruleDeferred.promise);
+
+    const store = useTransformerData(activeTab);
+    store.selectedRuleId.value = "rule-missing";
+
+    const fetchPromise = store.fetchAll();
+
+    snippetDeferred.resolve({ data: snapshotOf([]) });
+    await flushAsyncState();
+
+    expect(store.selectedRuleId.value).toBe("rule-missing");
+
+    ruleDeferred.resolve({ data: snapshotOf([]) });
+    await fetchPromise;
+    await flushAsyncState();
+
+    expect(store.selectedRuleId.value).toBeNull();
+    expect(store.editRule.value).toBeNull();
   });
 
   // why: 启停现在应走独立写口，并只改已保存规则的 enabled；

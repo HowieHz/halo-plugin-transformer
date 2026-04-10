@@ -175,6 +175,7 @@ const mobileMainLabel = computed(() =>
       ? "代码片段编辑区"
       : "转换规则编辑区",
 );
+const isCompactDrawerModalActive = computed(() => mobileDrawer.backdropVisible.value);
 const editorEmptyStateLayout = computed<EditorEmptyStateLayout>(() =>
   mobileDrawer.isMobileViewport.value ? "compact" : "split-pane",
 );
@@ -303,20 +304,6 @@ onBeforeRouteLeave(() => {
   }
   return requestNavigationLeave();
 });
-
-function validateSelection() {
-  const hasSnippet =
-    !!selectedSnippetId.value && snippets.value.some((item) => item.id === selectedSnippetId.value);
-  const hasRule =
-    !!selectedRuleId.value && rules.value.some((item) => item.id === selectedRuleId.value);
-
-  if (selectedSnippetId.value && !hasSnippet) {
-    selectedSnippetId.value = null;
-  }
-  if (selectedRuleId.value && !hasRule) {
-    selectedRuleId.value = null;
-  }
-}
 
 function openCreateModal(tab: ActiveTab) {
   viewSession.openCreate(tab);
@@ -673,10 +660,6 @@ watch([activeTab, selectedSnippetId, selectedRuleId, transformerViewMode], () =>
   syncQueryState();
 });
 
-watch([snippets, rules], () => {
-  validateSelection();
-});
-
 watch([activeTab, loading], async () => {
   await nextTick();
   resourceListScrollContainer.value = resourceListRef.value?.getScrollContainer() ?? null;
@@ -842,7 +825,11 @@ function jumpToSnippet(id: string) {
 
       <VCard class="transformer-view-card" :body-class="['transformer-view-card-body']">
         <div class="transformer-workspace :uno: relative h-full">
-          <div class="mobile-drawer-toolbar">
+          <div
+            :aria-hidden="isCompactDrawerModalActive ? 'true' : undefined"
+            :inert="isCompactDrawerModalActive ? true : undefined"
+            class="mobile-drawer-toolbar"
+          >
             <VButton
               :id="mobileLeftDrawerToggleId"
               :aria-controls="mobileLeftDrawerId"
@@ -999,7 +986,11 @@ function jumpToSnippet(id: string) {
               </div>
             </MobileDrawerPanel>
 
-            <div class=":uno: main flex h-full flex-none flex-col overflow-hidden">
+            <div
+              :aria-hidden="isCompactDrawerModalActive ? 'true' : undefined"
+              :inert="isCompactDrawerModalActive ? true : undefined"
+              class=":uno: main flex h-full flex-none flex-col overflow-hidden"
+            >
               <BulkOperationPanel
                 v-if="isBulkMode"
                 :can-disable="canBulkDisable"

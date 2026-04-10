@@ -37,6 +37,16 @@ function focusDrawerContent() {
   (firstFocusableElement ?? panel).focus();
 }
 
+function resolveFocusableElements() {
+  const panel = panelRef.value;
+  if (!panel) {
+    return [];
+  }
+  return Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter((element) => {
+    return !element.hasAttribute("disabled") && element.getAttribute("aria-hidden") !== "true";
+  });
+}
+
 watch(
   () => [props.compact, props.open] as const,
   async ([compact, open]) => {
@@ -56,6 +66,46 @@ function handleEscape() {
   }
   emit("close");
 }
+
+/**
+ * why: 移动端抽屉声明为 modal dialog 后，键盘焦点就必须留在抽屉内；
+ * 否则 `aria-modal` 只剩表面语义，用户仍会在遮罩后面的编辑区和另一侧面板间误跳转。
+ */
+function handleTabKeydown(event: KeyboardEvent) {
+  if (!props.compact || !props.open) {
+    return;
+  }
+
+  const panel = panelRef.value;
+  if (!panel) {
+    return;
+  }
+
+  const focusableElements = resolveFocusableElements();
+  if (!focusableElements.length) {
+    event.preventDefault();
+    panel.focus();
+    return;
+  }
+
+  const firstFocusableElement = focusableElements[0];
+  const lastFocusableElement = focusableElements[focusableElements.length - 1];
+  const activeElement = document.activeElement as HTMLElement | null;
+  const focusInsidePanel = !!activeElement && panel.contains(activeElement);
+
+  if (event.shiftKey) {
+    if (!focusInsidePanel || activeElement === firstFocusableElement || activeElement === panel) {
+      event.preventDefault();
+      lastFocusableElement.focus();
+    }
+    return;
+  }
+
+  if (!focusInsidePanel || activeElement === lastFocusableElement) {
+    event.preventDefault();
+    firstFocusableElement.focus();
+  }
+}
 </script>
 
 <template>
@@ -67,10 +117,12 @@ function handleEscape() {
     :aria-labelledby="compact ? titleId : undefined"
     :aria-modal="compact && open ? 'true' : undefined"
     :class="[side === 'left' ? 'left-aside' : 'right-aside', { 'mobile-drawer-open': open }]"
+    :inert="compact && !open ? true : undefined"
     :role="compact ? 'dialog' : undefined"
     :tabindex="compact ? -1 : undefined"
     class=":uno: aside relative flex h-full flex-none flex-col overflow-hidden"
     @keydown.esc.prevent.stop="handleEscape"
+    @keydown.tab="handleTabKeydown"
   >
     <h2 v-if="compact" :id="titleId" class=":uno: sr-only">{{ title }}</h2>
     <p v-if="compact" :id="descriptionId" class=":uno: sr-only">
