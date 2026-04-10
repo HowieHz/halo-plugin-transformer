@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,6 +37,11 @@ class TransformationSnippetRuntimeStoreTest {
     @BeforeEach
     void setUp() {
         store = new TransformationSnippetRuntimeStore(client, 10, 40);
+    }
+
+    @AfterEach
+    void tearDown() {
+        store.stopWatching();
     }
 
     // why: 代码拼接热路径只应读取本地快照；
