@@ -10,12 +10,14 @@ import java.net.URI;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebInputException;
 import reactor.core.publisher.Mono;
 import run.halo.app.core.extension.endpoint.CustomEndpoint;
@@ -264,7 +266,8 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
     private Mono<TransformationRule> fetchVisibleRule(String name, String notFoundReason) {
         return client.fetch(TransformationRule.class, name)
             .filter(rule -> !ExtensionUtil.isDeleted(rule))
-            .switchIfEmpty(Mono.error(new ServerWebInputException(notFoundReason)));
+            .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND,
+                notFoundReason)));
     }
 
     @Override

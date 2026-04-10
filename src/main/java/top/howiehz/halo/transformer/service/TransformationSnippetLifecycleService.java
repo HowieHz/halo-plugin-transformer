@@ -11,7 +11,7 @@ import top.howiehz.halo.transformer.scheme.TransformationSnippet;
 
 @Component
 public class TransformationSnippetLifecycleService {
-    static final String DELETION_FINALIZER =
+    public static final String DELETION_FINALIZER =
         "transformer.howiehz.top/code-snippet-reference-cleanup";
 
     private final ReactiveExtensionClient client;
@@ -20,7 +20,7 @@ public class TransformationSnippetLifecycleService {
         this.client = client;
     }
 
-    static boolean hasDeletionFinalizer(TransformationSnippet snippet) {
+    public static boolean hasDeletionFinalizer(TransformationSnippet snippet) {
         if (snippet == null || snippet.getMetadata() == null
             || snippet.getMetadata().getFinalizers() == null) {
             return false;
@@ -28,7 +28,7 @@ public class TransformationSnippetLifecycleService {
         return snippet.getMetadata().getFinalizers().contains(DELETION_FINALIZER);
     }
 
-    static boolean isDeletionPendingCleanup(TransformationSnippet snippet) {
+    public static boolean isDeletionPendingCleanup(TransformationSnippet snippet) {
         return snippet != null
             && ExtensionUtil.isDeleted(snippet)
             && hasDeletionFinalizer(snippet);

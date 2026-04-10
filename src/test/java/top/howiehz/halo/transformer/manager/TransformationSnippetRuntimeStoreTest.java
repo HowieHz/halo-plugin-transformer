@@ -23,6 +23,7 @@ import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
 import run.halo.app.extension.Watcher;
 import top.howiehz.halo.transformer.scheme.TransformationSnippet;
+import top.howiehz.halo.transformer.service.TransformationSnippetLifecycleService;
 
 @ExtendWith(MockitoExtension.class)
 class TransformationSnippetRuntimeStoreTest {
@@ -130,6 +131,37 @@ class TransformationSnippetRuntimeStoreTest {
         Map<String, TransformationSnippet> snapshot = store.buildSnapshot(List.of(deletingSnippet));
 
         assertTrue(snapshot.isEmpty());
+    }
+
+    // why: finalizer 生命周期要求“先清理规则引用，再完成真实删除”；
+    // 删除中但仍待清理的 snippet 必须继续留在运行时快照，避免规则尚未摘引用时退化成空输出。
+    @Test
+    void shouldKeepDeletionPendingCleanupSnippetInRuntimeSnapshot() {
+        TransformationSnippet deletingSnippet = snippet("snippet-a", "before");
+        deletingSnippet.getMetadata().setDeletionTimestamp(Instant.now());
+        deletingSnippet.getMetadata()
+            .setFinalizers(java.util.Set.of(
+                TransformationSnippetLifecycleService.DELETION_FINALIZER));
+
+        Map<String, TransformationSnippet> snapshot = store.buildSnapshot(List.of(deletingSnippet));
+
+        assertEquals(List.of("snippet-a"), List.copyOf(snapshot.keySet()));
+    }
+
+    // why: 控制台列表应隐藏“删除中”资源，但运行时仍需按 id 读取待清理 snippet；
+    // 这个视图分离要由同一份快照派生，而不是新增第二份状态源。
+    @Test
+    void shouldHideDeletionPendingSnippetFromVisibleListButKeepItResolvableById() {
+        TransformationSnippet deletingSnippet = snippet("snippet-a", "before");
+        deletingSnippet.getMetadata().setDeletionTimestamp(Instant.now());
+        deletingSnippet.getMetadata()
+            .setFinalizers(java.util.Set.of(
+                TransformationSnippetLifecycleService.DELETION_FINALIZER));
+
+        store.applyPersistedSnippet(deletingSnippet);
+
+        assertTrue(store.listVisibleSnippets().isEmpty());
+        assertTrue(store.getByIds(List.of("snippet-a")).block().containsKey("snippet-a"));
     }
 
     // why: 控制台读列表和拖拽排序都应直接消费这份 watch-driven snippet 快照；

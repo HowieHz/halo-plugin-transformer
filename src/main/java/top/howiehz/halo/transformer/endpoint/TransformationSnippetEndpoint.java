@@ -9,12 +9,14 @@ import static org.springframework.web.reactive.function.server.RouterFunctions.r
 import java.net.URI;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebInputException;
 import reactor.core.publisher.Mono;
 import run.halo.app.core.extension.endpoint.CustomEndpoint;
@@ -175,7 +177,6 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
                 return lifecycleService.markForDeletion(snippet);
             })
             .doOnSuccess(ignored -> {
-                snippetRuntimeStore.removeSnippet(name);
                 snippetRuntimeStore.invalidateAndWarmUpAsync();
             })
             .then();
@@ -214,7 +215,8 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
     private Mono<TransformationSnippet> fetchVisibleSnippet(String name, String notFoundReason) {
         return client.fetch(TransformationSnippet.class, name)
             .filter(snippet -> !ExtensionUtil.isDeleted(snippet))
-            .switchIfEmpty(Mono.error(new ServerWebInputException(notFoundReason)));
+            .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND,
+                notFoundReason)));
     }
 
     @Override

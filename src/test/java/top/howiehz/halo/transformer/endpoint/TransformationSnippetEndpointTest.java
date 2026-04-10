@@ -13,7 +13,6 @@ import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.web.server.ServerWebInputException;
 import reactor.core.publisher.Mono;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
@@ -128,11 +127,12 @@ class TransformationSnippetEndpointTest {
         snippet.getMetadata().setDeletionTimestamp(java.time.Instant.now());
         when(client.fetch(TransformationSnippet.class, "snippet-a")).thenReturn(Mono.just(snippet));
 
-        ServerWebInputException error = assertThrows(
-            ServerWebInputException.class,
+        ResponseStatusException error = assertThrows(
+            ResponseStatusException.class,
             () -> endpoint.updateSnippetEnabled("snippet-a", enabledPayload(true, 7L)).block()
         );
 
+        assertEquals(404, error.getStatusCode().value());
         assertEquals("未找到要更新的代码片段", error.getReason());
         verify(client, never()).update(any(TransformationSnippet.class));
     }
@@ -162,11 +162,12 @@ class TransformationSnippetEndpointTest {
         snippet.getMetadata().setDeletionTimestamp(java.time.Instant.now());
         when(client.fetch(TransformationSnippet.class, "snippet-a")).thenReturn(Mono.just(snippet));
 
-        ServerWebInputException error = assertThrows(
-            ServerWebInputException.class,
+        ResponseStatusException error = assertThrows(
+            ResponseStatusException.class,
             () -> endpoint.deleteSnippet("snippet-a", deletePayload(7L)).block()
         );
 
+        assertEquals(404, error.getStatusCode().value());
         assertEquals("未找到要删除的代码片段", error.getReason());
         verify(lifecycleService, never()).markForDeletion(any(TransformationSnippet.class));
     }
@@ -184,7 +185,6 @@ class TransformationSnippetEndpointTest {
         endpoint.deleteSnippet("snippet-a", deletePayload(7L)).block();
 
         verify(lifecycleService).markForDeletion(snippet);
-        verify(snippetRuntimeStore).removeSnippet("snippet-a");
         verify(snippetRuntimeStore).invalidateAndWarmUpAsync();
     }
 

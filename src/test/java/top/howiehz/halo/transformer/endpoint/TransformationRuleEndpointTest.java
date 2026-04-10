@@ -18,7 +18,6 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.web.server.ServerWebInputException;
 import reactor.core.publisher.Mono;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
@@ -207,11 +206,12 @@ class TransformationRuleEndpointTest {
         rule.getMetadata().setDeletionTimestamp(java.time.Instant.now());
         when(client.fetch(TransformationRule.class, "rule-a")).thenReturn(Mono.just(rule));
 
-        ServerWebInputException error = assertThrows(
-            ServerWebInputException.class,
+        ResponseStatusException error = assertThrows(
+            ResponseStatusException.class,
             () -> endpoint.updateRuleEnabled("rule-a", enabledPayload(true, 8L)).block()
         );
 
+        assertEquals(404, error.getStatusCode().value());
         assertEquals("未找到要更新的规则", error.getReason());
         verify(client, never()).update(any(TransformationRule.class));
     }

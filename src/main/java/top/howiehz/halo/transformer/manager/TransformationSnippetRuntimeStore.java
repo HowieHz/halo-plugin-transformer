@@ -11,6 +11,7 @@ import run.halo.app.extension.ExtensionUtil;
 import run.halo.app.extension.GroupVersionKind;
 import run.halo.app.extension.ReactiveExtensionClient;
 import top.howiehz.halo.transformer.scheme.TransformationSnippet;
+import top.howiehz.halo.transformer.service.TransformationSnippetLifecycleService;
 import top.howiehz.halo.transformer.util.TransformationSnippetReferenceIds;
 
 @Component
@@ -72,11 +73,13 @@ public class TransformationSnippetRuntimeStore extends AbstractWatchDrivenExtens
     }
 
     /**
-     * why: 控制台列表与排序保存也应消费同一份 watch-driven snippet 真源；
-     * 这样请求线程只读内存快照，不再为了列表刷新或拖拽保存回源整表扫描。
+     * why: 控制台列表只应展示“可见资源”，删除中的资源必须隐藏；
+     * 运行时注入路径会继续从同一份快照里按 id 读取删除中且待清理引用的 snippet，避免提前退化输出。
      */
     public List<TransformationSnippet> listVisibleSnippets() {
-        return List.copyOf(cachedSnippetsById.values());
+        return cachedSnippetsById.values().stream()
+            .filter(snippet -> !ExtensionUtil.isDeleted(snippet))
+            .toList();
     }
 
     /**
@@ -91,10 +94,10 @@ public class TransformationSnippetRuntimeStore extends AbstractWatchDrivenExtens
         }
         synchronized (snapshotMonitor) {
             Map<String, TransformationSnippet> next = new LinkedHashMap<>(cachedSnippetsById);
-            if (ExtensionUtil.isDeleted(snippet)) {
-                next.remove(snippetId);
-            } else {
+            if (shouldKeepInSnapshot(snippet)) {
                 next.put(snippetId, snippet);
+            } else {
+                next.remove(snippetId);
             }
             cachedSnippetsById = next;
         }
@@ -131,7 +134,7 @@ public class TransformationSnippetRuntimeStore extends AbstractWatchDrivenExtens
                 continue;
             }
             String snippetId = snippet.getMetadata().getName();
-            if (snippetId == null || snippetId.isBlank() || ExtensionUtil.isDeleted(snippet)) {
+            if (snippetId == null || snippetId.isBlank() || !shouldKeepInSnapshot(snippet)) {
                 continue;
             }
             snapshot.put(snippetId, snippet);
@@ -176,12 +179,17 @@ public class TransformationSnippetRuntimeStore extends AbstractWatchDrivenExtens
         String snippetId,
         TransformationSnippet snippet) {
         Map<String, TransformationSnippet> next = new LinkedHashMap<>(currentSnapshot);
-        if (eventType == WatchEventType.DELETE || ExtensionUtil.isDeleted(snippet)) {
+        if (eventType == WatchEventType.DELETE || !shouldKeepInSnapshot(snippet)) {
             next.remove(snippetId);
         } else {
             next.put(snippetId, snippet);
         }
         return next;
+    }
+
+    private boolean shouldKeepInSnapshot(TransformationSnippet snippet) {
+        return snippet != null && (!ExtensionUtil.isDeleted(snippet)
+            || TransformationSnippetLifecycleService.isDeletionPendingCleanup(snippet));
     }
 
     private String describeSnippetId(TransformationSnippet snippet) {
