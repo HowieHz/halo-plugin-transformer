@@ -457,7 +457,7 @@ onBeforeUnmount(() => {
           </template>
         </FormField>
 
-        <FormField label="运行顺序">
+        <FormField label="运行顺序" label-semantics="group">
           <template v-if="canUndo('runtimeOrder')" #actions>
             <FieldUndoButton
               @reset="resetField('runtimeOrder')"
@@ -465,7 +465,7 @@ onBeforeUnmount(() => {
             />
           </template>
           <template #default="{ inputId, labelId }">
-            <div :id="inputId" :aria-labelledby="labelId">
+            <div :id="inputId" :aria-labelledby="labelId" role="group">
               <RuleRuntimeOrderField
                 :model-value="currentRule.runtimeOrder"
                 @update:model-value="updateField('runtimeOrder', $event)"
@@ -478,11 +478,12 @@ onBeforeUnmount(() => {
           <template v-if="canUndo('mode')" #actions>
             <FieldUndoButton @reset="resetField('mode')" @undo="undoField('mode')" />
           </template>
-          <template #default="{ inputId }">
+          <template #default="{ inputId, required }">
             <select
               :id="inputId"
               :value="currentRule.mode"
               class=":uno: focus:border-primary w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm focus:outline-none"
+              :required="required"
               @wheel="updateSelectByWheel"
               @change="
                 updateField(
@@ -504,12 +505,13 @@ onBeforeUnmount(() => {
             <template v-if="canUndo('match')" #actions>
               <FieldUndoButton @reset="resetField('match')" @undo="undoField('match')" />
             </template>
-            <template #default="{ inputId }">
+            <template #default="{ inputId, required }">
               <div class=":uno: space-y-1">
                 <input
                   :id="inputId"
                   :aria-describedby="matchFieldError ? matchFieldErrorId : undefined"
                   :aria-invalid="!!matchFieldError"
+                  :required="required"
                   placeholder="例如：#main-content、.post-card、div[data-role=banner]"
                   :value="matchDraft"
                   :class="
@@ -611,12 +613,12 @@ onBeforeUnmount(() => {
           </template>
         </FormField>
 
-        <FormField label="匹配规则" required>
+        <FormField label="匹配规则" label-semantics="group" required>
           <template v-if="canUndo('matchRule')" #actions>
             <FieldUndoButton @reset="resetField('matchRule')" @undo="undoField('matchRule')" />
           </template>
-          <template #default="{ inputId, labelId }">
-            <div :id="inputId" :aria-labelledby="labelId">
+          <template #default="{ inputId, labelId, required }">
+            <div :id="inputId" :aria-labelledby="labelId" :aria-required="required" role="group">
               <MatchRuleEditor
                 ref="matchRuleEditorRef"
                 :model-value="currentRule.matchRule"

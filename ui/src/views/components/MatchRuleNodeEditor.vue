@@ -49,6 +49,7 @@ const dragContext = inject(MATCH_RULE_DRAG_CONTEXT_KEY, null);
 const matcherOptions = computed(() =>
   rule.value.type === "TEMPLATE_ID" ? TEMPLATE_MATCHER_OPTIONS : PATH_MATCHER_OPTIONS,
 );
+type MatchRuleField = "children" | "operator" | "negate" | "type" | "matcher" | "value" | "node";
 const valuePlaceholder = computed(() => {
   if (rule.value.type === "PATH") {
     if (rule.value.matcher === "EXACT") {
@@ -80,8 +81,31 @@ const ownErrors = computed(() => {
   });
 });
 const ownErrorPaths = computed(() => new Set(ownErrors.value.map((error) => error.path)));
-const ownErrorMessages = computed(() => ownErrors.value.map((error) => error.message));
 const hasNodeError = computed(() => ownErrors.value.length > 0);
+const nodeIdPrefix = computed(
+  () =>
+    currentPath.value
+      .replace(/[^a-zA-Z0-9_-]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "") || "root",
+);
+const nodeLabelText = computed(() =>
+  isGroup.value ? (props.root ? "根条件组" : "条件组") : "匹配条件",
+);
+const nodeLabelId = computed(() => `match-rule-node-${nodeIdPrefix.value}-label`);
+const fieldErrors = computed(() =>
+  ownErrors.value.map((error, index) => {
+    const field = resolveErrorField(error.path);
+    return {
+      field,
+      id: `match-rule-node-${nodeIdPrefix.value}-error-${field}-${index}`,
+      message: error.message,
+    };
+  }),
+);
+const nodeDescribedBy = computed(() =>
+  buildDescribedBy(fieldErrors.value.map((error) => error.id)),
+);
 const isDraggingNode = computed(() =>
   isSamePath(dragContext?.draggingPath.value ?? null, currentNodePath.value),
 );
@@ -167,6 +191,37 @@ function switchLeafType(type: "PATH" | "TEMPLATE_ID") {
 
 function hasFieldError(field: "children" | "operator" | "negate" | "type" | "matcher" | "value") {
   return ownErrorPaths.value.has(`${currentPath.value}.${field}`);
+}
+
+function resolveErrorField(errorPath: string): MatchRuleField {
+  if (errorPath === currentPath.value) {
+    return "node";
+  }
+  const prefix = `${currentPath.value}.`;
+  if (!errorPath.startsWith(prefix)) {
+    return "node";
+  }
+  const suffix = errorPath.slice(prefix.length);
+  if (suffix.startsWith("children")) {
+    return "children";
+  }
+  if (["operator", "negate", "type", "matcher", "value"].includes(suffix)) {
+    return suffix as MatchRuleField;
+  }
+  return "node";
+}
+
+function buildDescribedBy(ids: Array<string | undefined>) {
+  const resolvedIds = ids.filter((value): value is string => !!value);
+  return resolvedIds.length ? resolvedIds.join(" ") : undefined;
+}
+
+function fieldDescribedBy(field: MatchRuleField) {
+  return buildDescribedBy(
+    fieldErrors.value
+      .filter((error) => error.field === field || error.field === "node")
+      .map((error) => error.id),
+  );
 }
 
 function startDrag(event: DragEvent) {
@@ -284,7 +339,9 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
       hasNodeError ? ':uno: border-red-300 bg-red-50/40' : ':uno: border-gray-200 bg-white',
       isDraggingNode ? ':uno: opacity-60' : '',
     ]"
+    :aria-describedby="nodeDescribedBy"
     :aria-invalid="hasNodeError"
+    :aria-labelledby="nodeLabelId"
     class=":uno: relative rounded-md border p-3"
     role="group"
     @dragover="handleDragOverNode"
@@ -302,11 +359,12 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
     <div class=":uno: space-y-3">
       <template v-if="isGroup">
         <div class=":uno: flex flex-wrap items-center gap-2">
-          <span class=":uno: text-sm font-medium text-gray-700">
+          <span :id="nodeLabelId" class=":uno: text-sm font-medium text-gray-700">
             {{ root ? "根条件组" : "条件组" }}
           </span>
           <select
             :value="rule.operator"
+            :aria-describedby="fieldDescribedBy('operator')"
             :aria-invalid="hasFieldError('operator')"
             aria-label="条件组逻辑"
             :class="
@@ -336,6 +394,7 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
             class=":uno: inline-flex items-center gap-2 text-sm"
           >
             <input
+              :aria-describedby="fieldDescribedBy('negate')"
               :checked="rule.negate"
               type="checkbox"
               @change="updateGroupField('negate', ($event.target as HTMLInputElement).checked)"
@@ -343,19 +402,17 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
             本组取反（NOT）
           </label>
           <div v-if="!root" class=":uno: inline-flex items-center gap-1">
-            <button
-              aria-label="拖动当前条件组"
+            <span
+              aria-hidden="true"
               class=":uno: inline-flex h-7 w-7 shrink-0 cursor-grab items-center justify-center rounded text-sm leading-none tracking-[-0.2em] text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 active:cursor-grabbing"
               draggable="true"
-              title="按住拖动；拖到条件组中部可放入该组"
-              type="button"
-              @click.stop
+              title="按住拖动；拖到条件组中部可放入该组。暂不支持键盘重排。"
               @dragend="clearDragState"
               @dragstart.stop="startDrag"
               @mousedown.stop
             >
               ⋮⋮
-            </button>
+            </span>
           </div>
           <VButton
             v-if="!root && canRemove !== false"
@@ -402,9 +459,11 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
       </template>
 
       <template v-else>
+        <span :id="nodeLabelId" class=":uno: sr-only">{{ nodeLabelText }}</span>
         <div class=":uno: flex flex-wrap items-center gap-2">
           <select
             :value="rule.type"
+            :aria-describedby="fieldDescribedBy('type')"
             :aria-invalid="hasFieldError('type')"
             aria-label="匹配规则类型"
             :class="
@@ -424,6 +483,7 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
 
           <select
             :value="rule.matcher"
+            :aria-describedby="fieldDescribedBy('matcher')"
             :aria-invalid="hasFieldError('matcher')"
             aria-label="匹配方式"
             :class="
@@ -450,6 +510,7 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
             class=":uno: inline-flex items-center gap-2 text-sm"
           >
             <input
+              :aria-describedby="fieldDescribedBy('negate')"
               :checked="rule.negate"
               type="checkbox"
               @change="updateGroupField('negate', ($event.target as HTMLInputElement).checked)"
@@ -458,19 +519,17 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
           </label>
 
           <div v-if="!root" class=":uno: inline-flex items-center gap-1">
-            <button
-              aria-label="拖动当前匹配条件"
+            <span
+              aria-hidden="true"
               class=":uno: inline-flex h-7 w-7 shrink-0 cursor-grab items-center justify-center rounded text-sm leading-none tracking-[-0.2em] text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 active:cursor-grabbing"
               draggable="true"
-              title="按住拖动排序"
-              type="button"
-              @click.stop
+              title="按住拖动排序。暂不支持键盘重排。"
               @dragend="clearDragState"
               @dragstart.stop="startDrag"
               @mousedown.stop
             >
               ⋮⋮
-            </button>
+            </span>
           </div>
 
           <VButton
@@ -486,6 +545,7 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
 
         <input
           :value="rule.value"
+          :aria-describedby="fieldDescribedBy('value')"
           :aria-invalid="hasFieldError('value')"
           aria-label="匹配值"
           :class="
@@ -499,13 +559,14 @@ function resolveNodeDropPlacement(event: DragEvent): MatchRuleDropPlacement | nu
         />
       </template>
 
-      <div v-if="ownErrorMessages.length" aria-live="polite" class=":uno: space-y-1" role="alert">
+      <div v-if="fieldErrors.length" aria-live="polite" class=":uno: space-y-1" role="alert">
         <p
-          v-for="(message, index) in ownErrorMessages"
-          :key="`${currentPath}-${index}-${message}`"
+          v-for="error in fieldErrors"
+          :id="error.id"
+          :key="error.id"
           class=":uno: text-xs text-red-500"
         >
-          {{ message }}
+          {{ error.message }}
         </p>
       </div>
     </div>

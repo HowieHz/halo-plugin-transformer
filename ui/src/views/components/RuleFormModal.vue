@@ -156,17 +156,18 @@ defineExpose({
         />
       </FormField>
 
-      <FormField v-slot="{ inputId, labelId }" label="运行顺序">
-        <div :id="inputId" :aria-labelledby="labelId">
+      <FormField v-slot="{ inputId, labelId }" label="运行顺序" label-semantics="group">
+        <div :id="inputId" :aria-labelledby="labelId" role="group">
           <RuleRuntimeOrderField v-model="createDraft.draft.value.runtimeOrder" />
         </div>
       </FormField>
 
-      <FormField v-slot="{ inputId }" label="注入模式" required>
+      <FormField v-slot="{ inputId, required }" label="注入模式" required>
         <select
           :id="inputId"
           v-model="createDraft.draft.value.mode"
           class=":uno: focus:border-primary w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm focus:outline-none"
+          :required="required"
           @wheel="updateSelectByWheel"
         >
           <option v-for="o in MODE_OPTIONS" :key="o.value" :value="o.value">{{ o.label }}</option>
@@ -174,13 +175,19 @@ defineExpose({
       </FormField>
 
       <template v-if="needsTarget">
-        <FormField v-slot="{ inputId }" :invalid="!!matchFieldError" label="CSS 选择器" required>
+        <FormField
+          v-slot="{ inputId, required }"
+          :invalid="!!matchFieldError"
+          label="CSS 选择器"
+          required
+        >
           <div class=":uno: space-y-1">
             <input
               :id="inputId"
               :aria-describedby="matchFieldError ? matchFieldErrorId : undefined"
               v-model="createDraft.draft.value.match"
               :aria-invalid="!!matchFieldError"
+              :required="required"
               placeholder="例如：#main-content、.post-card、div[data-role=banner]"
               :class="
                 matchFieldError
@@ -222,8 +229,13 @@ defineExpose({
         </label>
       </FormField>
 
-      <FormField v-slot="{ inputId, labelId }" label="匹配规则" required>
-        <div :id="inputId" :aria-labelledby="labelId">
+      <FormField
+        v-slot="{ inputId, labelId, required }"
+        label="匹配规则"
+        label-semantics="group"
+        required
+      >
+        <div :id="inputId" :aria-labelledby="labelId" :aria-required="required" role="group">
           <MatchRuleEditor
             :model-value="createDraft.draft.value.matchRule"
             :source="createDraft.draft.value.matchRuleSource"

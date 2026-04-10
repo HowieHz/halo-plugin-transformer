@@ -235,7 +235,7 @@ async function exportSnippet() {
           <template v-if="canUndo('code')" #actions>
             <FieldUndoButton @reset="resetField('code')" @undo="undoField('code')" />
           </template>
-          <template #default="{ inputId }">
+          <template #default="{ inputId, required }">
             <div class=":uno: space-y-1">
               <div
                 :class="
@@ -265,6 +265,7 @@ async function exportSnippet() {
                     :id="inputId"
                     :aria-describedby="codeFieldError ? codeFieldErrorId : undefined"
                     :aria-invalid="!!codeFieldError"
+                    :required="required"
                     :value="snippet.code"
                     class=":uno: h-full min-h-0 w-full flex-1 resize-none border-0 bg-transparent px-3 pt-2 pb-0 font-mono text-sm leading-6 focus:outline-none"
                     placeholder="输入 HTML 代码"

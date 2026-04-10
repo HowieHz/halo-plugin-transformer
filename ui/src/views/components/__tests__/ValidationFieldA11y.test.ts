@@ -66,6 +66,7 @@ describe("Validation field accessibility", () => {
 
     expect(textarea.attributes("aria-invalid")).toBe("true");
     expect(textarea.attributes("aria-describedby")).toBe(alert.attributes("id"));
+    expect(textarea.attributes("required")).toBeDefined();
   });
 
   it("associates rule form selector errors with the input", async () => {
@@ -91,7 +92,9 @@ describe("Validation field accessibility", () => {
     const input = wrapper.get('input[aria-invalid="true"]');
     const alert = wrapper.get('[role="alert"]');
 
+    expect(wrapper.get("select").attributes("required")).toBeDefined();
     expect(input.attributes("aria-describedby")).toBe(alert.attributes("id"));
+    expect(input.attributes("required")).toBeDefined();
   });
 
   it("associates snippet editor code errors with the textarea", () => {
@@ -111,6 +114,7 @@ describe("Validation field accessibility", () => {
 
     expect(textarea.attributes("aria-invalid")).toBe("true");
     expect(textarea.attributes("aria-describedby")).toBe(alert.attributes("id"));
+    expect(textarea.attributes("required")).toBeDefined();
   });
 
   it("associates rule editor selector errors with the input", () => {
@@ -130,5 +134,32 @@ describe("Validation field accessibility", () => {
     const alert = wrapper.get('[role="alert"]');
 
     expect(input.attributes("aria-describedby")).toBe(alert.attributes("id"));
+    expect(wrapper.get("select").attributes("required")).toBeDefined();
+    expect(input.attributes("required")).toBeDefined();
+  });
+
+  // why: 运行顺序和匹配规则都是复合控件，不该再伪装成一个 `label for=<div>` 的原生输入；
+  // 外层字段标签必须改为给 group 命名，这样读屏和点击语义才不会错位。
+  it("labels composite rule fields as named groups", () => {
+    const wrapper = mount(RuleFormModal, {
+      props: {
+        saving: false,
+        snippets: [],
+      },
+      global: {
+        stubs: {
+          BaseFormModal: baseFormModalStub,
+          EnabledSwitch: { template: "<div />" },
+          ImportSourceModal: { template: "<div />" },
+          ItemPicker: { template: "<div />" },
+          MatchRuleEditor: { template: "<div>match-rule</div>" },
+          RuleRuntimeOrderField: { template: "<div>runtime-order</div>" },
+        },
+      },
+    });
+
+    const groups = wrapper.findAll('[role="group"][aria-labelledby]');
+    expect(groups).toHaveLength(2);
+    expect(groups[1].attributes("aria-required")).toBe("true");
   });
 });

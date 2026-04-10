@@ -6,6 +6,7 @@ const props = defineProps<{
   labelTitle?: string;
   required?: boolean;
   invalid?: boolean;
+  labelSemantics?: "native" | "group";
 }>();
 
 const fieldId = useId();
@@ -20,7 +21,7 @@ const labelId = computed(() => `field-label-${fieldId}`);
       class=":uno: flex min-h-6 items-center justify-between gap-2"
     >
       <label
-        v-if="label"
+        v-if="label && props.labelSemantics !== 'group'"
         :for="inputId"
         :id="labelId"
         :title="labelTitle"
@@ -30,8 +31,18 @@ const labelId = computed(() => `field-label-${fieldId}`);
         {{ props.label }}
         <span v-if="required" class=":uno: text-red-500">*</span>
       </label>
+      <span
+        v-else-if="label"
+        :id="labelId"
+        :title="labelTitle"
+        :class="props.invalid ? ':uno: text-red-600' : ':uno: text-gray-600'"
+        class=":uno: text-xs font-medium"
+      >
+        {{ props.label }}
+        <span v-if="required" class=":uno: text-red-500">*</span>
+      </span>
       <slot name="actions" />
     </div>
-    <slot :input-id="inputId" :label-id="labelId" />
+    <slot :input-id="inputId" :label-id="labelId" :required="required" />
   </div>
 </template>

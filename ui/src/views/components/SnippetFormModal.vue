@@ -140,7 +140,7 @@ defineExpose({
         />
       </FormField>
 
-      <FormField v-slot="{ inputId }" label="代码内容" required>
+      <FormField v-slot="{ inputId, required }" label="代码内容" required>
         <div class=":uno: space-y-1">
           <div
             :class="
@@ -171,6 +171,7 @@ defineExpose({
                 :aria-describedby="codeFieldError ? codeFieldErrorId : undefined"
                 v-model="createDraft.draft.value.code"
                 :aria-invalid="!!codeFieldError"
+                :required="required"
                 autofocus
                 class=":uno: h-full min-h-0 w-full flex-1 resize-none border-0 bg-transparent px-3 pt-2 pb-0 font-mono text-sm leading-6 focus:outline-none"
                 placeholder="输入 HTML 代码"
