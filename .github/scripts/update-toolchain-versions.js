@@ -7,9 +7,6 @@ const managedWorkflowPaths = [
   path.join(".github", "workflows", "cd.yaml"),
   path.join(".github", "workflows", "update-toolchain-versions.yml"),
 ];
-const workflowNodeVersionOverrides = new Map([
-  [path.join(".github", "workflows", "update-toolchain-versions.yml"), "lts/*"],
-]);
 const dryRun = process.argv.includes("--dry-run");
 const releaseDelayMs = 24 * 60 * 60 * 1000;
 const userAgent = "halo-plugin-transformer-toolchain-updater";
@@ -228,13 +225,12 @@ const updateWorkflowFile = async (filePath, nodeMajor, pnpmVersion) => {
   const { content, lineEnding } = await readFileWithLineEnding(filePath);
   const updates = [];
   let nextContent = content;
-  const nextNodeVersion = workflowNodeVersionOverrides.get(filePath) ?? nodeMajor;
 
-  if (nextNodeVersion !== null && nextContent.includes("node-version:")) {
-    const result = replaceWorkflowInputValue(nextContent, "node-version", String(nextNodeVersion));
+  if (nodeMajor !== null && nextContent.includes("node-version:")) {
+    const result = replaceWorkflowInputValue(nextContent, "node-version", String(nodeMajor));
     if (result.changed) {
       nextContent = result.nextContent;
-      updates.push(`node-version -> ${nextNodeVersion}`);
+      updates.push(`node-version -> ${nodeMajor}`);
     }
   }
 
