@@ -1,0 +1,14 @@
+{
+    "name": "halo-plugin-transformer",
+    "private": true,
+    "type": "module",
+    "engines": {
+        "node": ">=24",
+        "pnpm": "^10.33.0"
+    },
+    "packageManager": "pnpm@10.33.0",
+    "scripts": {
+        "generate:spec-artifacts": "node scripts/sync-match-rule-spec-artifacts.js",
+        "verify:spec-artifacts": "node scripts/sync-match-rule-spec-artifacts.js --check"
+    }
+}

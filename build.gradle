@@ -4,7 +4,9 @@ plugins {
     id "run.halo.plugin.devtools" version "0.6.2"
 }
 
-group 'com.erzbir.halo.injector'
+group = 'top.howiehz.halo.transformer'
+
+def nodeCommand = System.getProperty('os.name').toLowerCase().contains('windows') ? 'node.exe' : 'node'
 
 repositories {
     mavenCentral()
@@ -35,15 +37,30 @@ tasks.withType(JavaCompile).configureEach {
     options.compilerArgs += "-parameters"
 }
 
+tasks.register('generateMatchRuleSpecArtifacts', Exec) {
+    workingDir rootDir
+    commandLine nodeCommand, 'scripts/sync-match-rule-spec-artifacts.js'
+}
+
+tasks.register('verifyMatchRuleSpecArtifacts', Exec) {
+    workingDir rootDir
+    commandLine nodeCommand, 'scripts/sync-match-rule-spec-artifacts.js', '--check'
+}
+
 tasks.register('processUiResources', Copy) {
     from project(':ui').layout.buildDirectory.dir('dist')
     into layout.buildDirectory.dir('resources/main/console')
     dependsOn project(':ui').tasks.named('assemble')
+    dependsOn tasks.named('verifyMatchRuleSpecArtifacts')
     shouldRunAfter tasks.named('processResources')
 }
 
 tasks.named('classes') {
     dependsOn tasks.named('processUiResources')
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('verifyMatchRuleSpecArtifacts')
 }
 
 tasks.named('generatePluginComponentsIdx') {
@@ -54,4 +71,3 @@ halo {
     version = '2.23.2'
     debug = true
 }
-

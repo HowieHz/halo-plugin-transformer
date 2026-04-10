@@ -1,27 +1,29 @@
-import { definePlugin } from '@halo-dev/ui-shared'
-import InjectorView from './views/InjectorView.vue'
-import { IconPlug } from '@halo-dev/components'
-import { markRaw } from 'vue'
-import './styles/main.scss'
-import 'uno.css'
+import { definePlugin } from "@halo-dev/ui-shared";
+import { markRaw } from "vue";
+
+import PluginLogoIcon from "./components/PluginLogoIcon.vue";
+import TransformerView from "./views/TransformerView.vue";
+
+import "./styles/main.scss";
+import "uno.css";
 
 export default definePlugin({
   components: {},
   routes: [
     {
-      parentName: 'ToolsRoot',
+      parentName: "ToolsRoot",
       route: {
-        path: 'injector',
-        name: 'Injector',
-        component: InjectorView,
+        path: "transformer",
+        name: "Transformer",
+        component: TransformerView,
         meta: {
-          title: 'Injector',
-          description: '支持根据规则进行 HTML 代码注入',
+          title: "页面转换器",
+          description: "支持根据规则转换指定页面内容",
           searchable: true,
-          permissions: ['plugin:injector:manage'],
+          permissions: ["plugin:transformer:manage"],
           menu: {
-            name: 'Injector',
-            icon: markRaw(IconPlug),
+            name: "页面转换器",
+            icon: markRaw(PluginLogoIcon),
             priority: 0,
           },
         },
@@ -29,4 +31,4 @@ export default definePlugin({
     },
   ],
   extensionPoints: {},
-})
+});

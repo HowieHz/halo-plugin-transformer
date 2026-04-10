@@ -1,9 +1,6 @@
 {
   "extends": "@tsconfig/node20/tsconfig.json",
-  "include": [
-    "rsbuild.config.*",
-    "vitest.config.*"
-  ],
+  "include": ["rsbuild.config.*", "vitest.config.*"],
   "compilerOptions": {
     "composite": true,
     "noEmit": true,

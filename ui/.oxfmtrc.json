@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "ignorePatterns": [
+    "public/generated/match-rule.schema.json",
+    "public/generated/transformer.schema.json",
+    "src/views/composables/generated/matchRuleContract.ts"
+  ],
+  "overrides": [
+    {
+      "files": ["**/*.jsonc"],
+      "options": {
+        "trailingComma": "none"
+      }
+    }
+  ],
+  "sortImports": {},
+  "sortPackageJson": {
+    "sortScripts": true
+  },
+  "sortTailwindcss": {}
+}

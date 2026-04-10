@@ -4,4 +4,4 @@ pluginManagement {
     }
 }
 include('ui')
-rootProject.name = 'halo-plugin-injector'
+rootProject.name = 'halo-plugin-transformer'

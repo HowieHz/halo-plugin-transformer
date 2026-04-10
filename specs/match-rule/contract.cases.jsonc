@@ -1,0 +1,534 @@
+// 这是前后端共享的 `match-rule` contract cases。
+// Java 与 TypeScript 都必须对这批样例跑一致性测试。
+{
+    "version": 4,
+    "cases": [
+        {
+            "name": "and_group_with_path_and_template_is_path_scoped",
+            "covers": ["runtime.dom-path-precheck.and-path-template-scoped"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    { "type": "PATH", "negate": false, "matcher": "ANT", "value": "/posts/**" },
+                    { "type": "TEMPLATE_ID", "negate": false, "matcher": "EXACT", "value": "post" },
+                ],
+            },
+            "shared": { "domPathPrecheck": true, "writeValidation": { "ok": true } },
+        },
+        {
+            "name": "boolean_minimization_eliminates_and_identity_true_term",
+            "covers": ["runtime.boolean-minimization.and-true-eliminates-neutral-term"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    {
+                        "type": "GROUP",
+                        "negate": false,
+                        "operator": "OR",
+                        "children": [
+                            { "type": "PATH", "negate": false, "matcher": "ANT", "value": "/posts/**" },
+                            { "type": "PATH", "negate": true, "matcher": "ANT", "value": "/posts/**" },
+                        ],
+                    },
+                    { "type": "TEMPLATE_ID", "negate": false, "matcher": "EXACT", "value": "post" },
+                ],
+            },
+            "shared": {
+                "writeValidation": { "ok": true },
+                "minimizedSummary": "id:=:post",
+            },
+        },
+        {
+            "name": "boolean_minimization_short_circuits_and_false_term",
+            "covers": ["runtime.boolean-minimization.and-false-short-circuits-to-false"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    {
+                        "type": "GROUP",
+                        "negate": false,
+                        "operator": "AND",
+                        "children": [
+                            { "type": "PATH", "negate": false, "matcher": "ANT", "value": "/posts/**" },
+                            { "type": "PATH", "negate": true, "matcher": "ANT", "value": "/posts/**" },
+                        ],
+                    },
+                    { "type": "TEMPLATE_ID", "negate": false, "matcher": "EXACT", "value": "post" },
+                ],
+            },
+            "shared": {
+                "writeValidation": { "ok": true },
+                "minimizedSummary": "FALSE",
+            },
+        },
+        {
+            "name": "boolean_minimization_folds_and_complement_pair",
+            "covers": ["runtime.boolean-minimization.and-complement-folds-to-false"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    { "type": "PATH", "negate": false, "matcher": "ANT", "value": "/posts/**" },
+                    { "type": "PATH", "negate": true, "matcher": "ANT", "value": "/posts/**" },
+                ],
+            },
+            "shared": {
+                "writeValidation": { "ok": true },
+                "minimizedSummary": "FALSE",
+            },
+        },
+        {
+            "name": "boolean_minimization_removes_duplicate_and_terms",
+            "covers": ["runtime.boolean-minimization.and-idempotence-removes-duplicates"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    { "type": "PATH", "negate": false, "matcher": "ANT", "value": "/posts/**" },
+                    { "type": "PATH", "negate": false, "matcher": "ANT", "value": "/posts/**" },
+                ],
+            },
+            "shared": {
+                "writeValidation": { "ok": true },
+                "minimizedSummary": "path:ant:/posts/**",
+            },
+        },
+        {
+            "name": "boolean_minimization_eliminates_double_negation",
+            "covers": ["runtime.boolean-minimization.double-negation-eliminates-noise"],
+            "input": {
+                "type": "GROUP",
+                "negate": true,
+                "operator": "AND",
+                "children": [{ "type": "PATH", "negate": true, "matcher": "ANT", "value": "/posts/**" }],
+            },
+            "shared": {
+                "writeValidation": { "ok": true },
+                "minimizedSummary": "path:ant:/posts/**",
+            },
+        },
+        {
+            "name": "boolean_minimization_applies_and_absorption",
+            "covers": ["runtime.boolean-minimization.and-absorption-removes-redundant-or-branch"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    { "type": "PATH", "negate": false, "matcher": "ANT", "value": "/posts/**" },
+                    {
+                        "type": "GROUP",
+                        "negate": false,
+                        "operator": "OR",
+                        "children": [
+                            { "type": "PATH", "negate": false, "matcher": "ANT", "value": "/posts/**" },
+                            { "type": "TEMPLATE_ID", "negate": false, "matcher": "EXACT", "value": "post" },
+                        ],
+                    },
+                ],
+            },
+            "shared": {
+                "writeValidation": { "ok": true },
+                "minimizedSummary": "path:ant:/posts/**",
+            },
+        },
+        {
+            "name": "boolean_minimization_factorizes_shared_and_term",
+            "covers": ["runtime.boolean-minimization.or-factorization-pulls-shared-and-term"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "OR",
+                "children": [
+                    {
+                        "type": "GROUP",
+                        "negate": false,
+                        "operator": "AND",
+                        "children": [
+                            { "type": "PATH", "negate": false, "matcher": "ANT", "value": "/posts/**" },
+                            { "type": "TEMPLATE_ID", "negate": false, "matcher": "EXACT", "value": "post" },
+                        ],
+                    },
+                    {
+                        "type": "GROUP",
+                        "negate": false,
+                        "operator": "AND",
+                        "children": [
+                            { "type": "PATH", "negate": false, "matcher": "ANT", "value": "/posts/**" },
+                            { "type": "TEMPLATE_ID", "negate": false, "matcher": "EXACT", "value": "page" },
+                        ],
+                    },
+                ],
+            },
+            "shared": {
+                "writeValidation": { "ok": true },
+                "minimizedSummary": "path:ant:/posts/** & (id:=:page | id:=:post)",
+            },
+        },
+        {
+            "name": "boolean_minimization_applies_reverse_demorgan_for_or_of_negations",
+            "covers": ["runtime.boolean-minimization.or-of-negations-applies-reverse-demorgan"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "OR",
+                "children": [
+                    { "type": "PATH", "negate": true, "matcher": "ANT", "value": "/posts/**" },
+                    { "type": "TEMPLATE_ID", "negate": true, "matcher": "EXACT", "value": "post" },
+                ],
+            },
+            "shared": {
+                "writeValidation": { "ok": true },
+                "minimizedSummary": "!(path:ant:/posts/** & id:=:post)",
+            },
+        },
+        {
+            "name": "boolean_minimization_applies_reverse_demorgan_for_and_of_negations",
+            "covers": ["runtime.boolean-minimization.and-of-negations-applies-reverse-demorgan"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    { "type": "PATH", "negate": true, "matcher": "ANT", "value": "/posts/**" },
+                    { "type": "TEMPLATE_ID", "negate": true, "matcher": "EXACT", "value": "post" },
+                ],
+            },
+            "shared": {
+                "writeValidation": { "ok": true },
+                "minimizedSummary": "!(path:ant:/posts/** | id:=:post)",
+            },
+        },
+        {
+            "name": "or_group_with_path_and_template_is_not_path_scoped",
+            "covers": ["runtime.dom-path-precheck.or-path-template-unscoped"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "OR",
+                "children": [
+                    { "type": "PATH", "negate": false, "matcher": "ANT", "value": "/posts/**" },
+                    { "type": "TEMPLATE_ID", "negate": false, "matcher": "EXACT", "value": "post" },
+                ],
+            },
+            "shared": { "domPathPrecheck": false, "writeValidation": { "ok": true } },
+        },
+        {
+            "name": "negated_path_group_stays_path_scoped",
+            "input": {
+                "type": "GROUP",
+                "negate": true,
+                "operator": "AND",
+                "children": [{ "type": "PATH", "negate": false, "matcher": "ANT", "value": "/archives/**" }],
+            },
+            "shared": { "domPathPrecheck": true, "writeValidation": { "ok": true } },
+        },
+        {
+            "name": "root_must_be_group",
+            "covers": ["write.root-group-required"],
+            "input": { "type": "PATH", "negate": false, "matcher": "ANT", "value": "/**" },
+            "shared": {
+                "writeValidation": { "ok": false, "relativePath": "type", "message": "根节点必须是 GROUP" },
+            },
+        },
+        {
+            "name": "template_id_rejects_ant_matcher",
+            "covers": ["write.template-matcher-supported-values"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [{ "type": "TEMPLATE_ID", "negate": false, "matcher": "ANT", "value": "post" }],
+            },
+            "shared": {
+                "writeValidation": {
+                    "ok": false,
+                    "relativePath": "children[0].matcher",
+                    "message": "模板 ID 仅支持 \"REGEX\" 或 \"EXACT\"",
+                },
+            },
+        },
+        {
+            "name": "group_rule_rejects_leaf_matcher_field",
+            "covers": ["write.group-rejects-unsupported-fields"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "matcher": "ANT",
+                "children": [{ "type": "PATH", "negate": false, "matcher": "ANT", "value": "/**" }],
+            },
+            "shared": {
+                "writeValidation": {
+                    "ok": false,
+                    "relativePath": "matcher",
+                    "message": "不支持该字段；条件组仅支持 \"type\"、\"negate\"、\"operator\"、\"children\"",
+                },
+            },
+        },
+        {
+            "name": "leaf_rule_rejects_children_field",
+            "covers": ["write.leaf-rejects-group-only-fields"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    {
+                        "type": "PATH",
+                        "negate": false,
+                        "matcher": "ANT",
+                        "value": "/posts/**",
+                        "children": [],
+                    },
+                ],
+            },
+            "shared": {
+                "writeValidation": {
+                    "ok": false,
+                    "relativePath": "children[0].children",
+                    "message": "不支持该字段；页面路径条件仅支持 \"type\"、\"negate\"、\"matcher\"、\"value\"",
+                },
+            },
+        },
+        {
+            "name": "group_rule_rejects_leaf_value_field",
+            "covers": ["write.group-rejects-unsupported-fields"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "value": "",
+                "children": [{ "type": "PATH", "negate": false, "matcher": "ANT", "value": "/**" }],
+            },
+            "shared": {
+                "writeValidation": {
+                    "ok": false,
+                    "relativePath": "value",
+                    "message": "不支持该字段；条件组仅支持 \"type\"、\"negate\"、\"operator\"、\"children\"",
+                },
+            },
+        },
+        {
+            "name": "group_rule_requires_explicit_negate",
+            "covers": ["write.negate-explicit-required"],
+            "input": {
+                "type": "GROUP",
+                "operator": "AND",
+                "children": [{ "type": "PATH", "negate": false, "matcher": "ANT", "value": "/**" }],
+            },
+            "shared": {
+                "writeValidation": {
+                    "ok": false,
+                    "relativePath": "negate",
+                    "message": "缺少必填字段 \"negate\"；该字段可选值为 true 或 false",
+                },
+            },
+        },
+        {
+            "name": "group_rule_requires_operator",
+            "covers": ["write.group-requires-operator"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "children": [{ "type": "PATH", "negate": false, "matcher": "ANT", "value": "/**" }],
+            },
+            "shared": {
+                "writeValidation": {
+                    "ok": false,
+                    "relativePath": "operator",
+                    "message": "条件组缺少必填字段 \"operator\"；该字段可选值为 \"AND\" 或 \"OR\"",
+                },
+            },
+        },
+        {
+            "name": "group_rule_rejects_empty_children",
+            "covers": ["write.group-requires-non-empty-children"],
+            "input": { "type": "GROUP", "negate": false, "operator": "AND", "children": [] },
+            "shared": { "writeValidation": { "ok": false, "relativePath": "children", "message": "不能有空组" } },
+        },
+        {
+            "name": "path_rule_rejects_operator_field",
+            "covers": ["write.leaf-rejects-group-only-fields"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    {
+                        "type": "PATH",
+                        "negate": false,
+                        "operator": "AND",
+                        "matcher": "ANT",
+                        "value": "/posts/**",
+                    },
+                ],
+            },
+            "shared": {
+                "writeValidation": {
+                    "ok": false,
+                    "relativePath": "children[0].operator",
+                    "message": "不支持该字段；页面路径条件仅支持 \"type\"、\"negate\"、\"matcher\"、\"value\"",
+                },
+            },
+        },
+        {
+            "name": "path_rule_rejects_unknown_field",
+            "covers": ["write.leaf-rejects-unsupported-fields"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    {
+                        "type": "PATH",
+                        "negate": false,
+                        "matcher": "ANT",
+                        "value": "/posts/**",
+                        "extra": true,
+                    },
+                ],
+            },
+            "shared": {
+                "writeValidation": {
+                    "ok": false,
+                    "relativePath": "children[0].extra",
+                    "message": "不支持该字段；页面路径条件仅支持 \"type\"、\"negate\"、\"matcher\"、\"value\"",
+                },
+            },
+        },
+        {
+            "name": "path_rule_requires_non_empty_value",
+            "covers": ["write.leaf-value-must-be-non-empty"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [{ "type": "PATH", "negate": false, "matcher": "ANT", "value": "   " }],
+            },
+            "shared": {
+                "writeValidation": { "ok": false, "relativePath": "children[0].value", "message": "必须是非空字符串" },
+            },
+        },
+        {
+            "name": "template_rule_requires_non_empty_value",
+            "covers": ["write.leaf-value-must-be-non-empty"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [{ "type": "TEMPLATE_ID", "negate": false, "matcher": "EXACT", "value": "   " }],
+            },
+            "shared": {
+                "writeValidation": { "ok": false, "relativePath": "children[0].value", "message": "必须是非空字符串" },
+            },
+        },
+        {
+            "name": "path_rule_rejects_invalid_regex",
+            "covers": ["write.regex-must-compile"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [{ "type": "PATH", "negate": false, "matcher": "REGEX", "value": "[" }],
+            },
+            "shared": { "writeValidation": { "ok": false, "relativePath": "children[0].value" } },
+            "java": {
+                "writeValidation": { "message": "正则表达式无效，Unclosed character class" },
+            },
+            "ts": {
+                "writeValidation": {
+                    "message": "正则表达式无效：Invalid regular expression: /[/: Unterminated character class",
+                },
+            },
+        },
+        {
+            "name": "template_rule_rejects_invalid_regex",
+            "covers": ["write.regex-must-compile"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [{ "type": "TEMPLATE_ID", "negate": false, "matcher": "REGEX", "value": "[" }],
+            },
+            "shared": { "writeValidation": { "ok": false, "relativePath": "children[0].value" } },
+            "java": {
+                "writeValidation": { "message": "正则表达式无效，Unclosed character class" },
+            },
+            "ts": {
+                "writeValidation": {
+                    "message": "正则表达式无效：Invalid regular expression: /[/: Unterminated character class",
+                },
+            },
+        },
+        {
+            "name": "template_only_group_is_not_path_scoped",
+            "covers": ["runtime.dom-path-precheck.template-only-and-unscoped"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [{ "type": "TEMPLATE_ID", "negate": false, "matcher": "EXACT", "value": "post" }],
+            },
+            "shared": { "domPathPrecheck": false, "writeValidation": { "ok": true } },
+        },
+        {
+            "name": "negated_template_rule_is_not_path_scoped",
+            "covers": ["runtime.dom-path-precheck.negated-template-unscoped"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [{ "type": "TEMPLATE_ID", "negate": true, "matcher": "EXACT", "value": "post" }],
+            },
+            "shared": { "domPathPrecheck": false, "writeValidation": { "ok": true } },
+        },
+        {
+            "name": "negated_group_with_template_is_not_path_scoped",
+            "covers": ["runtime.dom-path-precheck.negated-template-unscoped"],
+            "input": {
+                "type": "GROUP",
+                "negate": true,
+                "operator": "AND",
+                "children": [{ "type": "TEMPLATE_ID", "negate": false, "matcher": "EXACT", "value": "post" }],
+            },
+            "shared": { "domPathPrecheck": false, "writeValidation": { "ok": true } },
+        },
+        {
+            "name": "or_group_with_only_path_branches_is_path_scoped",
+            "covers": ["runtime.dom-path-precheck.path-only-or-scoped"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "OR",
+                "children": [
+                    { "type": "PATH", "negate": false, "matcher": "EXACT", "value": "/about" },
+                    { "type": "PATH", "negate": false, "matcher": "ANT", "value": "/posts/**" },
+                ],
+            },
+            "shared": { "domPathPrecheck": true, "writeValidation": { "ok": true } },
+        },
+        {
+            "name": "and_group_with_only_template_branches_is_not_path_scoped",
+            "covers": ["runtime.dom-path-precheck.template-only-and-unscoped"],
+            "input": {
+                "type": "GROUP",
+                "negate": false,
+                "operator": "AND",
+                "children": [
+                    { "type": "TEMPLATE_ID", "negate": false, "matcher": "EXACT", "value": "post" },
+                    { "type": "TEMPLATE_ID", "negate": false, "matcher": "REGEX", "value": "^(post|page)$" },
+                ],
+            },
+            "shared": { "domPathPrecheck": false, "writeValidation": { "ok": true } },
+        },
+    ],
+}

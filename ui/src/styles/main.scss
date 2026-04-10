@@ -1,17 +1,67 @@
 $aside-width: 20%;
 $main-width: 60%;
+$compact-layout-breakpoint: 1300px;
 
-#injector-view {
+#transformer-view {
+  /**
+   * why: 移动端底部可视空间会同时被两段固定区域占掉：
+   * 1) Halo 宿主底部导航；2) 当前编辑器自己的保存底栏。
+   * 把两段高度拆开收口后，再组合成统一预留高度，后面微调时不容易改漏。
+   */
+  --transformer-host-mobile-nav-height: 50px;
+  --transformer-editor-footer-height: 56px;
+  /**
+   * why: 移动端三栏需要共用同一套“上方工具条 / 下方留白”尺寸，
+   * 否则左右列表会各算各的高度，视觉上就会和中间编辑器错位。
+   */
+  --transformer-mobile-pane-footer-height: var(--transformer-editor-footer-height);
+  --transformer-mobile-bottom-reserved-height: calc(
+    var(--transformer-host-mobile-nav-height) + var(--transformer-editor-footer-height)
+  );
+  /**
+   * why: 移动端抽屉和遮罩属于同一套 modal 过渡；
+   * 把时长和 easing 收口成单一配置后，后续调动效时不会出现一边改了另一边漏改。
+   */
+  --transformer-mobile-drawer-transition-duration: 180ms;
+  --transformer-mobile-drawer-transition-easing: ease;
+
+  .transformer-workspace {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
+  }
+
+  .transformer-layout {
+    flex: 1;
+    height: 100%;
+    min-height: 0;
+    position: relative;
+  }
+
   .aside {
     width: $aside-width;
   }
 
   .main {
-    width: $main-width
+    min-height: 0;
+    min-width: 0;
+    width: $main-width;
   }
 
-  .injector-editor-container {
-    input, textarea, select {
+  .mobile-drawer-toolbar,
+  .mobile-drawer-backdrop {
+    display: none;
+  }
+
+  .transformer-mobile-pane-footer-spacer {
+    display: none;
+  }
+
+  .transformer-editor-container {
+    input,
+    textarea,
+    select {
       border-radius: 0.375rem;
       border: 1px solid rgb(229, 231, 235);
 
@@ -26,7 +76,137 @@ $main-width: 60%;
   }
 }
 
-.injector-view-card-body {
+.transformer-view-card {
+  height: calc(100vh - var(--transformer-mobile-bottom-reserved-height));
+}
+
+.transformer-editor-footer {
+  min-height: var(--transformer-editor-footer-height);
+}
+
+.transformer-view-card-body {
   height: 100% !important;
   padding: 0 !important;
+}
+
+@supports (height: 100dvh) {
+  .transformer-view-card {
+    height: calc(100dvh - var(--transformer-mobile-bottom-reserved-height));
+  }
+}
+
+// why: @halo-dev/components 的 Dialog.description 按纯文本渲染，
+// 默认 white-space 会把 \n 折叠成空格；这里统一改成 pre-line，
+// 让多行确认文案按用户看到的换行正常展示。
+.dialog-container .break-all.text-sm.text-gray-700 {
+  white-space: pre-line;
+}
+
+// why: `1300px` 是控制台三栏切换到窄宽度抽屉布局的统一断点；
+// 变更这里时，要同步更新 useMobileDrawerState.ts 和 README 中的布局说明。
+@media (width < $compact-layout-breakpoint) {
+  #transformer-view {
+    .transformer-workspace {
+      overflow: hidden;
+    }
+
+    .transformer-layout {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .mobile-drawer-toolbar {
+      align-items: center;
+      border-bottom: 1px solid rgb(229, 231, 235);
+      display: flex;
+      gap: 0.75rem;
+      justify-content: space-between;
+      padding: 0.75rem;
+    }
+
+    .mobile-drawer-toolbar-title {
+      color: rgb(107, 114, 128);
+      flex: 1;
+      font-size: 0.75rem;
+      min-width: 0;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .mobile-drawer-backdrop {
+      background: rgb(17 24 39 / 0.38);
+      border: 0;
+      display: block;
+      inset: 0;
+      opacity: 0;
+      pointer-events: none;
+      position: absolute;
+      transition:
+        opacity var(--transformer-mobile-drawer-transition-duration)
+          var(--transformer-mobile-drawer-transition-easing),
+        visibility var(--transformer-mobile-drawer-transition-duration)
+          var(--transformer-mobile-drawer-transition-easing);
+      visibility: hidden;
+      width: 100%;
+      z-index: 15;
+    }
+
+    .mobile-drawer-backdrop-visible {
+      opacity: 1;
+      pointer-events: auto;
+      visibility: visible;
+    }
+
+    .main {
+      flex: 1 1 auto;
+      height: 100%;
+      min-height: 0;
+      width: 100%;
+    }
+
+    /**
+     * why: 侧栏抽屉和中间编辑器必须共用同一块可视区域；
+     * 如果这里再额外扣掉工具条高度，就会形成“顶部下沉、底部更短”的错位。
+     */
+    .aside {
+      background: white;
+      bottom: 0;
+      box-shadow: 0 20px 48px rgb(15 23 42 / 0.18);
+      max-width: min(88vw, 26rem);
+      position: absolute;
+      top: 0;
+      transition:
+        transform var(--transformer-mobile-drawer-transition-duration)
+          var(--transformer-mobile-drawer-transition-easing),
+        visibility var(--transformer-mobile-drawer-transition-duration)
+          var(--transformer-mobile-drawer-transition-easing);
+      visibility: hidden;
+      width: min(88vw, 26rem);
+      z-index: 20;
+    }
+
+    .left-aside {
+      left: 0;
+      transform: translateX(-100%);
+    }
+
+    .right-aside {
+      right: 0;
+      transform: translateX(100%);
+    }
+
+    .mobile-drawer-open {
+      transform: translateX(0);
+      visibility: visible;
+    }
+
+    .transformer-mobile-pane-footer {
+      min-height: var(--transformer-mobile-pane-footer-height);
+    }
+
+    .transformer-mobile-pane-footer-spacer {
+      display: block;
+    }
+  }
 }

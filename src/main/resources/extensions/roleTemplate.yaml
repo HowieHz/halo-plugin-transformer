@@ -1,33 +1,33 @@
 apiVersion: v1alpha1
 kind: Role
 metadata:
-  name: role-template-injector-view
+  name: role-template-transformer-view
   labels:
     halo.run/role-template: "true"
   annotations:
-    rbac.authorization.halo.run/module: "Injector Management"
-    rbac.authorization.halo.run/display-name: "代码注入查看"
+    rbac.authorization.halo.run/module: "页面转换器"
+    rbac.authorization.halo.run/display-name: "页面转换查看"
     rbac.authorization.halo.run/ui-permissions: |
-      ["plugin:injector:view"]
+      ["plugin:transformer:view"]
 rules:
-  - apiGroups: [ "injector.erzbir.com" ]
-    resources: [ "injectionRules" , "codeSnippets" ]
+  - apiGroups: [ "transformer.howiehz.top" ]
+    resources: [ "transformationRules" , "transformationSnippets" ]
     verbs: [ "get", "list" ]
 ---
 apiVersion: v1alpha1
 kind: Role
 metadata:
-  name: role-template-injector-manage
+  name: role-template-transformer-manage
   labels:
     halo.run/role-template: "true"
   annotations:
-    rbac.authorization.halo.run/module: "Injector Management"
-    rbac.authorization.halo.run/display-name: "代码注入管理"
+    rbac.authorization.halo.run/module: "页面转换器"
+    rbac.authorization.halo.run/display-name: "页面转换管理"
     rbac.authorization.halo.run/ui-permissions: |
-      ["plugin:injector:manage"]
+      ["plugin:transformer:manage"]
     rbac.authorization.halo.run/dependencies: |
-      ["role-template-injector-view"]
+      ["role-template-transformer-view"]
 rules:
-  - apiGroups: [ "injector.erzbir.com" ]
-    resources: [ "injectionRules" , "codeSnippets" ]
+  - apiGroups: [ "transformer.howiehz.top" ]
+    resources: [ "transformationRules" , "transformationSnippets" ]
     verbs: [ "add", "update", "delete" ]

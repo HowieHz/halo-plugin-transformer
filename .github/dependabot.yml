@@ -1,0 +1,84 @@
+# why: 参考 `halo-plugin-extra-api` 的做法，把依赖更新交给平台自动化处理；
+# 这里只保留本仓库真实存在的生态：Gradle、UI 的 npm、以及 GitHub Actions。
+version: 2
+updates:
+    - package-ecosystem: "gradle"
+      directory: "/"
+      schedule:
+          interval: "daily"
+          time: "04:30"
+          timezone: "Asia/Shanghai"
+      cooldown:
+          default-days: 1
+      groups:
+          halo:
+              patterns:
+                  - "run.halo.tools.platform:*"
+                  - "run.halo.app:api"
+                  - "run.halo.plugin.devtools"
+              update-types:
+                  - "minor"
+                  - "patch"
+          spring:
+              patterns:
+                  - "org.springframework:*"
+                  - "org.springframework.boot:*"
+                  - "org.springframework.data:*"
+                  - "io.projectreactor:*"
+              update-types:
+                  - "minor"
+                  - "patch"
+          lombok:
+              patterns:
+                  - "org.projectlombok:lombok"
+                  - "io.freefair.lombok"
+              update-types:
+                  - "minor"
+                  - "patch"
+          testing:
+              patterns:
+                  - "org.junit:*"
+                  - "org.junit.platform:*"
+              update-types:
+                  - "minor"
+                  - "patch"
+          misc:
+              patterns:
+                  - "*"
+              update-types:
+                  - "minor"
+                  - "patch"
+    - package-ecosystem: "npm"
+      directory: "/ui"
+      schedule:
+          interval: "daily"
+          time: "04:30"
+          timezone: "Asia/Shanghai"
+      cooldown:
+          default-days: 1
+      groups:
+          production-dependencies:
+              dependency-type: "production"
+              update-types:
+                  - "minor"
+                  - "patch"
+          development-dependencies:
+              dependency-type: "development"
+              update-types:
+                  - "minor"
+                  - "patch"
+    - package-ecosystem: "github-actions"
+      directory: "/"
+      schedule:
+          interval: "daily"
+          time: "04:30"
+          timezone: "Asia/Shanghai"
+      cooldown:
+          default-days: 1
+      groups:
+          github-actions:
+              patterns:
+                  - "*"
+              update-types:
+                  - "minor"
+                  - "patch"

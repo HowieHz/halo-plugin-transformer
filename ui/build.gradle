@@ -3,10 +3,10 @@ plugins {
     id "com.github.node-gradle.node" version "7.1.0"
 }
 
-group 'com.erzbir.halo.injector.ui'
+group = 'top.howiehz.halo.transformer.ui'
 
 node {
-    version.set("22.22.2")
+    version.set("24.14.1")
     download.set(true)
 }
 
