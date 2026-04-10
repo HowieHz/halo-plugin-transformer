@@ -167,7 +167,7 @@ const selectedBulkResources = computed(() => {
 const canBulkEnable = computed(() => selectedBulkResources.value.some((item) => !item.enabled));
 const canBulkDisable = computed(() => selectedBulkResources.value.some((item) => item.enabled));
 const mobileLeftDrawerLabel = computed(() => "选择列表");
-const mobileRightDrawerLabel = computed(() => (isBulkMode.value ? "批量信息" : "关联关系"));
+const mobileRightDrawerLabel = computed(() => "关联信息");
 const mobileMainLabel = computed(() =>
   isBulkMode.value
     ? "批量操作"
@@ -849,6 +849,7 @@ function jumpToSnippet(id: string) {
               :aria-expanded="mobileDrawer.showRightDrawer.value"
               :aria-haspopup="mobileDrawer.isMobileViewport.value ? 'dialog' : undefined"
               :aria-label="`${mobileDrawer.showRightDrawer.value ? '关闭' : '打开'}${mobileRightDrawerLabel}`"
+              :disabled="isBulkMode"
               size="sm"
               type="secondary"
               @click="mobileDrawer.toggleDrawer('right')"
