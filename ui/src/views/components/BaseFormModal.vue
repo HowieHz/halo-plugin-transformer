@@ -16,7 +16,12 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <VModal :title="hideDefaultTitle ? '' : title" :width="1000" @close="emit('close')">
+  <VModal
+    :aria-label="hideDefaultTitle ? title : undefined"
+    :title="hideDefaultTitle ? undefined : title"
+    :width="1000"
+    @close="emit('close')"
+  >
     <div
       class=":uno: transformer-editor-container flex"
       :class="showPicker === false ? '' : 'divide-x divide-gray-100'"

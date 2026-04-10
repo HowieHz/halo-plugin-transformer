@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, ref } from "vue";
+import { computed, onBeforeUnmount, ref, useId } from "vue";
 
 const props = withDefaults(
   defineProps<{
@@ -21,6 +21,7 @@ const pressing = ref(false);
 const progress = ref(0);
 const suppressClick = ref(false);
 const resetTriggered = ref(false);
+const instructionId = `field-undo-instruction-${useId()}`;
 let animationFrameId: number | null = null;
 let pressStartedAt = 0;
 
@@ -61,6 +62,9 @@ function tickProgress() {
 }
 
 function startPress() {
+  if (pressing.value) {
+    return;
+  }
   stopProgress();
   suppressClick.value = false;
   resetTriggered.value = false;
@@ -94,6 +98,17 @@ function handleClick() {
   emit("undo");
 }
 
+function handleKeyPressStart(event: KeyboardEvent) {
+  if (event.repeat) {
+    return;
+  }
+  startPress();
+}
+
+function handleKeyPressEnd() {
+  finishPress(true);
+}
+
 onBeforeUnmount(() => {
   stopProgress(false);
 });
@@ -123,6 +138,7 @@ const buttonStyle = computed(() => {
 
 <template>
   <button
+    :aria-describedby="instructionId"
     :aria-label="
       pressing && progress > 0
         ? '继续长按可撤销全部修改'
@@ -133,7 +149,12 @@ const buttonStyle = computed(() => {
     class=":uno: relative overflow-hidden rounded border px-2 py-0.5 text-xs transition-colors hover:border-gray-300 hover:text-gray-700"
     title="单击，或按住 0.3 秒内松开：撤销上一步；继续按到 2 秒：自动恢复初始值"
     type="button"
+    @blur="finishPress(false)"
     @click="handleClick"
+    @keydown.enter.prevent="handleKeyPressStart"
+    @keydown.space.prevent="handleKeyPressStart"
+    @keyup.enter.prevent="handleKeyPressEnd"
+    @keyup.space.prevent="handleKeyPressEnd"
     @pointercancel="finishPress(false)"
     @pointerdown="startPress"
     @pointerleave="finishPress(false)"
@@ -141,4 +162,7 @@ const buttonStyle = computed(() => {
   >
     <span class=":uno: relative z-1">{{ buttonText }}</span>
   </button>
+  <span :id="instructionId" class=":uno: sr-only">
+    单击，或短按 Enter / Space 可撤销上一步；继续按住约 2 秒会撤销全部修改。
+  </span>
 </template>

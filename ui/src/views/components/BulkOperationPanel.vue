@@ -66,6 +66,9 @@ const hasSelection = computed(() => props.selectedCount > 0);
         <h3 class=":uno: text-lg font-semibold text-gray-900">
           已选择 {{ selectedCount }} 个{{ resourceLabel }}
         </h3>
+        <p aria-atomic="true" aria-live="polite" class=":uno: sr-only">
+          当前已选择 {{ selectedCount }} 个{{ resourceLabel }}
+        </p>
         <p class=":uno: text-sm leading-6 text-gray-500">
           批量模式下不会打开单项编辑器；当前已勾选的项目就是本次批量操作目标。
         </p>
