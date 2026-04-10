@@ -8,8 +8,8 @@ import MobileDrawerPanel from "../MobileDrawerPanel.vue";
 
 describe("MobileDrawerPanel accessibility", () => {
   // why: 窄宽度抽屉不是普通侧栏，而是覆盖主区域的临时面板；
-  // 打开后必须给出 dialog 语义、聚焦到抽屉内部，并允许 Esc 关闭。
-  it("exposes compact drawers as dialogs, focuses content, and closes on Escape", async () => {
+  // 打开后必须给出 dialog 语义、提供可见关闭按钮，并允许 Esc 关闭。
+  it("exposes compact drawers as dialogs, provides an in-panel close button, and closes on Escape", async () => {
     const wrapper = mount(MobileDrawerPanel, {
       attachTo: document.body,
       props: {
@@ -29,13 +29,19 @@ describe("MobileDrawerPanel accessibility", () => {
     await nextTick();
 
     const dialog = wrapper.get('[role="dialog"]');
+    const closeButton = wrapper.get('button[aria-label="关闭选择列表侧边栏"]');
+
     expect(dialog.attributes("aria-modal")).toBe("true");
     expect(dialog.attributes("aria-labelledby")).toBe("drawer-title");
     expect(dialog.attributes("aria-describedby")).toBe("drawer-desc");
-    expect(document.activeElement?.textContent).toContain("首个操作");
+    expect(closeButton.isVisible()).toBe(true);
+    expect(document.activeElement).toBe(closeButton.element);
+
+    await closeButton.trigger("click");
+    expect(wrapper.emitted("close")).toHaveLength(1);
 
     await dialog.trigger("keydown", { key: "Escape" });
-    expect(wrapper.emitted("close")).toHaveLength(1);
+    expect(wrapper.emitted("close")).toHaveLength(2);
   });
 
   it("keeps desktop drawers out of dialog mode", () => {

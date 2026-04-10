@@ -1012,4 +1012,65 @@ describe("useTransformerData", () => {
 
     expect(store.snippetsInRule.value.map((snippet) => snippet.id)).toEqual(["snippet-b"]);
   });
+
+  // why: `SELECTOR + REMOVE` 的有效语义是不再关联代码片段；
+  // 右侧关系面板应反映“当前有效关系”，而不是继续展示被隐藏字段里的历史值。
+  it("treats selector remove mode as no effective snippet relations in the relation panel", async () => {
+    const activeTab = ref<ActiveTab>("rules");
+    const snippetA = makeSnippetEditorDraft({
+      id: "snippet-a",
+      metadata: { name: "snippet-a", version: 1 },
+      name: "Snippet A",
+      code: "<div>a</div>",
+    });
+    const snippetB = makeSnippetEditorDraft({
+      id: "snippet-b",
+      metadata: { name: "snippet-b", version: 1 },
+      name: "Snippet B",
+      code: "<div>b</div>",
+    });
+    const savedRule = makeRuleEditorDraft({
+      id: "rule-a",
+      metadata: { name: "rule-a", version: 1 },
+      mode: "SELECTOR",
+      position: "APPEND",
+      snippetIds: ["snippet-a"],
+      match: ".slot",
+      matchRule: {
+        type: "GROUP",
+        negate: false,
+        operator: "AND",
+        children: [
+          {
+            type: "PATH",
+            negate: false,
+            matcher: "ANT",
+            value: "/**",
+          },
+        ],
+      },
+    });
+    delete (savedRule as { matchRuleSource?: unknown }).matchRuleSource;
+
+    snippetApi.getSnapshot.mockResolvedValue({ data: snapshotOf([snippetA, snippetB]) });
+    ruleApi.getSnapshot.mockResolvedValue({ data: snapshotOf([savedRule]) });
+
+    const store = useTransformerData(activeTab);
+    await store.fetchAll();
+    store.selectedRuleId.value = "rule-a";
+    await nextTick();
+
+    expect(store.snippetsInRule.value.map((snippet) => snippet.id)).toEqual(["snippet-a"]);
+
+    store.editRule.value = {
+      ...store.editRule.value!,
+      mode: "SELECTOR",
+      position: "REMOVE",
+      snippetIds: ["snippet-b"],
+    };
+    store.editDirty.value = true;
+    await nextTick();
+
+    expect(store.snippetsInRule.value).toEqual([]);
+  });
 });

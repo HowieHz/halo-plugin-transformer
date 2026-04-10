@@ -76,6 +76,15 @@ function handleEscape() {
     <p v-if="compact" :id="descriptionId" class=":uno: sr-only">
       按 Esc 关闭当前侧边栏并返回切换按钮。
     </p>
+    <button
+      v-if="compact && open"
+      :aria-label="`关闭${title}侧边栏`"
+      class=":uno: focus-visible:ring-primary/60 absolute top-3 right-3 z-20 rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 shadow-sm hover:bg-gray-50 focus-visible:ring-2 focus-visible:outline-none"
+      type="button"
+      @click="emit('close')"
+    >
+      关闭
+    </button>
     <slot />
   </div>
 </template>

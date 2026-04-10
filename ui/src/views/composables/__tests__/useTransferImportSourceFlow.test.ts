@@ -60,6 +60,35 @@ describe("useTransferImportSourceFlow", () => {
     expect(flow.importSourceVisible.value).toBe(false);
   });
 
+  // why: 剪贴板读取权限失败与“读到内容但解析/校验失败”是两种错误；
+  // 前者才该提示权限，后者应透传导入错误，避免排障被误导。
+  it("shows import errors from clipboard content instead of masking them as permission errors", async () => {
+    const applyImportedContent = vi.fn().mockRejectedValue(new Error("导入失败：JSON 不合法"));
+    clipboardReadText.mockResolvedValue('{"broken":}');
+    const flow = useTransferImportSourceFlow({
+      applyImportedContent,
+    });
+    flow.openImportSourceModal();
+
+    await flow.importFromClipboard();
+
+    expect(toast.error).toHaveBeenCalledWith("导入失败：JSON 不合法");
+    expect(flow.importSourceVisible.value).toBe(true);
+  });
+
+  it("shows permission hint when clipboard read is denied", async () => {
+    const applyImportedContent = vi.fn();
+    clipboardReadText.mockRejectedValue(new Error("denied"));
+    const flow = useTransferImportSourceFlow({
+      applyImportedContent,
+    });
+
+    await flow.importFromClipboard();
+
+    expect(toast.error).toHaveBeenCalledWith("读取剪贴板失败，请检查浏览器权限后重试");
+    expect(applyImportedContent).not.toHaveBeenCalled();
+  });
+
   it("closes the source modal before opening the file picker", async () => {
     const flow = useTransferImportSourceFlow({
       applyImportedContent: vi.fn(),

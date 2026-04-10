@@ -44,7 +44,6 @@ $compact-layout-breakpoint: 1250px;
   }
 
   .mobile-drawer-toolbar,
-  .mobile-drawer-header,
   .mobile-drawer-backdrop {
     display: none;
   }
@@ -178,12 +177,6 @@ $compact-layout-breakpoint: 1250px;
     .mobile-drawer-open {
       transform: translateX(0);
       visibility: visible;
-    }
-
-    // why: 顶部已经有统一的移动端工具条；抽屉里再叠一层标题，
-    // 会把左右列表的起点压低，和中间编辑器不再对齐。
-    .mobile-drawer-header {
-      display: none;
     }
 
     .transformer-mobile-pane-footer {

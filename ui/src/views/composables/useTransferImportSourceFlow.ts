@@ -28,16 +28,26 @@ export function useTransferImportSourceFlow(options: UseTransferImportSourceFlow
   }
 
   async function importFromClipboard() {
+    let text = "";
     try {
-      const text = await navigator.clipboard.readText();
-      if (!text.trim()) {
-        Toast.warning(options.emptyClipboardMessage ?? "剪贴板里没有可导入的 JSON");
-        return;
-      }
-      await options.applyImportedContent(text, "剪贴板");
-      closeImportSourceModal();
+      text = await navigator.clipboard.readText();
     } catch {
       Toast.error(options.clipboardReadErrorMessage ?? "读取剪贴板失败，请检查浏览器权限后重试");
+      return;
+    }
+
+    if (!text.trim()) {
+      Toast.warning(options.emptyClipboardMessage ?? "剪贴板里没有可导入的 JSON");
+      return;
+    }
+
+    try {
+      await options.applyImportedContent(text, "剪贴板");
+      closeImportSourceModal();
+    } catch (error) {
+      Toast.error(
+        error instanceof Error ? error.message : (options.importFailedMessage ?? "导入失败"),
+      );
     }
   }
 

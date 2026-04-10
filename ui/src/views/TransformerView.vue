@@ -892,10 +892,6 @@ function jumpToSnippet(id: string) {
               @dragleave.capture="handleLeftPaneDragLeave"
               @drop.capture="handleLeftPaneDropCapture"
             >
-              <div class="mobile-drawer-header">
-                <span>{{ mobileLeftDrawerLabel }}</span>
-                <button type="button" @click="closeMobileDrawer()">关闭</button>
-              </div>
               <div
                 aria-label="资源类型"
                 class=":uno: sticky top-0 z-10 flex h-12 shrink-0 items-center gap-4 border-b bg-white px-4"
@@ -1057,10 +1053,6 @@ function jumpToSnippet(id: string) {
               :title-id="mobileRightDrawerTitleId"
               @close="closeMobileDrawer"
             >
-              <div class="mobile-drawer-header">
-                <span>{{ mobileRightDrawerLabel }}</span>
-                <button type="button" @click="closeMobileDrawer()">关闭</button>
-              </div>
               <BulkModeSidePanel
                 v-if="isBulkMode"
                 :selected-count="bulkSelectionState.currentBulkSelectionCount.value"

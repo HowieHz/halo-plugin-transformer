@@ -8,6 +8,7 @@ import type {
   TransformationRuleReadModel,
 } from "@/types";
 
+import { getRuleCapabilities } from "./ruleCapabilities";
 import { hydrateRuleEditorDraft } from "./ruleDraft";
 import { hydrateSnippetEditorDraft } from "./snippetDraft";
 import { mergeSavedMetadata } from "./transformerShared";
@@ -114,10 +115,11 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
 
   const snippetsInRule = computed(() => {
     if (!selectedRuleId.value) return [];
-    const snippetIds =
+    const snippetIds = resolveRuleRelationSnippetIds(
       editorSession.value.tab === "rules" && editorSession.value.draft?.id === selectedRuleId.value
-        ? editorSession.value.draft.snippetIds
-        : (options.rules.value.find((item) => item.id === selectedRuleId.value)?.snippetIds ?? []);
+        ? editorSession.value.draft
+        : (options.rules.value.find((item) => item.id === selectedRuleId.value) ?? null),
+    );
     if (!snippetIds.length) return [];
     return snippetIds
       .map((id) => options.snippets.value.find((snippet) => snippet.id === id))
@@ -263,4 +265,16 @@ function createRuleEditorSession(
     draft,
     dirty: false,
   };
+}
+
+function resolveRuleRelationSnippetIds(
+  rule:
+    | Pick<TransformationRuleEditorDraft, "mode" | "position" | "snippetIds">
+    | Pick<TransformationRuleReadModel, "mode" | "position" | "snippetIds">
+    | null,
+) {
+  if (!rule) {
+    return [];
+  }
+  return getRuleCapabilities(rule).showsSnippetPicker ? (rule.snippetIds ?? []) : [];
 }
