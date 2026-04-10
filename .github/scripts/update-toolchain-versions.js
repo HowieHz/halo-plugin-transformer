@@ -7,6 +7,9 @@ const managedWorkflowPaths = [
   path.join(".github", "workflows", "cd.yaml"),
   path.join(".github", "workflows", "update-toolchain-versions.yml"),
 ];
+const workflowNodeVersionOverrides = new Map([
+  [path.join(".github", "workflows", "update-toolchain-versions.yml"), "lts/*"],
+]);
 const dryRun = process.argv.includes("--dry-run");
 const releaseDelayMs = 24 * 60 * 60 * 1000;
 const userAgent = "halo-plugin-transformer-toolchain-updater";
@@ -69,32 +72,54 @@ const logSkippedLatest = (ecosystem, version, publishedAt) => {
   );
 };
 
-const fetchLatestNodeMajor = async () => {
-  const response = await fetch("https://api.github.com/repos/nodejs/node/releases/latest", {
+const fetchLatestNodeMajor = async (now = Date.now()) => {
+  const response = await fetch("https://raw.githubusercontent.com/nodejs/Release/main/schedule.json", {
     headers: {
-      Accept: "application/vnd.github+json",
+      Accept: "application/json",
       "User-Agent": userAgent,
     },
   });
   if (!response.ok) {
     throw new Error(
-      `Failed to fetch the latest Node.js release: ${response.status} ${response.statusText}`,
+      `Failed to fetch the Node.js release schedule: ${response.status} ${response.statusText}`,
     );
   }
-  const latestRelease = await response.json();
-  const latestVersion =
-    typeof latestRelease.tag_name === "string" ? latestRelease.tag_name.trim() : "";
-  const publishedAt =
-    typeof latestRelease.published_at === "string" ? latestRelease.published_at.trim() : "";
-  const parsedVersion = parseSemVer(latestVersion);
-  if (!parsedVersion) {
-    throw new Error(`Invalid latest Node.js release version: ${latestVersion || "<empty>"}`);
+  const schedule = await response.json();
+  const candidates = Object.entries(schedule)
+    .map(([majorLabel, details]) => ({
+      major: Number(majorLabel.replace(/^v/u, "")),
+      lts: typeof details?.lts === "string" ? details.lts.trim() : "",
+      end: typeof details?.end === "string" ? details.end.trim() : "",
+    }))
+    .filter(({ major, lts, end }) => {
+      if (!Number.isInteger(major) || lts === "") {
+        return false;
+      }
+      const endTimestamp = parseTimestamp(end);
+      if (endTimestamp === null) {
+        throw new Error(`Invalid Node.js release end timestamp: ${end || "<empty>"}`);
+      }
+      return endTimestamp > now;
+    })
+    .sort((left, right) => right.major - left.major);
+
+  for (const candidate of candidates) {
+    if (hasReleaseDelayElapsed(candidate.lts, now)) {
+      return candidate.major;
+    }
   }
-  if (!hasReleaseDelayElapsed(publishedAt)) {
-    logSkippedLatest("Node.js", latestVersion, publishedAt);
-    return null;
+
+  if (candidates.length > 0) {
+    const latestLts = candidates[0];
+    console.log(
+      [
+        `Skipping Node.js update because the current latest LTS line v${latestLts.major} entered LTS at ${latestLts.lts}.`,
+        "The updater only adopts a new LTS line after a full 24-hour delay.",
+      ].join(" "),
+    );
   }
-  return parsedVersion.major;
+
+  return null;
 };
 
 const fetchLatestPnpmVersion = async () => {
@@ -203,12 +228,13 @@ const updateWorkflowFile = async (filePath, nodeMajor, pnpmVersion) => {
   const { content, lineEnding } = await readFileWithLineEnding(filePath);
   const updates = [];
   let nextContent = content;
+  const nextNodeVersion = workflowNodeVersionOverrides.get(filePath) ?? nodeMajor;
 
-  if (nodeMajor !== null && nextContent.includes("node-version:")) {
-    const result = replaceWorkflowInputValue(nextContent, "node-version", String(nodeMajor));
+  if (nextNodeVersion !== null && nextContent.includes("node-version:")) {
+    const result = replaceWorkflowInputValue(nextContent, "node-version", String(nextNodeVersion));
     if (result.changed) {
       nextContent = result.nextContent;
-      updates.push(`node-version -> ${nodeMajor}`);
+      updates.push(`node-version -> ${nextNodeVersion}`);
     }
   }
 
