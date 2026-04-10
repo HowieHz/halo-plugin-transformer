@@ -1073,4 +1073,48 @@ describe("useTransformerData", () => {
 
     expect(store.snippetsInRule.value).toEqual([]);
   });
+
+  // why: 片段侧“被多少规则引用”和规则侧“当前关联了哪些片段”必须共享同一套有效语义；
+  // 否则历史残留的 REMOVE.snippetIds 会让两边面板同时说出互相矛盾的话。
+  it("ignores stale selector remove snippetIds when listing rules using a snippet", async () => {
+    const activeTab = ref<ActiveTab>("snippets");
+    const snippetA = makeSnippetEditorDraft({
+      id: "snippet-a",
+      metadata: { name: "snippet-a", version: 1 },
+      name: "Snippet A",
+      code: "<div>a</div>",
+    });
+    const selectorRemoveRule = makeRuleEditorDraft({
+      id: "rule-a",
+      metadata: { name: "rule-a", version: 1 },
+      mode: "SELECTOR",
+      position: "REMOVE",
+      snippetIds: ["snippet-a"],
+      match: ".slot",
+      matchRule: {
+        type: "GROUP",
+        negate: false,
+        operator: "AND",
+        children: [
+          {
+            type: "PATH",
+            negate: false,
+            matcher: "ANT",
+            value: "/**",
+          },
+        ],
+      },
+    });
+    delete (selectorRemoveRule as { matchRuleSource?: unknown }).matchRuleSource;
+
+    snippetApi.getSnapshot.mockResolvedValue({ data: snapshotOf([snippetA]) });
+    ruleApi.getSnapshot.mockResolvedValue({ data: snapshotOf([selectorRemoveRule]) });
+
+    const store = useTransformerData(activeTab);
+    await store.fetchAll();
+    store.selectedSnippetId.value = "snippet-a";
+    await nextTick();
+
+    expect(store.rulesUsingSnippet.value).toEqual([]);
+  });
 });

@@ -109,7 +109,7 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
   const rulesUsingSnippet = computed(() => {
     if (!selectedSnippetId.value) return [];
     return options.rules.value.filter((rule) =>
-      rule.snippetIds?.includes(selectedSnippetId.value!),
+      resolveRuleRelationSnippetIds(rule).includes(selectedSnippetId.value!),
     );
   });
 

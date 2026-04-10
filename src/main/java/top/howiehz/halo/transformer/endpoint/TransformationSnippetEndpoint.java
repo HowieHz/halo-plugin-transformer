@@ -7,6 +7,7 @@ import static org.springframework.web.reactive.function.server.RequestPredicates
 import static org.springframework.web.reactive.function.server.RouterFunctions.route;
 
 import java.net.URI;
+import java.time.Instant;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -174,9 +175,11 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
                     payload.metadata,
                     "代码片段"
                 );
-                return lifecycleService.markForDeletion(snippet);
+                return lifecycleService.markForDeletion(snippet)
+                    .thenReturn(markDeletionPendingInLocalSnapshot(snippet));
             })
-            .doOnSuccess(ignored -> {
+            .doOnSuccess(deletingSnippet -> {
+                snippetRuntimeStore.applyPersistedSnippet(deletingSnippet);
                 snippetRuntimeStore.invalidateAndWarmUpAsync();
             })
             .then();
@@ -217,6 +220,15 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
             .filter(snippet -> !ExtensionUtil.isDeleted(snippet))
             .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND,
                 notFoundReason)));
+    }
+
+    /**
+     * why: delete 请求一旦成功，控制台和运行时都应立即看到“同一条资源已进入 deleting 生命周期”；
+     * 这样可见列表会立刻隐藏它，而 runtime 仍能沿用同一份快照继续兜住待清理引用的输出。
+     */
+    private TransformationSnippet markDeletionPendingInLocalSnapshot(TransformationSnippet snippet) {
+        snippet.getMetadata().setDeletionTimestamp(Instant.now());
+        return snippet;
     }
 
     @Override
