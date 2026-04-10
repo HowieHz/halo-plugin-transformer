@@ -18,6 +18,12 @@ $compact-layout-breakpoint: 1300px;
   --transformer-mobile-bottom-reserved-height: calc(
     var(--transformer-host-mobile-nav-height) + var(--transformer-editor-footer-height)
   );
+  /**
+   * why: 移动端抽屉和遮罩属于同一套 modal 过渡；
+   * 把时长和 easing 收口成单一配置后，后续调动效时不会出现一边改了另一边漏改。
+   */
+  --transformer-mobile-drawer-transition-duration: 180ms;
+  --transformer-mobile-drawer-transition-easing: ease;
 
   .transformer-workspace {
     display: flex;
@@ -137,8 +143,10 @@ $compact-layout-breakpoint: 1300px;
       pointer-events: none;
       position: absolute;
       transition:
-        opacity 180ms ease,
-        visibility 180ms ease;
+        opacity var(--transformer-mobile-drawer-transition-duration)
+          var(--transformer-mobile-drawer-transition-easing),
+        visibility var(--transformer-mobile-drawer-transition-duration)
+          var(--transformer-mobile-drawer-transition-easing);
       visibility: hidden;
       width: 100%;
       z-index: 15;
@@ -169,8 +177,10 @@ $compact-layout-breakpoint: 1300px;
       position: absolute;
       top: 0;
       transition:
-        transform 180ms ease,
-        visibility 180ms ease;
+        transform var(--transformer-mobile-drawer-transition-duration)
+          var(--transformer-mobile-drawer-transition-easing),
+        visibility var(--transformer-mobile-drawer-transition-duration)
+          var(--transformer-mobile-drawer-transition-easing);
       visibility: hidden;
       width: min(88vw, 26rem);
       z-index: 20;
