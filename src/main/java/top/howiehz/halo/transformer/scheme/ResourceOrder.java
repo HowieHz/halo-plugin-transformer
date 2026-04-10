@@ -18,4 +18,3 @@ public class ResourceOrder extends AbstractExtension {
      */
     private Map<String, Integer> orders = new LinkedHashMap<>();
 }
-

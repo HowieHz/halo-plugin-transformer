@@ -81,4 +81,3 @@ class TransformationSnippetValidatorTest {
         assertEquals("enabled：必须是布尔值；仅支持 true 或 false", error.getReason());
     }
 }
-

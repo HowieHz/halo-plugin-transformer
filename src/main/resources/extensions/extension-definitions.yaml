@@ -27,4 +27,3 @@ spec:
   className: top.howiehz.halo.transformer.filter.TransformerWebFilter
   displayName: "TransformerWebFilter"
   description: "Transform page content in HTML responses"
-
