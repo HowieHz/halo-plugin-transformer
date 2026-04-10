@@ -158,10 +158,12 @@ class TransformationRuleRuntimeStoreTest {
         manager.startWatching();
         verify(client).watch(watcherCaptor.capture());
 
-        waitUntil(() -> manager.listActiveByMode(TransformationRule.Mode.SELECTOR)
-            .collectList()
-            .block()
-            .isEmpty());
+        waitUntil(() -> manager.skippedEnabledRules().equals(
+            List.of(new TransformationRuleRuntimeStore.SkippedEnabledRule(
+                "rule-a",
+                "blank_selector_match",
+                "CSS 选择器模式要求非空 match"
+            ))));
 
         watcherCaptor.getValue().onUpdate(
             rule("rule-a", TransformationRule.Mode.SELECTOR, true, ""),
