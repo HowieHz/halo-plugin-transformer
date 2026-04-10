@@ -90,20 +90,14 @@ class TransformationSnippetRuntimeStoreTest {
         store.startWatching();
         verify(client).watch(watcherCaptor.capture());
 
-        waitUntil(() -> "before".equals(store.getByIds(List.of("snippet-a"))
-            .block()
-            .get("snippet-a")
-            .getCode()));
+        waitUntil(() -> hasSnippetCode("snippet-a", "before"));
 
         watcherCaptor.getValue().onUpdate(
             snippet("snippet-a", "before"),
             snippet("snippet-a", "after")
         );
 
-        waitUntil(() -> "after".equals(store.getByIds(List.of("snippet-a"))
-            .block()
-            .get("snippet-a")
-            .getCode()));
+        waitUntil(() -> hasSnippetCode("snippet-a", "after"));
 
         assertEquals(1, listCount.get());
     }
@@ -252,20 +246,14 @@ class TransformationSnippetRuntimeStoreTest {
         verify(client).watch(watcherCaptor.capture());
 
         watcherCaptor.getValue().onAdd(latestSnippet);
-        waitUntil(() -> "after".equals(store.getByIds(List.of("snippet-a"))
-            .block()
-            .get("snippet-a")
-            .getCode()));
+        waitUntil(() -> hasSnippetCode("snippet-a", "after"));
 
         waitUntil(() -> firstRefreshSink.get() != null);
         firstRefreshSink.get().next(staleSnippet);
         firstRefreshSink.get().complete();
 
         waitUntil(() -> listCount.get() >= 2);
-        waitUntil(() -> "after".equals(store.getByIds(List.of("snippet-a"))
-            .block()
-            .get("snippet-a")
-            .getCode()));
+        waitUntil(() -> hasSnippetCode("snippet-a", "after"));
     }
 
     // why: 运行时解析不该依赖“调用方一定已经 trim 过 snippetIds”这种隐式前提；
@@ -300,6 +288,11 @@ class TransformationSnippetRuntimeStoreTest {
             }
         }
         assertTrue(condition.getAsBoolean(), "Condition was not satisfied in time");
+    }
+
+    private boolean hasSnippetCode(String snippetId, String expectedCode) {
+        TransformationSnippet snippet = store.getByIds(List.of(snippetId)).block().get(snippetId);
+        return snippet != null && expectedCode.equals(snippet.getCode());
     }
 
     private TransformationSnippet snippet(String id, String code) {
