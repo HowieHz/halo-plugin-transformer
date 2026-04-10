@@ -1,11 +1,6 @@
 package top.howiehz.halo.transformer.core;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * why: 布尔规则最小化只服务于运行期与分析期，避免把同义但更冗长的树直接带进

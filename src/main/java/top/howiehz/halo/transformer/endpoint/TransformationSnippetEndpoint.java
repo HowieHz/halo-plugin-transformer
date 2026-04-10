@@ -226,7 +226,8 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
      * why: delete 请求一旦成功，控制台和运行时都应立即看到“同一条资源已进入 deleting 生命周期”；
      * 这样可见列表会立刻隐藏它，而 runtime 仍能沿用同一份快照继续兜住待清理引用的输出。
      */
-    private TransformationSnippet markDeletionPendingInLocalSnapshot(TransformationSnippet snippet) {
+    private TransformationSnippet markDeletionPendingInLocalSnapshot(
+        TransformationSnippet snippet) {
         snippet.getMetadata().setDeletionTimestamp(Instant.now());
         return snippet;
     }
