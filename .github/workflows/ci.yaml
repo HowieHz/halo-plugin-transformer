@@ -10,7 +10,7 @@ on:
 
 jobs:
   ci:
-    uses: halo-sigs/reusable-workflows/.github/workflows/plugin-ci.yaml@v3
+    uses: halo-sigs/reusable-workflows/.github/workflows/plugin-ci.yaml@574420d846900eb5e6b25af72d43dca475583eac # https://github.com/halo-sigs/reusable-workflows/tree/v4
     with:
       ui-path: "ui"
       pnpm-version: "10.33.0"
