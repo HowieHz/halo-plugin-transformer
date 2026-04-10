@@ -19,6 +19,7 @@ import run.halo.app.extension.ReactiveExtensionClient;
 import top.howiehz.halo.transformer.core.MatchRuleBooleanMinimizer;
 import top.howiehz.halo.transformer.core.RuntimeTransformationRule;
 import top.howiehz.halo.transformer.scheme.TransformationRule;
+import top.howiehz.halo.transformer.util.TransformationSnippetReferenceIds;
 
 @Slf4j
 @Component
@@ -75,6 +76,18 @@ public class TransformationRuleRuntimeStore extends AbstractWatchDrivenExtension
      */
     public List<TransformationRule> listVisibleRules() {
         return cachedSnapshot.visibleRules();
+    }
+
+    /**
+     * why: snippet 删除协调器只需要“当前哪些可见规则还引用了它”这一条查询语义；
+     * 把这层过滤也收口进 watch-driven store 后，后台写路径和控制台读路径才能共享同一份规则真源。
+     */
+    public List<String> listVisibleRuleNamesReferencingSnippet(String snippetId) {
+        String normalizedSnippetId = TransformationSnippetReferenceIds.normalizeSingle(snippetId);
+        if (normalizedSnippetId == null) {
+            return List.of();
+        }
+        return cachedSnapshot.visibleRuleNamesReferencingSnippet(normalizedSnippetId);
     }
 
     /**
@@ -433,6 +446,17 @@ public class TransformationRuleRuntimeStore extends AbstractWatchDrivenExtension
 
         List<RuntimeTransformationRule> activeRules(TransformationRule.Mode mode) {
             return rulesByMode.getOrDefault(mode, List.of());
+        }
+
+        List<String> visibleRuleNamesReferencingSnippet(String snippetId) {
+            List<String> ruleNames = new ArrayList<>();
+            for (TransformationRule rule : visibleRules) {
+                if (TransformationSnippetReferenceIds.normalize(rule.getSnippetIds())
+                    .contains(snippetId)) {
+                    ruleNames.add(rule.getMetadata().getName());
+                }
+            }
+            return List.copyOf(ruleNames);
         }
 
         List<SkippedEnabledRule> skippedEnabledRules() {

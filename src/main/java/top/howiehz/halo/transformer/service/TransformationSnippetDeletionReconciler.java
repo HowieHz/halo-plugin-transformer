@@ -73,16 +73,8 @@ public class TransformationSnippetDeletionReconciler implements Reconciler<Recon
             return false;
         }
         boolean detachedAnyRule = false;
-        List<String> referencingRuleNames = client.list(
-                TransformationRule.class,
-                rule -> isVisibleRule(rule)
-                    && TransformationSnippetReferenceIds.normalize(rule.getSnippetIds())
-                    .contains(normalizedSnippetId),
-                null
-            ).stream()
-            .map(rule -> rule.getMetadata() == null ? null : rule.getMetadata().getName())
-            .filter(name -> name != null && !name.isBlank())
-            .toList();
+        List<String> referencingRuleNames =
+            ruleRuntimeStore.listVisibleRuleNamesReferencingSnippet(normalizedSnippetId);
         for (String ruleName : referencingRuleNames) {
             if (detachSnippetReferenceWithRetry(ruleName, normalizedSnippetId)) {
                 detachedAnyRule = true;

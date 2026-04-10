@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
@@ -48,15 +47,14 @@ class TransformationSnippetDeletionReconcilerTest {
     @Test
     void shouldDetachReferencingRulesBeforeRemovingSnippetFinalizer() {
         TransformationSnippet deletingSnippet = deletingSnippet("snippet-a");
-        TransformationRule listedRule = rule("rule-a", Set.of("snippet-a", "snippet-b"));
         TransformationRule latestRule = rule("rule-a", Set.of("snippet-a", "snippet-b"));
         latestRule.setDescription("latest description");
 
         when(client.fetch(TransformationSnippet.class, "snippet-a"))
             .thenReturn(Optional.of(deletingSnippet))
             .thenReturn(Optional.of(deletingSnippet("snippet-a")));
-        when(client.list(eq(TransformationRule.class), any(), eq(null))).thenReturn(
-            List.of(listedRule));
+        when(ruleRuntimeStore.listVisibleRuleNamesReferencingSnippet("snippet-a"))
+            .thenReturn(List.of("rule-a"));
         when(client.fetch(TransformationRule.class, "rule-a")).thenReturn(Optional.of(latestRule));
 
         reconciler.reconcile(new Reconciler.Request("snippet-a"));
@@ -87,7 +85,7 @@ class TransformationSnippetDeletionReconcilerTest {
 
         reconciler.reconcile(new Reconciler.Request("snippet-a"));
 
-        verify(client, never()).list(eq(TransformationRule.class), any(), eq(null));
+        verify(ruleRuntimeStore, never()).listVisibleRuleNamesReferencingSnippet("snippet-a");
         verify(client, never()).update(any(TransformationSnippet.class));
     }
 
@@ -96,7 +94,6 @@ class TransformationSnippetDeletionReconcilerTest {
     @Test
     void shouldRefetchLatestRuleWhenDetachingSnippetHitsConflict() {
         TransformationSnippet deletingSnippet = deletingSnippet("snippet-a");
-        TransformationRule listedRule = rule("rule-a", Set.of("snippet-a", "snippet-b"));
         TransformationRule staleRule = rule("rule-a", Set.of("snippet-a", "snippet-b"));
         staleRule.getMetadata().setVersion(2L);
         TransformationRule latestRule =
@@ -107,8 +104,8 @@ class TransformationSnippetDeletionReconcilerTest {
         when(client.fetch(TransformationSnippet.class, "snippet-a"))
             .thenReturn(Optional.of(deletingSnippet))
             .thenReturn(Optional.of(latestSnippet));
-        when(client.list(eq(TransformationRule.class), any(), eq(null))).thenReturn(
-            List.of(listedRule));
+        when(ruleRuntimeStore.listVisibleRuleNamesReferencingSnippet("snippet-a"))
+            .thenReturn(List.of("rule-a"));
         when(client.fetch(TransformationRule.class, "rule-a"))
             .thenReturn(Optional.of(staleRule))
             .thenReturn(Optional.of(latestRule));
@@ -144,8 +141,8 @@ class TransformationSnippetDeletionReconcilerTest {
         when(client.fetch(TransformationSnippet.class, "snippet-a"))
             .thenReturn(Optional.of(deletingSnippet))
             .thenReturn(Optional.of(deletingSnippet("snippet-a")));
-        when(client.list(eq(TransformationRule.class), any(), eq(null))).thenReturn(
-            List.of(listedRule));
+        when(ruleRuntimeStore.listVisibleRuleNamesReferencingSnippet("snippet-a"))
+            .thenReturn(List.of("rule-a"));
         when(client.fetch(TransformationRule.class, "rule-a")).thenReturn(Optional.of(latestRule));
 
         reconciler.reconcile(new Reconciler.Request("snippet-a"));
@@ -163,16 +160,12 @@ class TransformationSnippetDeletionReconcilerTest {
     @Test
     void shouldIgnoreRulesThatAreAlreadyDeletingWhenDetachingReferences() {
         TransformationSnippet deletingSnippet = deletingSnippet("snippet-a");
-        TransformationRule deletingRule = rule("rule-a", Set.of("snippet-a", "snippet-b"));
-        deletingRule.getMetadata().setDeletionTimestamp(Instant.now());
 
         when(client.fetch(TransformationSnippet.class, "snippet-a"))
             .thenReturn(Optional.of(deletingSnippet))
             .thenReturn(Optional.of(deletingSnippet("snippet-a")));
-        doAnswer(invocation -> {
-            java.util.function.Predicate<TransformationRule> predicate = invocation.getArgument(1);
-            return List.of(deletingRule).stream().filter(predicate).toList();
-        }).when(client).list(eq(TransformationRule.class), any(), eq(null));
+        when(ruleRuntimeStore.listVisibleRuleNamesReferencingSnippet("snippet-a"))
+            .thenReturn(List.of());
 
         reconciler.reconcile(new Reconciler.Request("snippet-a"));
 
@@ -187,14 +180,13 @@ class TransformationSnippetDeletionReconcilerTest {
     @Test
     void shouldIgnoreMissingRuleDuringDetachUpdateAndStillClearSnippetFinalizer() {
         TransformationSnippet deletingSnippet = deletingSnippet("snippet-a");
-        TransformationRule listedRule = rule("rule-a", Set.of("snippet-a", "snippet-b"));
         TransformationSnippet latestSnippet = deletingSnippet("snippet-a");
 
         when(client.fetch(TransformationSnippet.class, "snippet-a"))
             .thenReturn(Optional.of(deletingSnippet))
             .thenReturn(Optional.of(latestSnippet));
-        when(client.list(eq(TransformationRule.class), any(), eq(null))).thenReturn(
-            List.of(listedRule));
+        when(ruleRuntimeStore.listVisibleRuleNamesReferencingSnippet("snippet-a"))
+            .thenReturn(List.of("rule-a"));
         when(client.fetch(TransformationRule.class, "rule-a"))
             .thenReturn(Optional.of(rule("rule-a", Set.of("snippet-a", "snippet-b"))));
         doThrow(notFound())

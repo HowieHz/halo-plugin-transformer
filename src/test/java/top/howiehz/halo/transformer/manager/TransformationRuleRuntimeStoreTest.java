@@ -219,6 +219,31 @@ class TransformationRuleRuntimeStoreTest {
             .equals(List.of("rule-a")));
     }
 
+    // why: snippet 删除协调器需要的是“当前哪些可见规则引用了它”，
+    // 这条查询语义必须和控制台可见性、历史脏引用规范化共用同一份 watch-driven 快照。
+    @Test
+    void shouldExposeVisibleRuleNamesReferencingSnippetFromSnapshot() {
+        TransformationRule matchingRule =
+            rule("rule-a", TransformationRule.Mode.FOOTER, false, "");
+        matchingRule.setSnippetIds(new java.util.LinkedHashSet<>(List.of(" snippet-a ")));
+        TransformationRule unrelatedRule =
+            rule("rule-b", TransformationRule.Mode.FOOTER, false, "");
+        unrelatedRule.setSnippetIds(new java.util.LinkedHashSet<>(List.of("snippet-b")));
+        TransformationRule deletingRule =
+            rule("rule-c", TransformationRule.Mode.FOOTER, false, "");
+        deletingRule.setSnippetIds(new java.util.LinkedHashSet<>(List.of("snippet-a")));
+        deletingRule.getMetadata().setDeletionTimestamp(Instant.now());
+
+        manager.applyPersistedRule(matchingRule);
+        manager.applyPersistedRule(unrelatedRule);
+        manager.applyPersistedRule(deletingRule);
+
+        assertEquals(
+            List.of("rule-a"),
+            manager.listVisibleRuleNamesReferencingSnippet("snippet-a")
+        );
+    }
+
     // why: 控制台读取在当前写请求之后必须立刻看到新规则；
     // 否则“创建成功后立刻刷新并保存顺序”会先读到旧快照，再把新规则静默排除在排序映射之外。
     @Test

@@ -40,9 +40,9 @@ function reorderItems(
 }
 
 describe("ResourceList accessibility", () => {
-  // why: 批量模式把“整行可选”和“复选框可选”叠在一起后，
-  // 屏幕阅读器最容易先失去复选框名称，所以这里锁住面板语义和选择标签。
-  it("exposes tab panel semantics and bulk checkbox labels", () => {
+  // why: 资源列表行里同时存在主操作、复选框和拖动句柄；
+  // 这里必须锁住“普通列表 + 明确按钮”的语义，避免再回退成错误的 listbox 复合组件。
+  it("exposes tab panel semantics and bulk checkbox labels without faking listbox semantics", () => {
     const wrapper = mount(ResourceList, {
       props: {
         items: [
@@ -64,12 +64,35 @@ describe("ResourceList accessibility", () => {
     expect(panel.attributes("id")).toBe("transformer-panel-snippets");
     expect(panel.attributes("aria-labelledby")).toBe("transformer-tab-snippets");
 
-    const listbox = wrapper.get('[role="listbox"]');
-    expect(listbox.attributes("aria-multiselectable")).toBe("true");
+    const list = wrapper.get("ul");
+    expect(list.attributes("aria-label")).toBe("代码片段列表");
+    expect(wrapper.find('[role="listbox"]').exists()).toBe(false);
+
+    const primaryButton = wrapper.get('button[aria-pressed="false"]');
+    expect(primaryButton.text()).toContain("页头脚本");
 
     const checkboxes = wrapper.findAll('input[type="checkbox"]');
     expect(checkboxes[0].attributes("aria-label")).toBe("全选当前列表项");
     expect(checkboxes[1].attributes("aria-label")).toBe("选择 页头脚本");
+  });
+
+  // why: 非批量模式下左侧资源列表是 master-detail 导航；
+  // 当前项应由主操作按钮显式暴露出来，而不是继续滥用 option/selected 语义。
+  it("marks the current item on the primary row action in single-select mode", () => {
+    const wrapper = mount(ResourceList, {
+      props: {
+        items: [
+          { id: "snippet-a", name: "页头脚本", enabled: true },
+          { id: "snippet-b", name: "页尾脚本", enabled: false },
+        ],
+        listLabel: "代码片段列表",
+        selectedId: "snippet-b",
+      },
+    });
+
+    const currentButton = wrapper.get('button[aria-current="true"]');
+    expect(currentButton.text()).toContain("页尾脚本");
+    expect(wrapper.find('[role="option"]').exists()).toBe(false);
   });
 
   // why: 键盘用户调整顺序时，最自然的连续动作是反复按上下方向键；

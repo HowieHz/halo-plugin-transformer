@@ -156,15 +156,9 @@ function handleSelect(id: string) {
   emit("select", id);
 }
 
-function handleItemKeydown(event: KeyboardEvent, id: string) {
+function handlePrimaryActionKeydown(event: KeyboardEvent, id: string) {
   const currentIndex = props.items.findIndex((item) => item.id === id);
   if (currentIndex === -1) {
-    return;
-  }
-
-  if (event.key === "Enter" || event.key === " ") {
-    event.preventDefault();
-    handleSelect(id);
     return;
   }
 
@@ -239,8 +233,8 @@ const setReorderButtonElement = (id: string, element: Element | ComponentPublicI
 };
 
 /**
- * why: 列表声明了 `role="listbox"` 后，方向键移动焦点就是用户的默认预期；
- * 至少保证上下 / Home / End 能走通，键盘用户才不会被困在当前项上。
+ * why: 资源列表的真实交互模型是“主操作按钮 + 次级控件”，不是 ARIA listbox；
+ * 方向键只在主操作按钮之间移动焦点，避免把 checkbox / 拖动句柄塞进错误的复合组件语义里。
  */
 function focusItem(id: string) {
   itemElements.value[id]?.focus();
@@ -286,12 +280,7 @@ watch(
   >
     <slot name="placeholder" />
 
-    <ul
-      :aria-label="props.listLabel ?? '资源列表'"
-      :aria-multiselectable="props.bulkMode || undefined"
-      class=":uno: divide-y divide-gray-100"
-      role="listbox"
-    >
+    <ul :aria-label="props.listLabel ?? '资源列表'" class=":uno: divide-y divide-gray-100">
       <li
         v-if="props.bulkMode && props.items.length"
         class=":uno: sticky top-0 z-1 border-b border-gray-100 bg-white px-4 py-2"
@@ -324,16 +313,10 @@ watch(
       <li
         v-for="(item, index) in props.items"
         :key="item.id"
-        :ref="(element) => setItemElement(item.id, element)"
-        :aria-selected="props.selectedId !== undefined && props.selectedId === item.id"
         :class="draggingId === item.id ? ':uno: opacity-60' : ''"
-        class=":uno: group focus-visible:ring-primary/40 relative cursor-pointer focus:outline-none focus-visible:ring-2"
-        role="option"
-        tabindex="0"
+        class=":uno: group focus-within:ring-primary/40 relative focus-within:ring-2"
         @dragover="handleDragOver($event, item.id)"
         @drop="handleDrop($event, item.id)"
-        @click="handleSelect(item.id)"
-        @keydown="handleItemKeydown($event, item.id)"
       >
         <div
           v-if="props.selectedId !== undefined && props.selectedId === item.id"
@@ -362,40 +345,53 @@ watch(
             />
           </label>
 
-          <div class=":uno: flex min-w-0 flex-1 flex-col gap-1">
-            <div class=":uno: flex items-center justify-between gap-2">
-              <span class=":uno: min-w-0 flex-1 truncate text-sm font-medium text-gray-900">
+          <button
+            :ref="(element) => setItemElement(item.id, element)"
+            :aria-current="
+              !props.bulkMode && props.selectedId !== undefined && props.selectedId === item.id
+                ? 'true'
+                : undefined
+            "
+            :aria-pressed="props.bulkMode ? isBulkSelected(item.id) : undefined"
+            class=":uno: min-w-0 flex-1 text-left focus:outline-none"
+            type="button"
+            @click="handleSelect(item.id)"
+            @keydown="handlePrimaryActionKeydown($event, item.id)"
+          >
+            <div class=":uno: flex min-w-0 flex-col gap-1">
+              <span class=":uno: min-w-0 truncate text-sm font-medium text-gray-900">
                 {{ item.name || item.id }}
               </span>
-              <div class=":uno: flex items-center gap-1">
-                <button
-                  v-if="props.reorderable && !props.bulkMode && props.items.length > 1"
-                  :ref="(element) => setReorderButtonElement(item.id, element)"
-                  :aria-label="`拖动排序：${item.name || item.id}`"
-                  aria-keyshortcuts="ArrowUp ArrowDown"
-                  class=":uno: inline-flex h-5 w-5 shrink-0 cursor-grab items-center justify-center rounded text-sm leading-none tracking-[-0.2em] text-gray-400 transition hover:text-gray-600 active:cursor-grabbing"
-                  draggable="true"
-                  title="按住拖动排序；聚焦后可用上下方向键调整顺序"
-                  @click.stop
-                  @dragend="clearDragState"
-                  @dragstart.stop="handleDragStart($event, item.id)"
-                  @keydown.stop="handleReorderButtonKeydown($event, index)"
-                  @mousedown.stop
-                >
-                  ⋮⋮
-                </button>
-                <slot :index="index" :item="item" name="actions" />
-                <StatusDot :enabled="item.enabled" />
-              </div>
+
+              <p v-if="item.description" class=":uno: line-clamp-1 text-xs text-gray-500">
+                {{ item.description }}
+              </p>
+
+              <slot :item="item" name="meta" />
+
+              <slot :item="item" name="hint" />
             </div>
+          </button>
 
-            <p v-if="item.description" class=":uno: line-clamp-1 text-xs text-gray-500">
-              {{ item.description }}
-            </p>
-
-            <slot :item="item" name="meta" />
-
-            <slot :item="item" name="hint" />
+          <div class=":uno: flex shrink-0 items-center gap-1 self-start">
+            <button
+              v-if="props.reorderable && !props.bulkMode && props.items.length > 1"
+              :ref="(element) => setReorderButtonElement(item.id, element)"
+              :aria-label="`拖动排序：${item.name || item.id}`"
+              aria-keyshortcuts="ArrowUp ArrowDown"
+              class=":uno: inline-flex h-5 w-5 shrink-0 cursor-grab items-center justify-center rounded text-sm leading-none tracking-[-0.2em] text-gray-400 transition hover:text-gray-600 active:cursor-grabbing"
+              draggable="true"
+              title="按住拖动排序；聚焦后可用上下方向键调整顺序"
+              @click.stop
+              @dragend="clearDragState"
+              @dragstart.stop="handleDragStart($event, item.id)"
+              @keydown.stop="handleReorderButtonKeydown($event, index)"
+              @mousedown.stop
+            >
+              ⋮⋮
+            </button>
+            <slot :index="index" :item="item" name="actions" />
+            <StatusDot :enabled="item.enabled" />
           </div>
         </div>
       </li>

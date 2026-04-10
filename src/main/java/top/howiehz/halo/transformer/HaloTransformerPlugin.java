@@ -28,9 +28,9 @@ public class HaloTransformerPlugin extends BasePlugin {
     @Override
     public void start() {
         registerScheme();
-        startControllers();
         transformationRuleRuntimeStore.startWatching();
         transformationSnippetRuntimeStore.startWatching();
+        startControllers();
     }
 
     @Override
