@@ -1,10 +1,10 @@
 package top.howiehz.halo.transformer.manager;
 
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -31,6 +31,8 @@ abstract class AbstractWatchDrivenExtensionStore<R extends Extension, S> {
     private final Object watchMonitor = new Object();
     private final long watchReconnectBaseDelayMillis;
     private final long watchReconnectMaxDelayMillis;
+    private final AtomicLong observedWatchEventCount = new AtomicLong();
+    private final AtomicLong watchConnectionVersion = new AtomicLong();
     private volatile boolean refreshRequested;
     private volatile boolean refreshRunning;
     private volatile boolean watching;
@@ -41,8 +43,6 @@ abstract class AbstractWatchDrivenExtensionStore<R extends Extension, S> {
     private volatile int reconnectFailureCount;
     private volatile int refreshFailureCount;
     private volatile boolean initialSnapshotReady;
-    private final AtomicLong observedWatchEventCount = new AtomicLong();
-    private final AtomicLong watchConnectionVersion = new AtomicLong();
 
     AbstractWatchDrivenExtensionStore(ReactiveExtensionClient client, Class<R> resourceType,
         GroupVersionKind resourceGroupVersionKind, String resourceDisplayName,
