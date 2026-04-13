@@ -31,7 +31,6 @@ import reactor.core.publisher.Mono;
 import run.halo.app.security.AdditionalWebFilter;
 import top.howiehz.halo.transformer.core.HTMLTransformer;
 import top.howiehz.halo.transformer.core.RuntimeTransformationRule;
-import top.howiehz.halo.transformer.core.SelectorTransformer;
 import top.howiehz.halo.transformer.scheme.TransformationRule;
 import top.howiehz.halo.transformer.util.ContextUtil;
 import top.howiehz.halo.transformer.util.TransformHelper;

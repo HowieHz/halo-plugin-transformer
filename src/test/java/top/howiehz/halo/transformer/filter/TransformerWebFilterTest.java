@@ -25,7 +25,6 @@ import reactor.core.publisher.Mono;
 import run.halo.app.extension.Metadata;
 import top.howiehz.halo.transformer.core.MatchRule;
 import top.howiehz.halo.transformer.core.RuntimeTransformationRule;
-import top.howiehz.halo.transformer.core.SelectorTransformer;
 import top.howiehz.halo.transformer.scheme.TransformationRule;
 import top.howiehz.halo.transformer.util.TransformHelper;
 
