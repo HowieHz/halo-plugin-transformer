@@ -29,14 +29,6 @@
 - 只有带 `release` 标签的 PR 才允许修改版本号。
 - 带 `release` 标签的 PR 必须同时修改版本号，否则持续集成（CI）会失败。
 
-## 密钥要求
-
-自动发版依赖仓库中的 `HALO_PAT`：
-
-- 需要具备 `contents: write`，用于回推更新日志提交和创建 GitHub 发布页（Release）。
-- 需要能触发后续的 `release.published` 工作流事件。
-- 如果 `main` 受保护且禁止直接推送，则该令牌（token）还需要具备对应的分支规则绕过权限；否则自动提交更新日志到 `main` 会失败。
-
 ## 发布说明
 
 自动创建的 GitHub 发布说明使用固定模板：
@@ -44,8 +36,3 @@
 ```markdown
 详情请参阅 [CHANGELOG.md](https://github.com/HowieHz/halo-plugin-transformer/blob/main/CHANGELOG.md)。
 ```
-
-## 失败恢复
-
-- 如果发版 PR 已合并，但自动发版中断，优先检查 `HALO_PAT` 权限和 `main` 分支保护规则。
-- 如果更新日志提交已经推送成功，发版工作流支持再次运行，不会重复提升同一个版本的更新日志条目。

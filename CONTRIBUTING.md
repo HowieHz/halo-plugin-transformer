@@ -533,24 +533,18 @@ pnpm dev
 
 ## GitHub 自动化
 
-GitHub 自动化遵循一个原则：能复用 Halo 官方和仓库现成能力的场景，优先复用现有方案。
-
-- `.github/workflows/ci.yaml` / `.github/workflows/cd.yaml`
-  - 继续复用 Halo 官方可复用工作流（reusable workflows）
 - `.github/workflows/ci.yaml`
-  - PR 合并前必须通过 GitHub 必需检查 `ci / ci`
-  - 负责 PR 的主要检查，包括插件构建、测试，以及发版版本号约束
-  - 普通 PR 可以照常改代码，但不能修改 `gradle.properties` 里的 `version`；如果修改了，这个工作流会直接失败
-  - 只有带 `release` 标签的 PR 才允许修改 `gradle.properties` 里的 `version`，且版本号必须是递增的语义化版本；不满足时同样由这个工作流拦截
+  - PR 合并前必须通过必需检查。
+  - 此工作流负责 PR 的主要检查，包括插件构建、测试，以及发版版本号约束。
+  - 普通 PR 可以照常改代码，但不能修改 `gradle.properties` 里的 `version`；如果修改了，这个工作流会直接失败。
+  - 只有带 `release` 标签的 PR 才允许修改 `gradle.properties` 里的 `version`，且版本号必须是递增的语义化版本；不满足时同样由这个工作流拦截。
 - `.github/workflows/release-stable-plugin.yml`
   - 负责带 `release` 标签的 PR 合并后的正式发版流程
   - 会校验合并后的 `main` 是否仍然对应这次发版 PR、把 `CHANGELOG.md` 的 `Unreleased` 提升为正式版本、提交更新日志变更，并创建 GitHub 发布页（Release）
-- `.github/dependabot.yml`
-  - 负责 Gradle、UI npm、GitHub Actions 的依赖更新
 - `.github/workflows/update-toolchain-versions.yml`
   - 负责把 `package.json`、`ui/package.json` 和工作流里的 Node / pnpm 版本保持同步
-- `.github/scripts/update-toolchain-versions.js`
-  - 参考 `halo-plugin-extra-api` 的治理思路，但只管理本仓库里真实存在的文件，不做多余兼容
+- `.github/workflows/cd.yaml`
+  - 复用 Halo CMS 官方可复用工作流进行应用商店同步。
 
 ## 提交前检查
 
