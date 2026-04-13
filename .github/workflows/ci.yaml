@@ -7,12 +7,121 @@ on:
   pull_request:
     branches:
       - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - labeled
+      - unlabeled
 
 jobs:
-  ci:
+  release-policy:
+    name: Release Policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip Version Policy Check Outside Pull Requests
+        if: ${{ github.event_name != 'pull_request' }}
+        run: echo "Version policy check only applies to pull requests."
+
+      - name: Checkout Source
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # https://github.com/actions/checkout/releases/tag/v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Enforce Release Version Policy
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HAS_RELEASE_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'release') }}
+        run: |
+          extract_version_from_file() {
+            sed -n 's/^version=\(.*\)$/\1/p' "$1" | tail -n 1 | tr -d '[:space:]'
+          }
+
+          extract_version_from_stdin() {
+            sed -n 's/^version=\(.*\)$/\1/p' | tail -n 1 | tr -d '[:space:]'
+          }
+
+          git fetch origin "$BASE_REF" --depth=1
+
+          diff_exit_code=0
+          git diff --quiet "origin/$BASE_REF...HEAD" -- gradle.properties || diff_exit_code=$?
+          if [ "$diff_exit_code" -ne 0 ] && [ "$diff_exit_code" -ne 1 ]; then
+            exit "$diff_exit_code"
+          fi
+
+          version_changed=false
+          if [ "$diff_exit_code" -eq 1 ]; then
+            version_changed=true
+          fi
+
+          if [ "$version_changed" = true ] && [ "$HAS_RELEASE_LABEL" != "true" ]; then
+            echo "gradle.properties version changes require the 'release' label on the pull request." >&2
+            exit 1
+          fi
+
+          if [ "$version_changed" != "true" ] && [ "$HAS_RELEASE_LABEL" = "true" ]; then
+            echo "Pull requests with the 'release' label must update gradle.properties version." >&2
+            exit 1
+          fi
+
+          if [ "$version_changed" != "true" ]; then
+            echo "gradle.properties version unchanged."
+            exit 0
+          fi
+
+          release_version=$(extract_version_from_file gradle.properties)
+          base_version=$(git show "origin/$BASE_REF:gradle.properties" | extract_version_from_stdin)
+
+          if [ -z "$release_version" ] || [ -z "$base_version" ]; then
+            echo "Unable to resolve version from gradle.properties." >&2
+            exit 1
+          fi
+
+          if ! [[ "$release_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "gradle.properties version must use semantic version format x.y.z, got: $release_version" >&2
+            exit 1
+          fi
+
+          if [ "$(printf '%s\n%s\n' "$base_version" "$release_version" | sort -V | tail -n 1)" != "$release_version" ] || [ "$base_version" = "$release_version" ]; then
+            echo "gradle.properties version must increase from $base_version to a newer semantic version, got: $release_version" >&2
+            exit 1
+          fi
+
+          echo "Release version policy passed: $base_version -> $release_version"
+
+  build:
+    name: Build
+    needs: release-policy
     uses: halo-sigs/reusable-workflows/.github/workflows/plugin-ci.yaml@574420d846900eb5e6b25af72d43dca475583eac # https://github.com/halo-sigs/reusable-workflows/tree/v4
     with:
       ui-path: "ui"
       pnpm-version: "10.33.0"
       node-version: 24
       java-version: 21
+
+  required-checks:
+    name: Required Checks
+    if: ${{ always() }}
+    needs:
+      - release-policy
+      - build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail If Any Required Job Failed
+        env:
+          RELEASE_POLICY_RESULT: ${{ needs.release-policy.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+        run: |
+          if [ "$RELEASE_POLICY_RESULT" != "success" ]; then
+            echo "release-policy job result: $RELEASE_POLICY_RESULT" >&2
+            exit 1
+          fi
+
+          if [ "$BUILD_RESULT" != "success" ]; then
+            echo "build job result: $BUILD_RESULT" >&2
+            exit 1
+          fi
+
+          echo "All required CI jobs passed."
