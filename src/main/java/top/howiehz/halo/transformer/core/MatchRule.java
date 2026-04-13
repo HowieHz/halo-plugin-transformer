@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import lombok.Data;
 import org.springframework.util.StringUtils;
-import top.howiehz.halo.transformer.core.generated.MatchRuleContractMessages;
+import top.howiehz.halo.transformer.contract.generated.MatchRuleContractMessages;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Data

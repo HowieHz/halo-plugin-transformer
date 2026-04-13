@@ -9,7 +9,7 @@
  *
  * Generated files:
  * - `ui/src/views/composables/generated/matchRuleContract.ts`
- * - `src/main/java/top/howiehz/halo/transformer/core/generated/MatchRuleContractMessages.java`
+ * - `src/main/java/top/howiehz/halo/transformer/contract/generated/MatchRuleContractMessages.java`
  * - `ui/public/generated/match-rule.schema.json`
  * - `ui/public/generated/transformer.schema.json`
  *
@@ -51,7 +51,7 @@ const artifacts = [
       "howiehz",
       "halo",
       "transformer",
-      "core",
+      "contract",
       "generated",
       "MatchRuleContractMessages.java",
     ),
@@ -317,7 +317,7 @@ function buildJavaArtifact(data) {
     )
     .join("\n");
 
-  return `package top.howiehz.halo.transformer.core.generated;
+  return `package top.howiehz.halo.transformer.contract.generated;
 
 import java.util.List;
 import top.howiehz.halo.transformer.core.MatchRule;

@@ -1,4 +1,4 @@
-package top.howiehz.halo.transformer.core.generated;
+package top.howiehz.halo.transformer.contract.generated;
 
 import java.util.List;
 import top.howiehz.halo.transformer.core.MatchRule;
