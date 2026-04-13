@@ -30,7 +30,7 @@ jobs:
         with:
           fetch-depth: 0
           ref: main
-          token: ${{ secrets.PR_WORKFLOW_TOKEN }}
+          token: ${{ secrets.PR_WORKFLOW_TOKEN || github.token }}
 
       - name: Resolve Stable Release Metadata
         id: meta
@@ -126,7 +126,7 @@ jobs:
 
       - name: Publish GitHub Release
         env:
-          GH_TOKEN: ${{ secrets.PR_WORKFLOW_TOKEN }}
+          GH_TOKEN: ${{ secrets.PR_WORKFLOW_TOKEN || github.token }}
           RELEASE_TAG: ${{ needs.prepare.outputs.release_tag }}
           RELEASE_VERSION: ${{ needs.prepare.outputs.release_version }}
           RELEASE_SHA: ${{ needs.prepare.outputs.release_commit_sha }}

@@ -534,7 +534,7 @@ pnpm dev
 ## GitHub 自动化
 
 - `.github/workflows/ci.yaml`
-  - PR 合并前必须通过必需检查。
+  - PR 合并前必须通过必需检查 `CI / Required Checks`。
   - 此工作流负责 PR 的主要检查，包括插件构建、测试，以及发版版本号约束。
   - 普通 PR 可以照常改代码，但不能修改 `gradle.properties` 里的 `version`；如果修改了，这个工作流会直接失败。
   - 只有带 `release` 标签的 PR 才允许修改 `gradle.properties` 里的 `version`，且版本号必须是递增的语义化版本；不满足时同样由这个工作流拦截。

@@ -1,4 +1,4 @@
-name: ci
+name: CI
 
 on:
   push:
@@ -16,7 +16,7 @@ on:
 
 jobs:
   release-policy:
-    name: Validate Release Version Policy
+    name: Release Policy
     runs-on: ubuntu-latest
     steps:
       - name: Skip Version Policy Check Outside Pull Requests
@@ -92,6 +92,7 @@ jobs:
           echo "Release version policy passed: $base_version -> $release_version"
 
   build:
+    name: Build
     needs: release-policy
     uses: halo-sigs/reusable-workflows/.github/workflows/plugin-ci.yaml@574420d846900eb5e6b25af72d43dca475583eac # https://github.com/halo-sigs/reusable-workflows/tree/v4
     with:
@@ -101,7 +102,7 @@ jobs:
       java-version: 21
 
   required-checks:
-    name: required-checks
+    name: Required Checks
     if: ${{ always() }}
     needs:
       - release-policy
