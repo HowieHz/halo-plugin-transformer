@@ -18,8 +18,8 @@ import run.halo.app.extension.AbstractExtension;
 import run.halo.app.extension.ExtensionUtil;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
-import top.howiehz.halo.transformer.scheme.ResourceOrder;
-import top.howiehz.halo.transformer.util.OptimisticConcurrencyGuard;
+import top.howiehz.halo.transformer.extension.ResourceOrder;
+import top.howiehz.halo.transformer.support.OptimisticConcurrencyGuard;
 
 @Component
 @RequiredArgsConstructor

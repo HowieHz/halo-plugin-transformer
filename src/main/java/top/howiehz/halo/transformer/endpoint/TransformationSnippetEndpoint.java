@@ -25,12 +25,12 @@ import run.halo.app.extension.ExtensionUtil;
 import run.halo.app.extension.GroupVersion;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
-import top.howiehz.halo.transformer.manager.TransformationSnippetRuntimeStore;
-import top.howiehz.halo.transformer.scheme.TransformationSnippet;
+import top.howiehz.halo.transformer.runtime.store.TransformationSnippetRuntimeStore;
+import top.howiehz.halo.transformer.extension.TransformationSnippet;
 import top.howiehz.halo.transformer.service.TransformationSnippetLifecycleService;
-import top.howiehz.halo.transformer.util.OptimisticConcurrencyGuard;
-import top.howiehz.halo.transformer.util.TransformationSnippetValidationException;
-import top.howiehz.halo.transformer.util.TransformationSnippetValidator;
+import top.howiehz.halo.transformer.support.OptimisticConcurrencyGuard;
+import top.howiehz.halo.transformer.validation.TransformationSnippetValidationException;
+import top.howiehz.halo.transformer.validation.TransformationSnippetValidator;
 
 @Component
 @RequiredArgsConstructor

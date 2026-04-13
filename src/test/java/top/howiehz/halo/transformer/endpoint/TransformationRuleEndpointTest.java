@@ -21,12 +21,12 @@ import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
-import top.howiehz.halo.transformer.core.MatchRule;
-import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
-import top.howiehz.halo.transformer.scheme.TransformationRule;
+import top.howiehz.halo.transformer.rule.MatchRule;
+import top.howiehz.halo.transformer.runtime.store.TransformationRuleRuntimeStore;
+import top.howiehz.halo.transformer.extension.TransformationRule;
 import top.howiehz.halo.transformer.service.TransformationSnippetReferenceService;
-import top.howiehz.halo.transformer.util.TransformationRuleValidationException;
-import top.howiehz.halo.transformer.util.TransformationRuleValidator;
+import top.howiehz.halo.transformer.validation.TransformationRuleValidationException;
+import top.howiehz.halo.transformer.validation.TransformationRuleValidator;
 
 class TransformationRuleEndpointTest {
     private ReactiveExtensionClient client;
@@ -226,7 +226,7 @@ class TransformationRuleEndpointTest {
         rule.setMode(TransformationRule.Mode.FOOTER);
         rule.setPosition(TransformationRule.Position.APPEND);
         rule.setWrapMarker(true);
-        rule.setMatchRule(top.howiehz.halo.transformer.core.MatchRule.defaultRule());
+        rule.setMatchRule(top.howiehz.halo.transformer.rule.MatchRule.defaultRule());
         rule.setMatch("");
         return rule;
     }

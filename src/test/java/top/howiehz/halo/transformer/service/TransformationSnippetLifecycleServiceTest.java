@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
-import top.howiehz.halo.transformer.scheme.TransformationSnippet;
+import top.howiehz.halo.transformer.extension.TransformationSnippet;
 
 class TransformationSnippetLifecycleServiceTest {
     private ReactiveExtensionClient client;

@@ -16,10 +16,10 @@ import run.halo.app.extension.controller.Controller;
 import run.halo.app.extension.controller.ControllerBuilder;
 import run.halo.app.extension.controller.Reconciler;
 import run.halo.app.extension.index.query.Queries;
-import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
-import top.howiehz.halo.transformer.scheme.TransformationRule;
-import top.howiehz.halo.transformer.scheme.TransformationSnippet;
-import top.howiehz.halo.transformer.util.TransformationSnippetReferenceIds;
+import top.howiehz.halo.transformer.runtime.store.TransformationRuleRuntimeStore;
+import top.howiehz.halo.transformer.extension.TransformationRule;
+import top.howiehz.halo.transformer.extension.TransformationSnippet;
+import top.howiehz.halo.transformer.support.TransformationSnippetReferenceIds;
 
 @Slf4j
 @Component

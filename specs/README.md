@@ -22,7 +22,7 @@
   - 由 `ui/src/views/composables/matchRule.ts`、`ui/src/views/composables/matchRuleValidation.ts` 和前端契约测试消费
 - `specs/match-rule/contract.spec.jsonc`
   - `src/main/java/top/howiehz/halo/transformer/contract/generated/MatchRuleContractMessages.java`
-  - 由 `src/main/java/top/howiehz/halo/transformer/core/MatchRule.java` 和 Java 契约测试消费
+  - 由 `src/main/java/top/howiehz/halo/transformer/rule/MatchRule.java` 和 Java 契约测试消费
 - `specs/match-rule/contract.spec.jsonc`
   - `ui/public/generated/match-rule.schema.json`
   - `ui/public/generated/transformer.schema.json`

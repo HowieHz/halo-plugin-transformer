@@ -8,9 +8,9 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import run.halo.app.extension.ExtensionUtil;
 import run.halo.app.extension.ReactiveExtensionClient;
-import top.howiehz.halo.transformer.scheme.TransformationSnippet;
-import top.howiehz.halo.transformer.util.TransformationRuleValidationException;
-import top.howiehz.halo.transformer.util.TransformationSnippetReferenceIds;
+import top.howiehz.halo.transformer.extension.TransformationSnippet;
+import top.howiehz.halo.transformer.validation.TransformationRuleValidationException;
+import top.howiehz.halo.transformer.support.TransformationSnippetReferenceIds;
 
 @Component
 public class TransformationSnippetReferenceService {

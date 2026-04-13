@@ -1,8 +1,8 @@
 package top.howiehz.halo.transformer.endpoint;
 
 import java.util.Set;
-import top.howiehz.halo.transformer.core.ITransformationRule;
-import top.howiehz.halo.transformer.core.MatchRule;
+import top.howiehz.halo.transformer.extension.TransformationRule;
+import top.howiehz.halo.transformer.rule.MatchRule;
 
 public record TransformationRuleReadModel(
     String apiVersion,
@@ -12,10 +12,10 @@ public record TransformationRuleReadModel(
     String name,
     String description,
     boolean enabled,
-    ITransformationRule.Mode mode,
+    TransformationRule.Mode mode,
     String match,
     MatchRule matchRule,
-    ITransformationRule.Position position,
+    TransformationRule.Position position,
     boolean wrapMarker,
     int runtimeOrder,
     Set<String> snippetIds

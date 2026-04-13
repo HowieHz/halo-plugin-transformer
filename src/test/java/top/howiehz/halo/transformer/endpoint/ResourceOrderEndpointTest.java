@@ -11,9 +11,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebInputException;
 import run.halo.app.extension.Metadata;
-import top.howiehz.halo.transformer.scheme.TransformationRule;
-import top.howiehz.halo.transformer.scheme.TransformationSnippet;
-import top.howiehz.halo.transformer.util.OptimisticConcurrencyGuard;
+import top.howiehz.halo.transformer.extension.TransformationRule;
+import top.howiehz.halo.transformer.extension.TransformationSnippet;
+import top.howiehz.halo.transformer.support.OptimisticConcurrencyGuard;
 
 class ResourceOrderEndpointTest {
     private final ResourceOrderEndpoint endpoint =
