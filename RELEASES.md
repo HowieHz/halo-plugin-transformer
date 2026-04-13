@@ -12,9 +12,9 @@
 正式版发布改为单 PR 流程，不再手工创建 GitHub Release：
 
 1. 创建一个面向 `main` 的发版 PR。
-2. 在 PR 中更新 `gradle.properties` 的 `version`，并补齐 `CHANGELOG.md` 的 `Unreleased`。
-3. 给这个 PR 添加 `release` label。
-4. 等 `CI` 通过后合并 PR。
+   - 在 PR 中更新 `gradle.properties` 的 `version`，并补齐 `CHANGELOG.md` 的 `Unreleased`。
+2. 给这个 PR 添加 `release` label。
+3. 等 `CI` 通过后合并 PR。
 
 合并后，机器人（GitHub Actions）会自动执行以下动作：
 
