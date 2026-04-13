@@ -11,9 +11,9 @@ import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import run.halo.app.extension.Metadata;
-import top.howiehz.halo.transformer.rule.MatchRule;
 import top.howiehz.halo.transformer.extension.TransformationRule;
 import top.howiehz.halo.transformer.extension.TransformationSnippet;
+import top.howiehz.halo.transformer.rule.MatchRule;
 
 class ConsoleReadModelMapperTest {
     private final ConsoleReadModelMapper mapper = new ConsoleReadModelMapper();

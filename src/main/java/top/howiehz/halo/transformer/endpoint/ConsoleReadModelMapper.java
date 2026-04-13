@@ -6,9 +6,9 @@ import java.util.Map;
 import org.springframework.stereotype.Component;
 import run.halo.app.extension.ExtensionUtil;
 import run.halo.app.extension.MetadataOperator;
-import top.howiehz.halo.transformer.rule.MatchRule;
 import top.howiehz.halo.transformer.extension.TransformationRule;
 import top.howiehz.halo.transformer.extension.TransformationSnippet;
+import top.howiehz.halo.transformer.rule.MatchRule;
 
 @Component
 public class ConsoleReadModelMapper {

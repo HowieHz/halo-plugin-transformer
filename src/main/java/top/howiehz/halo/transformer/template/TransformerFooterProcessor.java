@@ -8,9 +8,9 @@ import org.thymeleaf.model.IProcessableElementTag;
 import org.thymeleaf.processor.element.IElementTagStructureHandler;
 import reactor.core.publisher.Mono;
 import run.halo.app.theme.dialect.TemplateFooterProcessor;
-import top.howiehz.halo.transformer.runtime.transform.FooterTransformer;
 import top.howiehz.halo.transformer.extension.TransformationRule;
 import top.howiehz.halo.transformer.runtime.RuntimeRuleResolver;
+import top.howiehz.halo.transformer.runtime.transform.FooterTransformer;
 
 /**
  * @author HowieHz

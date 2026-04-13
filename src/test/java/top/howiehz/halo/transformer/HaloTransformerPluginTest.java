@@ -17,11 +17,11 @@ import run.halo.app.extension.Scheme;
 import run.halo.app.extension.SchemeManager;
 import run.halo.app.extension.controller.Controller;
 import top.howiehz.halo.transformer.config.TransformerControllers;
-import top.howiehz.halo.transformer.runtime.store.TransformationRuleRuntimeStore;
-import top.howiehz.halo.transformer.runtime.store.TransformationSnippetRuntimeStore;
 import top.howiehz.halo.transformer.extension.ResourceOrder;
 import top.howiehz.halo.transformer.extension.TransformationRule;
 import top.howiehz.halo.transformer.extension.TransformationSnippet;
+import top.howiehz.halo.transformer.runtime.store.TransformationRuleRuntimeStore;
+import top.howiehz.halo.transformer.runtime.store.TransformationSnippetRuntimeStore;
 
 class HaloTransformerPluginTest {
     // why: 删除协调器等后台 controller 会依赖 watch-driven runtime store；

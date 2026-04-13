@@ -6,8 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
-import top.howiehz.halo.transformer.rule.MatchRule;
 import top.howiehz.halo.transformer.extension.TransformationRule;
+import top.howiehz.halo.transformer.rule.MatchRule;
 
 class TransformationRuleValidatorTest {
     private final TransformationRuleValidator validator = new TransformationRuleValidator();

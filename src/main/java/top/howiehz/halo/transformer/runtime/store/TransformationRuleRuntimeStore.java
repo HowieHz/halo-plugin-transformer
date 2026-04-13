@@ -16,9 +16,9 @@ import reactor.core.publisher.Mono;
 import run.halo.app.extension.ExtensionUtil;
 import run.halo.app.extension.GroupVersionKind;
 import run.halo.app.extension.ReactiveExtensionClient;
+import top.howiehz.halo.transformer.extension.TransformationRule;
 import top.howiehz.halo.transformer.rule.MatchRuleBooleanMinimizer;
 import top.howiehz.halo.transformer.runtime.RuntimeTransformationRule;
-import top.howiehz.halo.transformer.extension.TransformationRule;
 import top.howiehz.halo.transformer.support.TransformationSnippetReferenceIds;
 
 @Slf4j

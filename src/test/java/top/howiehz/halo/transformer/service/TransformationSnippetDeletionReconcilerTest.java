@@ -27,9 +27,9 @@ import run.halo.app.extension.Extension;
 import run.halo.app.extension.ExtensionClient;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.controller.Reconciler;
-import top.howiehz.halo.transformer.runtime.store.TransformationRuleRuntimeStore;
 import top.howiehz.halo.transformer.extension.TransformationRule;
 import top.howiehz.halo.transformer.extension.TransformationSnippet;
+import top.howiehz.halo.transformer.runtime.store.TransformationRuleRuntimeStore;
 
 class TransformationSnippetDeletionReconcilerTest {
     private ExtensionClient client;

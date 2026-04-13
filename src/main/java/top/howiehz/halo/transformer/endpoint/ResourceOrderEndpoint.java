@@ -20,11 +20,11 @@ import run.halo.app.core.extension.endpoint.CustomEndpoint;
 import run.halo.app.extension.AbstractExtension;
 import run.halo.app.extension.GroupVersion;
 import run.halo.app.extension.Metadata;
-import top.howiehz.halo.transformer.runtime.store.TransformationRuleRuntimeStore;
-import top.howiehz.halo.transformer.runtime.store.TransformationSnippetRuntimeStore;
 import top.howiehz.halo.transformer.extension.ResourceOrder;
 import top.howiehz.halo.transformer.extension.TransformationRule;
 import top.howiehz.halo.transformer.extension.TransformationSnippet;
+import top.howiehz.halo.transformer.runtime.store.TransformationRuleRuntimeStore;
+import top.howiehz.halo.transformer.runtime.store.TransformationSnippetRuntimeStore;
 
 @Component
 @RequiredArgsConstructor

@@ -24,9 +24,9 @@ import reactor.core.publisher.Flux;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
 import run.halo.app.extension.Watcher;
+import top.howiehz.halo.transformer.extension.TransformationRule;
 import top.howiehz.halo.transformer.rule.MatchRule;
 import top.howiehz.halo.transformer.runtime.RuntimeTransformationRule;
-import top.howiehz.halo.transformer.extension.TransformationRule;
 
 @ExtendWith(MockitoExtension.class)
 class TransformationRuleRuntimeStoreTest {

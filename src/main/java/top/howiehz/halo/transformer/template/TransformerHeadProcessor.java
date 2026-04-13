@@ -7,9 +7,9 @@ import org.thymeleaf.model.IModel;
 import org.thymeleaf.processor.element.IElementModelStructureHandler;
 import reactor.core.publisher.Mono;
 import run.halo.app.theme.dialect.TemplateHeadProcessor;
-import top.howiehz.halo.transformer.runtime.transform.HeadTransformer;
 import top.howiehz.halo.transformer.extension.TransformationRule;
 import top.howiehz.halo.transformer.runtime.RuntimeRuleResolver;
+import top.howiehz.halo.transformer.runtime.transform.HeadTransformer;
 
 /**
  * @author HowieHz

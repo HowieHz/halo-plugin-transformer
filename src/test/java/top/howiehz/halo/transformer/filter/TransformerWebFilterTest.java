@@ -23,10 +23,10 @@ import org.springframework.mock.web.server.MockServerWebExchange;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import run.halo.app.extension.Metadata;
-import top.howiehz.halo.transformer.rule.MatchRule;
-import top.howiehz.halo.transformer.runtime.RuntimeTransformationRule;
 import top.howiehz.halo.transformer.extension.TransformationRule;
+import top.howiehz.halo.transformer.rule.MatchRule;
 import top.howiehz.halo.transformer.runtime.RuntimeRuleResolver;
+import top.howiehz.halo.transformer.runtime.RuntimeTransformationRule;
 
 @ExtendWith(MockitoExtension.class)
 class TransformerWebFilterTest {

@@ -15,12 +15,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import top.howiehz.halo.transformer.rule.MatchRule;
-import top.howiehz.halo.transformer.runtime.RuntimeTransformationRule;
-import top.howiehz.halo.transformer.runtime.store.TransformationRuleRuntimeStore;
-import top.howiehz.halo.transformer.runtime.store.TransformationSnippetRuntimeStore;
 import top.howiehz.halo.transformer.extension.TransformationRule;
 import top.howiehz.halo.transformer.extension.TransformationSnippet;
+import top.howiehz.halo.transformer.rule.MatchRule;
+import top.howiehz.halo.transformer.runtime.store.TransformationRuleRuntimeStore;
+import top.howiehz.halo.transformer.runtime.store.TransformationSnippetRuntimeStore;
 
 @ExtendWith(MockitoExtension.class)
 class RuntimeRuleResolverTest {

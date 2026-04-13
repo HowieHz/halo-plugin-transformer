@@ -23,22 +23,6 @@ public class TransformationRule extends AbstractExtension {
      * 只有用户显式调高优先级时，才改变同阶段执行顺序。
      */
     public static final int DEFAULT_RUNTIME_ORDER = 2147483645;
-
-    public enum Mode {
-        HEAD,
-        FOOTER,
-        SELECTOR
-    }
-
-    public enum Position {
-        APPEND,
-        PREPEND,
-        BEFORE,
-        AFTER,
-        REPLACE,
-        REMOVE
-    }
-
     private String name = "";
     private String description = "";
     private Boolean enabled = true;
@@ -150,5 +134,20 @@ public class TransformationRule extends AbstractExtension {
     public boolean isValid() {
         boolean targetValid = !Mode.SELECTOR.equals(getMode()) || !getMatch().isBlank();
         return targetValid && matchRule != null && matchRule.isValid();
+    }
+
+    public enum Mode {
+        HEAD,
+        FOOTER,
+        SELECTOR
+    }
+
+    public enum Position {
+        APPEND,
+        PREPEND,
+        BEFORE,
+        AFTER,
+        REPLACE,
+        REMOVE
     }
 }
