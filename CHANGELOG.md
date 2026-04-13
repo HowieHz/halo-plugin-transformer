@@ -21,6 +21,8 @@
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-04-13
+
 ### 🔧 代码重构
 
 - 优化代码结构。
@@ -35,4 +37,6 @@
 
 - 第一个版本发布。
 
+[Unreleased]: https://github.com/HowieHz/halo-plugin-transformer/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/HowieHz/halo-plugin-transformer/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/HowieHz/halo-plugin-transformer/releases/tag/v1.0.0
