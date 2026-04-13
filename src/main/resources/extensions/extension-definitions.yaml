@@ -4,7 +4,7 @@ metadata:
   name: transformer-custom-footer-extension
 spec:
   extensionPointName: template-footer-processor
-  className: top.howiehz.halo.transformer.process.TransformerFooterProcessor
+  className: top.howiehz.halo.transformer.template.TransformerFooterProcessor
   displayName: "TransformerFooterProcessor"
   description: "Transform the page content and place it inside a <halo:footer>"
 ---
@@ -14,7 +14,7 @@ metadata:
   name: transformer-custom-head-extension
 spec:
   extensionPointName: template-head-processor
-  className: top.howiehz.halo.transformer.process.TransformerHeadProcessor
+  className: top.howiehz.halo.transformer.template.TransformerHeadProcessor
   displayName: "TransformerHeadProcessor"
   description: "Transform the page content and place it inside a <head>"
 ---
