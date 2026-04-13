@@ -4,6 +4,8 @@ apiVersion: plugin.halo.run/v1alpha1
 kind: Plugin
 metadata:
   name: transformer
+  annotations:
+    store.halo.run/app-id: app-ncyyngrz
 spec:
   enabled: true
   requires: ">=2.23.2"
