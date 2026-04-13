@@ -4,10 +4,10 @@ import { computed, type ComputedRef, type Ref } from "vue";
 import { snippetApi } from "@/apis";
 import type { TransformationSnippetEditorDraft, TransformationSnippetReadModel } from "@/types";
 
+import { appendCreatedResourcesInOrder } from "./resourceOrder";
+import { getErrorMessage } from "./resourceSupport";
 import { buildSnippetWritePayload } from "./snippetDraft";
 import { validateSnippetDraft } from "./snippetValidation";
-import { getErrorMessage } from "./transformerShared";
-import { appendCreatedResourcesInOrder } from "./util";
 
 interface UseSnippetStateOptions {
   creating: Ref<boolean>;

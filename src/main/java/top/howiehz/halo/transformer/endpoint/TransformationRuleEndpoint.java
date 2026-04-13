@@ -25,13 +25,13 @@ import run.halo.app.extension.ExtensionUtil;
 import run.halo.app.extension.GroupVersion;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
-import top.howiehz.halo.transformer.core.MatchRule;
-import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
-import top.howiehz.halo.transformer.scheme.TransformationRule;
+import top.howiehz.halo.transformer.extension.TransformationRule;
+import top.howiehz.halo.transformer.rule.MatchRule;
+import top.howiehz.halo.transformer.runtime.store.TransformationRuleRuntimeStore;
 import top.howiehz.halo.transformer.service.TransformationSnippetReferenceService;
-import top.howiehz.halo.transformer.util.OptimisticConcurrencyGuard;
-import top.howiehz.halo.transformer.util.TransformationRuleValidationException;
-import top.howiehz.halo.transformer.util.TransformationRuleValidator;
+import top.howiehz.halo.transformer.support.OptimisticConcurrencyGuard;
+import top.howiehz.halo.transformer.validation.TransformationRuleValidationException;
+import top.howiehz.halo.transformer.validation.TransformationRuleValidator;
 
 @Component
 @RequiredArgsConstructor

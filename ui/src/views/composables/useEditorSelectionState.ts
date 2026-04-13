@@ -8,10 +8,10 @@ import type {
   TransformationRuleReadModel,
 } from "@/types";
 
+import { mergeSavedMetadata } from "./resourceSupport";
 import { getRuleCapabilities } from "./ruleCapabilities";
 import { hydrateRuleEditorDraft } from "./ruleDraft";
 import { hydrateSnippetEditorDraft } from "./snippetDraft";
-import { mergeSavedMetadata } from "./transformerShared";
 
 interface UseEditorSelectionStateOptions {
   activeTab: Ref<ActiveTab>;

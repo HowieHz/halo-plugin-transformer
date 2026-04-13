@@ -17,6 +17,7 @@ import {
   cloneMatchRuleSource,
   makeRuleTreeSource,
 } from "@/views/composables/matchRule";
+import { sortSelectedFirst } from "@/views/composables/resourceOrder";
 import {
   buildRuleUndoBaselineSnapshot,
   resolveRuleUndoFieldCurrentValue,
@@ -31,7 +32,6 @@ import {
 import { useDragAutoScroll } from "@/views/composables/useDragAutoScroll";
 import { useFieldUndo } from "@/views/composables/useFieldUndo.ts";
 import { useRuleFormSemantics } from "@/views/composables/useRuleFormSemantics";
-import { sortSelectedFirst } from "@/views/composables/util.ts";
 
 import DragAutoScrollOverlay from "./DragAutoScrollOverlay.vue";
 import EditorFooter from "./EditorFooter.vue";

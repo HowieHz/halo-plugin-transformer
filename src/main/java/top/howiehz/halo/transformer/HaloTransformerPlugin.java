@@ -7,11 +7,11 @@ import run.halo.app.extension.GroupVersionKind;
 import run.halo.app.extension.SchemeManager;
 import run.halo.app.plugin.BasePlugin;
 import top.howiehz.halo.transformer.config.TransformerControllers;
-import top.howiehz.halo.transformer.manager.TransformationRuleRuntimeStore;
-import top.howiehz.halo.transformer.manager.TransformationSnippetRuntimeStore;
-import top.howiehz.halo.transformer.scheme.ResourceOrder;
-import top.howiehz.halo.transformer.scheme.TransformationRule;
-import top.howiehz.halo.transformer.scheme.TransformationSnippet;
+import top.howiehz.halo.transformer.extension.ResourceOrder;
+import top.howiehz.halo.transformer.extension.TransformationRule;
+import top.howiehz.halo.transformer.extension.TransformationSnippet;
+import top.howiehz.halo.transformer.runtime.store.TransformationRuleRuntimeStore;
+import top.howiehz.halo.transformer.runtime.store.TransformationSnippetRuntimeStore;
 
 /**
  * @author HowieHz

@@ -7,7 +7,7 @@ import reactor.core.publisher.Mono;
 import run.halo.app.extension.ExtensionUtil;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
-import top.howiehz.halo.transformer.scheme.TransformationSnippet;
+import top.howiehz.halo.transformer.extension.TransformationSnippet;
 
 @Component
 public class TransformationSnippetLifecycleService {

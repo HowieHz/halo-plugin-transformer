@@ -29,19 +29,19 @@ import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import run.halo.app.security.AdditionalWebFilter;
-import top.howiehz.halo.transformer.core.HTMLTransformer;
-import top.howiehz.halo.transformer.core.RuntimeTransformationRule;
-import top.howiehz.halo.transformer.core.SelectorTransformer;
-import top.howiehz.halo.transformer.scheme.TransformationRule;
-import top.howiehz.halo.transformer.util.ContextUtil;
-import top.howiehz.halo.transformer.util.TransformHelper;
+import top.howiehz.halo.transformer.extension.TransformationRule;
+import top.howiehz.halo.transformer.runtime.RuntimeRuleResolver;
+import top.howiehz.halo.transformer.runtime.RuntimeTransformationRule;
+import top.howiehz.halo.transformer.runtime.transform.HTMLTransformer;
+import top.howiehz.halo.transformer.runtime.transform.SelectorTransformer;
+import top.howiehz.halo.transformer.support.ContextUtil;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class TransformerWebFilter implements AdditionalWebFilter {
-    private final TransformHelper transformHelper;
-    private final SelectorTransformer selectorTransformer;
+    private final RuntimeRuleResolver transformHelper;
+    private final SelectorTransformer selectorTransformer = new SelectorTransformer();
     private final ServerWebExchangeMatcher pathMatcher = createPathMatcher();
 
     @Override
@@ -134,9 +134,9 @@ public class TransformerWebFilter implements AdditionalWebFilter {
 
     private List<DomTransformationPlan> toDomTransformationPlans(
         List<RuntimeTransformationRule> selectorRules,
-        List<TransformHelper.ResolvedRuleCode> resolvedCodes) {
+        List<RuntimeRuleResolver.ResolvedRuleCode> resolvedCodes) {
         Map<String, String> codeByRuleId = new LinkedHashMap<>();
-        for (TransformHelper.ResolvedRuleCode resolvedCode : resolvedCodes) {
+        for (RuntimeRuleResolver.ResolvedRuleCode resolvedCode : resolvedCodes) {
             codeByRuleId.put(resolvedCode.rule().resourceName(), resolvedCode.code());
         }
         List<DomTransformationPlan> plans = new java.util.ArrayList<>(selectorRules.size());

@@ -32,6 +32,7 @@ import SnippetEditor from "./components/SnippetEditor.vue";
 import SnippetFormModal from "./components/SnippetFormModal.vue";
 import type { EditorEmptyStateLayout } from "./composables/editorEmptyState";
 import { matchRuleSummary } from "./composables/matchRule.ts";
+import { rulePreview } from "./composables/resourcePresentation";
 import { hydrateRuleEditorDraft } from "./composables/ruleDraft";
 import { hydrateSnippetEditorDraft } from "./composables/snippetDraft";
 import {
@@ -64,7 +65,6 @@ import {
   useTransformerViewSessionState,
   type TransformerPageMode,
 } from "./composables/useTransformerViewSessionState";
-import { rulePreview } from "./composables/util.ts";
 
 const activeTab = ref<ActiveTab>("snippets");
 const route = useRoute();

@@ -23,22 +23,21 @@ import org.springframework.mock.web.server.MockServerWebExchange;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import run.halo.app.extension.Metadata;
-import top.howiehz.halo.transformer.core.MatchRule;
-import top.howiehz.halo.transformer.core.RuntimeTransformationRule;
-import top.howiehz.halo.transformer.core.SelectorTransformer;
-import top.howiehz.halo.transformer.scheme.TransformationRule;
-import top.howiehz.halo.transformer.util.TransformHelper;
+import top.howiehz.halo.transformer.extension.TransformationRule;
+import top.howiehz.halo.transformer.rule.MatchRule;
+import top.howiehz.halo.transformer.runtime.RuntimeRuleResolver;
+import top.howiehz.halo.transformer.runtime.RuntimeTransformationRule;
 
 @ExtendWith(MockitoExtension.class)
 class TransformerWebFilterTest {
     @Mock
-    private TransformHelper transformHelper;
+    private RuntimeRuleResolver transformHelper;
 
     private CountingTransformerWebFilter filter;
 
     @BeforeEach
     void setUp() {
-        filter = new CountingTransformerWebFilter(transformHelper, new SelectorTransformer());
+        filter = new CountingTransformerWebFilter(transformHelper);
     }
 
     // why: 同一页同时命中多条 SELECTOR 规则时，应共享一次代码片段解析和同一份 Jsoup Document，
@@ -57,9 +56,9 @@ class TransformerWebFilterTest {
         when(transformHelper.resolveRuleCodes(
             List.of(runtimeSelectorRule, runtimeSecondSelectorRule))).thenReturn(
             Mono.just(List.of(
-                new TransformHelper.ResolvedRuleCode(runtimeSelectorRule,
+                new RuntimeRuleResolver.ResolvedRuleCode(runtimeSelectorRule,
                     "<span class='selector'>S</span>"),
-                new TransformHelper.ResolvedRuleCode(runtimeSecondSelectorRule,
+                new RuntimeRuleResolver.ResolvedRuleCode(runtimeSecondSelectorRule,
                     "<span class='second'>I</span>")
             ))
         );
@@ -119,7 +118,7 @@ class TransformerWebFilterTest {
             .thenReturn(Flux.just(runtimeSelectorRule));
         when(transformHelper.resolveRuleCodes(List.of(runtimeSelectorRule))).thenReturn(
             Mono.just(List.of(
-                new TransformHelper.ResolvedRuleCode(runtimeSelectorRule,
+                new RuntimeRuleResolver.ResolvedRuleCode(runtimeSelectorRule,
                     "<span class='selector'>S</span>")
             )));
 
@@ -158,7 +157,7 @@ class TransformerWebFilterTest {
             .thenReturn(Flux.just(runtimeSelectorRule));
         when(transformHelper.resolveRuleCodes(List.of(runtimeSelectorRule))).thenReturn(
             Mono.just(List.of(
-                new TransformHelper.ResolvedRuleCode(runtimeSelectorRule,
+                new RuntimeRuleResolver.ResolvedRuleCode(runtimeSelectorRule,
                     "<span class='selector'>S</span>")
             )));
 
@@ -196,7 +195,7 @@ class TransformerWebFilterTest {
             .thenReturn(Flux.just(runtimeSelectorRule));
         when(transformHelper.resolveRuleCodes(List.of(runtimeSelectorRule))).thenReturn(
             Mono.just(List.of(
-                new TransformHelper.ResolvedRuleCode(runtimeSelectorRule,
+                new RuntimeRuleResolver.ResolvedRuleCode(runtimeSelectorRule,
                     "<span class='selector'>S</span>")
             )));
 
@@ -233,7 +232,7 @@ class TransformerWebFilterTest {
             .thenReturn(Flux.just(runtimeSelectorRule));
         when(transformHelper.resolveRuleCodes(List.of(runtimeSelectorRule))).thenReturn(
             Mono.just(List.of(
-                new TransformHelper.ResolvedRuleCode(runtimeSelectorRule,
+                new RuntimeRuleResolver.ResolvedRuleCode(runtimeSelectorRule,
                     "<span class='selector'>S</span>")
             )));
 
@@ -340,9 +339,8 @@ class TransformerWebFilterTest {
     private static class CountingTransformerWebFilter extends TransformerWebFilter {
         private final AtomicInteger parseCount = new AtomicInteger();
 
-        CountingTransformerWebFilter(TransformHelper transformHelper,
-            SelectorTransformer selectorTransformer) {
-            super(transformHelper, selectorTransformer);
+        CountingTransformerWebFilter(RuntimeRuleResolver transformHelper) {
+            super(transformHelper);
         }
 
         @Override

@@ -5,9 +5,9 @@
 >
 import { nextTick, ref, watch, type ComponentPublicInstance } from "vue";
 
-import StatusDot from "./StatusDot.vue";
+import type { ReorderPlacement } from "@/views/composables/resourceOrder";
 
-type ReorderPlacement = "before" | "after";
+import StatusDot from "./StatusDot.vue";
 
 const props = defineProps<{
   items: T[];
