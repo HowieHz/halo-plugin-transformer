@@ -3,7 +3,6 @@ package top.howiehz.halo.transformer.filter;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import org.springframework.stereotype.Component;
 import top.howiehz.halo.transformer.core.HTMLTransformer;
 import top.howiehz.halo.transformer.core.ITransformationRule;
 import top.howiehz.halo.transformer.core.TransformUtil;
@@ -12,7 +11,6 @@ import top.howiehz.halo.transformer.core.TransformUtil;
  * @author HowieHz
  * @since 1.0.0
  */
-@Component
 public class SelectorTransformer implements HTMLTransformer {
 
     @Override

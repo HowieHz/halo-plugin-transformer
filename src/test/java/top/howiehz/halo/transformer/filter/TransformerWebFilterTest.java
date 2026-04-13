@@ -37,7 +37,7 @@ class TransformerWebFilterTest {
 
     @BeforeEach
     void setUp() {
-        filter = new CountingTransformerWebFilter(transformHelper, new SelectorTransformer());
+        filter = new CountingTransformerWebFilter(transformHelper);
     }
 
     // why: 同一页同时命中多条 SELECTOR 规则时，应共享一次代码片段解析和同一份 Jsoup Document，
@@ -339,9 +339,8 @@ class TransformerWebFilterTest {
     private static class CountingTransformerWebFilter extends TransformerWebFilter {
         private final AtomicInteger parseCount = new AtomicInteger();
 
-        CountingTransformerWebFilter(TransformHelper transformHelper,
-            SelectorTransformer selectorTransformer) {
-            super(transformHelper, selectorTransformer);
+        CountingTransformerWebFilter(TransformHelper transformHelper) {
+            super(transformHelper);
         }
 
         @Override

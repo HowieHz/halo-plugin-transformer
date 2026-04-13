@@ -40,7 +40,7 @@ import top.howiehz.halo.transformer.util.TransformHelper;
 @RequiredArgsConstructor
 public class TransformerWebFilter implements AdditionalWebFilter {
     private final TransformHelper transformHelper;
-    private final SelectorTransformer selectorTransformer;
+    private final SelectorTransformer selectorTransformer = new SelectorTransformer();
     private final ServerWebExchangeMatcher pathMatcher = createPathMatcher();
 
     @Override

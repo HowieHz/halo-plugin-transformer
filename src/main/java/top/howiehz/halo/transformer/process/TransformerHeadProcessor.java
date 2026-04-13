@@ -19,12 +19,10 @@ import top.howiehz.halo.transformer.util.TransformHelper;
 @Component
 public class TransformerHeadProcessor extends AbstractTemplateProcessor
     implements TemplateHeadProcessor {
-    private final HeadTransformer headTransformer;
+    private final HeadTransformer headTransformer = new HeadTransformer();
 
-    public TransformerHeadProcessor(TransformHelper transformHelper,
-        HeadTransformer headTransformer) {
+    public TransformerHeadProcessor(TransformHelper transformHelper) {
         super(transformHelper);
-        this.headTransformer = headTransformer;
     }
 
     @Override

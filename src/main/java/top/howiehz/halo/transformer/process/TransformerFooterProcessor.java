@@ -20,12 +20,10 @@ import top.howiehz.halo.transformer.util.TransformHelper;
 @Component
 public class TransformerFooterProcessor extends AbstractTemplateProcessor
     implements TemplateFooterProcessor {
-    private final FooterTransformer footerTransformer;
+    private final FooterTransformer footerTransformer = new FooterTransformer();
 
-    public TransformerFooterProcessor(TransformHelper transformHelper,
-        FooterTransformer footerTransformer) {
+    public TransformerFooterProcessor(TransformHelper transformHelper) {
         super(transformHelper);
-        this.footerTransformer = footerTransformer;
     }
 
     @Override
