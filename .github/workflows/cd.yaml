@@ -6,62 +6,7 @@ on:
       - published
 
 jobs:
-  prepare:
-    name: Prepare Release Changelog
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-    steps:
-      - name: Checkout Source
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # https://github.com/actions/checkout/releases/tag/v6.0.2
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event.repository.default_branch }}
-
-      - name: Resolve Release Metadata
-        id: meta
-        env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
-        run: |
-          RELEASE_VERSION="${RELEASE_TAG#v}"
-          if ! [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Release tag must use stable vX.Y.Z format, got: $RELEASE_TAG" >&2
-            exit 1
-          fi
-
-          PREVIOUS_TAG=$(git tag --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | grep -Fxv "$RELEASE_TAG" | sort -V | tail -n 1)
-          if [ -z "$PREVIOUS_TAG" ]; then
-            echo "No previous stable release tag found before $RELEASE_TAG" >&2
-            exit 1
-          fi
-
-          RELEASE_DATE=$(TZ=Asia/Shanghai date -d "${{ github.event.release.published_at }}" +%F)
-          echo "release_version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
-          echo "previous_version=${PREVIOUS_TAG#v}" >> "$GITHUB_OUTPUT"
-          echo "release_date=$RELEASE_DATE" >> "$GITHUB_OUTPUT"
-
-      - name: Promote Changelog Entry
-        run: node .github/scripts/prepare-changelog-release.js "${{ steps.meta.outputs.release_version }}" "${{ steps.meta.outputs.previous_version }}" "${{ steps.meta.outputs.release_date }}"
-
-      - name: Create Release Changelog Pull Request
-        if: ${{ !cancelled() }}
-        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # https://github.com/peter-evans/create-pull-request/releases/tag/v8.1.1
-        with:
-          token: ${{ secrets.HALO_PAT }}
-          commit-message: "docs(changelog): sync ${{ steps.meta.outputs.release_version }} release"
-          branch: automation/changelog-release-${{ steps.meta.outputs.release_version }}
-          delete-branch: true
-          title: "docs(changelog): sync ${{ steps.meta.outputs.release_version }} release"
-          body: |
-            Sync `CHANGELOG.md` for the `${{ github.event.release.tag_name }}` release.
-
-            This pull request was created automatically by the CD workflow because the default branch is protected and requires changes to be merged through a pull request.
-          add-paths: |
-            CHANGELOG.md
-
   cd:
-    needs: prepare
     uses: halo-sigs/reusable-workflows/.github/workflows/plugin-cd.yaml@574420d846900eb5e6b25af72d43dca475583eac # https://github.com/halo-sigs/reusable-workflows/tree/v4
     secrets:
       halo-pat: ${{ secrets.HALO_PAT }}
