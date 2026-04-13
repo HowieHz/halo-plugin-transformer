@@ -100,8 +100,8 @@ jobs:
       node-version: 24
       java-version: 21
 
-  ci:
-    name: ci
+  required-checks:
+    name: required-checks
     if: ${{ always() }}
     needs:
       - release-policy
