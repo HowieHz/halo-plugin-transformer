@@ -6,7 +6,6 @@
 
 1. 计划合并到本次版本的分支或 PR 都已完成合并。
 2. `CHANGELOG.md` 的 `Unreleased` 已整理完成，包含本次版本的变更记录。
-3. 本次发版 PR 已更新 `gradle.properties` 中的 `version`。
 
 ## 正式版发布方法
 
