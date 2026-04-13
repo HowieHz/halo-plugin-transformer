@@ -1,18 +1,17 @@
 import {
-  type MatchRule,
-  makeMatchRuleGroup,
-  makePathMatchRule,
-  makeTemplateMatchRule,
-} from "@/types";
-
-import {
   allowedFieldsFor,
   formatInvalidBooleanFieldMessage,
   formatInvalidEnumFieldTypeMessage,
   formatInvalidEnumFieldValueMessage,
   formatMissingEnumFieldMessage,
   formatUnsupportedFieldMessage,
-} from "./generated/matchRuleContract";
+} from "@/contract/generated/matchRuleContract";
+import {
+  type MatchRule,
+  makeMatchRuleGroup,
+  makePathMatchRule,
+  makeTemplateMatchRule,
+} from "@/types";
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);

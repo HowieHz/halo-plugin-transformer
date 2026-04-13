@@ -18,7 +18,7 @@
 真源 -> 生成物 -> 消费者：
 
 - `specs/match-rule/contract.spec.jsonc`
-  - `ui/src/views/composables/generated/matchRuleContract.ts`
+  - `ui/src/contract/generated/matchRuleContract.ts`
   - 由 `ui/src/views/composables/matchRule.ts`、`ui/src/views/composables/matchRuleValidation.ts` 和前端契约测试消费
 - `specs/match-rule/contract.spec.jsonc`
   - `src/main/java/top/howiehz/halo/transformer/contract/generated/MatchRuleContractMessages.java`

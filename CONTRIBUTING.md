@@ -45,6 +45,25 @@ pnpm dev
   - 面向贡献者
   - 重点回答“项目怎么构建、哪些约束不能碰、为什么现在这样设计”
 
+## 前端目录边界
+
+前端代码也按“契约 / 页面编排 / 组件 / 状态逻辑”分层。  
+如果新增文件，优先放进已有边界里，不要再把 generated helper 或跨组件逻辑塞回 `views/composables` 的万能桶。
+
+- `ui/src/contract/generated`
+  - 从 `specs/` 生成的前端契约 helper；它们是生成物，不属于手写 composable
+- `ui/src/apis`
+  - 控制台接口访问与请求载荷定义
+- `ui/src/types`
+  - 前端读模型、写载荷与界面通用类型
+- `ui/src/views/TransformerView.vue`
+  - 页面级编排容器，只负责把各个 composable 和子组件装配起来
+- `ui/src/views/components`
+  - 视图组件与交互面板
+- `ui/src/views/composables`
+  - 手写状态逻辑、导入导出流程和界面派生语义
+  - 文件命名应显式表达职责，例如 `resourceOrder`、`resourceSupport`、`useRuleState`
+
 ## 后端包边界
 
 后端代码现在按“资源模型 / 写接口 / 运行时 / 基础支持”拆分。  

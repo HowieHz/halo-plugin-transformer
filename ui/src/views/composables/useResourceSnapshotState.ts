@@ -4,8 +4,8 @@ import { computed, ref, shallowRef, type ComputedRef } from "vue";
 import type { PersistedOrderState, OrderMap } from "@/apis";
 import type { OrderedItemList } from "@/types";
 
-import { emptyList, getErrorMessage, type ReorderPlacement } from "./transformerShared";
-import { buildExplicitOrderMap, sortByOrderMap } from "./util";
+import { buildExplicitOrderMap, sortByOrderMap, type ReorderPlacement } from "./resourceOrder";
+import { emptyList, getErrorMessage } from "./resourceSupport";
 
 interface SnapshotApi<T> {
   getSnapshot: () => Promise<{ data: OrderedItemList<T> }>;

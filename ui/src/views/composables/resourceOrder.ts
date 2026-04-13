@@ -1,31 +1,10 @@
 import type { OrderMap } from "@/apis";
-import { type TransformationRuleReadModel, MODE_OPTIONS, POSITION_OPTIONS } from "@/types";
 
-export function modeLabel(mode: string) {
-  return MODE_OPTIONS.find((o) => o.value === mode)?.label ?? mode;
-}
+export type ReorderPlacement = "before" | "after";
 
-export function positionLabel(pos?: string) {
-  if (!pos) return "";
-  return POSITION_OPTIONS.find((o) => o.value === pos)?.label ?? pos;
-}
-export function rulePreview(rule: TransformationRuleReadModel) {
-  return `${modeLabel(rule.mode)} · ${positionLabel(rule.position)}`;
-}
-
-export function codePreview(code: string) {
-  const t = code.replace(/\s+/g, " ").trim();
-  return t.length > 55 ? t.slice(0, 55) + "..." : t;
-}
-
-export function uniqueStrings(values: string[]) {
-  const seen = new Set<string>();
-  return values.map((v) => v.trim()).filter((v) => v && !seen.has(v) && seen.add(v));
-}
-
-export function displayNameOf(item: { id: string; name?: string | null }) {
-  const trimmed = item.name?.trim();
-  return trimmed || item.id;
+function displayNameOf(item: { id: string; name?: string | null }) {
+  const trimmedName = item.name?.trim();
+  return trimmedName || item.id;
 }
 
 /**
@@ -87,11 +66,13 @@ export function appendCreatedResourcesInOrder<T extends { id: string }>(
 }
 
 export function sortSelectedFirst<T extends { id: string }>(items: T[], selectedIds: string[]) {
-  const selected = new Set(selectedIds);
+  const selectedIdsSet = new Set(selectedIds);
   return [...items].sort((a, b) => {
-    const aSelected = selected.has(a.id);
-    const bSelected = selected.has(b.id);
-    if (aSelected === bSelected) return 0;
+    const aSelected = selectedIdsSet.has(a.id);
+    const bSelected = selectedIdsSet.has(b.id);
+    if (aSelected === bSelected) {
+      return 0;
+    }
     return aSelected ? -1 : 1;
   });
 }

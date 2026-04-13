@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { appendCreatedResourcesInOrder, buildExplicitOrderMap, sortByOrderMap } from "../util";
+import {
+  appendCreatedResourcesInOrder,
+  buildExplicitOrderMap,
+  sortByOrderMap,
+} from "../resourceOrder";
 
 describe("sortByOrderMap", () => {
   // why: 未显式排序的资源默认按 0 处理并排在最前面，这样新增项不需要先保存 order map 也能自然浮到顶部。

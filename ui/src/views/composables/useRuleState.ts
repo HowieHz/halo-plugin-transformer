@@ -4,10 +4,10 @@ import { computed, type ComputedRef, type Ref } from "vue";
 import { ruleApi } from "@/apis";
 import type { TransformationRuleEditorDraft, TransformationRuleReadModel } from "@/types";
 
+import { appendCreatedResourcesInOrder } from "./resourceOrder";
+import { getErrorMessage } from "./resourceSupport";
 import { buildRuleWritePayload } from "./ruleDraft";
 import { validateRuleDraft } from "./ruleValidation";
-import { getErrorMessage } from "./transformerShared";
-import { appendCreatedResourcesInOrder } from "./util";
 
 interface UseRuleStateOptions {
   creating: Ref<boolean>;

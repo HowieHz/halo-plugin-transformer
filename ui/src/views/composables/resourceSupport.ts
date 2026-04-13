@@ -2,8 +2,6 @@ import type { AxiosError } from "axios";
 
 import type { ItemList, ResourceReadMetadata, ResourceWriteMetadata } from "@/types";
 
-export type ReorderPlacement = "before" | "after";
-
 export function emptyList<T>(): ItemList<T> {
   return {
     first: false,

@@ -2,7 +2,7 @@ import { computed, ref, watch, type ComputedRef, type Ref } from "vue";
 
 import type { ActiveTab } from "@/types";
 
-import { uniqueStrings } from "./util";
+import { uniqueStrings } from "./stringCollections";
 
 interface BulkSelectableResource {
   id: string;

@@ -7,7 +7,7 @@ import type {
   TransformationSnippetReadModel,
 } from "@/types";
 import { matchRuleSummary } from "@/views/composables/matchRule";
-import { rulePreview } from "@/views/composables/util";
+import { rulePreview } from "@/views/composables/resourcePresentation";
 
 import ResourceList from "./ResourceList.vue";
 

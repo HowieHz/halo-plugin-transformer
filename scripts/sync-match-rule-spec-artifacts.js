@@ -8,7 +8,7 @@
  * - `specs/match-rule/contract.cases.jsonc`
  *
  * Generated files:
- * - `ui/src/views/composables/generated/matchRuleContract.ts`
+ * - `ui/src/contract/generated/matchRuleContract.ts`
  * - `src/main/java/top/howiehz/halo/transformer/contract/generated/MatchRuleContractMessages.java`
  * - `ui/public/generated/match-rule.schema.json`
  * - `ui/public/generated/transformer.schema.json`
@@ -34,8 +34,7 @@ const artifacts = [
       repoRoot,
       "ui",
       "src",
-      "views",
-      "composables",
+      "contract",
       "generated",
       "matchRuleContract.ts",
     ),

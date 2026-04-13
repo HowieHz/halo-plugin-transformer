@@ -8,7 +8,7 @@ import type {
   TransformationRuleReadModel,
 } from "@/types";
 
-import { getErrorMessage } from "./transformerShared";
+import { getErrorMessage } from "./resourceSupport";
 import { useEditorSelectionState } from "./useEditorSelectionState";
 import { useResourceSnapshotState } from "./useResourceSnapshotState";
 import { useRuleState } from "./useRuleState";
