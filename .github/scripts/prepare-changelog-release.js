@@ -19,6 +19,13 @@ const changelogFiles = [path.join(process.cwd(), "CHANGELOG.md")];
 
 for (const filePath of changelogFiles) {
   const content = fs.readFileSync(filePath, "utf8");
+  const releaseHeading = `## [${releaseVersion}] - `;
+
+  if (content.includes(releaseHeading)) {
+    syncChangelogCompareLinks(filePath);
+    continue;
+  }
+
   const unreleasedHeading = "## [Unreleased]";
   const unreleasedIndex = content.indexOf(unreleasedHeading);
 
