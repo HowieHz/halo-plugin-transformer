@@ -28,6 +28,7 @@ import run.halo.app.extension.ReactiveExtensionClient;
 import top.howiehz.halo.transformer.extension.TransformationSnippet;
 import top.howiehz.halo.transformer.runtime.store.TransformationSnippetRuntimeStore;
 import top.howiehz.halo.transformer.service.TransformationSnippetLifecycleService;
+import top.howiehz.halo.transformer.service.TransformationSnippetLifecycleRules;
 import top.howiehz.halo.transformer.support.OptimisticConcurrencyGuard;
 import top.howiehz.halo.transformer.validation.TransformationSnippetValidationException;
 import top.howiehz.halo.transformer.validation.TransformationSnippetValidator;
@@ -84,7 +85,7 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
     private Mono<ServerResponse> createSnippet(ServerRequest request) {
         return request.bodyToMono(TransformationSnippet.class)
             .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
-            .map(lifecycleService::prepareForPersist)
+            .map(TransformationSnippetLifecycleRules::prepareForPersist)
             .flatMap(TransformationSnippetValidator::validateForWrite)
             .flatMap(client::create)
             .doOnSuccess(created -> {
@@ -121,7 +122,7 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
                     snippet.getMetadata(),
                     "代码片段"
                 );
-                return lifecycleService.prepareForPersist(snippet);
+                return TransformationSnippetLifecycleRules.prepareForPersist(snippet);
             })
             .flatMap(TransformationSnippetValidator::validateForWrite)
             .flatMap(client::update)
@@ -202,7 +203,7 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
                     payload.metadata,
                     "代码片段"
                 );
-                lifecycleService.prepareForPersist(snippet);
+                TransformationSnippetLifecycleRules.prepareForPersist(snippet);
                 snippet.setEnabled(enabled);
                 return enabled ? TransformationSnippetValidator.validateForWrite(snippet)
                     : Mono.just(snippet);

@@ -74,7 +74,7 @@ class TransformationSnippetDeletionReconcilerTest {
             assertInstanceOf(TransformationSnippet.class, updatedResources.get(1));
         assertTrue(finalizedSnippet.getMetadata().getFinalizers() == null
             || !finalizedSnippet.getMetadata().getFinalizers()
-            .contains(TransformationSnippetLifecycleService.DELETION_FINALIZER));
+            .contains(TransformationSnippetLifecycleRules.DELETION_FINALIZER));
         verify(ruleRuntimeStore).invalidateAndWarmUpAsync();
         verify(client).fetch(TransformationRule.class, "rule-a");
     }
@@ -227,7 +227,7 @@ class TransformationSnippetDeletionReconcilerTest {
         metadata.setName(id);
         metadata.setDeletionTimestamp(Instant.now());
         metadata.setFinalizers(
-            new LinkedHashSet<>(Set.of(TransformationSnippetLifecycleService.DELETION_FINALIZER)));
+            new LinkedHashSet<>(Set.of(TransformationSnippetLifecycleRules.DELETION_FINALIZER)));
         snippet.setMetadata(metadata);
         return snippet;
     }

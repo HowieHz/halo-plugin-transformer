@@ -40,18 +40,6 @@ class TransformationSnippetLifecycleServiceTest {
         verify(client).delete(any(TransformationSnippet.class));
     }
 
-    // why: 新建和更新写口都应把删除 finalizer 当成资源生命周期的一部分；
-    // 这样即使未来走别的删除入口，也仍能复用同一套 finalizer 清理流程。
-    @Test
-    void shouldAttachFinalizerDuringPrepareForPersist() {
-        TransformationSnippet snippet = snippet("snippet-a");
-
-        TransformationSnippet prepared = service.prepareForPersist(snippet);
-
-        assertTrue(prepared.getMetadata().getFinalizers()
-            .contains(TransformationSnippetLifecycleService.DELETION_FINALIZER));
-    }
-
     // why: 已经处于“删除中”状态的代码片段，不需要重复发起 delete；
     // 否则重复点击删除会制造多余写请求，却不会带来更强的一致性。
     @Test
