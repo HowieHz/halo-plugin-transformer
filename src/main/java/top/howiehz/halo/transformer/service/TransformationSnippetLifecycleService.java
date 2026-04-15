@@ -24,8 +24,8 @@ public class TransformationSnippetLifecycleService {
         }
         Mono<TransformationSnippet> snippetToDelete =
             TransformationSnippetLifecycleRules.hasDeletionFinalizer(snippet)
-            ? Mono.just(snippet)
-            : client.update(TransformationSnippetLifecycleRules.prepareForPersist(snippet));
+                ? Mono.just(snippet)
+                : client.update(TransformationSnippetLifecycleRules.prepareForPersist(snippet));
         return snippetToDelete.flatMap(client::delete).then();
     }
 }
