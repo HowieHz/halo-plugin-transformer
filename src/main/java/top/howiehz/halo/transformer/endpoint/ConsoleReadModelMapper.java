@@ -3,22 +3,23 @@ package top.howiehz.halo.transformer.endpoint;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import org.springframework.stereotype.Component;
 import run.halo.app.extension.ExtensionUtil;
 import run.halo.app.extension.MetadataOperator;
 import top.howiehz.halo.transformer.extension.TransformationRule;
 import top.howiehz.halo.transformer.extension.TransformationSnippet;
 import top.howiehz.halo.transformer.rule.MatchRule;
 
-@Component
-public class ConsoleReadModelMapper {
+public final class ConsoleReadModelMapper {
     static final String API_VERSION = "transformer.howiehz.top/v1alpha1";
+
+    private ConsoleReadModelMapper() {
+    }
 
     /**
      * why: 存储实体只保留持久化语义；控制台需要的 `id` 等派生字段由统一映射生成，
      * 避免以后每多一个只读展示字段，都再长回实体层或字段清洗补丁。
      */
-    public TransformationSnippetReadModel toReadModel(TransformationSnippet snippet) {
+    public static TransformationSnippetReadModel toReadModel(TransformationSnippet snippet) {
         return new TransformationSnippetReadModel(
             API_VERSION,
             "TransformationSnippet",
@@ -31,7 +32,7 @@ public class ConsoleReadModelMapper {
         );
     }
 
-    public TransformationRuleReadModel toReadModel(TransformationRule rule) {
+    public static TransformationRuleReadModel toReadModel(TransformationRule rule) {
         return new TransformationRuleReadModel(
             API_VERSION,
             "TransformationRule",
@@ -51,36 +52,37 @@ public class ConsoleReadModelMapper {
         );
     }
 
-    public ConsoleItemList<TransformationSnippetReadModel> toSnippetList(
+    public static ConsoleItemList<TransformationSnippetReadModel> toSnippetList(
         List<TransformationSnippet> snippets) {
         return ConsoleItemList.of(snippets.stream()
             .filter(snippet -> !ExtensionUtil.isDeleted(snippet))
-            .map(this::toReadModel)
+            .map(ConsoleReadModelMapper::toReadModel)
             .toList());
     }
 
-    public ConsoleItemList<TransformationRuleReadModel> toRuleList(List<TransformationRule> rules) {
+    public static ConsoleItemList<TransformationRuleReadModel> toRuleList(
+        List<TransformationRule> rules) {
         return ConsoleItemList.of(rules.stream()
             .filter(rule -> !ExtensionUtil.isDeleted(rule))
-            .map(this::toReadModel)
+            .map(ConsoleReadModelMapper::toReadModel)
             .toList());
     }
 
-    public ConsoleOrderedItemList<TransformationSnippetReadModel> toSnippetSnapshot(
+    public static ConsoleOrderedItemList<TransformationSnippetReadModel> toSnippetSnapshot(
         List<TransformationSnippet> snippets,
         Map<String, Integer> orders,
         Long orderVersion) {
         return ConsoleOrderedItemList.of(toSnippetList(snippets), orders, orderVersion);
     }
 
-    public ConsoleOrderedItemList<TransformationRuleReadModel> toRuleSnapshot(
+    public static ConsoleOrderedItemList<TransformationRuleReadModel> toRuleSnapshot(
         List<TransformationRule> rules,
         Map<String, Integer> orders,
         Long orderVersion) {
         return ConsoleOrderedItemList.of(toRuleList(rules), orders, orderVersion);
     }
 
-    private ConsoleResourceMetadata toConsoleMetadata(MetadataOperator metadata) {
+    private static ConsoleResourceMetadata toConsoleMetadata(MetadataOperator metadata) {
         if (metadata == null) {
             return null;
         }

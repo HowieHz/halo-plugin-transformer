@@ -20,7 +20,6 @@ import run.halo.app.core.extension.endpoint.CustomEndpoint;
 import run.halo.app.extension.AbstractExtension;
 import run.halo.app.extension.GroupVersion;
 import run.halo.app.extension.Metadata;
-import top.howiehz.halo.transformer.extension.ResourceOrder;
 import top.howiehz.halo.transformer.extension.TransformationRule;
 import top.howiehz.halo.transformer.extension.TransformationSnippet;
 import top.howiehz.halo.transformer.runtime.store.TransformationRuleRuntimeStore;
@@ -57,35 +56,6 @@ public class ResourceOrderEndpoint implements CustomEndpoint {
             .flatMap(orderState -> ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(orderState));
-    }
-
-    ResourceOrder newResourceOrder(String orderName) {
-        return resourceOrderService.newResourceOrder(orderName);
-    }
-
-    <T extends AbstractExtension> Map<String, Integer> sanitizePayload(OrderPayload payload,
-        String resourceLabel,
-        List<T> resources,
-        Function<T, String> displayNameGetter) {
-        return resourceOrderService.sanitizePayload(payload, resourceLabel, resources,
-            displayNameGetter);
-    }
-
-    Map<String, Integer> validateIncomingOrders(Map<String, Integer> incomingOrders,
-        String resourceLabel) {
-        return resourceOrderService.validateIncomingOrders(incomingOrders, resourceLabel);
-    }
-
-    <T extends AbstractExtension> Map<String, Integer> sanitizeOrders(
-        Map<String, Integer> sourceOrders,
-        List<T> resources,
-        Function<T, String> displayNameGetter) {
-        return resourceOrderService.sanitizeOrders(sourceOrders, resources, displayNameGetter);
-    }
-
-    <T extends AbstractExtension> String resolveDisplayName(T resource,
-        Function<T, String> displayNameGetter) {
-        return resourceOrderService.resolveDisplayName(resource, displayNameGetter);
     }
 
     @Override

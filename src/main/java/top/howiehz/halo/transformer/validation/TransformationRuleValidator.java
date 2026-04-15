@@ -1,13 +1,14 @@
 package top.howiehz.halo.transformer.validation;
 
-import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 import top.howiehz.halo.transformer.extension.TransformationRule;
 import top.howiehz.halo.transformer.rule.MatchRule;
 
-@Component
-public class TransformationRuleValidator {
+public final class TransformationRuleValidator {
+    private TransformationRuleValidator() {
+    }
+
     /**
      * 写入期兜底校验。
      * <p>
@@ -17,7 +18,7 @@ public class TransformationRuleValidator {
      * 对于会让 DOM 注入退化成“全站 HTML 处理”的规则，当前策略是不拦截写入：
      * 用户可能明确接受这笔性能成本，因此只在配置页给出警告，不在后端拒绝保存。
      */
-    public Mono<TransformationRule> validateForWrite(TransformationRule rule) {
+    public static Mono<TransformationRule> validateForWrite(TransformationRule rule) {
         if (rule == null) {
             return Mono.error(new TransformationRuleValidationException("请求体不能为空"));
         }

@@ -16,8 +16,6 @@ import top.howiehz.halo.transformer.extension.TransformationSnippet;
 import top.howiehz.halo.transformer.rule.MatchRule;
 
 class ConsoleReadModelMapperTest {
-    private final ConsoleReadModelMapper mapper = new ConsoleReadModelMapper();
-
     // why: `id` 已从持久化实体 JSON 中移除后，控制台仍需要稳定的读模型主键；
     // 响应模型必须统一从 `metadata.name` 派生这个字段，而不是让前端自己猜。
     @Test
@@ -32,7 +30,7 @@ class ConsoleReadModelMapperTest {
         snippet.setDescription("desc");
         snippet.setEnabled(true);
 
-        TransformationSnippetReadModel readModel = mapper.toReadModel(snippet);
+        TransformationSnippetReadModel readModel = ConsoleReadModelMapper.toReadModel(snippet);
 
         assertEquals("snippet-a", readModel.id());
         assertEquals("Snippet A", readModel.name());
@@ -55,7 +53,7 @@ class ConsoleReadModelMapperTest {
         rule.setRuntimeOrder(42);
         rule.setSnippetIds(new LinkedHashSet<>(Set.of("snippet-a")));
 
-        TransformationRuleReadModel readModel = mapper.toReadModel(rule);
+        TransformationRuleReadModel readModel = ConsoleReadModelMapper.toReadModel(rule);
 
         assertEquals("rule-a", readModel.id());
         assertEquals("Rule A", readModel.name());
@@ -80,7 +78,7 @@ class ConsoleReadModelMapperTest {
         dirtyRoot.setChildren(List.of(dirtyLeaf));
         rule.setMatchRule(dirtyRoot);
 
-        TransformationRuleReadModel readModel = mapper.toReadModel(rule);
+        TransformationRuleReadModel readModel = ConsoleReadModelMapper.toReadModel(rule);
 
         assertNull(readModel.matchRule().getChildren().getFirst().getChildren());
     }
@@ -102,7 +100,7 @@ class ConsoleReadModelMapperTest {
         deletingSnippet.setMetadata(deletingMetadata);
         deletingSnippet.setName("Deleting");
 
-        ConsoleItemList<TransformationSnippetReadModel> list = mapper.toSnippetList(
+        ConsoleItemList<TransformationSnippetReadModel> list = ConsoleReadModelMapper.toSnippetList(
             List.of(activeSnippet, deletingSnippet));
 
         assertEquals(1, list.items().size());
@@ -124,7 +122,7 @@ class ConsoleReadModelMapperTest {
         deletingMetadata.setDeletionTimestamp(Instant.now());
         deletingRule.setMetadata(deletingMetadata);
 
-        ConsoleItemList<TransformationRuleReadModel> list = mapper.toRuleList(
+        ConsoleItemList<TransformationRuleReadModel> list = ConsoleReadModelMapper.toRuleList(
             List.of(activeRule, deletingRule));
 
         assertEquals(1, list.items().size());
@@ -142,11 +140,12 @@ class ConsoleReadModelMapperTest {
         snippet.setMetadata(metadata);
         snippet.setName("Snippet A");
 
-        ConsoleOrderedItemList<TransformationSnippetReadModel> snapshot = mapper.toSnippetSnapshot(
-            List.of(snippet),
-            Map.of("snippet-a", 1),
-            7L
-        );
+        ConsoleOrderedItemList<TransformationSnippetReadModel> snapshot =
+            ConsoleReadModelMapper.toSnippetSnapshot(
+                List.of(snippet),
+                Map.of("snippet-a", 1),
+                7L
+            );
 
         assertEquals(1, snapshot.items().size());
         assertEquals(Map.of("snippet-a", 1), snapshot.orders());

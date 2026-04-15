@@ -1,16 +1,18 @@
 package top.howiehz.halo.transformer.validation;
 
-import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 import top.howiehz.halo.transformer.extension.TransformationSnippet;
 
-@Component
-public class TransformationSnippetValidator {
+public final class TransformationSnippetValidator {
+    private TransformationSnippetValidator() {
+    }
+
     /**
      * why: 代码片段写入期也要兜底校验，避免绕过 UI 后把空代码或脏字段直接落库。
      */
-    public Mono<TransformationSnippet> validateForWrite(TransformationSnippet snippet) {
+    public static Mono<TransformationSnippet> validateForWrite(
+        TransformationSnippet snippet) {
         if (snippet == null) {
             return Mono.error(new TransformationSnippetValidationException("请求体不能为空"));
         }

@@ -41,10 +41,8 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
     private static final String RULE_SNAPSHOT_PATH = "/transformationRules/-/snapshot";
 
     private final ReactiveExtensionClient client;
-    private final TransformationRuleValidator validator;
     private final TransformationRuleRuntimeStore ruleRuntimeStore;
     private final TransformationSnippetReferenceService snippetReferenceService;
-    private final ConsoleReadModelMapper readModelMapper;
     private final ResourceOrderService resourceOrderService;
 
     @Override
@@ -64,7 +62,7 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
     private Mono<ServerResponse> getRuleSnapshot(ServerRequest request) {
         return resourceOrderService.buildCollectionSnapshot(ResourceOrderService.RULE_ORDER_NAME,
                 ruleRuntimeStore::listVisibleRules, TransformationRule::getName)
-            .map(snapshot -> readModelMapper.toRuleSnapshot(snapshot.resources(),
+            .map(snapshot -> ConsoleReadModelMapper.toRuleSnapshot(snapshot.resources(),
                 snapshot.orders(), snapshot.orderVersion()))
             .flatMap(response -> ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
@@ -74,7 +72,7 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
     private Mono<ServerResponse> getRule(ServerRequest request) {
         String name = request.pathVariable("name");
         return fetchVisibleRule(name, "未找到转换规则")
-            .map(readModelMapper::toReadModel)
+            .map(ConsoleReadModelMapper::toReadModel)
             .flatMap(response -> ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(response));
@@ -88,7 +86,7 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
         return request.bodyToMono(TransformationRule.class)
             .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
             .map(this::canonicalizeRuleForStorage)
-            .flatMap(validator::validateForWrite)
+            .flatMap(TransformationRuleValidator::validateForWrite)
             .flatMap(this::normalizeAndValidateSnippetReferences)
             .flatMap(client::create)
             .doOnSuccess(created -> {
@@ -99,7 +97,7 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
                     URI.create("/apis/" + CONSOLE_API_VERSION + "/transformationRules/"
                         + created.getMetadata().getName()))
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(readModelMapper.toReadModel(created)));
+                .bodyValue(ConsoleReadModelMapper.toReadModel(created)));
     }
 
     /**
@@ -129,7 +127,7 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
             })
             .map(tuple -> reactor.util.function.Tuples.of(tuple.getT1(),
                 canonicalizeRuleForStorage(tuple.getT2())))
-            .flatMap(tuple -> validator.validateForWrite(tuple.getT2())
+            .flatMap(tuple -> TransformationRuleValidator.validateForWrite(tuple.getT2())
                 .flatMap(ignored -> normalizeAndValidateAddedSnippetReferences(tuple.getT1(),
                     tuple.getT2())))
             .flatMap(client::update)
@@ -139,7 +137,7 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
             })
             .flatMap(updated -> ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(readModelMapper.toReadModel(updated)));
+                .bodyValue(ConsoleReadModelMapper.toReadModel(updated)));
     }
 
     /**
@@ -151,7 +149,7 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
         return request.bodyToMono(EnabledPayload.class)
             .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
             .flatMap(payload -> updateRuleEnabled(name, payload))
-            .map(readModelMapper::toReadModel)
+            .map(ConsoleReadModelMapper::toReadModel)
             .flatMap(updated -> ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(updated));
@@ -214,7 +212,7 @@ public class TransformationRuleEndpoint implements CustomEndpoint {
                     return Mono.just(rule);
                 }
                 canonicalizeRuleForStorage(rule);
-                return validator.validateForWrite(rule)
+                return TransformationRuleValidator.validateForWrite(rule)
                     .flatMap(ignored -> normalizeAndValidateSnippetReferences(rule));
             })
             .flatMap(client::update)
