@@ -1,6 +1,5 @@
 package top.howiehz.halo.transformer.service;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -38,18 +37,6 @@ class TransformationSnippetLifecycleServiceTest {
 
         verify(client).update(any(TransformationSnippet.class));
         verify(client).delete(any(TransformationSnippet.class));
-    }
-
-    // why: 新建和更新写口都应把删除 finalizer 当成资源生命周期的一部分；
-    // 这样即使未来走别的删除入口，也仍能复用同一套 finalizer 清理流程。
-    @Test
-    void shouldAttachFinalizerDuringPrepareForPersist() {
-        TransformationSnippet snippet = snippet("snippet-a");
-
-        TransformationSnippet prepared = service.prepareForPersist(snippet);
-
-        assertTrue(prepared.getMetadata().getFinalizers()
-            .contains(TransformationSnippetLifecycleService.DELETION_FINALIZER));
     }
 
     // why: 已经处于“删除中”状态的代码片段，不需要重复发起 delete；

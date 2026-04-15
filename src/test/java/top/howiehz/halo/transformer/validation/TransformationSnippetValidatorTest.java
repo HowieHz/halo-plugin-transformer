@@ -10,7 +10,6 @@ import run.halo.app.extension.Metadata;
 import top.howiehz.halo.transformer.extension.TransformationSnippet;
 
 class TransformationSnippetValidatorTest {
-    private final TransformationSnippetValidator validator = new TransformationSnippetValidator();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     // why: 合法代码片段必须能稳定通过写入校验，避免后端误伤正常创建与更新。
@@ -22,7 +21,7 @@ class TransformationSnippetValidatorTest {
         snippet.setMetadata(metadata);
         snippet.setCode("<div>ok</div>");
 
-        assertDoesNotThrow(() -> validator.validateForWrite(snippet).block());
+        assertDoesNotThrow(() -> TransformationSnippetValidator.validateForWrite(snippet).block());
     }
 
     // why: 空代码片段写进去只会表现为“没有注入”，因此必须在写入期明确拦下。
@@ -36,7 +35,7 @@ class TransformationSnippetValidatorTest {
 
         TransformationSnippetValidationException error = assertThrows(
             TransformationSnippetValidationException.class,
-            () -> validator.validateForWrite(snippet).block()
+            () -> TransformationSnippetValidator.validateForWrite(snippet).block()
         );
 
         assertEquals("code：请填写代码内容", error.getReason());
@@ -54,7 +53,7 @@ class TransformationSnippetValidatorTest {
 
         TransformationSnippetValidationException error = assertThrows(
             TransformationSnippetValidationException.class,
-            () -> validator.validateForWrite(snippet).block()
+            () -> TransformationSnippetValidator.validateForWrite(snippet).block()
         );
 
         assertEquals(
@@ -75,7 +74,7 @@ class TransformationSnippetValidatorTest {
 
         TransformationSnippetValidationException error = assertThrows(
             TransformationSnippetValidationException.class,
-            () -> validator.validateForWrite(snippet).block()
+            () -> TransformationSnippetValidator.validateForWrite(snippet).block()
         );
 
         assertEquals("enabled：必须是布尔值；仅支持 true 或 false", error.getReason());

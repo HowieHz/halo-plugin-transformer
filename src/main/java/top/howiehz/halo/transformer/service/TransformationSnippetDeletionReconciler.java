@@ -42,7 +42,7 @@ public class TransformationSnippetDeletionReconciler implements Reconciler<Recon
             return Result.doNotRetry();
         }
         TransformationSnippet snippet = snippetOptional.get();
-        if (!TransformationSnippetLifecycleService.isDeletionPendingCleanup(snippet)) {
+        if (!TransformationSnippetLifecycleRules.isDeletionPendingCleanup(snippet)) {
             return Result.doNotRetry();
         }
         if (!ruleRuntimeStore.isReadyForReferenceReads()) {
@@ -136,11 +136,11 @@ public class TransformationSnippetDeletionReconciler implements Reconciler<Recon
                     return false;
                 }
                 TransformationSnippet latestSnippet = latestSnippetOptional.get();
-                if (!TransformationSnippetLifecycleService.isDeletionPendingCleanup(
+                if (!TransformationSnippetLifecycleRules.isDeletionPendingCleanup(
                     latestSnippet)) {
                     return false;
                 }
-                TransformationSnippetLifecycleService.removeDeletionFinalizer(latestSnippet);
+                TransformationSnippetLifecycleRules.removeDeletionFinalizer(latestSnippet);
                 client.update(latestSnippet);
                 return true;
             }

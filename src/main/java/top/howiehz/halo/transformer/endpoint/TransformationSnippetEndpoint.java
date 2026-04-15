@@ -27,6 +27,7 @@ import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
 import top.howiehz.halo.transformer.extension.TransformationSnippet;
 import top.howiehz.halo.transformer.runtime.store.TransformationSnippetRuntimeStore;
+import top.howiehz.halo.transformer.service.TransformationSnippetLifecycleRules;
 import top.howiehz.halo.transformer.service.TransformationSnippetLifecycleService;
 import top.howiehz.halo.transformer.support.OptimisticConcurrencyGuard;
 import top.howiehz.halo.transformer.validation.TransformationSnippetValidationException;
@@ -40,10 +41,8 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
     private static final String SNIPPET_SNAPSHOT_PATH = "/transformationSnippets/-/snapshot";
 
     private final ReactiveExtensionClient client;
-    private final TransformationSnippetValidator validator;
     private final TransformationSnippetLifecycleService lifecycleService;
     private final TransformationSnippetRuntimeStore snippetRuntimeStore;
-    private final ConsoleReadModelMapper readModelMapper;
     private final ResourceOrderService resourceOrderService;
 
     @Override
@@ -63,7 +62,7 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
     private Mono<ServerResponse> getSnippetSnapshot(ServerRequest request) {
         return resourceOrderService.buildCollectionSnapshot(ResourceOrderService.SNIPPET_ORDER_NAME,
                 snippetRuntimeStore::listVisibleSnippets, TransformationSnippet::getName)
-            .map(snapshot -> readModelMapper.toSnippetSnapshot(snapshot.resources(),
+            .map(snapshot -> ConsoleReadModelMapper.toSnippetSnapshot(snapshot.resources(),
                 snapshot.orders(), snapshot.orderVersion()))
             .flatMap(response -> ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
@@ -73,7 +72,7 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
     private Mono<ServerResponse> getSnippet(ServerRequest request) {
         String name = request.pathVariable("name");
         return fetchVisibleSnippet(name, "未找到代码片段")
-            .map(readModelMapper::toReadModel)
+            .map(ConsoleReadModelMapper::toReadModel)
             .flatMap(response -> ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(response));
@@ -86,8 +85,8 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
     private Mono<ServerResponse> createSnippet(ServerRequest request) {
         return request.bodyToMono(TransformationSnippet.class)
             .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
-            .map(lifecycleService::prepareForPersist)
-            .flatMap(validator::validateForWrite)
+            .map(TransformationSnippetLifecycleRules::prepareForPersist)
+            .flatMap(TransformationSnippetValidator::validateForWrite)
             .flatMap(client::create)
             .doOnSuccess(created -> {
                 snippetRuntimeStore.applyPersistedSnippet(created);
@@ -97,7 +96,7 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
                     URI.create("/apis/" + CONSOLE_API_VERSION + "/transformationSnippets/"
                         + created.getMetadata().getName()))
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(readModelMapper.toReadModel(created)));
+                .bodyValue(ConsoleReadModelMapper.toReadModel(created)));
     }
 
     /**
@@ -123,9 +122,9 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
                     snippet.getMetadata(),
                     "代码片段"
                 );
-                return lifecycleService.prepareForPersist(snippet);
+                return TransformationSnippetLifecycleRules.prepareForPersist(snippet);
             })
-            .flatMap(validator::validateForWrite)
+            .flatMap(TransformationSnippetValidator::validateForWrite)
             .flatMap(client::update)
             .doOnSuccess(updated -> {
                 snippetRuntimeStore.applyPersistedSnippet(updated);
@@ -133,7 +132,7 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
             })
             .flatMap(updated -> ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(readModelMapper.toReadModel(updated)));
+                .bodyValue(ConsoleReadModelMapper.toReadModel(updated)));
     }
 
     /**
@@ -145,7 +144,7 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
         return request.bodyToMono(EnabledPayload.class)
             .switchIfEmpty(Mono.error(new ServerWebInputException("请求体不能为空")))
             .flatMap(payload -> updateSnippetEnabled(name, payload))
-            .map(readModelMapper::toReadModel)
+            .map(ConsoleReadModelMapper::toReadModel)
             .flatMap(updated -> ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(updated));
@@ -204,9 +203,10 @@ public class TransformationSnippetEndpoint implements CustomEndpoint {
                     payload.metadata,
                     "代码片段"
                 );
-                lifecycleService.prepareForPersist(snippet);
+                TransformationSnippetLifecycleRules.prepareForPersist(snippet);
                 snippet.setEnabled(enabled);
-                return enabled ? validator.validateForWrite(snippet) : Mono.just(snippet);
+                return enabled ? TransformationSnippetValidator.validateForWrite(snippet)
+                    : Mono.just(snippet);
             })
             .flatMap(client::update)
             .doOnSuccess(updated -> {

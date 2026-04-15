@@ -10,7 +10,6 @@ import top.howiehz.halo.transformer.extension.TransformationRule;
 import top.howiehz.halo.transformer.rule.MatchRule;
 
 class TransformationRuleValidatorTest {
-    private final TransformationRuleValidator validator = new TransformationRuleValidator();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     // why: 合法 regex 必须能顺利落库，避免后端校验误伤正常规则。
@@ -19,7 +18,7 @@ class TransformationRuleValidatorTest {
         TransformationRule rule = makeRule();
         rule.setMatchRule(makeGroup(MatchRule.pathRule(MatchRule.Matcher.REGEX, "^/posts/\\d+$")));
 
-        assertDoesNotThrow(() -> validator.validateForWrite(rule).block());
+        assertDoesNotThrow(() -> TransformationRuleValidator.validateForWrite(rule).block());
     }
 
     // why: 非法 regex 要在写入期被明确拦下，不能等运行时才以“不生效”形式暴露问题。
@@ -30,7 +29,7 @@ class TransformationRuleValidatorTest {
 
         TransformationRuleValidationException error = assertThrows(
             TransformationRuleValidationException.class,
-            () -> validator.validateForWrite(rule).block()
+            () -> TransformationRuleValidator.validateForWrite(rule).block()
         );
 
         assertEquals("matchRule.children[0].value：正则表达式无效，Unclosed character class",
@@ -47,7 +46,7 @@ class TransformationRuleValidatorTest {
 
         TransformationRuleValidationException error = assertThrows(
             TransformationRuleValidationException.class,
-            () -> validator.validateForWrite(rule).block()
+            () -> TransformationRuleValidator.validateForWrite(rule).block()
         );
 
         assertEquals("matchRule.children[0].matcher：模板 ID 仅支持 \"REGEX\" 或 \"EXACT\"",
@@ -64,7 +63,7 @@ class TransformationRuleValidatorTest {
 
         TransformationRuleValidationException error = assertThrows(
             TransformationRuleValidationException.class,
-            () -> validator.validateForWrite(rule).block()
+            () -> TransformationRuleValidator.validateForWrite(rule).block()
         );
 
         assertEquals(
@@ -84,7 +83,7 @@ class TransformationRuleValidatorTest {
 
         TransformationRuleValidationException error = assertThrows(
             TransformationRuleValidationException.class,
-            () -> validator.validateForWrite(rule).block()
+            () -> TransformationRuleValidator.validateForWrite(rule).block()
         );
 
         assertEquals(
@@ -116,7 +115,7 @@ class TransformationRuleValidatorTest {
 
         TransformationRuleValidationException error = assertThrows(
             TransformationRuleValidationException.class,
-            () -> validator.validateForWrite(rule).block()
+            () -> TransformationRuleValidator.validateForWrite(rule).block()
         );
 
         assertEquals(
@@ -134,7 +133,7 @@ class TransformationRuleValidatorTest {
 
         TransformationRuleValidationException error = assertThrows(
             TransformationRuleValidationException.class,
-            () -> validator.validateForWrite(rule).block()
+            () -> TransformationRuleValidator.validateForWrite(rule).block()
         );
 
         assertEquals("matchRule.type：根节点必须是 GROUP", error.getReason());
@@ -150,7 +149,7 @@ class TransformationRuleValidatorTest {
 
         TransformationRuleValidationException error = assertThrows(
             TransformationRuleValidationException.class,
-            () -> validator.validateForWrite(rule).block()
+            () -> TransformationRuleValidator.validateForWrite(rule).block()
         );
 
         assertEquals(
@@ -170,7 +169,7 @@ class TransformationRuleValidatorTest {
 
         TransformationRuleValidationException error = assertThrows(
             TransformationRuleValidationException.class,
-            () -> validator.validateForWrite(rule).block()
+            () -> TransformationRuleValidator.validateForWrite(rule).block()
         );
 
         assertEquals(
@@ -189,7 +188,7 @@ class TransformationRuleValidatorTest {
 
         TransformationRuleValidationException error = assertThrows(
             TransformationRuleValidationException.class,
-            () -> validator.validateForWrite(rule).block()
+            () -> TransformationRuleValidator.validateForWrite(rule).block()
         );
 
         assertEquals(
@@ -208,7 +207,7 @@ class TransformationRuleValidatorTest {
 
         TransformationRuleValidationException error = assertThrows(
             TransformationRuleValidationException.class,
-            () -> validator.validateForWrite(rule).block()
+            () -> TransformationRuleValidator.validateForWrite(rule).block()
         );
 
         assertEquals(
@@ -234,7 +233,7 @@ class TransformationRuleValidatorTest {
         orGroup.setChildren(java.util.List.of(pathBranch, templateBranch));
         setMatchRuleDirectly(rule, makeGroup(orGroup));
 
-        assertDoesNotThrow(() -> validator.validateForWrite(rule).block());
+        assertDoesNotThrow(() -> TransformationRuleValidator.validateForWrite(rule).block());
     }
 
     // why: REMOVE 不会消费代码内容；写入期必须拒绝仍携带 snippetIds 的规则，避免产生误导性脏数据。
@@ -248,7 +247,7 @@ class TransformationRuleValidatorTest {
 
         TransformationRuleValidationException error = assertThrows(
             TransformationRuleValidationException.class,
-            () -> validator.validateForWrite(rule).block()
+            () -> TransformationRuleValidator.validateForWrite(rule).block()
         );
 
         assertEquals("snippetIds：REMOVE 模式下无需关联代码片段", error.getReason());
@@ -266,7 +265,7 @@ class TransformationRuleValidatorTest {
 
         TransformationRuleValidationException error = assertThrows(
             TransformationRuleValidationException.class,
-            () -> validator.validateForWrite(rule).block()
+            () -> TransformationRuleValidator.validateForWrite(rule).block()
         );
 
         assertEquals("wrapMarker：REMOVE 模式下无需输出注释标记", error.getReason());
@@ -280,7 +279,7 @@ class TransformationRuleValidatorTest {
 
         TransformationRuleValidationException error = assertThrows(
             TransformationRuleValidationException.class,
-            () -> validator.validateForWrite(rule).block()
+            () -> TransformationRuleValidator.validateForWrite(rule).block()
         );
 
         assertEquals("runtimeOrder：不能小于 0", error.getReason());
@@ -294,7 +293,7 @@ class TransformationRuleValidatorTest {
 
         TransformationRuleValidationException error = assertThrows(
             TransformationRuleValidationException.class,
-            () -> validator.validateForWrite(rule).block()
+            () -> TransformationRuleValidator.validateForWrite(rule).block()
         );
 
         assertEquals("enabled：必须是布尔值；仅支持 true 或 false", error.getReason());
@@ -308,7 +307,7 @@ class TransformationRuleValidatorTest {
 
         TransformationRuleValidationException error = assertThrows(
             TransformationRuleValidationException.class,
-            () -> validator.validateForWrite(rule).block()
+            () -> TransformationRuleValidator.validateForWrite(rule).block()
         );
 
         assertEquals("mode：仅支持 \"HEAD\"、\"FOOTER\"、\"SELECTOR\"", error.getReason());
@@ -322,7 +321,7 @@ class TransformationRuleValidatorTest {
 
         TransformationRuleValidationException error = assertThrows(
             TransformationRuleValidationException.class,
-            () -> validator.validateForWrite(rule).block()
+            () -> TransformationRuleValidator.validateForWrite(rule).block()
         );
 
         assertEquals(

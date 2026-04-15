@@ -11,7 +11,7 @@ import run.halo.app.extension.ExtensionUtil;
 import run.halo.app.extension.GroupVersionKind;
 import run.halo.app.extension.ReactiveExtensionClient;
 import top.howiehz.halo.transformer.extension.TransformationSnippet;
-import top.howiehz.halo.transformer.service.TransformationSnippetLifecycleService;
+import top.howiehz.halo.transformer.service.TransformationSnippetLifecycleRules;
 import top.howiehz.halo.transformer.support.TransformationSnippetReferenceIds;
 
 @Component
@@ -187,7 +187,7 @@ public class TransformationSnippetRuntimeStore extends AbstractWatchDrivenExtens
 
     private boolean shouldKeepInSnapshot(TransformationSnippet snippet) {
         return snippet != null && (!ExtensionUtil.isDeleted(snippet)
-            || TransformationSnippetLifecycleService.isDeletionPendingCleanup(snippet));
+            || TransformationSnippetLifecycleRules.isDeletionPendingCleanup(snippet));
     }
 
     private String describeSnippetId(TransformationSnippet snippet) {

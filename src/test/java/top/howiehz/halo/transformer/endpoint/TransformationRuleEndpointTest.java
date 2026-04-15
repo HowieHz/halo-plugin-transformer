@@ -26,11 +26,9 @@ import top.howiehz.halo.transformer.rule.MatchRule;
 import top.howiehz.halo.transformer.runtime.store.TransformationRuleRuntimeStore;
 import top.howiehz.halo.transformer.service.TransformationSnippetReferenceService;
 import top.howiehz.halo.transformer.validation.TransformationRuleValidationException;
-import top.howiehz.halo.transformer.validation.TransformationRuleValidator;
 
 class TransformationRuleEndpointTest {
     private ReactiveExtensionClient client;
-    private TransformationRuleValidator validator;
     private TransformationRuleRuntimeStore ruleRuntimeStore;
     private TransformationSnippetReferenceService snippetReferenceService;
     private TransformationRuleEndpoint endpoint;
@@ -38,15 +36,12 @@ class TransformationRuleEndpointTest {
     @BeforeEach
     void setUp() {
         client = mock(ReactiveExtensionClient.class);
-        validator = mock(TransformationRuleValidator.class);
         ruleRuntimeStore = mock(TransformationRuleRuntimeStore.class);
         snippetReferenceService = mock(TransformationSnippetReferenceService.class);
         endpoint = new TransformationRuleEndpoint(
             client,
-            validator,
             ruleRuntimeStore,
             snippetReferenceService,
-            mock(ConsoleReadModelMapper.class),
             mock(ResourceOrderService.class)
         );
     }
@@ -58,8 +53,6 @@ class TransformationRuleEndpointTest {
         TransformationRule rule = rule("rule-a", false);
         rule.getMetadata().setVersion(9L);
         when(client.fetch(TransformationRule.class, "rule-a")).thenReturn(Mono.just(rule));
-        when(validator.validateForWrite(any(TransformationRule.class))).thenAnswer(
-            invocation -> Mono.just(invocation.getArgument(0)));
         when(snippetReferenceService.normalizeAndValidateSnippetIds(eq(rule.getSnippetIds())))
             .thenReturn(Mono.just(new LinkedHashSet<>(rule.getSnippetIds())));
         when(client.update(any(TransformationRule.class))).thenAnswer(
@@ -88,8 +81,6 @@ class TransformationRuleEndpointTest {
             endpoint.updateRuleEnabled("rule-a", enabledPayload(false, 4L)).block();
 
         assertFalse(updated.isEnabled());
-        verify(validator, never()).validateForWrite(any(TransformationRule.class));
-        verify(snippetReferenceService, never()).normalizeAndValidateSnippetIds(any());
     }
 
     // why: 启用必须重新做完整后端校验；
@@ -101,18 +92,10 @@ class TransformationRuleEndpointTest {
         rule.setMode(TransformationRule.Mode.SELECTOR);
         rule.setMatch("");
         when(client.fetch(TransformationRule.class, "rule-a")).thenReturn(Mono.just(rule));
-        TransformationRuleEndpoint endpointWithRealValidator = new TransformationRuleEndpoint(
-            client,
-            new TransformationRuleValidator(),
-            ruleRuntimeStore,
-            snippetReferenceService,
-            mock(ConsoleReadModelMapper.class),
-            mock(ResourceOrderService.class)
-        );
 
         TransformationRuleValidationException validationError = assertThrows(
             TransformationRuleValidationException.class,
-            () -> endpointWithRealValidator.updateRuleEnabled("rule-a", enabledPayload(true, 11L))
+            () -> endpoint.updateRuleEnabled("rule-a", enabledPayload(true, 11L))
                 .block()
         );
         assertEquals("match：请填写匹配内容", validationError.getReason());
@@ -131,17 +114,9 @@ class TransformationRuleEndpointTest {
             .thenReturn(Mono.just(new LinkedHashSet<>(rule.getSnippetIds())));
         when(client.update(any(TransformationRule.class))).thenAnswer(
             invocation -> Mono.just(invocation.getArgument(0)));
-        TransformationRuleEndpoint endpointWithRealValidator = new TransformationRuleEndpoint(
-            client,
-            new TransformationRuleValidator(),
-            ruleRuntimeStore,
-            snippetReferenceService,
-            mock(ConsoleReadModelMapper.class),
-            mock(ResourceOrderService.class)
-        );
 
         TransformationRule updated =
-            endpointWithRealValidator.updateRuleEnabled("rule-a", enabledPayload(true, 12L))
+            endpoint.updateRuleEnabled("rule-a", enabledPayload(true, 12L))
                 .block();
 
         assertTrue(updated.isEnabled());

@@ -25,7 +25,7 @@ import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
 import run.halo.app.extension.Watcher;
 import top.howiehz.halo.transformer.extension.TransformationSnippet;
-import top.howiehz.halo.transformer.service.TransformationSnippetLifecycleService;
+import top.howiehz.halo.transformer.service.TransformationSnippetLifecycleRules;
 
 @ExtendWith(MockitoExtension.class)
 class TransformationSnippetRuntimeStoreTest {
@@ -142,7 +142,7 @@ class TransformationSnippetRuntimeStoreTest {
         deletingSnippet.getMetadata().setDeletionTimestamp(Instant.now());
         deletingSnippet.getMetadata()
             .setFinalizers(java.util.Set.of(
-                TransformationSnippetLifecycleService.DELETION_FINALIZER));
+                TransformationSnippetLifecycleRules.DELETION_FINALIZER));
 
         Map<String, TransformationSnippet> snapshot = store.buildSnapshot(List.of(deletingSnippet));
 
@@ -157,7 +157,7 @@ class TransformationSnippetRuntimeStoreTest {
         deletingSnippet.getMetadata().setDeletionTimestamp(Instant.now());
         deletingSnippet.getMetadata()
             .setFinalizers(java.util.Set.of(
-                TransformationSnippetLifecycleService.DELETION_FINALIZER));
+                TransformationSnippetLifecycleRules.DELETION_FINALIZER));
 
         store.applyPersistedSnippet(deletingSnippet);
 

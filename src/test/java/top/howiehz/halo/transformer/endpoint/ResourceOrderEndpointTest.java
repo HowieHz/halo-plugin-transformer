@@ -16,8 +16,7 @@ import top.howiehz.halo.transformer.extension.TransformationSnippet;
 import top.howiehz.halo.transformer.support.OptimisticConcurrencyGuard;
 
 class ResourceOrderEndpointTest {
-    private final ResourceOrderEndpoint endpoint =
-        new ResourceOrderEndpoint(new ResourceOrderService(null), null, null);
+    private final ResourceOrderService resourceOrderService = new ResourceOrderService(null);
 
     // why: 排序映射里 0 代表“未显式排序”，入库时应直接剔除；这样新增项才能继续以默认 0 顶到最前面。
     @Test
@@ -26,7 +25,8 @@ class ResourceOrderEndpointTest {
         incoming.put("snippet-a", 0);
         incoming.put("snippet-b", 2);
 
-        Map<String, Integer> sanitized = endpoint.validateIncomingOrders(incoming, "代码片段");
+        Map<String, Integer> sanitized =
+            resourceOrderService.validateIncomingOrders(incoming, "代码片段");
 
         assertEquals(Map.of("snippet-b", 2), sanitized);
     }
@@ -38,7 +38,7 @@ class ResourceOrderEndpointTest {
         incoming.put("snippet-a", -1);
 
         ServerWebInputException error = assertThrows(ServerWebInputException.class,
-            () -> endpoint.validateIncomingOrders(incoming, "代码片段"));
+            () -> resourceOrderService.validateIncomingOrders(incoming, "代码片段"));
 
         assertEquals("代码片段排序项 snippet-a 的值不能小于 0", error.getReason());
     }
@@ -49,7 +49,7 @@ class ResourceOrderEndpointTest {
         TransformationRule zebra = rule("rule-z", "Zebra");
         TransformationRule alpha = rule("rule-a", "Alpha");
 
-        Map<String, Integer> sanitized = endpoint.sanitizeOrders(
+        Map<String, Integer> sanitized = resourceOrderService.sanitizeOrders(
             Map.of("rule-z", 1, "rule-a", 1),
             List.of(zebra, alpha),
             TransformationRule::getName
@@ -63,7 +63,7 @@ class ResourceOrderEndpointTest {
     void shouldDropDeletedIdsWhenSanitizingOrders() {
         TransformationSnippet existing = snippet("snippet-a", "Alpha");
 
-        Map<String, Integer> sanitized = endpoint.sanitizeOrders(
+        Map<String, Integer> sanitized = resourceOrderService.sanitizeOrders(
             Map.of("snippet-a", 1, "snippet-deleted", 2),
             List.of(existing),
             TransformationSnippet::getName
@@ -79,7 +79,7 @@ class ResourceOrderEndpointTest {
         TransformationRule zebra = rule("rule-z", "Zebra");
         TransformationRule alpha = rule("rule-a", "Alpha");
 
-        Map<String, Integer> sanitized = endpoint.sanitizeOrders(
+        Map<String, Integer> sanitized = resourceOrderService.sanitizeOrders(
             Map.of("rule-z", 50, "rule-a", 50),
             List.of(zebra, alpha),
             TransformationRule::getName
@@ -96,7 +96,7 @@ class ResourceOrderEndpointTest {
         TransformationSnippet deleting = snippet("snippet-b", "Beta");
         deleting.getMetadata().setDeletionTimestamp(Instant.now());
 
-        Map<String, Integer> sanitized = endpoint.sanitizeOrders(
+        Map<String, Integer> sanitized = resourceOrderService.sanitizeOrders(
             Map.of("snippet-a", 1, "snippet-b", 2),
             List.of(active, deleting),
             TransformationSnippet::getName

@@ -21,11 +21,9 @@ import top.howiehz.halo.transformer.extension.TransformationSnippet;
 import top.howiehz.halo.transformer.runtime.store.TransformationSnippetRuntimeStore;
 import top.howiehz.halo.transformer.service.TransformationSnippetLifecycleService;
 import top.howiehz.halo.transformer.validation.TransformationSnippetValidationException;
-import top.howiehz.halo.transformer.validation.TransformationSnippetValidator;
 
 class TransformationSnippetEndpointTest {
     private ReactiveExtensionClient client;
-    private TransformationSnippetValidator validator;
     private TransformationSnippetLifecycleService lifecycleService;
     private TransformationSnippetRuntimeStore snippetRuntimeStore;
     private TransformationSnippetEndpoint endpoint;
@@ -33,15 +31,12 @@ class TransformationSnippetEndpointTest {
     @BeforeEach
     void setUp() {
         client = mock(ReactiveExtensionClient.class);
-        validator = mock(TransformationSnippetValidator.class);
         lifecycleService = mock(TransformationSnippetLifecycleService.class);
         snippetRuntimeStore = mock(TransformationSnippetRuntimeStore.class);
         endpoint = new TransformationSnippetEndpoint(
             client,
-            validator,
             lifecycleService,
             snippetRuntimeStore,
-            mock(ConsoleReadModelMapper.class),
             mock(ResourceOrderService.class)
         );
     }
@@ -53,8 +48,6 @@ class TransformationSnippetEndpointTest {
         TransformationSnippet snippet = snippet("snippet-a", "<div>ok</div>", false);
         snippet.getMetadata().setVersion(7L);
         when(client.fetch(TransformationSnippet.class, "snippet-a")).thenReturn(Mono.just(snippet));
-        when(validator.validateForWrite(any(TransformationSnippet.class))).thenAnswer(
-            invocation -> Mono.just(invocation.getArgument(0)));
         when(client.update(any(TransformationSnippet.class))).thenAnswer(
             invocation -> Mono.just(invocation.getArgument(0)));
 
@@ -80,7 +73,6 @@ class TransformationSnippetEndpointTest {
             endpoint.updateSnippetEnabled("snippet-a", enabledPayload(false, 3L)).block();
 
         assertFalse(updated.isEnabled());
-        verify(validator, never()).validateForWrite(any(TransformationSnippet.class));
     }
 
     // why: 启用必须围绕已保存资源重新做后端校验；
@@ -90,9 +82,6 @@ class TransformationSnippetEndpointTest {
         TransformationSnippet snippet = snippet("snippet-a", "", false);
         snippet.getMetadata().setVersion(5L);
         when(client.fetch(TransformationSnippet.class, "snippet-a")).thenReturn(Mono.just(snippet));
-        when(validator.validateForWrite(any(TransformationSnippet.class)))
-            .thenReturn(
-                Mono.error(new TransformationSnippetValidationException("code：请填写代码内容")));
 
         TransformationSnippetValidationException error = assertThrows(
             TransformationSnippetValidationException.class,
