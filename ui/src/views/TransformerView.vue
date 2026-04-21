@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { Toast, VButton, VCard, VLoading, VModal, VPageHeader, VSpace } from "@halo-dev/components";
-import { computed, nextTick, onMounted, ref, useId, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from "vue";
 import {
   onBeforeRouteLeave,
   onBeforeRouteUpdate,
@@ -116,6 +116,8 @@ const {
   editDirty,
   snippetEditorError,
   ruleEditorError,
+  ruleCompatibilityStatus,
+  ruleCompatibilityStep,
   rulesUsingSnippet,
   snippetsInRule,
   fetchAll,
@@ -133,6 +135,10 @@ const {
   saveRule,
   toggleRuleEnabled,
   setRulesEnabled,
+  startRuleCompatibilityCheck,
+  answerRuleCompatibilityCheck,
+  undoRuleCompatibilityCheck,
+  stopRuleCompatibilityCheck,
   confirmDeleteRule,
   confirmDeleteRules,
   discardRuleEdit,
@@ -166,6 +172,7 @@ const selectedBulkResources = computed(() => {
 });
 const canBulkEnable = computed(() => selectedBulkResources.value.some((item) => !item.enabled));
 const canBulkDisable = computed(() => selectedBulkResources.value.some((item) => item.enabled));
+const isRuleCompatibilityActive = computed(() => ruleCompatibilityStatus.value !== "idle");
 const mobileLeftDrawerLabel = computed(() => "选择列表");
 const mobileRightDrawerLabel = computed(() => "关联信息");
 const mobileMainLabel = computed(() =>
@@ -181,6 +188,12 @@ const editorEmptyStateLayout = computed<EditorEmptyStateLayout>(() =>
 );
 
 onMounted(fetchAll);
+onMounted(() => {
+  window.addEventListener("beforeunload", handleBeforeUnload);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("beforeunload", handleBeforeUnload);
+});
 
 const postCreatePrompt = ref<null | { tab: ActiveTab; id: string }>(null);
 
@@ -206,6 +219,15 @@ function focusDrawerToggleButton(side: MobileDrawerSide) {
 
 function closeMobileDrawer() {
   mobileDrawer.closeDrawer();
+}
+
+function handleBeforeUnload(event: BeforeUnloadEvent) {
+  if (!isRuleCompatibilityActive.value) {
+    return;
+  }
+
+  event.preventDefault();
+  event.returnValue = "";
 }
 
 function handleLeftPaneDragOver(event: DragEvent) {
@@ -286,6 +308,10 @@ onBeforeRouteUpdate((to) => {
   if (syncingQuery.value || !queryStateHydrated.value) {
     return true;
   }
+  if (isRuleCompatibilityActive.value) {
+    Toast.warning("请先结束兼容性排查，以恢复规则启用状态");
+    return false;
+  }
 
   const nextState = parseTransformerRouteState(to.query);
   if (isSameTransformerRouteState(viewSession.currentRouteState(), nextState)) {
@@ -301,6 +327,10 @@ onBeforeRouteUpdate((to) => {
 onBeforeRouteLeave(() => {
   if (syncingQuery.value || !queryStateHydrated.value) {
     return true;
+  }
+  if (isRuleCompatibilityActive.value) {
+    Toast.warning("请先结束兼容性排查，以恢复规则启用状态");
+    return false;
   }
   return requestNavigationLeave();
 });
@@ -416,6 +446,10 @@ function handleTabSwitch(tab: ActiveTab) {
   if (activeTab.value === tab) {
     return;
   }
+  if (isRuleCompatibilityActive.value) {
+    Toast.warning("请先结束兼容性排查，以恢复规则启用状态");
+    return;
+  }
   requestEditorLeave(() => {
     viewSession.switchTab(tab);
   });
@@ -497,6 +531,10 @@ function enterBulkMode() {
 }
 
 function exitBulkMode() {
+  if (isRuleCompatibilityActive.value) {
+    Toast.warning("请先结束兼容性排查，以恢复规则启用状态");
+    return;
+  }
   viewSession.exitBulkMode();
   mobileDrawer.closeDrawer();
 }
@@ -645,6 +683,22 @@ function handleBulkDelete() {
     return;
   }
   confirmDeleteRules(bulkSelectionState.currentBulkIds.value);
+}
+
+function handleRuleCompatibilityStart() {
+  void startRuleCompatibilityCheck(bulkSelectionState.currentBulkIds.value);
+}
+
+function handleRuleCompatibilityAnswer(hasIssue: boolean) {
+  void answerRuleCompatibilityCheck(hasIssue);
+}
+
+function handleRuleCompatibilityUndo() {
+  void undoRuleCompatibilityCheck();
+}
+
+function handleRuleCompatibilityStop() {
+  void stopRuleCompatibilityCheck();
 }
 
 watch(
@@ -1001,8 +1055,14 @@ function jumpToSnippet(id: string) {
                 :can-disable="canBulkDisable"
                 :can-enable="canBulkEnable"
                 :processing="processingBulk"
+                :rule-compatibility-status="ruleCompatibilityStatus"
+                :rule-compatibility-step="ruleCompatibilityStep"
                 :selected-count="bulkSelectionState.currentBulkSelectionCount.value"
                 :tab="activeTab"
+                @compatibility-answer="handleRuleCompatibilityAnswer"
+                @compatibility-start="handleRuleCompatibilityStart"
+                @compatibility-stop="handleRuleCompatibilityStop"
+                @compatibility-undo="handleRuleCompatibilityUndo"
                 @delete="handleBulkDelete"
                 @disable="handleBulkDisable"
                 @enable="handleBulkEnable"

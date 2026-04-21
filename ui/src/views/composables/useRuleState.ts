@@ -1,8 +1,19 @@
 import { Dialog, Toast } from "@halo-dev/components";
-import { computed, type ComputedRef, type Ref } from "vue";
+import {
+  createCompatibilitySession,
+  type CompatibilitySession,
+  type CompatibilitySessionStep,
+} from "compat-finder";
+import { computed, ref, type ComputedRef, type Ref } from "vue";
 
 import { ruleApi } from "@/apis";
-import type { TransformationRuleEditorDraft, TransformationRuleReadModel } from "@/types";
+import type {
+  RuleCompatibilityStatus,
+  RuleCompatibilityStepView,
+  RuleCompatibilityTarget,
+  TransformationRuleEditorDraft,
+  TransformationRuleReadModel,
+} from "@/types";
 
 import { appendCreatedResourcesInOrder } from "./resourceOrder";
 import { getErrorMessage } from "./resourceSupport";
@@ -32,6 +43,11 @@ export function useRuleState(options: UseRuleStateOptions) {
     if (!options.editRule.value) return null;
     return validateRuleDraft(options.editRule.value);
   });
+  const compatibilityStatus = ref<RuleCompatibilityStatus>("idle");
+  const compatibilityStep = ref<RuleCompatibilityStepView | null>(null);
+  const compatibilityOriginalEnabledState = ref<Map<string, boolean> | null>(null);
+  let compatibilityTargetIds = new Set<string>();
+  let compatibilitySession: CompatibilitySession<RuleCompatibilityTarget> | null = null;
 
   async function addRule(rule: TransformationRuleEditorDraft): Promise<string | null> {
     const error = validateRuleDraft(rule);
@@ -205,6 +221,185 @@ export function useRuleState(options: UseRuleStateOptions) {
     }
   }
 
+  function toCompatibilityStepView(
+    step: CompatibilitySessionStep<RuleCompatibilityTarget>,
+  ): RuleCompatibilityStepView {
+    return {
+      status: step.status,
+      targetNumbers: [...step.targetNumbers],
+      targets: [...step.targets],
+    };
+  }
+
+  async function applyCompatibilityStep(step: RuleCompatibilityStepView) {
+    compatibilityStep.value = step;
+    if (step.status === "complete") {
+      compatibilityStatus.value = "complete";
+      await restoreRuleCompatibilityState();
+      return;
+    }
+
+    compatibilityStatus.value = "testing";
+    await applyTemporaryRuleEnabledState(step.targets.map((target) => target.id));
+  }
+
+  async function applyTemporaryRuleEnabledState(enabledIds: string[]) {
+    const targetIds = new Set(enabledIds);
+    const changedRules = options.rules.value.filter(
+      (rule) => compatibilityTargetIds.has(rule.id) && rule.enabled !== targetIds.has(rule.id),
+    );
+    for (const rule of changedRules) {
+      await ruleApi.updateEnabled(rule.id, targetIds.has(rule.id), rule.metadata.version);
+    }
+    await options.refreshRuleSnapshot();
+  }
+
+  async function restoreRuleCompatibilityState() {
+    const originalState = compatibilityOriginalEnabledState.value;
+    if (!originalState) {
+      compatibilityStatus.value =
+        compatibilityStep.value?.status === "complete" ? "complete" : "idle";
+      return;
+    }
+
+    compatibilityStatus.value = "restoring";
+    try {
+      await options.refreshRuleSnapshot();
+    } catch {
+      // Keep going with the local snapshot; best-effort restore is safer than leaving
+      // the temporary compatibility state untouched.
+    }
+    const latestRulesById = new Map(options.rules.value.map((rule) => [rule.id, rule]));
+    let restoredCount = 0;
+    const failures: string[] = [];
+    let refreshFailed = false;
+
+    for (const [id, enabled] of originalState) {
+      const latestRule = latestRulesById.get(id);
+      if (!latestRule || latestRule.enabled === enabled) {
+        continue;
+      }
+
+      try {
+        await ruleApi.updateEnabled(id, enabled, latestRule.metadata.version);
+        restoredCount += 1;
+      } catch (error) {
+        failures.push(getErrorMessage(error, `${latestRule.name || id} 的启用状态恢复失败`));
+      }
+    }
+
+    try {
+      await options.refreshRuleSnapshot();
+    } catch {
+      refreshFailed = true;
+    } finally {
+      compatibilityOriginalEnabledState.value = null;
+      compatibilityStatus.value =
+        compatibilityStep.value?.status === "complete" ? "complete" : "idle";
+    }
+
+    if (failures.length > 0) {
+      Toast.error(`部分规则未恢复到排查前的启用状态：${failures[0]}`);
+    } else if (refreshFailed) {
+      Toast.warning("规则启用状态已恢复，但列表刷新失败，请手动刷新页面确认");
+    } else if (restoredCount > 0) {
+      Toast.success("已恢复到排查前的规则启用状态");
+    }
+  }
+
+  async function startRuleCompatibilityCheck(ids: string[]) {
+    const targetRules = options.rules.value.filter((rule) => ids.includes(rule.id));
+    if (!targetRules.length) {
+      Toast.warning("请先选择转换规则");
+      return;
+    }
+
+    options.processingBulk.value = true;
+    try {
+      compatibilityOriginalEnabledState.value = new Map(
+        targetRules.map((rule) => [rule.id, rule.enabled]),
+      );
+      compatibilityTargetIds = new Set(targetRules.map((rule) => rule.id));
+      compatibilitySession = createCompatibilitySession(
+        targetRules.map((rule) => ({
+          id: rule.id,
+          name: rule.name || rule.id,
+        })),
+      );
+      await applyCompatibilityStep(toCompatibilityStepView(compatibilitySession.current()));
+      Toast.success("已开始兼容性排查，请确认当前规则组合是否会出现问题");
+    } catch (error) {
+      await restoreRuleCompatibilityState();
+      compatibilitySession = null;
+      compatibilityStep.value = null;
+      compatibilityTargetIds = new Set();
+      Toast.error(getErrorMessage(error, "启动兼容性排查失败"));
+    } finally {
+      options.processingBulk.value = false;
+    }
+  }
+
+  async function answerRuleCompatibilityCheck(hasIssue: boolean) {
+    if (!compatibilitySession || compatibilityStatus.value !== "testing") {
+      return;
+    }
+
+    options.processingBulk.value = true;
+    try {
+      const nextStep = compatibilitySession.answer(hasIssue);
+      await applyCompatibilityStep(toCompatibilityStepView(nextStep));
+      if (nextStep.status === "complete") {
+        Toast.success(
+          nextStep.targets.length > 0
+            ? `排查完成，疑似问题规则：${nextStep.targets.map((target) => target.name).join("、")}`
+            : "排查完成，所选规则未出现问题",
+        );
+      } else {
+        Toast.success("已切换到下一组规则，请继续确认问题是否会出现");
+      }
+    } catch (error) {
+      await restoreRuleCompatibilityState();
+      Toast.error(getErrorMessage(error, "记录排查结果失败"));
+    } finally {
+      options.processingBulk.value = false;
+    }
+  }
+
+  async function undoRuleCompatibilityCheck() {
+    if (!compatibilitySession || compatibilityStatus.value === "idle") {
+      return;
+    }
+
+    options.processingBulk.value = true;
+    try {
+      const previousStep = compatibilitySession.undo();
+      await applyCompatibilityStep(toCompatibilityStepView(previousStep));
+      Toast.success("已撤销上一轮排查结果");
+    } catch (error) {
+      await restoreRuleCompatibilityState();
+      Toast.error(getErrorMessage(error, "撤销排查结果失败"));
+    } finally {
+      options.processingBulk.value = false;
+    }
+  }
+
+  async function stopRuleCompatibilityCheck() {
+    if (compatibilityStatus.value === "idle" && !compatibilityOriginalEnabledState.value) {
+      return;
+    }
+
+    options.processingBulk.value = true;
+    try {
+      await restoreRuleCompatibilityState();
+    } finally {
+      compatibilitySession = null;
+      compatibilityStep.value = null;
+      compatibilityTargetIds = new Set();
+      compatibilityStatus.value = "idle";
+      options.processingBulk.value = false;
+    }
+  }
+
   function confirmDeleteRule() {
     if (!options.editRule.value) return;
     const id = options.editRule.value.id;
@@ -286,11 +481,17 @@ export function useRuleState(options: UseRuleStateOptions) {
 
   return {
     ruleEditorError,
+    compatibilityStatus,
+    compatibilityStep,
     addRule,
     importRules,
     saveRule,
     toggleRuleEnabled,
     setRulesEnabled,
+    startRuleCompatibilityCheck,
+    answerRuleCompatibilityCheck,
+    undoRuleCompatibilityCheck,
+    stopRuleCompatibilityCheck,
     confirmDeleteRule,
     confirmDeleteRules,
   };

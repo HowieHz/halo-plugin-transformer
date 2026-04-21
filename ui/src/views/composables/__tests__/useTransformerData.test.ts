@@ -343,6 +343,179 @@ describe("useTransformerData", () => {
     expect(toast.error).not.toHaveBeenCalled();
   });
 
+  // why: 兼容性排查只应临时改写本次勾选范围内规则的 enabled；
+  // 未勾选规则必须保持原状，结束时勾选范围也必须回到排查前快照。
+  it("uses compat-finder steps and restores rule enabled state after compatibility triage", async () => {
+    const activeTab = ref<ActiveTab>("rules");
+    const ruleA = makeRuleEditorDraft({
+      id: "rule-a",
+      metadata: { name: "rule-a", version: 1 },
+      name: "Rule A",
+      enabled: true,
+      matchRule: {
+        type: "GROUP",
+        negate: false,
+        operator: "AND",
+        children: [{ type: "PATH", negate: false, matcher: "ANT", value: "/a/**" }],
+      },
+    });
+    const ruleB = makeRuleEditorDraft({
+      id: "rule-b",
+      metadata: { name: "rule-b", version: 1 },
+      name: "Rule B",
+      enabled: false,
+      matchRule: {
+        type: "GROUP",
+        negate: false,
+        operator: "AND",
+        children: [{ type: "PATH", negate: false, matcher: "ANT", value: "/b/**" }],
+      },
+    });
+    const ruleC = makeRuleEditorDraft({
+      id: "rule-c",
+      metadata: { name: "rule-c", version: 1 },
+      name: "Rule C",
+      enabled: true,
+      matchRule: {
+        type: "GROUP",
+        negate: false,
+        operator: "AND",
+        children: [{ type: "PATH", negate: false, matcher: "ANT", value: "/c/**" }],
+      },
+    });
+    delete (ruleA as { matchRuleSource?: unknown }).matchRuleSource;
+    delete (ruleB as { matchRuleSource?: unknown }).matchRuleSource;
+    delete (ruleC as { matchRuleSource?: unknown }).matchRuleSource;
+
+    const snapshotItems = [ruleA, ruleB, ruleC].map((rule) => ({ ...rule }));
+    snippetApi.getSnapshot.mockResolvedValue({ data: snapshotOf([]) });
+    ruleApi.getSnapshot.mockImplementation(() => ({
+      data: snapshotOf(
+        snapshotItems.map((rule) => ({ ...rule, metadata: { ...rule.metadata } })),
+        { "rule-a": 1, "rule-b": 2, "rule-c": 3 },
+      ),
+    }));
+    ruleApi.updateEnabled.mockImplementation((id: string, enabled: boolean) => {
+      const target = snapshotItems.find((rule) => rule.id === id);
+      if (!target) {
+        throw new Error("missing rule");
+      }
+      target.enabled = enabled;
+      target.metadata = { ...target.metadata, version: (target.metadata.version ?? 1) + 1 };
+      return Promise.resolve({ data: { ...target, metadata: { ...target.metadata } } });
+    });
+
+    const store = useTransformerData(activeTab);
+    await store.fetchAll();
+
+    await store.startRuleCompatibilityCheck(["rule-a", "rule-b"]);
+
+    expect(store.ruleCompatibilityStatus.value).toBe("testing");
+    expect(store.ruleCompatibilityStep.value?.targets.map((target) => target.id)).toEqual([
+      "rule-a",
+    ]);
+    expect(store.rules.value.map((rule) => [rule.id, rule.enabled])).toEqual([
+      ["rule-a", true],
+      ["rule-b", false],
+      ["rule-c", true],
+    ]);
+
+    await store.answerRuleCompatibilityCheck(false);
+
+    expect(store.ruleCompatibilityStep.value?.targets.map((target) => target.id)).toEqual([
+      "rule-b",
+    ]);
+    expect(store.rules.value.map((rule) => [rule.id, rule.enabled])).toEqual([
+      ["rule-a", false],
+      ["rule-b", true],
+      ["rule-c", true],
+    ]);
+
+    await store.answerRuleCompatibilityCheck(true);
+
+    expect(store.ruleCompatibilityStatus.value).toBe("complete");
+    expect(store.ruleCompatibilityStep.value?.targets.map((target) => target.id)).toEqual([
+      "rule-b",
+    ]);
+    expect(store.rules.value.map((rule) => [rule.id, rule.enabled])).toEqual([
+      ["rule-a", true],
+      ["rule-b", false],
+      ["rule-c", true],
+    ]);
+    expect(ruleApi.updateEnabled).toHaveBeenCalledWith("rule-a", true, expect.any(Number));
+    expect(ruleApi.updateEnabled).not.toHaveBeenCalledWith("rule-c", false, expect.anything());
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  // why: 兼容性排查恢复规则后，最后一次刷新只影响列表新鲜度；
+  // 不能因为刷新失败把已完成的恢复流程继续向外 reject，尤其页面层是 fire-and-forget 调用。
+  it("does not reject compatibility cleanup when the final rule refresh fails", async () => {
+    const activeTab = ref<ActiveTab>("rules");
+    const ruleA = makeRuleEditorDraft({
+      id: "rule-a",
+      metadata: { name: "rule-a", version: 1 },
+      name: "Rule A",
+      enabled: true,
+      matchRule: {
+        type: "GROUP",
+        negate: false,
+        operator: "AND",
+        children: [{ type: "PATH", negate: false, matcher: "ANT", value: "/a/**" }],
+      },
+    });
+    const ruleB = makeRuleEditorDraft({
+      id: "rule-b",
+      metadata: { name: "rule-b", version: 1 },
+      name: "Rule B",
+      enabled: false,
+      matchRule: {
+        type: "GROUP",
+        negate: false,
+        operator: "AND",
+        children: [{ type: "PATH", negate: false, matcher: "ANT", value: "/b/**" }],
+      },
+    });
+    delete (ruleA as { matchRuleSource?: unknown }).matchRuleSource;
+    delete (ruleB as { matchRuleSource?: unknown }).matchRuleSource;
+
+    const snapshotItems = [ruleA, ruleB].map((rule) => ({ ...rule }));
+    let snapshotCallCount = 0;
+    snippetApi.getSnapshot.mockResolvedValue({ data: snapshotOf([]) });
+    ruleApi.getSnapshot.mockImplementation(() => {
+      snapshotCallCount += 1;
+      if (snapshotCallCount === 5) {
+        return Promise.reject(new Error("refresh failed"));
+      }
+      return Promise.resolve({
+        data: snapshotOf(
+          snapshotItems.map((rule) => ({ ...rule, metadata: { ...rule.metadata } })),
+          { "rule-a": 1, "rule-b": 2 },
+        ),
+      });
+    });
+    ruleApi.updateEnabled.mockImplementation((id: string, enabled: boolean) => {
+      const target = snapshotItems.find((rule) => rule.id === id);
+      if (!target) {
+        throw new Error("missing rule");
+      }
+      target.enabled = enabled;
+      target.metadata = { ...target.metadata, version: (target.metadata.version ?? 1) + 1 };
+      return Promise.resolve({ data: { ...target, metadata: { ...target.metadata } } });
+    });
+
+    const store = useTransformerData(activeTab);
+    await store.fetchAll();
+    await store.startRuleCompatibilityCheck(["rule-a", "rule-b"]);
+    await store.answerRuleCompatibilityCheck(false);
+
+    await expect(store.answerRuleCompatibilityCheck(true)).resolves.toBeUndefined();
+
+    expect(store.ruleCompatibilityStatus.value).toBe("complete");
+    expect(toast.warning).toHaveBeenCalledWith(
+      "规则启用状态已恢复，但列表刷新失败，请手动刷新页面确认",
+    );
+  });
+
   // why: 前端保存规则时不应再去二次改写代码片段；双向关联应交给后端单接口完成。
   it("saves rules without issuing secondary snippet update requests", async () => {
     const activeTab = ref<ActiveTab>("rules");

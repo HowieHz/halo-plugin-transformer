@@ -5,8 +5,8 @@ metadata:
 spec:
   extensionPointName: template-footer-processor
   className: top.howiehz.halo.transformer.template.TransformerFooterProcessor
-  displayName: "TransformerFooterProcessor"
-  description: "Transform the page content and place it inside a <halo:footer>"
+  displayName: "页面转换器页脚模板处理器"
+  description: "转换页面内容，并插入到 <halo:footer> 中"
 ---
 apiVersion: plugin.halo.run/v1alpha1
 kind: ExtensionDefinition
@@ -15,8 +15,8 @@ metadata:
 spec:
   extensionPointName: template-head-processor
   className: top.howiehz.halo.transformer.template.TransformerHeadProcessor
-  displayName: "TransformerHeadProcessor"
-  description: "Transform the page content and place it inside a <head>"
+  displayName: "页面转换器头部模板处理器"
+  description: "转换页面内容，并插入到 <head> 中"
 ---
 apiVersion: plugin.halo.run/v1alpha1
 kind: ExtensionDefinition
@@ -25,5 +25,5 @@ metadata:
 spec:
   extensionPointName: additional-webfilter
   className: top.howiehz.halo.transformer.filter.TransformerWebFilter
-  displayName: "TransformerWebFilter"
-  description: "Transform page content in HTML responses"
+  displayName: "页面转换器 Web 过滤器"
+  description: "转换 HTML 响应中的页面内容"

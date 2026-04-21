@@ -65,7 +65,7 @@ async function applyImportedRule(raw: string, sourceLabel: "剪贴板" | "文件
   const importedValidationError = resolveImportedRuleValidationError(createDraft.draft.value);
   if (importedValidationError) {
     Toast.warning(
-      `已从${sourceLabel}导入转换规则 JSON，但当前内容仍有错误：${importedValidationError}`,
+      `已从${sourceLabel}导入转换规则 JSON，但当前内容仍需修正：${importedValidationError}`,
     );
   } else {
     Toast.success(`已从${sourceLabel}导入转换规则 JSON`);
@@ -129,8 +129,8 @@ defineExpose({
         <EnabledSwitch
           :enabled="createDraft.draft.value.enabled"
           label="切换新建转换规则的启用状态"
-          title-when-disabled="当前新建后会保持禁用，点击改为启用"
-          title-when-enabled="当前新建后会直接启用，点击改为禁用"
+          title-when-disabled="创建后会保持禁用，点击改为启用"
+          title-when-enabled="创建后会直接启用，点击改为禁用"
           @toggle="createDraft.draft.value.enabled = !createDraft.draft.value.enabled"
         />
         <VButton size="sm" type="secondary" @click="openImportSourceModal">导入</VButton>
@@ -265,7 +265,7 @@ defineExpose({
           :items="snippets"
           label="关联代码片段选择列表"
           :selected-ids="createDraft.draft.value.snippetIds"
-          empty-text="暂无代码片段, 请先创建"
+          empty-text="暂无代码片段，请先创建"
           @toggle="toggleSnippet"
         />
         <div

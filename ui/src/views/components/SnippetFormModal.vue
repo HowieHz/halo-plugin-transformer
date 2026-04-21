@@ -54,7 +54,7 @@ async function applyImportedSnippet(raw: string, sourceLabel: "剪贴板" | "文
   createDraft.importFromTransfer(raw);
   const validationError = validateSnippetDraft(createDraft.draft.value);
   if (validationError) {
-    Toast.warning(`已从${sourceLabel}导入代码片段 JSON，但当前内容仍有错误：${validationError}`);
+    Toast.warning(`已从${sourceLabel}导入代码片段 JSON，但当前内容仍需修正：${validationError}`);
   } else {
     Toast.success(`已从${sourceLabel}导入代码片段 JSON`);
   }
@@ -113,8 +113,8 @@ defineExpose({
         <EnabledSwitch
           :enabled="createDraft.draft.value.enabled"
           label="切换新建代码片段的启用状态"
-          title-when-disabled="当前新建后会保持禁用，点击改为启用"
-          title-when-enabled="当前新建后会直接启用，点击改为禁用"
+          title-when-disabled="创建后会保持禁用，点击改为启用"
+          title-when-enabled="创建后会直接启用，点击改为禁用"
           @toggle="createDraft.draft.value.enabled = !createDraft.draft.value.enabled"
         />
         <VButton size="sm" type="secondary" @click="openImportSourceModal">导入</VButton>
