@@ -272,6 +272,7 @@ export function useRuleState(options: UseRuleStateOptions) {
     const latestRulesById = new Map(options.rules.value.map((rule) => [rule.id, rule]));
     let restoredCount = 0;
     const failures: string[] = [];
+    let refreshFailed = false;
 
     for (const [id, enabled] of originalState) {
       const latestRule = latestRulesById.get(id);
@@ -289,6 +290,8 @@ export function useRuleState(options: UseRuleStateOptions) {
 
     try {
       await options.refreshRuleSnapshot();
+    } catch {
+      refreshFailed = true;
     } finally {
       compatibilityOriginalEnabledState.value = null;
       compatibilityStatus.value =
@@ -297,6 +300,8 @@ export function useRuleState(options: UseRuleStateOptions) {
 
     if (failures.length > 0) {
       Toast.error(`部分规则未恢复到排查前的启用状态：${failures[0]}`);
+    } else if (refreshFailed) {
+      Toast.warning("规则启用状态已恢复，但列表刷新失败，请手动刷新页面确认");
     } else if (restoredCount > 0) {
       Toast.success("已恢复到排查前的规则启用状态");
     }
