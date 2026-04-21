@@ -28,14 +28,14 @@ const enabled = ref(true);
         <div>
           <p class=":uno: font-medium text-gray-900">以启用状态导入</p>
           <p class=":uno: text-xs text-gray-500">
-            关闭后，本次导入的全部{{ resourceLabel }}都会以禁用状态写入。
+            关闭后，本次导入的全部{{ resourceLabel }}都会保持禁用。
           </p>
         </div>
         <EnabledSwitch
           :enabled="enabled"
           :label="`切换批量导入${resourceLabel}的启用状态`"
-          title-when-disabled="当前本次批量导入会全部保持禁用"
-          title-when-enabled="当前本次批量导入会全部保持启用"
+          title-when-disabled="本次批量导入会全部保持禁用"
+          title-when-enabled="本次批量导入会全部保持启用"
           @toggle="enabled = !enabled"
         />
       </div>

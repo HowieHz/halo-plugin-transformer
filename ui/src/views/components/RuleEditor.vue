@@ -599,7 +599,7 @@ onBeforeUnmount(() => {
                 :items="sortedSnippets"
                 label="关联代码片段选择列表"
                 :selected-ids="currentRule.snippetIds"
-                empty-text="暂无代码片段, 请先创建"
+                empty-text="暂无代码片段，请先创建"
                 @toggle="handleToggleSnippet"
               />
               <div
