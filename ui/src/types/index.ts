@@ -99,6 +99,19 @@ export interface TransformationRuleReadModel {
   snippetIds: string[];
 }
 
+export interface RuleCompatibilityTarget {
+  id: string;
+  name: string;
+}
+
+export type RuleCompatibilityStatus = "idle" | "testing" | "complete" | "restoring";
+
+export interface RuleCompatibilityStepView {
+  status: "testing" | "complete";
+  targetNumbers: number[];
+  targets: RuleCompatibilityTarget[];
+}
+
 export interface TransformationRuleEditorState {
   matchRuleSource?: MatchRuleSource;
 }

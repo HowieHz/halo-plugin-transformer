@@ -25,6 +25,8 @@ describe("BulkOperationPanel accessibility", () => {
         canDisable: true,
         canEnable: true,
         processing: false,
+        ruleCompatibilityStatus: "idle",
+        ruleCompatibilityStep: null,
         selectedCount: 3,
         tab: "snippets",
       },

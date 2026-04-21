@@ -116,6 +116,8 @@ const {
   editDirty,
   snippetEditorError,
   ruleEditorError,
+  ruleCompatibilityStatus,
+  ruleCompatibilityStep,
   rulesUsingSnippet,
   snippetsInRule,
   fetchAll,
@@ -133,6 +135,10 @@ const {
   saveRule,
   toggleRuleEnabled,
   setRulesEnabled,
+  startRuleCompatibilityCheck,
+  answerRuleCompatibilityCheck,
+  undoRuleCompatibilityCheck,
+  stopRuleCompatibilityCheck,
   confirmDeleteRule,
   confirmDeleteRules,
   discardRuleEdit,
@@ -647,6 +653,22 @@ function handleBulkDelete() {
   confirmDeleteRules(bulkSelectionState.currentBulkIds.value);
 }
 
+function handleRuleCompatibilityStart() {
+  void startRuleCompatibilityCheck(bulkSelectionState.currentBulkIds.value);
+}
+
+function handleRuleCompatibilityAnswer(hasIssue: boolean) {
+  void answerRuleCompatibilityCheck(hasIssue);
+}
+
+function handleRuleCompatibilityUndo() {
+  void undoRuleCompatibilityCheck();
+}
+
+function handleRuleCompatibilityStop() {
+  void stopRuleCompatibilityCheck();
+}
+
 watch(
   () => [route.query.tab, route.query.id, route.query.action, route.query.mode],
   () => {
@@ -1001,8 +1023,14 @@ function jumpToSnippet(id: string) {
                 :can-disable="canBulkDisable"
                 :can-enable="canBulkEnable"
                 :processing="processingBulk"
+                :rule-compatibility-status="ruleCompatibilityStatus"
+                :rule-compatibility-step="ruleCompatibilityStep"
                 :selected-count="bulkSelectionState.currentBulkSelectionCount.value"
                 :tab="activeTab"
+                @compatibility-answer="handleRuleCompatibilityAnswer"
+                @compatibility-start="handleRuleCompatibilityStart"
+                @compatibility-stop="handleRuleCompatibilityStop"
+                @compatibility-undo="handleRuleCompatibilityUndo"
                 @delete="handleBulkDelete"
                 @disable="handleBulkDisable"
                 @enable="handleBulkEnable"
