@@ -172,6 +172,7 @@ const selectedBulkResources = computed(() => {
 });
 const canBulkEnable = computed(() => selectedBulkResources.value.some((item) => !item.enabled));
 const canBulkDisable = computed(() => selectedBulkResources.value.some((item) => item.enabled));
+const isRuleCompatibilityActive = computed(() => ruleCompatibilityStatus.value !== "idle");
 const mobileLeftDrawerLabel = computed(() => "选择列表");
 const mobileRightDrawerLabel = computed(() => "关联信息");
 const mobileMainLabel = computed(() =>
@@ -422,6 +423,10 @@ function handleTabSwitch(tab: ActiveTab) {
   if (activeTab.value === tab) {
     return;
   }
+  if (isRuleCompatibilityActive.value) {
+    Toast.warning("请先结束兼容性排查并恢复规则启用状态");
+    return;
+  }
   requestEditorLeave(() => {
     viewSession.switchTab(tab);
   });
@@ -503,6 +508,10 @@ function enterBulkMode() {
 }
 
 function exitBulkMode() {
+  if (isRuleCompatibilityActive.value) {
+    Toast.warning("请先结束兼容性排查并恢复规则启用状态");
+    return;
+  }
   viewSession.exitBulkMode();
   mobileDrawer.closeDrawer();
 }

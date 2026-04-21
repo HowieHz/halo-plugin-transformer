@@ -46,7 +46,7 @@ export function useRuleState(options: UseRuleStateOptions) {
   const compatibilityStatus = ref<RuleCompatibilityStatus>("idle");
   const compatibilityStep = ref<RuleCompatibilityStepView | null>(null);
   const compatibilityOriginalEnabledState = ref<Map<string, boolean> | null>(null);
-  const compatibilityTargetIds = ref<Set<string>>(new Set());
+  let compatibilityTargetIds = new Set<string>();
   let compatibilitySession: CompatibilitySession<RuleCompatibilityTarget> | null = null;
 
   async function addRule(rule: TransformationRuleEditorDraft): Promise<string | null> {
@@ -245,9 +245,8 @@ export function useRuleState(options: UseRuleStateOptions) {
 
   async function applyTemporaryRuleEnabledState(enabledIds: string[]) {
     const targetIds = new Set(enabledIds);
-    const scopedIds = compatibilityTargetIds.value;
     const changedRules = options.rules.value.filter(
-      (rule) => scopedIds.has(rule.id) && rule.enabled !== targetIds.has(rule.id),
+      (rule) => compatibilityTargetIds.has(rule.id) && rule.enabled !== targetIds.has(rule.id),
     );
     for (const rule of changedRules) {
       await ruleApi.updateEnabled(rule.id, targetIds.has(rule.id), rule.metadata.version);
@@ -315,7 +314,7 @@ export function useRuleState(options: UseRuleStateOptions) {
       compatibilityOriginalEnabledState.value = new Map(
         targetRules.map((rule) => [rule.id, rule.enabled]),
       );
-      compatibilityTargetIds.value = new Set(targetRules.map((rule) => rule.id));
+      compatibilityTargetIds = new Set(targetRules.map((rule) => rule.id));
       compatibilitySession = createCompatibilitySession(
         targetRules.map((rule) => ({
           id: rule.id,
@@ -328,7 +327,7 @@ export function useRuleState(options: UseRuleStateOptions) {
       await restoreRuleCompatibilityState();
       compatibilitySession = null;
       compatibilityStep.value = null;
-      compatibilityTargetIds.value = new Set();
+      compatibilityTargetIds = new Set();
       Toast.error(getErrorMessage(error, "启动兼容性排查失败"));
     } finally {
       options.processingBulk.value = false;
@@ -390,7 +389,7 @@ export function useRuleState(options: UseRuleStateOptions) {
     } finally {
       compatibilitySession = null;
       compatibilityStep.value = null;
-      compatibilityTargetIds.value = new Set();
+      compatibilityTargetIds = new Set();
       compatibilityStatus.value = "idle";
       options.processingBulk.value = false;
     }

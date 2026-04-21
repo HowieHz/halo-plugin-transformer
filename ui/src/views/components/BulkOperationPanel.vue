@@ -38,6 +38,7 @@ const isCompatibilityActive = computed(
     props.ruleCompatibilityStatus !== undefined &&
     props.ruleCompatibilityStatus !== "idle",
 );
+const isBulkActionDisabled = computed(() => props.processing || isCompatibilityActive.value);
 const isCompatibilityTesting = computed(
   () =>
     props.ruleCompatibilityStatus === "testing" &&
@@ -57,27 +58,35 @@ const compatibilityTargetLabel = computed(
   <div class=":uno: transformer-editor-container flex h-full flex-col">
     <EditorToolbar :show-actions="false" :show-default-actions="false" title="批量操作">
       <template #actions>
-        <VButton size="sm" @click="emit('exit')">退出批量操作</VButton>
-        <VButton :disabled="processing" size="sm" @click="emit('import')">批量导入</VButton>
-        <VButton :disabled="processing || !hasSelection" size="sm" @click="emit('export')">
+        <VButton :disabled="isCompatibilityActive" size="sm" @click="emit('exit')">
+          退出批量操作
+        </VButton>
+        <VButton :disabled="isBulkActionDisabled" size="sm" @click="emit('import')">
+          批量导入
+        </VButton>
+        <VButton
+          :disabled="isBulkActionDisabled || !hasSelection"
+          size="sm"
+          @click="emit('export')"
+        >
           批量导出
         </VButton>
         <VButton
-          :disabled="processing || !hasSelection || !canEnable"
+          :disabled="isBulkActionDisabled || !hasSelection || !canEnable"
           size="sm"
           @click="emit('enable')"
         >
           启用
         </VButton>
         <VButton
-          :disabled="processing || !hasSelection || !canDisable"
+          :disabled="isBulkActionDisabled || !hasSelection || !canDisable"
           size="sm"
           @click="emit('disable')"
         >
           禁用
         </VButton>
         <VButton
-          :disabled="processing || !hasSelection"
+          :disabled="isBulkActionDisabled || !hasSelection"
           size="sm"
           type="danger"
           @click="emit('delete')"
