@@ -24,7 +24,7 @@
     "vue-router": "^5.0.4"
   },
   "devDependencies": {
-    "@halo-dev/ui-plugin-bundler-kit": "^2.23.0",
+    "@halo-dev/ui-plugin-bundler-kit": "^2.24.0",
     "@iconify-json/ri": "^1.2.10",
     "@rsbuild/core": "^1.7.5",
     "@rsbuild/plugin-sass": "^1.5.1",
@@ -36,12 +36,12 @@
     "@unocss/postcss": "^66.6.8",
     "@unocss/webpack": "^66.6.8",
     "@vitejs/plugin-vue": "6.0.6",
-    "@vitest/eslint-plugin": "^1.6.15",
+    "@vitest/eslint-plugin": "^1.6.16",
     "@vue/eslint-config-prettier": "^10.2.0",
     "@vue/eslint-config-typescript": "^14.7.0",
     "@vue/test-utils": "^2.4.6",
     "@vue/tsconfig": "^0.9.1",
-    "eslint": "^10.2.0",
+    "eslint": "^10.2.1",
     "eslint-plugin-oxlint": "^1.60.0",
     "eslint-plugin-vue": "~10.8.0",
     "jsdom": "^29.0.2",
@@ -49,11 +49,11 @@
     "oxfmt": "^0.45.0",
     "oxlint": "^1.60.0",
     "sass": "^1.99.0",
-    "typescript": "~6.0.2",
+    "typescript": "~6.0.3",
     "unocss": "^66.6.8",
     "unplugin-icons": "^23.0.1",
     "vitest": "^4.1.4",
-    "vue-tsc": "^3.2.6"
+    "vue-tsc": "^3.2.7"
   },
   "engines": {
     "node": ">=24",
