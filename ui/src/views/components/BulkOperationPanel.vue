@@ -123,7 +123,7 @@ const compatibilityTargetLabel = computed(
           当前只启用了下面这些规则。请在前台确认问题是否还会出现。
         </p>
         <p v-else-if="isCompatibilityComplete" class=":uno: text-sm leading-6 text-gray-500">
-          疑似问题规则：{{ compatibilityTargetLabel }}。已恢复到排查前的启用状态。
+          已找到疑似问题规则，并恢复到排查前的启用状态。
         </p>
         <p v-else class=":uno: text-sm leading-6 text-gray-500">正在恢复到排查前的启用状态。</p>
         <div

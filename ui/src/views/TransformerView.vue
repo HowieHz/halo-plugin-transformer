@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { Toast, VButton, VCard, VLoading, VModal, VPageHeader, VSpace } from "@halo-dev/components";
-import { computed, nextTick, onMounted, ref, useId, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from "vue";
 import {
   onBeforeRouteLeave,
   onBeforeRouteUpdate,
@@ -188,6 +188,12 @@ const editorEmptyStateLayout = computed<EditorEmptyStateLayout>(() =>
 );
 
 onMounted(fetchAll);
+onMounted(() => {
+  window.addEventListener("beforeunload", handleBeforeUnload);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("beforeunload", handleBeforeUnload);
+});
 
 const postCreatePrompt = ref<null | { tab: ActiveTab; id: string }>(null);
 
@@ -213,6 +219,15 @@ function focusDrawerToggleButton(side: MobileDrawerSide) {
 
 function closeMobileDrawer() {
   mobileDrawer.closeDrawer();
+}
+
+function handleBeforeUnload(event: BeforeUnloadEvent) {
+  if (!isRuleCompatibilityActive.value) {
+    return;
+  }
+
+  event.preventDefault();
+  event.returnValue = "";
 }
 
 function handleLeftPaneDragOver(event: DragEvent) {
@@ -293,6 +308,10 @@ onBeforeRouteUpdate((to) => {
   if (syncingQuery.value || !queryStateHydrated.value) {
     return true;
   }
+  if (isRuleCompatibilityActive.value) {
+    Toast.warning("请先结束兼容性排查并恢复规则启用状态");
+    return false;
+  }
 
   const nextState = parseTransformerRouteState(to.query);
   if (isSameTransformerRouteState(viewSession.currentRouteState(), nextState)) {
@@ -308,6 +327,10 @@ onBeforeRouteUpdate((to) => {
 onBeforeRouteLeave(() => {
   if (syncingQuery.value || !queryStateHydrated.value) {
     return true;
+  }
+  if (isRuleCompatibilityActive.value) {
+    Toast.warning("请先结束兼容性排查并恢复规则启用状态");
+    return false;
   }
   return requestNavigationLeave();
 });
