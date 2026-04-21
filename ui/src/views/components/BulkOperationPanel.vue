@@ -171,7 +171,7 @@ const compatibilityTargetLabel = computed(
             撤销上一步
           </VButton>
           <VButton :disabled="processing" size="sm" @click="emit('compatibility-stop')">
-            {{ isCompatibilityComplete ? "关闭结果" : "结束并恢复" }}
+            {{ isCompatibilityComplete ? "完成" : "结束并恢复" }}
           </VButton>
         </div>
       </div>
@@ -185,7 +185,7 @@ const compatibilityTargetLabel = computed(
         <p class=":uno: text-sm leading-6 text-gray-500">
           {{
             isRuleBulkMode
-              ? "批量模式下不会打开单项编辑器；可以启停、导出勾选规则，也可以用它们做兼容性排查。"
+              ? "批量模式下不会打开单项编辑器；可以启停、导出勾选规则，也可以用勾选规则做兼容性排查。"
               : "批量模式下不会打开单项编辑器；勾选项就是本次批量操作对象。"
           }}
         </p>

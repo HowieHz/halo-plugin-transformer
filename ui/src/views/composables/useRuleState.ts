@@ -283,7 +283,7 @@ export function useRuleState(options: UseRuleStateOptions) {
         await ruleApi.updateEnabled(id, enabled, latestRule.metadata.version);
         restoredCount += 1;
       } catch (error) {
-        failures.push(getErrorMessage(error, `${latestRule.name || id} 恢复失败`));
+        failures.push(getErrorMessage(error, `${latestRule.name || id} 的启用状态恢复失败`));
       }
     }
 
@@ -322,7 +322,7 @@ export function useRuleState(options: UseRuleStateOptions) {
         })),
       );
       await applyCompatibilityStep(toCompatibilityStepView(compatibilitySession.current()));
-      Toast.success("已开始兼容性排查，请确认当前规则组合是否会触发问题");
+      Toast.success("已开始兼容性排查，请确认当前规则组合是否会出现问题");
     } catch (error) {
       await restoreRuleCompatibilityState();
       compatibilitySession = null;
@@ -347,7 +347,7 @@ export function useRuleState(options: UseRuleStateOptions) {
         Toast.success(
           nextStep.targets.length > 0
             ? `排查完成，疑似问题规则：${nextStep.targets.map((target) => target.name).join("、")}`
-            : "排查完成，所选规则未触发问题",
+            : "排查完成，所选规则未出现问题",
         );
       } else {
         Toast.success("已切换到下一组规则，请继续确认问题是否会出现");
