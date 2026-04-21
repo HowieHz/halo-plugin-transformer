@@ -309,7 +309,7 @@ onBeforeRouteUpdate((to) => {
     return true;
   }
   if (isRuleCompatibilityActive.value) {
-    Toast.warning("请先结束兼容性排查并恢复规则启用状态");
+    Toast.warning("请先结束兼容性排查，以恢复规则启用状态");
     return false;
   }
 
@@ -329,7 +329,7 @@ onBeforeRouteLeave(() => {
     return true;
   }
   if (isRuleCompatibilityActive.value) {
-    Toast.warning("请先结束兼容性排查并恢复规则启用状态");
+    Toast.warning("请先结束兼容性排查，以恢复规则启用状态");
     return false;
   }
   return requestNavigationLeave();
@@ -447,7 +447,7 @@ function handleTabSwitch(tab: ActiveTab) {
     return;
   }
   if (isRuleCompatibilityActive.value) {
-    Toast.warning("请先结束兼容性排查并恢复规则启用状态");
+    Toast.warning("请先结束兼容性排查，以恢复规则启用状态");
     return;
   }
   requestEditorLeave(() => {
@@ -532,7 +532,7 @@ function enterBulkMode() {
 
 function exitBulkMode() {
   if (isRuleCompatibilityActive.value) {
-    Toast.warning("请先结束兼容性排查并恢复规则启用状态");
+    Toast.warning("请先结束兼容性排查，以恢复规则启用状态");
     return;
   }
   viewSession.exitBulkMode();
