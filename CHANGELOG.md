@@ -21,6 +21,8 @@
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-04-22
+
 ### 💥 破坏性变更
 
 - Halo CMS 最低支持版本调整为 2.24.0。
@@ -54,6 +56,7 @@
 
 - 第一个版本发布。
 
-[Unreleased]: https://github.com/HowieHz/halo-plugin-transformer/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/HowieHz/halo-plugin-transformer/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/HowieHz/halo-plugin-transformer/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/HowieHz/halo-plugin-transformer/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/HowieHz/halo-plugin-transformer/releases/tag/v1.0.0
