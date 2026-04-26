@@ -5,6 +5,7 @@
     "public/generated/transformer.schema.json",
     "src/contract/generated/matchRuleContract.ts"
   ],
+  "jsdoc": {},
   "overrides": [
     {
       "files": ["**/*.jsonc"],
