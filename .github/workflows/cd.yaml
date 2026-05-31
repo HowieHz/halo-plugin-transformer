@@ -14,7 +14,7 @@ jobs:
       contents: write
     with:
       ui-path: "ui"
-      pnpm-version: "11.2.2"
+      pnpm-version: "11.5.0"
       node-version: 24
       java-version: 21
       app-id: app-ncyyngrz
