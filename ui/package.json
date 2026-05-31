@@ -27,7 +27,7 @@
   "devDependencies": {
     "@halo-dev/ui-plugin-bundler-kit": "^2.24.0",
     "@iconify-json/ri": "^1.2.10",
-    "@rsbuild/core": "^1.7.5",
+    "@rsbuild/core": "^2.0.7",
     "@rsbuild/plugin-sass": "^1.5.2",
     "@tsconfig/node20": "^20.1.9",
     "@types/canvas-confetti": "^1.9.0",
