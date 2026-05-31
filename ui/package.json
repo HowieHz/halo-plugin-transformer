@@ -18,11 +18,11 @@
     "@halo-dev/api-client": "^2.24.0",
     "@halo-dev/components": "^2.24.0",
     "@halo-dev/ui-shared": "^2.24.0",
-    "axios": "^1.15.2",
+    "axios": "^1.16.1",
     "canvas-confetti": "^1.9.4",
     "compat-finder": "^2.1.0",
-    "vue": "^3.5.33",
-    "vue-router": "^5.0.6"
+    "vue": "^3.5.35",
+    "vue-router": "^5.1.0"
   },
   "devDependencies": {
     "@halo-dev/ui-plugin-bundler-kit": "^2.24.0",
