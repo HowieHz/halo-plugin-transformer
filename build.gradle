@@ -1,7 +1,7 @@
 plugins {
     id 'java'
     id "io.freefair.lombok" version "9.5.0"
-    id "run.halo.plugin.devtools" version "0.7.0"
+    id "run.halo.plugin.devtools" version "0.8.0"
 }
 
 group = 'top.howiehz.halo.transformer'
@@ -13,7 +13,7 @@ repositories {
 }
 
 dependencies {
-    implementation platform('run.halo.tools.platform:plugin:2.24.0')
+    implementation platform('run.halo.tools.platform:plugin:2.25.0')
     compileOnly 'run.halo.app:api'
 
     testImplementation 'run.halo.app:api'
