@@ -21,6 +21,8 @@
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-06-17
+
 ### 🛠️ 杂项维护
 
 - 更新依赖。
@@ -76,7 +78,8 @@
 
 - 第一个版本发布。
 
-[Unreleased]: https://github.com/HowieHz/halo-plugin-transformer/compare/v1.0.4...HEAD
+[Unreleased]: https://github.com/HowieHz/halo-plugin-transformer/compare/v1.0.5...HEAD
+[1.0.5]: https://github.com/HowieHz/halo-plugin-transformer/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/HowieHz/halo-plugin-transformer/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/HowieHz/halo-plugin-transformer/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/HowieHz/halo-plugin-transformer/compare/v1.0.1...v1.0.2
