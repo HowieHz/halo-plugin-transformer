@@ -25,7 +25,7 @@
     "vue-router": "^5.1.0"
   },
   "devDependencies": {
-    "@halo-dev/ui-plugin-bundler-kit": "^2.25.1",
+    "@halo-dev/ui-plugin-bundler-kit": "^2.25.2",
     "@iconify-json/ri": "^1.2.10",
     "@rsbuild/core": "^2.0.15",
     "@rsbuild/plugin-sass": "^1.5.3",
