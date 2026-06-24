@@ -15,8 +15,8 @@ import { useRuleState } from "./useRuleState";
 import { useSnippetState } from "./useSnippetState";
 
 /**
- * why: `useTransformerData` 现在只保留页面级编排职责：
- * 装载共享资源快照，并把 snippet / rule / order / editor-selection 这几个 bounded context 组合起来。
+ * Why: `useTransformerData` 现在只保留页面级编排职责： 装载共享资源快照，并把 snippet / rule / order / editor-selection 这几个
+ * bounded context 组合起来。
  */
 export function useTransformerData(activeTab: Ref<ActiveTab>) {
   const loading = ref(false);
@@ -71,18 +71,14 @@ export function useTransformerData(activeTab: Ref<ActiveTab>) {
     }
   }
 
-  /**
-   * why: 删除会影响当前资源列表，也可能影响另一侧的关联展示与计数；
-   * 这里显式提供一个整页快照刷新入口，避免各个 delete 路径各自猜“要不要顺手刷新另一侧”。
-   */
+  /** Why: 删除会影响当前资源列表，也可能影响另一侧的关联展示与计数； 这里显式提供一个整页快照刷新入口，避免各个 delete 路径各自猜“要不要顺手刷新另一侧”。 */
   async function refreshAllResources() {
     await Promise.all([refreshSnippetSnapshot(), refreshRuleSnapshot()]);
   }
 
   /**
-   * why: route / remembered selection 的 authority 不是“任一列表刚好先回来的中间态”，
-   * 而是对应资源快照在当前轮刷新完成后的稳定结果；按资源类型分别校验，
-   * 才不会把并发刷新时的临时空列表误判成“资源已被删除”。
+   * Why: route / remembered selection 的 authority 不是“任一列表刚好先回来的中间态”，
+   * 而是对应资源快照在当前轮刷新完成后的稳定结果；按资源类型分别校验， 才不会把并发刷新时的临时空列表误判成“资源已被删除”。
    */
   function reconcileSelectedSnippet() {
     if (!snippetSnapshotState.hasLoaded.value || snippetSnapshotState.refreshing.value) {

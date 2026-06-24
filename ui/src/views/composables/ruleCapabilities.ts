@@ -16,8 +16,8 @@ export interface RuleCapabilities {
 }
 
 /**
- * why: `mode` 是规则语义的第一真源；`position` 只在 `SELECTOR` 模式下参与行为判断。
- * 先把这层能力模型收口，create / edit / validate / payload 才不会各自猜一套条件。
+ * Why: `mode` 是规则语义的第一真源；`position` 只在 `SELECTOR` 模式下参与行为判断。 先把这层能力模型收口，create / edit / validate /
+ * payload 才不会各自猜一套条件。
  */
 export function getRuleCapabilities(rule: RuleSemanticFields): RuleCapabilities {
   const isSelectorMode = rule.mode === "SELECTOR";
@@ -33,10 +33,7 @@ export function getRuleCapabilities(rule: RuleSemanticFields): RuleCapabilities 
   };
 }
 
-/**
- * why: 写入层需要消费一份已经按规则能力收紧过的 payload 语义，
- * 避免旧的 `position=REMOVE` 在切到 `HEAD/FOOTER` 后继续偷偷污染持久化结果。
- */
+/** Why: 写入层需要消费一份已经按规则能力收紧过的 payload 语义， 避免旧的 `position=REMOVE` 在切到 `HEAD/FOOTER` 后继续偷偷污染持久化结果。 */
 export function normalizeRuleWriteFields(
   rule: TransformationRuleEditorDraft,
 ): Pick<TransformationRuleWritePayload, "match" | "position" | "snippetIds" | "wrapMarker"> {
@@ -50,10 +47,7 @@ export function normalizeRuleWriteFields(
   };
 }
 
-/**
- * why: 空关联是允许保存的草稿态，但用户仍应被明确告知“当前不会输出任何内容”；
- * 这样既不误伤先建规则的工作流，也不会让 no-op 配置看起来像已经完整生效。
- */
+/** Why: 空关联是允许保存的草稿态，但用户仍应被明确告知“当前不会输出任何内容”； 这样既不误伤先建规则的工作流，也不会让 no-op 配置看起来像已经完整生效。 */
 export function getEmptySnippetAssociationWarning(rule: RuleAssociationFields): string | null {
   const capabilities = getRuleCapabilities(rule);
   if (!capabilities.showsSnippetPicker || rule.snippetIds.length > 0) {

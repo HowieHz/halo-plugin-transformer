@@ -176,10 +176,7 @@ watch(
   { immediate: true },
 );
 
-/**
- * why: 正常编辑需要记录撤销历史，但撤销/重置本身不能再次入栈，
- * 否则会把“当前值”重新压回历史，导致连续撤销时来回跳动。
- */
+/** Why: 正常编辑需要记录撤销历史，但撤销/重置本身不能再次入栈， 否则会把“当前值”重新压回历史，导致连续撤销时来回跳动。 */
 function updateField<K extends keyof TransformationRuleEditorDraft>(
   key: K,
   value: TransformationRuleEditorDraft[K],

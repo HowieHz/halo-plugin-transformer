@@ -14,10 +14,7 @@ interface UseBulkSelectionStateOptions {
   rules: ComputedRef<BulkSelectableResource[]>;
 }
 
-/**
- * why: 按 tab 隔离的批量勾选集不该再顺带承担“当前页面是不是 bulk 模式”；
- * 把 mode 留给页面 session controller，选择集这里只负责被选中了哪些资源。
- */
+/** Why: 按 tab 隔离的批量勾选集不该再顺带承担“当前页面是不是 bulk 模式”； 把 mode 留给页面 session controller，选择集这里只负责被选中了哪些资源。 */
 export function useBulkSelectionState(options: UseBulkSelectionStateOptions) {
   const bulkSnippetIds = ref<string[]>([]);
   const bulkRuleIds = ref<string[]>([]);

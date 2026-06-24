@@ -17,10 +17,7 @@ type PendingLeaveTarget =
       resolve: (allowed: boolean) => void;
     };
 
-/**
- * why: 离开确认需要同时服务于页内切换、整页路由离开和本地按钮动作；
- * 把它收成单一会话原语，才能避免这些入口各自复制一套“是否脏、能否保存、怎么继续”的分支。
- */
+/** Why: 离开确认需要同时服务于页内切换、整页路由离开和本地按钮动作； 把它收成单一会话原语，才能避免这些入口各自复制一套“是否脏、能否保存、怎么继续”的分支。 */
 export function useLeaveConfirmation(options: UseLeaveConfirmationOptions) {
   const leaveConfirmVisible = ref(false);
   const leaveConfirmCanSave = ref(false);

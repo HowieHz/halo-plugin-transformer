@@ -209,10 +209,7 @@ function focusModeTab(mode: MatchRuleEditorMode) {
   document.getElementById(tabId)?.focus();
 }
 
-/**
- * why: 两个模式切换按钮既然声明成 `tab`，就要补齐页签键盘契约；
- * 这样读屏和纯键盘用户才能按左右方向键在简单/高级模式之间切换，而不是只能依赖鼠标点击。
- */
+/** Why: 两个模式切换按钮既然声明成 `tab`，就要补齐页签键盘契约； 这样读屏和纯键盘用户才能按左右方向键在简单/高级模式之间切换，而不是只能依赖鼠标点击。 */
 function handleModeTabKeydown(event: KeyboardEvent, activeMode: MatchRuleEditorMode) {
   let nextMode: MatchRuleEditorMode | null = null;
   if (event.key === "ArrowLeft") {
@@ -322,10 +319,7 @@ function moveNode(
   updateSimple(nextRule);
 }
 
-/**
- * why: 绿色插入线是节点 dragover 算出来的，但松手时 drop 未必还落在节点本体；
- * 例如边缘自动滚动激活时，事件可能落到外围容器，所以这里需要按当前高亮落点兜底提交。
- */
+/** Why: 绿色插入线是节点 dragover 算出来的，但松手时 drop 未必还落在节点本体； 例如边缘自动滚动激活时，事件可能落到外围容器，所以这里需要按当前高亮落点兜底提交。 */
 function commitPendingDrop() {
   const sourcePath = draggingPath.value ? [...draggingPath.value] : null;
   const targetPath = dropTargetPath.value ? [...dropTargetPath.value] : null;

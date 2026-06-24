@@ -9,10 +9,7 @@ export interface ResourceReadMetadata {
   version?: number | null;
 }
 
-/**
- * why: 写接口只应承载后端真正接受的持久化字段；
- * 像 `id` 这类前端展示态派生字段，不应混进写入模型。
- */
+/** Why: 写接口只应承载后端真正接受的持久化字段； 像 `id` 这类前端展示态派生字段，不应混进写入模型。 */
 export interface TransformationSnippetWritePayload {
   apiVersion: "transformer.howiehz.top/v1alpha1";
   kind: "TransformationSnippet";
@@ -160,10 +157,7 @@ export const POSITION_OPTIONS: { value: TransformationPosition; label: string }[
   { value: "REMOVE", label: "移除元素 (remove)" },
 ];
 
-/**
- * why: 新建规则默认应落在最低优先级预设，而不是抢到既有规则前面；
- * 这样只“新建了一条规则”不会悄悄改变同阶段旧规则的执行先后。
- */
+/** Why: 新建规则默认应落在最低优先级预设，而不是抢到既有规则前面； 这样只“新建了一条规则”不会悄悄改变同阶段旧规则的执行先后。 */
 export const RUNTIME_ORDER_DEFAULT = 2147483645;
 export const RUNTIME_ORDER_MAX = 2147483647;
 export const RUNTIME_ORDER_STEPS: RuntimeOrderStep[] = [
@@ -221,9 +215,7 @@ export function makeMatchRuleGroup(override: Partial<MatchRule> = {}): MatchRule
   };
 }
 
-/**
- * why: 新建与导入流程都应围绕编辑草稿工作，而不是把只读返回模型直接塞进表单。
- */
+/** Why: 新建与导入流程都应围绕编辑草稿工作，而不是把只读返回模型直接塞进表单。 */
 export function makeSnippetEditorDraft(
   override: Partial<TransformationSnippetEditorDraft> = {},
 ): TransformationSnippetEditorDraft {
@@ -240,10 +232,7 @@ export function makeSnippetEditorDraft(
   };
 }
 
-/**
- * why: 规则编辑器需要一个自洽的草稿起点，包含规则树与 `matchRuleSource`；
- * 这样简单模式、JSON 模式、导入导出都能共享同一份编辑态模型。
- */
+/** Why: 规则编辑器需要一个自洽的草稿起点，包含规则树与 `matchRuleSource`； 这样简单模式、JSON 模式、导入导出都能共享同一份编辑态模型。 */
 export function makeRuleEditorDraft(
   override: Partial<TransformationRuleEditorDraft> = {},
 ): TransformationRuleEditorDraft {

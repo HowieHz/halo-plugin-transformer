@@ -117,10 +117,7 @@ function handleDrop(event: DragEvent, id: string) {
   commitPendingDrop(placement, dropTargetId.value);
 }
 
-/**
- * why: 顶部/底部自动滚动热区与绿色插入线可能同时存在；
- * 用户松手时 drop 事件未必还落在具体的列表项上，所以这里需要一个“按当前高亮落点兜底提交”的容器级路径。
- */
+/** Why: 顶部/底部自动滚动热区与绿色插入线可能同时存在； 用户松手时 drop 事件未必还落在具体的列表项上，所以这里需要一个“按当前高亮落点兜底提交”的容器级路径。 */
 function handleContainerDragOver(event: DragEvent) {
   if (!draggingId.value || !dropTargetId.value || !dropPlacement.value) {
     return;
@@ -209,8 +206,8 @@ function isBulkSelected(id: string) {
 }
 
 /**
- * why: 批量模式下仍保留“点整行即可勾选”的鼠标/触屏便利，但真正的已选语义只属于 checkbox；
- * 因此整行命中区只处理 pointer click，不再把主内容区做成第二个可聚焦 toggle 控件。
+ * Why: 批量模式下仍保留“点整行即可勾选”的鼠标/触屏便利，但真正的已选语义只属于 checkbox； 因此整行命中区只处理 pointer click，不再把主内容区做成第二个可聚焦
+ * toggle 控件。
  */
 function handleRowClick(event: MouseEvent, id: string) {
   if (!props.bulkMode) {
@@ -236,9 +233,8 @@ function handleToggleBulkAll() {
 }
 
 /**
- * why: 列表导航和键盘重排的焦点语义不同；
- * 上下导航应当把焦点移动到目标项，而重排后应当留在被移动项的拖动句柄上，方便连续调整顺序。
- * 这里提前收集 DOM 引用，避免后面再去靠脆弱的选择器回查。
+ * Why: 列表导航和键盘重排的焦点语义不同； 上下导航应当把焦点移动到目标项，而重排后应当留在被移动项的拖动句柄上，方便连续调整顺序。 这里提前收集 DOM
+ * 引用，避免后面再去靠脆弱的选择器回查。
  */
 const setItemElement = (id: string, element: Element | ComponentPublicInstance | null) => {
   itemElements.value[id] = element instanceof HTMLElement ? element : null;
@@ -250,10 +246,7 @@ const bindItemElement = (id: string) => {
   };
 };
 
-/**
- * why: 重排句柄在拖动和键盘调整两条路径里都是同一个权威焦点落点；
- * 这里提前收集每一项的 DOM 引用，避免后面再去靠脆弱的选择器回查。
- */
+/** Why: 重排句柄在拖动和键盘调整两条路径里都是同一个权威焦点落点； 这里提前收集每一项的 DOM 引用，避免后面再去靠脆弱的选择器回查。 */
 const setReorderButtonElement = (id: string, element: Element | ComponentPublicInstance | null) => {
   reorderButtonElements.value[id] = element instanceof HTMLButtonElement ? element : null;
 };
@@ -265,17 +258,14 @@ const bindReorderButtonElement = (id: string) => {
 };
 
 /**
- * why: 资源列表的真实交互模型是“主操作按钮 + 次级控件”，不是 ARIA listbox；
- * 方向键只在主操作按钮之间移动焦点，避免把 checkbox / 拖动句柄塞进错误的复合组件语义里。
+ * Why: 资源列表的真实交互模型是“主操作按钮 + 次级控件”，不是 ARIA listbox； 方向键只在主操作按钮之间移动焦点，避免把 checkbox /
+ * 拖动句柄塞进错误的复合组件语义里。
  */
 function focusItem(id: string) {
   itemElements.value[id]?.focus();
 }
 
-/**
- * why: 键盘重排后，用户通常会继续连按方向键微调顺序；
- * 焦点必须留在同一项的拖动句柄上，否则会打断这条连续操作链路。
- */
+/** Why: 键盘重排后，用户通常会继续连按方向键微调顺序； 焦点必须留在同一项的拖动句柄上，否则会打断这条连续操作链路。 */
 async function restorePendingReorderButtonFocus() {
   const focusId = pendingReorderFocusId.value;
   if (!focusId) {

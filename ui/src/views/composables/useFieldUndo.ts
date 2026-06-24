@@ -11,10 +11,7 @@ function isEqual(a: unknown, b: unknown) {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-/**
- * why: 字段级撤销既要支持“回退一步”，也要支持“回到未修改状态”，
- * 因此这里同时维护每个字段的基线快照和逐步历史，供各编辑器复用。
- */
+/** Why: 字段级撤销既要支持“回退一步”，也要支持“回到未修改状态”， 因此这里同时维护每个字段的基线快照和逐步历史，供各编辑器复用。 */
 export function useFieldUndo() {
   const baseline = ref<Record<string, unknown>>({});
   const history = ref<Record<string, unknown[]>>({});

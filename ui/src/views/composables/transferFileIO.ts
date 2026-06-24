@@ -19,10 +19,7 @@ type WindowWithSaveFilePicker = Window & {
   showSaveFilePicker?: (options?: SaveFilePickerOptionsLike) => Promise<SaveFilePickerHandleLike>;
 };
 
-/**
- * why: 导出优先走系统“另存为”，失败时由上层决定如何兜底，
- * 这样既能覆盖浏览器不支持、非安全上下文等场景，也能给用户保留手动复制窗口。
- */
+/** Why: 导出优先走系统“另存为”，失败时由上层决定如何兜底， 这样既能覆盖浏览器不支持、非安全上下文等场景，也能给用户保留手动复制窗口。 */
 export async function downloadTransferFile(draft: TransferFileDraft) {
   const saveFilePicker = (window as WindowWithSaveFilePicker).showSaveFilePicker;
 

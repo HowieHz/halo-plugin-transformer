@@ -12,10 +12,7 @@ interface DragAutoScrollZoneBounds {
   bottomZoneHeight?: number;
 }
 
-/**
- * why: 列表拖拽与规则树拖拽都需要同一套“拖到边缘就自动滚动”的交互，
- * 用共享状态机可以避免每个组件各自维护一套定时器与边界判断，减少后续漂移。
- */
+/** Why: 列表拖拽与规则树拖拽都需要同一套“拖到边缘就自动滚动”的交互， 用共享状态机可以避免每个组件各自维护一套定时器与边界判断，减少后续漂移。 */
 export function useDragAutoScroll(
   containerRef: Ref<HTMLElement | null>,
   options: UseDragAutoScrollOptions = {},
@@ -75,10 +72,7 @@ export function useDragAutoScroll(
     animationFrameId = requestAnimationFrame(tickAutoScroll);
   }
 
-  /**
-   * why: 自动滚动的热区应该只是“感知边缘位置”，不能再靠覆盖层自己接管 drop；
-   * 否则一旦提示层和真实落点重叠，就会出现高亮正确但松手失败的错觉。
-   */
+  /** Why: 自动滚动的热区应该只是“感知边缘位置”，不能再靠覆盖层自己接管 drop； 否则一旦提示层和真实落点重叠，就会出现高亮正确但松手失败的错觉。 */
   function handleContainerDragOver(event: DragEvent, zoneBounds: DragAutoScrollZoneBounds = {}) {
     if (!isDragActive.value) {
       return;

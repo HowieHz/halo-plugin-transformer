@@ -21,10 +21,7 @@ type BulkImportFlowState =
   | { step: "options"; payload: BulkImportPayload }
   | { step: "result"; result: BulkImportResultState };
 
-/**
- * why: 批量导入是一个线性 UI 流程；
- * 用单一判别状态表达 source/options/result，能避免多颗 ref 拼出互相矛盾的组合态。
- */
+/** Why: 批量导入是一个线性 UI 流程； 用单一判别状态表达 source/options/result，能避免多颗 ref 拼出互相矛盾的组合态。 */
 export function useBulkImportFlowState() {
   const flowState = ref<BulkImportFlowState>({ step: "idle" });
 

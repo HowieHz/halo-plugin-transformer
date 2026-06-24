@@ -23,10 +23,7 @@ interface UseSnippetStateOptions {
   applySavedSnippetSnapshot: (snippet: TransformationSnippetReadModel) => void;
 }
 
-/**
- * why: 代码片段的 CRUD / 启停 / 删除语义应集中在 snippet 上下文里；
- * 这样总控层只负责组合，而不会继续同时理解“代码片段怎么保存”和“规则怎么保存”两套细节。
- */
+/** Why: 代码片段的 CRUD / 启停 / 删除语义应集中在 snippet 上下文里； 这样总控层只负责组合，而不会继续同时理解“代码片段怎么保存”和“规则怎么保存”两套细节。 */
 export function useSnippetState(options: UseSnippetStateOptions) {
   const snippetEditorError = computed(() =>
     options.editSnippet.value ? validateSnippetDraft(options.editSnippet.value) : null,

@@ -11,9 +11,8 @@ interface UseTransferImportSourceFlowOptions {
 }
 
 /**
- * why: snippet / rule 新建弹窗的导入流程只是同一套 source flow orchestration，
- * 领域差异只在“拿到 raw 后怎么应用”。把这层弹窗/剪贴板/file input 编排收口后，
- * 权限处理、异常提示和后续编码策略就不必在两个组件里各改一遍。
+ * Why: snippet / rule 新建弹窗的导入流程只是同一套 source flow orchestration， 领域差异只在“拿到 raw 后怎么应用”。把这层弹窗/剪贴板/file
+ * input 编排收口后， 权限处理、异常提示和后续编码策略就不必在两个组件里各改一遍。
  */
 export function useTransferImportSourceFlow(options: UseTransferImportSourceFlowOptions) {
   const fileInput = ref<HTMLInputElement | null>(null);

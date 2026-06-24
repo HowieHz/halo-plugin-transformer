@@ -15,10 +15,7 @@ interface UseCreateSessionStateOptions<TSnippetSubmitPayload, TRuleSubmitPayload
   ruleFormRef: Ref<CreateFormController<TRuleSubmitPayload> | null>;
 }
 
-/**
- * why: create modal 不是一个“顺手挂着的 UI 开关”，而是一段有明确起止点的会话；
- * 把打开、关闭、重置、放弃统一到单一原语里，才能避免切 tab / 切选中项后旧会话残留。
- */
+/** Why: create modal 不是一个“顺手挂着的 UI 开关”，而是一段有明确起止点的会话； 把打开、关闭、重置、放弃统一到单一原语里，才能避免切 tab / 切选中项后旧会话残留。 */
 export function useCreateSessionState<TSnippetSubmitPayload, TRuleSubmitPayload>(
   options: UseCreateSessionStateOptions<TSnippetSubmitPayload, TRuleSubmitPayload>,
 ) {

@@ -37,10 +37,7 @@ export type RuleBatchTransferEnvelope = TransferEnvelope<
   { items: RuleTransferData[] }
 >;
 
-/**
- * why: 导入导出只面向用户可编辑内容；像 id、排序、metadata、关联关系这类系统字段
- * 不应跟着资源模板流转，避免“导入即复制脏状态”。
- */
+/** Why: 导入导出只面向用户可编辑内容；像 id、排序、metadata、关联关系这类系统字段 不应跟着资源模板流转，避免“导入即复制脏状态”。 */
 export function buildSnippetTransfer(
   snippet: TransformationSnippetEditorDraft,
 ): SnippetTransferEnvelope {
@@ -53,8 +50,8 @@ export function buildSnippetTransfer(
 }
 
 /**
- * why: 规则导出保留当前编辑器可见的业务内容，但不会把编辑器内部状态原样透传；
- * 对可成功解析的 `JSON_DRAFT`，这里会收敛成规范的 `RULE_TREE`，只有仍然无效的 JSON 草稿才继续按 `JSON_DRAFT` 导出。
+ * Why: 规则导出保留当前编辑器可见的业务内容，但不会把编辑器内部状态原样透传； 对可成功解析的 `JSON_DRAFT`，这里会收敛成规范的 `RULE_TREE`，只有仍然无效的 JSON
+ * 草稿才继续按 `JSON_DRAFT` 导出。
  */
 export function buildRuleTransfer(rule: TransformationRuleEditorDraft): RuleTransferEnvelope {
   return {
@@ -65,10 +62,7 @@ export function buildRuleTransfer(rule: TransformationRuleEditorDraft): RuleTran
   };
 }
 
-/**
- * why: 批量导出不应重新发明另一套 item 结构；
- * 这里直接复用单资源 transfer data，确保单个导出与批量导出共享同一条契约。
- */
+/** Why: 批量导出不应重新发明另一套 item 结构； 这里直接复用单资源 transfer data，确保单个导出与批量导出共享同一条契约。 */
 export function buildSnippetBatchTransfer(
   snippets: TransformationSnippetEditorDraft[],
 ): SnippetBatchTransferEnvelope {
@@ -82,10 +76,7 @@ export function buildSnippetBatchTransfer(
   };
 }
 
-/**
- * why: 规则批量导出要和单条规则导出保持完全同构；
- * 这样导入校验、schema 与未来迁移都只维护一套规则 item 语义。
- */
+/** Why: 规则批量导出要和单条规则导出保持完全同构； 这样导入校验、schema 与未来迁移都只维护一套规则 item 语义。 */
 export function buildRuleBatchTransfer(
   rules: TransformationRuleEditorDraft[],
 ): RuleBatchTransferEnvelope {

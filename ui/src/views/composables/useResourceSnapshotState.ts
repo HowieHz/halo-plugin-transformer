@@ -37,9 +37,8 @@ function cloneSnapshot<T>(snapshot: OrderedItemList<T>): OrderedItemList<T> {
 }
 
 /**
- * why: 左侧资源列表真正的 authority 是一个完整 snapshot：
- * `items + orders + orderVersion` 必须同进同退；把它们封在同一个 composable 里，
- * 才不会在调用方手里再次被拆回多份隐式状态。
+ * Why: 左侧资源列表真正的 authority 是一个完整 snapshot： `items + orders + orderVersion` 必须同进同退；把它们封在同一个
+ * composable 里， 才不会在调用方手里再次被拆回多份隐式状态。
  */
 export function useResourceSnapshotState<T extends { id: string; name?: string | null }>(
   options: UseResourceSnapshotStateOptions<T>,

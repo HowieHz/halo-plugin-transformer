@@ -18,8 +18,8 @@ export interface TransformerRememberedSelection {
 }
 
 /**
- * why: `tab / id / action / mode` 组合起来才真正描述 Transformer 当前页面语义；
- * 把它们收成单一 route-state，才能避免 URL、局部 ref、批量模式之间再出现隐式漂移。
+ * Why: `tab / id / action / mode` 组合起来才真正描述 Transformer 当前页面语义； 把它们收成单一 route-state，才能避免 URL、局部
+ * ref、批量模式之间再出现隐式漂移。
  */
 export function parseTransformerRouteState(query: LocationQuery): TransformerRouteState {
   const tab = normalizeTransformerRouteTab(query.tab);
@@ -80,11 +80,7 @@ export function isSameTransformerRouteState(
   );
 }
 
-/**
- * why: 路由只表达“当前标签页想进入什么页面语义”，
- * `bulk / create` 并不代表“把记住的选中项真删掉”；这里记住的选中项
- * 只是“离开当前语义后，应该回到哪个资源”的恢复锚点。
- */
+/** Why: 路由只表达“当前标签页想进入什么页面语义”， `bulk / create` 并不代表“把记住的选中项真删掉”；这里记住的选中项 只是“离开当前语义后，应该回到哪个资源”的恢复锚点。 */
 export function applyTransformerRouteSelection(
   currentSelection: TransformerRememberedSelection,
   state: TransformerRouteState,
@@ -99,10 +95,7 @@ export function applyTransformerRouteSelection(
   };
 }
 
-/**
- * why: 左侧列表高亮和 URL `id` 一样，都属于“当前界面正在展示哪条资源”的可见语义；
- * create / bulk 只需要隐藏当前可见选中态，不应该把记住的选中项本身清掉。
- */
+/** Why: 左侧列表高亮和 URL `id` 一样，都属于“当前界面正在展示哪条资源”的可见语义； create / bulk 只需要隐藏当前可见选中态，不应该把记住的选中项本身清掉。 */
 export function resolveVisibleTransformerSelection(
   state: Pick<TransformerRouteState, "action" | "viewMode">,
   selectedId: string | null,

@@ -44,8 +44,8 @@ export function supportsDomPathPrecheck(rule: MatchRule | null): boolean {
 }
 
 /**
- * why: 性能提示也必须和保存/export 一样基于当前 editor source 解析结果，
- * 不能在 JSON_DRAFT 已经变坏时还继续读取旧的 `matchRule`，否则就会出现状态错位。
+ * Why: 性能提示也必须和保存/export 一样基于当前 editor source 解析结果， 不能在 JSON_DRAFT 已经变坏时还继续读取旧的
+ * `matchRule`，否则就会出现状态错位。
  */
 export function getDomRulePerformanceWarning(
   rule: Pick<TransformationRuleEditorDraft, "mode" | "matchRule"> &
@@ -65,10 +65,7 @@ export function matchRuleSummary(rule: MatchRule): string {
   return formatAnalysisExpression(minimizeMatchRuleForAnalysis(rule), true);
 }
 
-/**
- * why: 这套布尔最小化只服务于分析期语义：性能提示、路径预筛能力判断和表达式展示。
- * 编辑器草稿仍保留用户原始结构，避免出现“界面里写的是 A，系统偷偷改成了 B”的心智错位。
- */
+/** Why: 这套布尔最小化只服务于分析期语义：性能提示、路径预筛能力判断和表达式展示。 编辑器草稿仍保留用户原始结构，避免出现“界面里写的是 A，系统偷偷改成了 B”的心智错位。 */
 function minimizeMatchRuleForAnalysis(rule: MatchRule | null): AnalysisExpression {
   return simplifyAnalysisExpression(buildAnalysisExpression(rule));
 }
@@ -459,10 +456,7 @@ function formatAnalysisExpression(expression: AnalysisExpression, root = false):
   }
 }
 
-/**
- * why: 前端与后端共用同一套“路径预筛能力”判定思路，
- * 用来识别 DOM 注入是否能先按页面路径缩小范围，并在配置页给出准确的性能提示。
- */
+/** Why: 前端与后端共用同一套“路径预筛能力”判定思路， 用来识别 DOM 注入是否能先按页面路径缩小范围，并在配置页给出准确的性能提示。 */
 function analyzePathPrecheckKind(expression: AnalysisExpression): PathPrecheckKind {
   if (expression.kind === "CONST") {
     return "PATH_SCOPED";
