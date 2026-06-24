@@ -67,10 +67,7 @@ function handleEscape() {
   emit("close");
 }
 
-/**
- * why: 移动端抽屉声明为 modal dialog 后，键盘焦点就必须留在抽屉内；
- * 否则 `aria-modal` 只剩表面语义，用户仍会在遮罩后面的编辑区和另一侧面板间误跳转。
- */
+/** Why: 移动端抽屉声明为 modal dialog 后，键盘焦点就必须留在抽屉内； 否则 `aria-modal` 只剩表面语义，用户仍会在遮罩后面的编辑区和另一侧面板间误跳转。 */
 function handleTabKeydown(event: KeyboardEvent) {
   if (!props.compact || !props.open) {
     return;

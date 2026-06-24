@@ -300,10 +300,7 @@ function syncQueryState() {
     });
 }
 
-/**
- * why: 编辑保护不能只拦住“组件内部按钮”，浏览器前进/后退、外部 query 变更也必须走同一条离开确认路径；
- * 否则 URL 仍会成为绕过草稿保护的后门。
- */
+/** Why: 编辑保护不能只拦住“组件内部按钮”，浏览器前进/后退、外部 query 变更也必须走同一条离开确认路径； 否则 URL 仍会成为绕过草稿保护的后门。 */
 onBeforeRouteUpdate((to) => {
   if (syncingQuery.value || !queryStateHydrated.value) {
     return true;
@@ -320,10 +317,7 @@ onBeforeRouteUpdate((to) => {
   return requestNavigationLeave();
 });
 
-/**
- * why: 只拦住页内 query 变化还不够；如果整页导航能直接离开，
- * 草稿一样会静默丢失，因此 route leave 也必须复用同一套离开确认。
- */
+/** Why: 只拦住页内 query 变化还不够；如果整页导航能直接离开， 草稿一样会静默丢失，因此 route leave 也必须复用同一套离开确认。 */
 onBeforeRouteLeave(() => {
   if (syncingQuery.value || !queryStateHydrated.value) {
     return true;
@@ -455,10 +449,7 @@ function handleTabSwitch(tab: ActiveTab) {
   });
 }
 
-/**
- * why: 左侧页签不能只靠鼠标点击；补上方向键 / Home / End 后，
- * 键盘用户才可以按标准页签习惯切换资源类型。
- */
+/** Why: 左侧页签不能只靠鼠标点击；补上方向键 / Home / End 后， 键盘用户才可以按标准页签习惯切换资源类型。 */
 function handleTabKeydown(event: KeyboardEvent, currentTab: ActiveTab) {
   const currentIndex = TAB_DEFINITIONS.findIndex((tab) => tab.key === currentTab);
   if (currentIndex === -1) {

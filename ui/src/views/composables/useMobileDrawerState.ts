@@ -13,10 +13,7 @@ export function createMobileDrawerController() {
   const showRightDrawer = computed(() => isMobileViewport.value && activeDrawer.value === "right");
   const backdropVisible = computed(() => isMobileViewport.value && activeDrawer.value !== "none");
 
-  /**
-   * why: 抽屉状态只该在移动端生效；
-   * 一旦回到桌面端，左右栏本来就是常驻区，不应继续残留“某个抽屉还开着”的隐藏状态。
-   */
+  /** Why: 抽屉状态只该在移动端生效； 一旦回到桌面端，左右栏本来就是常驻区，不应继续残留“某个抽屉还开着”的隐藏状态。 */
   function syncViewport(isMobile: boolean) {
     isMobileViewport.value = isMobile;
     if (!isMobile) {
@@ -64,11 +61,7 @@ export function useMobileDrawerState() {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
       return;
     }
-    /**
-     * why: `1300px` 是控制台三栏切窄布局的统一断点。
-     * 这里和样式层必须保持同一条规则，否则会出现 JS 已按抽屉逻辑运行，
-     * 但 CSS 仍停留在桌面三栏，或者反过来的布局撕裂。
-     */
+    /** Why: `1300px` 是控制台三栏切窄布局的统一断点。 这里和样式层必须保持同一条规则，否则会出现 JS 已按抽屉逻辑运行， 但 CSS 仍停留在桌面三栏，或者反过来的布局撕裂。 */
     mediaQueryList = window.matchMedia(COMPACT_LAYOUT_MEDIA_QUERY);
     controller.syncViewport(mediaQueryList.matches);
 

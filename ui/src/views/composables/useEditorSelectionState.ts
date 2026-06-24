@@ -33,10 +33,7 @@ interface RuleEditorSession {
 
 type EditorSession = SnippetEditorSession | RuleEditorSession;
 
-/**
- * why: 选中态、草稿 hydration 与“只同步已保存快照的一小部分字段”属于编辑器上下文；
- * 把它从总控模块里拆出来后，CRUD 与排序逻辑都不必再关心右侧面板如何维护草稿。
- */
+/** Why: 选中态、草稿 hydration 与“只同步已保存快照的一小部分字段”属于编辑器上下文； 把它从总控模块里拆出来后，CRUD 与排序逻辑都不必再关心右侧面板如何维护草稿。 */
 export function useEditorSelectionState(options: UseEditorSelectionStateOptions) {
   const rememberedSelectionByTab = ref<Record<ActiveTab, string | null>>({
     snippets: null,
@@ -157,8 +154,8 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
   }
 
   /**
-   * why: snippet 可能被别处删除，而 rule 清理是异步最终一致；
-   * 编辑器不应继续把已不存在的 snippet id 当成“已选”，否则 UI 计数和后续保存 payload 都会漂移。
+   * Why: snippet 可能被别处删除，而 rule 清理是异步最终一致； 编辑器不应继续把已不存在的 snippet id 当成“已选”，否则 UI 计数和后续保存 payload
+   * 都会漂移。
    */
   function reconcileRuleEditorSnippetIds() {
     if (editorSession.value.tab !== "rules") {
@@ -180,10 +177,7 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
     };
   }
 
-  /**
-   * why: 启停接口现在只返回最新已保存资源；
-   * 编辑器这里只同步当前草稿里真正受影响的字段，已保存列表快照由 snapshot state 负责替换。
-   */
+  /** Why: 启停接口现在只返回最新已保存资源； 编辑器这里只同步当前草稿里真正受影响的字段，已保存列表快照由 snapshot state 负责替换。 */
   function syncSavedSnippetDraft(snippet: TransformationSnippetReadModel) {
     if (editorSession.value.tab === "snippets" && editorSession.value.draft?.id === snippet.id) {
       editorSession.value.draft.enabled = snippet.enabled;
@@ -195,8 +189,7 @@ export function useEditorSelectionState(options: UseEditorSelectionStateOptions)
   }
 
   /**
-   * why: 规则启停只作用于已保存资源，但“当前草稿是否已经脏了”会决定同步策略：
-   * 若草稿仍是干净的已保存视图，就应直接收敛到后端返回的规范形态；否则只同步
+   * Why: 规则启停只作用于已保存资源，但“当前草稿是否已经脏了”会决定同步策略： 若草稿仍是干净的已保存视图，就应直接收敛到后端返回的规范形态；否则只同步
    * enabled/version，避免把未保存编辑误当成一次完整保存。
    */
   function syncSavedRuleDraft(rule: TransformationRuleReadModel) {

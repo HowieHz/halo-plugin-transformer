@@ -30,10 +30,7 @@ export function getErrorMessage(error: unknown, fallback: string) {
   );
 }
 
-/**
- * why: 启停接口返回的是“最新已保存快照”；编辑器这里只应同步资源标识与版本，
- * 不能把 read-model 里的其它 metadata 字段整包并回草稿，否则读写边界会再次变宽。
- */
+/** Why: 启停接口返回的是“最新已保存快照”；编辑器这里只应同步资源标识与版本， 不能把 read-model 里的其它 metadata 字段整包并回草稿，否则读写边界会再次变宽。 */
 export function mergeSavedMetadata(
   draft: ResourceWriteMetadata,
   saved: ResourceReadMetadata,

@@ -73,10 +73,7 @@ function updateRuntimeOrderFromSlider(value: number) {
   sliderDraft.value = clampRuntimeOrder(value);
 }
 
-/**
- * why: 滑条拖动会连续触发 input；如果每一步都向外提交，
- * 字段级撤销就会退成很多个细碎小步，违背“一次拖拽 = 一次编辑”的语义。
- */
+/** Why: 滑条拖动会连续触发 input；如果每一步都向外提交， 字段级撤销就会退成很多个细碎小步，违背“一次拖拽 = 一次编辑”的语义。 */
 function commitRuntimeOrderFromSlider() {
   const snapped = snapRuntimeOrderToPreset(sliderDraft.value);
   sliderDraft.value = snapped;

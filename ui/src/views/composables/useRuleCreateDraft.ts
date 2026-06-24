@@ -22,8 +22,8 @@ interface RuleCreateDraftSnapshot {
 }
 
 /**
- * why: 规则新建弹窗不应自己维护第二套 dirty/payload 语义；
- * 统一用 composable 管理 create draft，才能让 create/import/save 长期共享一份领域约束。
+ * Why: 规则新建弹窗不应自己维护第二套 dirty/payload 语义； 统一用 composable 管理 create draft，才能让 create/import/save
+ * 长期共享一份领域约束。
  */
 export function useRuleCreateDraft() {
   const draft = ref<TransformationRuleEditorDraft>(makeRuleEditorDraft());

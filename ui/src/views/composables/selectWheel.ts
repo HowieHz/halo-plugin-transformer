@@ -1,7 +1,4 @@
-/**
- * why: 配置页里的原生下拉框很多，统一在“先点中，再滚轮”时切换选项，
- * 既减少重复模板代码，也避免鼠标只是路过时误切换下拉值。
- */
+/** Why: 配置页里的原生下拉框很多，统一在“先点中，再滚轮”时切换选项， 既减少重复模板代码，也避免鼠标只是路过时误切换下拉值。 */
 export function updateSelectByWheel(event: WheelEvent) {
   const select = event.currentTarget;
   if (!(select instanceof HTMLSelectElement) || select.disabled) {

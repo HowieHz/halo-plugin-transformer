@@ -22,9 +22,8 @@ interface UseTransformerViewSessionStateOptions {
 }
 
 /**
- * why: Transformer 页面真正的会话语义只有 `single / create / bulk` 三种；
- * 把 tab、当前页面模式和 remembered selection 的转换统一收口后，
- * URL 同步、切 tab、跳关系、打开新建弹窗就都不必再在 View 里手工改多颗 ref。
+ * Why: Transformer 页面真正的会话语义只有 `single / create / bulk` 三种； 把 tab、当前页面模式和 remembered selection
+ * 的转换统一收口后， URL 同步、切 tab、跳关系、打开新建弹窗就都不必再在 View 里手工改多颗 ref。
  */
 export function useTransformerViewSessionState(options: UseTransformerViewSessionStateOptions) {
   const createModalTab = computed<ActiveTab | null>({

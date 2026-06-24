@@ -35,8 +35,8 @@ interface UseRuleStateOptions {
 }
 
 /**
- * why: 规则上下文本身比代码片段更复杂，包含 match-rule 校验、snippet 关系归一化与 CRUD；
- * 独立拆出后，规则写语义不再和列表装载、选中态、排序队列挤在同一个 500+ 行模块里。
+ * Why: 规则上下文本身比代码片段更复杂，包含 match-rule 校验、snippet 关系归一化与 CRUD； 独立拆出后，规则写语义不再和列表装载、选中态、排序队列挤在同一个 500+
+ * 行模块里。
  */
 export function useRuleState(options: UseRuleStateOptions) {
   const ruleEditorError = computed(() => {

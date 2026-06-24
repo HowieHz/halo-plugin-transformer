@@ -10,10 +10,7 @@ interface UseRuleFormSemanticsOptions {
   matchValue?: Readonly<Ref<string>>;
 }
 
-/**
- * why: create / edit 两条规则表单路径需要共享同一份前端展示语义；
- * 这样 `REMOVE`、空关联 warning、显示哪些字段这些判断就不会在两个组件里各包一层胶水再慢慢漂移。
- */
+/** Why: create / edit 两条规则表单路径需要共享同一份前端展示语义； 这样 `REMOVE`、空关联 warning、显示哪些字段这些判断就不会在两个组件里各包一层胶水再慢慢漂移。 */
 export function useRuleFormSemantics(options: UseRuleFormSemanticsOptions) {
   const ruleCapabilities = computed(() =>
     options.rule.value ? getRuleCapabilities(options.rule.value) : null,

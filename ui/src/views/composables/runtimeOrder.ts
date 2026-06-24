@@ -20,10 +20,7 @@ function getPresetSnapDistance(index: number) {
     : 0;
 }
 
-/**
- * why: 运行顺序最终会写进后端 `int` 字段；
- * 前端所有入口都应共用同一套非负、上限封顶的归一化规则，避免滑条/手输/导入各自漂移。
- */
+/** Why: 运行顺序最终会写进后端 `int` 字段； 前端所有入口都应共用同一套非负、上限封顶的归一化规则，避免滑条/手输/导入各自漂移。 */
 export function clampRuntimeOrder(value: number) {
   if (!Number.isFinite(value)) {
     return RUNTIME_ORDER_MAX;
@@ -35,10 +32,7 @@ export function formatRuntimeOrder(value: number) {
   return value.toLocaleString("en-US");
 }
 
-/**
- * why: 滑条主要服务“按档位挑优先级”，而不是让用户精确命中那几个大整数；
- * 接近预设档位时自动吸附，能让交互更稳，但又保留离档位较远时的连续调节空间。
- */
+/** Why: 滑条主要服务“按档位挑优先级”，而不是让用户精确命中那几个大整数； 接近预设档位时自动吸附，能让交互更稳，但又保留离档位较远时的连续调节空间。 */
 export function snapRuntimeOrderToPreset(value: number) {
   const normalized = clampRuntimeOrder(value);
 
@@ -51,10 +45,7 @@ export function snapRuntimeOrderToPreset(value: number) {
   return normalized;
 }
 
-/**
- * why: 视觉提示应该帮助用户理解“当前处在哪个优先级区间”，
- * 而不是再把大整数原样抛回界面，增加理解成本。
- */
+/** Why: 视觉提示应该帮助用户理解“当前处在哪个优先级区间”， 而不是再把大整数原样抛回界面，增加理解成本。 */
 export function describeRuntimeOrderRange(value: number) {
   const normalized = clampRuntimeOrder(value);
   const exactStep = RUNTIME_ORDER_STEPS.find((step) => step.value === normalized);

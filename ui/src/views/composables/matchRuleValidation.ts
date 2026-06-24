@@ -49,7 +49,7 @@ const PATH_ALLOWED_KEYS = allowedFieldsFor("PATH");
 const TEMPLATE_ALLOWED_KEYS = allowedFieldsFor("TEMPLATE_ID");
 
 /**
- * why: 只对“形状正确”的对象做归一化，保证简单模式、JSON 模式和后端入参围绕同一份稳定结构工作。
+ * Why: 只对“形状正确”的对象做归一化，保证简单模式、JSON 模式和后端入参围绕同一份稳定结构工作。
  * 同时保留编辑过程中的“空条件组”中间态，让用户先删空再继续补条件；是否允许保存，交给校验层决定。
  */
 export function normalizeMatchRule(input: unknown): MatchRule {
@@ -142,10 +142,7 @@ export function validateMatchRuleTree(rule: MatchRule | null | undefined): Match
   });
 }
 
-/**
- * why: 简单模式需要把所有可定位到字段的错误同时标出来，
- * 用户才能一次看全空组、空值、非法正则等问题，而不是修完一个才看到下一个。
- */
+/** Why: 简单模式需要把所有可定位到字段的错误同时标出来， 用户才能一次看全空组、空值、非法正则等问题，而不是修完一个才看到下一个。 */
 export function validateSimpleMatchRuleTree(
   rule: MatchRule | null | undefined,
 ): MatchRuleValidationSummary {
@@ -165,8 +162,7 @@ export function validateSimpleMatchRuleTree(
 }
 
 /**
- * why: 导入场景需要拦住会破坏编辑器结构的坏数据，
- * 同时对“写错字段名”与“漏填可补默认值的字段”做宽松归一化：
+ * Why: 导入场景需要拦住会破坏编辑器结构的坏数据， 同时对“写错字段名”与“漏填可补默认值的字段”做宽松归一化：
  * 错键直接丢弃，缺键补默认值；但像非法根节点类型这类会破坏结构的问题，仍然直接拒绝导入。
  */
 export function validateMatchRuleObject(input: unknown, path = "matchRule"): MatchRuleParseResult {
