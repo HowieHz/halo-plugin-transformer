@@ -89,7 +89,7 @@ jobs:
     uses: halo-sigs/reusable-workflows/.github/workflows/plugin-ci.yaml@574420d846900eb5e6b25af72d43dca475583eac # https://github.com/halo-sigs/reusable-workflows/tree/v4
     with:
       ui-path: "ui"
-      pnpm-version: "11.13.0"
+      pnpm-version: "11.15.1"
       node-version: 24
       java-version: 21
 
