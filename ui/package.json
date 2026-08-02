@@ -54,7 +54,7 @@
     "unocss": "^66.7.5",
     "unplugin-icons": "^23.0.1",
     "vitest": "^4.1.10",
-    "vue-tsc": "^3.3.8"
+    "vue-tsc": "^3.3.9"
   },
   "engines": {
     "node": ">=24",
