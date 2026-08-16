@@ -5,7 +5,6 @@ import PluginLogoIcon from "./components/PluginLogoIcon.vue";
 import TransformerView from "./views/TransformerView.vue";
 
 import "./styles/main.scss";
-import "uno.css";
 
 export default definePlugin({
   components: {},
