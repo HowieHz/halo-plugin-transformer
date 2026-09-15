@@ -1,3 +1,104 @@
+---
+lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    configDependencies: {}
+    packageManagerDependencies:
+      pnpm:
+        specifier: 12.3.4
+        version: 12.3.4
+
+packages:
+
+  '@pnpm/exe.darwin-arm64@12.3.4':
+    resolution: {integrity: sha512-PAyUol8T1+/+ViOiXAt51ECA+QnfXCqz6foL4bW+LsoX0NcVd5XVEM2mRQu+LV4oc7uRz9zf9U0P+XFfuQeDAw==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@pnpm/exe.darwin-x64@12.3.4':
+    resolution: {integrity: sha512-fxP9JCk0Cdye+ePuj+GJJLMUMTqHGWRdb1dtv4How876uQ2ehxvenpgiYAir/ceO9PsYUZkFTtyZdx+rRu5QOA==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@pnpm/exe.linux-arm64-musl@12.3.4':
+    resolution: {integrity: sha512-FBOt0/7ye6O6q4AllVV5QMviB6qE6fqkeczV/+MDWQsmo+QJrlfsh6X7CpH/tClVpBZEyIbjpUoT8bNhCYBxEg==}
+    cpu: [arm64]
+    os: [linux]
+    libc: [musl]
+
+  '@pnpm/exe.linux-arm64@12.3.4':
+    resolution: {integrity: sha512-t71AVA7LRqiKTyZ5xMYaZc2n5DfdpMbfokZuiIOXHBOM03ECnF0t4iYwaBDqJgVjlKYUOwaF/bRQajGNA4cJ4w==}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  '@pnpm/exe.linux-x64-musl@12.3.4':
+    resolution: {integrity: sha512-RPmk7Jb/aYaFvL2iyDN/AtMY+hUEsue732WmXpcuQ9tBpMnGyA5py7Z3+e+qmQaJ0zY/4ni9jJiyPBQHujmv6w==}
+    cpu: [x64]
+    os: [linux]
+    libc: [musl]
+
+  '@pnpm/exe.linux-x64@12.3.4':
+    resolution: {integrity: sha512-2ZqOlSPkfwX1h5cR+FPiWf8+F+2hZT/3TvhUK5sigHqwaQCIiq8R7CGxhndKs63JtcLi2a1Qpo+wX/EoyfjyJQ==}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  '@pnpm/exe.win32-arm64@12.3.4':
+    resolution: {integrity: sha512-ANyrHqyqco6SXBysUTRF74itDyyraea7IbFsKFdNXTjcFnfycTDx37EwuhdpPYFNSIh2JhUG4fByclsRfiHX7w==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@pnpm/exe.win32-x64@12.3.4':
+    resolution: {integrity: sha512-WH/KqBPY/hq2Tb7SgQltEZytimcjgKRaCRL/aM9CI0c67iKc5TVmHUhIiL3Ux9FB4bWn36i6XewUcScQI+zG8w==}
+    cpu: [x64]
+    os: [win32]
+
+  pnpm@12.3.4:
+    resolution: {integrity: sha512-lhqkH7B32joEpEHZ+OFevAyW2o73ELLrZ7+e58sGEOq9SPH9hfUc/+c4RnhfoPh8VqOocqHYk/hEZ0G1zORUVw==}
+    engines: {node: '>=18.*'}
+    hasBin: true
+
+snapshots:
+
+  '@pnpm/exe.darwin-arm64@12.3.4':
+    optional: true
+
+  '@pnpm/exe.darwin-x64@12.3.4':
+    optional: true
+
+  '@pnpm/exe.linux-arm64-musl@12.3.4':
+    optional: true
+
+  '@pnpm/exe.linux-arm64@12.3.4':
+    optional: true
+
+  '@pnpm/exe.linux-x64-musl@12.3.4':
+    optional: true
+
+  '@pnpm/exe.linux-x64@12.3.4':
+    optional: true
+
+  '@pnpm/exe.win32-arm64@12.3.4':
+    optional: true
+
+  '@pnpm/exe.win32-x64@12.3.4':
+    optional: true
+
+  pnpm@12.3.4:
+    optionalDependencies:
+      '@pnpm/exe.darwin-arm64': 12.3.4
+      '@pnpm/exe.darwin-x64': 12.3.4
+      '@pnpm/exe.linux-arm64': 12.3.4
+      '@pnpm/exe.linux-arm64-musl': 12.3.4
+      '@pnpm/exe.linux-x64': 12.3.4
+      '@pnpm/exe.linux-x64-musl': 12.3.4
+      '@pnpm/exe.win32-arm64': 12.3.4
+      '@pnpm/exe.win32-x64': 12.3.4
+
+---
 lockfileVersion: '9.0'
 
 settings:
@@ -13,10 +114,10 @@ importers:
         version: 2.26.0(axios@1.20.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))
       '@halo-dev/components':
         specifier: ^2.26.0
-        version: 2.26.0(vue-router@5.3.0(@rspack/core@2.1.8(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.42)(rolldown@1.2.5)(vite@8.2.2(@types/node@26.4.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.104.0)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.42(typescript@6.0.3))(webpack@5.105.4(lightningcss@1.33.0)(postcss@8.5.26)))(vue@3.5.42(typescript@6.0.3))
+        version: 2.26.0(vue-router@5.3.1(@rspack/core@2.1.8(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.42)(rolldown@1.2.5)(vite@8.2.2(@types/node@26.4.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.104.0)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.42(typescript@6.0.3))(webpack@5.105.4(lightningcss@1.33.0)(postcss@8.5.26)))(vue@3.5.42(typescript@6.0.3))
       '@halo-dev/ui-shared':
         specifier: ^2.26.0
-        version: 2.26.0(@tiptap/pm@3.30.1)(axios@1.20.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(vue-router@5.3.0(@rspack/core@2.1.8(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.42)(rolldown@1.2.5)(vite@8.2.2(@types/node@26.4.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.104.0)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.42(typescript@6.0.3))(webpack@5.105.4(lightningcss@1.33.0)(postcss@8.5.26)))(vue@3.5.42(typescript@6.0.3))
+        version: 2.26.0(@tiptap/pm@3.30.1)(axios@1.20.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(vue-router@5.3.1(@rspack/core@2.1.8(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.42)(rolldown@1.2.5)(vite@8.2.2(@types/node@26.4.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.104.0)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.42(typescript@6.0.3))(webpack@5.105.4(lightningcss@1.33.0)(postcss@8.5.26)))(vue@3.5.42(typescript@6.0.3))
       axios:
         specifier: ^1.20.0
         version: 1.20.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
@@ -30,8 +131,8 @@ importers:
         specifier: ^3.5.42
         version: 3.5.42(typescript@6.0.3)
       vue-router:
-        specifier: ~5.3.0
-        version: 5.3.0(@rspack/core@2.1.8(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.42)(rolldown@1.2.5)(vite@8.2.2(@types/node@26.4.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.104.0)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.42(typescript@6.0.3))(webpack@5.105.4(lightningcss@1.33.0)(postcss@8.5.26))
+        specifier: ~5.3.1
+        version: 5.3.1(@rspack/core@2.1.8(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.42)(rolldown@1.2.5)(vite@8.2.2(@types/node@26.4.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.104.0)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.42(typescript@6.0.3))(webpack@5.105.4(lightningcss@1.33.0)(postcss@8.5.26))
     devDependencies:
       '@halo-dev/ui-plugin-bundler-kit':
         specifier: ^2.26.0
@@ -68,7 +169,7 @@ importers:
         version: 14.9.0(eslint-plugin-vue@10.10.0(@typescript-eslint/parser@8.61.0(eslint@10.10.0(jiti@2.7.0)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3))(eslint@10.10.0(jiti@2.7.0)(supports-color@8.1.1))(vue-eslint-parser@10.4.1(eslint@10.10.0(jiti@2.7.0)(supports-color@8.1.1))(supports-color@8.1.1)))(eslint@10.10.0(jiti@2.7.0)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)
       '@vue/test-utils':
         specifier: ^2.5.0
-        version: 2.5.0(@vue/compiler-dom@3.5.41)(@vue/server-renderer@3.5.42)(vue@3.5.42(typescript@6.0.3))
+        version: 2.5.0(@vue/compiler-dom@3.5.42)(@vue/server-renderer@3.5.42)(vue@3.5.42(typescript@6.0.3))
       '@vue/tsconfig':
         specifier: ^0.9.1
         version: 0.9.1(typescript@6.0.3)(vue@3.5.42(typescript@6.0.3))
@@ -3427,8 +3528,8 @@ packages:
     peerDependencies:
       vue: ^3.0.0
 
-  vue-router@5.3.0:
-    resolution: {integrity: sha512-a2PBXX9yfkS58JzSJALUffgDa09lEzKmCcEnLaepoIr88L+9hEnsgEQkcadJGID+vtHa0gFpVo064zmylA9fcg==}
+  vue-router@5.3.1:
+    resolution: {integrity: sha512-GDBZzgmILxA/kFnkFbJjQZdZ2QQbngnIMMuoUcjhZIfH1RGMaPjPwX5ASnV38qamuA9uhO0RDjSBHTDNG2uXyQ==}
     peerDependencies:
       '@pinia/colada': '>=0.21.2'
       '@vue/compiler-sfc': ^3.5.34 || ^4.0.0
@@ -3741,11 +3842,11 @@ snapshots:
       axios: 1.20.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
       qs: 6.15.3
 
-  '@halo-dev/components@2.26.0(vue-router@5.3.0(@rspack/core@2.1.8(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.42)(rolldown@1.2.5)(vite@8.2.2(@types/node@26.4.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.104.0)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.42(typescript@6.0.3))(webpack@5.105.4(lightningcss@1.33.0)(postcss@8.5.26)))(vue@3.5.42(typescript@6.0.3))':
+  '@halo-dev/components@2.26.0(vue-router@5.3.1(@rspack/core@2.1.8(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.42)(rolldown@1.2.5)(vite@8.2.2(@types/node@26.4.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.104.0)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.42(typescript@6.0.3))(webpack@5.105.4(lightningcss@1.33.0)(postcss@8.5.26)))(vue@3.5.42(typescript@6.0.3))':
     dependencies:
       floating-vue: 5.2.2(vue@3.5.42(typescript@6.0.3))
       vue: 3.5.42(typescript@6.0.3)
-      vue-router: 5.3.0(@rspack/core@2.1.8(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.42)(rolldown@1.2.5)(vite@8.2.2(@types/node@26.4.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.104.0)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.42(typescript@6.0.3))(webpack@5.105.4(lightningcss@1.33.0)(postcss@8.5.26))
+      vue-router: 5.3.1(@rspack/core@2.1.8(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.42)(rolldown@1.2.5)(vite@8.2.2(@types/node@26.4.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.104.0)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.42(typescript@6.0.3))(webpack@5.105.4(lightningcss@1.33.0)(postcss@8.5.26))
     transitivePeerDependencies:
       - '@nuxt/kit'
 
@@ -3764,13 +3865,13 @@ snapshots:
     transitivePeerDependencies:
       - axios
 
-  '@halo-dev/ui-shared@2.26.0(@tiptap/pm@3.30.1)(axios@1.20.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(vue-router@5.3.0(@rspack/core@2.1.8(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.42)(rolldown@1.2.5)(vite@8.2.2(@types/node@26.4.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.104.0)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.42(typescript@6.0.3))(webpack@5.105.4(lightningcss@1.33.0)(postcss@8.5.26)))(vue@3.5.42(typescript@6.0.3))':
+  '@halo-dev/ui-shared@2.26.0(@tiptap/pm@3.30.1)(axios@1.20.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(vue-router@5.3.1(@rspack/core@2.1.8(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.42)(rolldown@1.2.5)(vite@8.2.2(@types/node@26.4.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.104.0)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.42(typescript@6.0.3))(webpack@5.105.4(lightningcss@1.33.0)(postcss@8.5.26)))(vue@3.5.42(typescript@6.0.3))':
     dependencies:
       '@halo-dev/api-client': 2.26.0(axios@1.20.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))
       '@tiptap/core': 3.30.1(@tiptap/pm@3.30.1)
       mitt: 3.0.1
       vue: 3.5.42(typescript@6.0.3)
-      vue-router: 5.3.0(@rspack/core@2.1.8(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.42)(rolldown@1.2.5)(vite@8.2.2(@types/node@26.4.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.104.0)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.42(typescript@6.0.3))(webpack@5.105.4(lightningcss@1.33.0)(postcss@8.5.26))
+      vue-router: 5.3.1(@rspack/core@2.1.8(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.42)(rolldown@1.2.5)(vite@8.2.2(@types/node@26.4.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.104.0)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.42(typescript@6.0.3))(webpack@5.105.4(lightningcss@1.33.0)(postcss@8.5.26))
     transitivePeerDependencies:
       - '@tiptap/pm'
       - axios
@@ -4975,9 +5076,9 @@ snapshots:
 
   '@vue/shared@3.5.42': {}
 
-  '@vue/test-utils@2.5.0(@vue/compiler-dom@3.5.41)(@vue/server-renderer@3.5.42)(vue@3.5.42(typescript@6.0.3))':
+  '@vue/test-utils@2.5.0(@vue/compiler-dom@3.5.42)(@vue/server-renderer@3.5.42)(vue@3.5.42(typescript@6.0.3))':
     dependencies:
-      '@vue/compiler-dom': 3.5.41
+      '@vue/compiler-dom': 3.5.42
       js-beautify: 2.0.3
       vue: 3.5.42(typescript@6.0.3)
       vue-component-type-helpers: 3.3.5
@@ -6852,7 +6953,7 @@ snapshots:
     dependencies:
       vue: 3.5.42(typescript@6.0.3)
 
-  vue-router@5.3.0(@rspack/core@2.1.8(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.42)(rolldown@1.2.5)(vite@8.2.2(@types/node@26.4.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.104.0)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.42(typescript@6.0.3))(webpack@5.105.4(lightningcss@1.33.0)(postcss@8.5.26)):
+  vue-router@5.3.1(@rspack/core@2.1.8(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.42)(rolldown@1.2.5)(vite@8.2.2(@types/node@26.4.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.104.0)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.42(typescript@6.0.3))(webpack@5.105.4(lightningcss@1.33.0)(postcss@8.5.26)):
     dependencies:
       '@vue-macros/common': 3.1.4(vue@3.5.42(typescript@6.0.3))
       '@vue/devtools-api': 8.2.1
