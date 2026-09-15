@@ -50,7 +50,7 @@
     "unocss": "^66.10.0",
     "unplugin-icons": "^23.0.1",
     "vite": "^8.2.2",
-    "vitest": "^4.1.11",
+    "vitest": "^5.0.0",
     "vue-tsc": "^3.3.11"
   },
   "engines": {
