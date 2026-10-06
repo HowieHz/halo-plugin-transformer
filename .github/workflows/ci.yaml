@@ -86,7 +86,7 @@ jobs:
   build:
     name: Build
     needs: release-policy
-    uses: halo-sigs/reusable-workflows/.github/workflows/plugin-ci.yaml@574420d846900eb5e6b25af72d43dca475583eac # https://github.com/halo-sigs/reusable-workflows/tree/v4
+    uses: halo-sigs/reusable-workflows/.github/workflows/plugin-ci.yaml@045a5dd72c61775ea923c0a3a58576f680143430 # https://github.com/halo-sigs/reusable-workflows/tree/v4
     with:
       ui-path: "ui"
       pnpm-version: "12.3.4"
