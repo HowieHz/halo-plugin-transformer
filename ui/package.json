@@ -15,14 +15,14 @@
     "verify:spec-artifacts": "pnpm --dir .. verify:spec-artifacts"
   },
   "dependencies": {
-    "@halo-dev/api-client": "^2.26.0",
-    "@halo-dev/components": "^2.26.0",
-    "@halo-dev/ui-shared": "^2.26.0",
+    "@halo-dev/api-client": "^2.27.0",
+    "@halo-dev/components": "^2.27.0",
+    "@halo-dev/ui-shared": "^2.27.0",
     "axios": "^1.20.0",
     "canvas-confetti": "^1.9.4",
     "compat-finder": "^2.1.0",
-    "vue": "^3.5.42",
-    "vue-router": "~5.3.0"
+    "vue": "^3.5.44",
+    "vue-router": "~5.4.0"
   },
   "devDependencies": {
     "@halo-dev/ui-plugin-bundler-kit": "^2.27.0",
