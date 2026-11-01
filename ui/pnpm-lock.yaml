@@ -182,8 +182,8 @@ importers:
         specifier: ^1.9.4
         version: 1.9.4
       compat-finder:
-        specifier: ^2.1.0
-        version: 2.1.0
+        specifier: ^2.2.0
+        version: 2.2.0
       vue:
         specifier: ^3.5.44
         version: 3.5.44(typescript@6.0.3)
@@ -1836,9 +1836,9 @@ packages:
   commander@2.20.3:
     resolution: {integrity: sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==}
 
-  compat-finder@2.1.0:
-    resolution: {integrity: sha512-LyuHySp8ZLRggjWvbNRa/JESW4Ziwr3kdxf5lW0SRaeCxVWbhbGKkV6U7yp7l7eC0N+cd2/bXs5D3cgiS9R4Yg==}
-    engines: {node: ^22 || >=24}
+  compat-finder@2.2.0:
+    resolution: {integrity: sha512-AzRySIyT6wqHyxopcLblcInOLugbal/tJw0PehZPr25wtwh++8qXYUo8GBC5TMg05ZktAbqAqrEV2mr4uTscnQ==}
+    engines: {node: ^22 || ^24 || >=26}
     hasBin: true
 
   confbox@0.1.8:
@@ -4972,7 +4972,7 @@ snapshots:
   commander@2.20.3:
     optional: true
 
-  compat-finder@2.1.0: {}
+  compat-finder@2.2.0: {}
 
   confbox@0.1.8: {}
 
