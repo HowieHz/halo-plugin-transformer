@@ -20,7 +20,7 @@
     "@halo-dev/ui-shared": "^2.27.0",
     "axios": "^1.21.0",
     "canvas-confetti": "^1.9.4",
-    "compat-finder": "^2.1.0",
+    "compat-finder": "^2.2.0",
     "vue": "^3.5.44",
     "vue-router": "~5.4.0"
   },
