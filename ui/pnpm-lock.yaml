@@ -168,16 +168,16 @@ importers:
     dependencies:
       '@halo-dev/api-client':
         specifier: ^2.27.0
-        version: 2.27.0(axios@1.21.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))
+        version: 2.27.0(axios@1.21.1(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))
       '@halo-dev/components':
         specifier: ^2.27.0
         version: 2.27.0(vue-router@5.4.0(@rsbuild/core@2.1.10)(@rspack/core@2.1.8(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.44)(rolldown@1.2.16)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.108.1)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.45(typescript@6.0.3))(webpack@5.105.4(lightningcss@1.33.0)(postcss@8.5.31)))(vue@3.5.45(typescript@6.0.3))
       '@halo-dev/ui-shared':
         specifier: ^2.27.0
-        version: 2.27.0(@tiptap/pm@3.32.0)(axios@1.21.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(vue-router@5.4.0(@rsbuild/core@2.1.10)(@rspack/core@2.1.8(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.44)(rolldown@1.2.16)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.108.1)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.45(typescript@6.0.3))(webpack@5.105.4(lightningcss@1.33.0)(postcss@8.5.31)))(vue@3.5.45(typescript@6.0.3))
+        version: 2.27.0(@tiptap/pm@3.32.0)(axios@1.21.1(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(vue-router@5.4.0(@rsbuild/core@2.1.10)(@rspack/core@2.1.8(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.44)(rolldown@1.2.16)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.108.1)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.45(typescript@6.0.3))(webpack@5.105.4(lightningcss@1.33.0)(postcss@8.5.31)))(vue@3.5.45(typescript@6.0.3))
       axios:
-        specifier: ^1.21.0
-        version: 1.21.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+        specifier: ^1.21.1
+        version: 1.21.1(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
       canvas-confetti:
         specifier: ^1.9.4
         version: 1.9.4
@@ -193,7 +193,7 @@ importers:
     devDependencies:
       '@halo-dev/ui-plugin-bundler-kit':
         specifier: ^2.27.0
-        version: 2.27.0(@rsbuild/core@2.1.10)(@rsbuild/plugin-vue@1.2.7(@rsbuild/core@2.1.10)(@rspack/core@2.1.8(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.44)(vue@3.5.45(typescript@6.0.3)))(@vitejs/plugin-vue@6.0.10(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.108.1)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.45(typescript@6.0.3)))(axios@1.21.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.108.1)(terser@5.48.0)(yaml@2.9.0))
+        version: 2.27.0(@rsbuild/core@2.1.10)(@rsbuild/plugin-vue@1.2.7(@rsbuild/core@2.1.10)(@rspack/core@2.1.8(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.44)(vue@3.5.45(typescript@6.0.3)))(@vitejs/plugin-vue@6.0.10(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.108.1)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.45(typescript@6.0.3)))(axios@1.21.1(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.108.1)(terser@5.48.0)(yaml@2.9.0))
       '@iconify-json/ri':
         specifier: ^1.2.10
         version: 1.2.10
@@ -1744,8 +1744,8 @@ packages:
   asynckit@0.4.0:
     resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
 
-  axios@1.21.0:
-    resolution: {integrity: sha512-YCzXMB53Q9PZBsh7yN7wtapit4WepwcHS2fP8QhGsBxSz5YtgYobV7GGlWlAJi+RxfU77GQTQi2DSLUma42EYA==}
+  axios@1.21.1:
+    resolution: {integrity: sha512-6eI5Q/Y4u/Um9dDlsRoq5pY2rxnUTv+L4PpLitnbk/i4jb3MxLZ5CsN5Ih3IysbeRYK4pR+P7qfMsOQl9fwwFQ==}
 
   balanced-match@4.0.4:
     resolution: {integrity: sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==}
@@ -2146,8 +2146,8 @@ packages:
       '@nuxt/kit':
         optional: true
 
-  follow-redirects@1.16.0:
-    resolution: {integrity: sha512-y5rN/uOsadFT/JfYwhxRS5R7Qce+g3zG97+JrtFZlC9klX/W5hD7iiLzScI4nZqUS7DNUdhPgw4xI8W2LuXlUw==}
+  follow-redirects@1.16.3:
+    resolution: {integrity: sha512-toOSoqN6d51Wjf1aOFJYcoVv1aND9rj/CwjLU0Vz40oDuSpWDayCeKe4JpL5NL0WdFvoOOCI3BRo69HahjbR1A==}
     engines: {node: '>=4.0'}
     peerDependencies:
       debug: '*'
@@ -3637,9 +3637,9 @@ snapshots:
 
   '@floating-ui/utils@0.2.11': {}
 
-  '@halo-dev/api-client@2.27.0(axios@1.21.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))':
+  '@halo-dev/api-client@2.27.0(axios@1.21.1(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))':
     dependencies:
-      axios: 1.21.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+      axios: 1.21.1(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
       qs: 6.15.3
 
   '@halo-dev/components@2.27.0(vue-router@5.4.0(@rsbuild/core@2.1.10)(@rspack/core@2.1.8(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.44)(rolldown@1.2.16)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.108.1)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.45(typescript@6.0.3))(webpack@5.105.4(lightningcss@1.33.0)(postcss@8.5.31)))(vue@3.5.45(typescript@6.0.3))':
@@ -3650,9 +3650,9 @@ snapshots:
     transitivePeerDependencies:
       - '@nuxt/kit'
 
-  '@halo-dev/ui-plugin-bundler-kit@2.27.0(@rsbuild/core@2.1.10)(@rsbuild/plugin-vue@1.2.7(@rsbuild/core@2.1.10)(@rspack/core@2.1.8(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.44)(vue@3.5.45(typescript@6.0.3)))(@vitejs/plugin-vue@6.0.10(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.108.1)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.45(typescript@6.0.3)))(axios@1.21.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.108.1)(terser@5.48.0)(yaml@2.9.0))':
+  '@halo-dev/ui-plugin-bundler-kit@2.27.0(@rsbuild/core@2.1.10)(@rsbuild/plugin-vue@1.2.7(@rsbuild/core@2.1.10)(@rspack/core@2.1.8(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.44)(vue@3.5.45(typescript@6.0.3)))(@vitejs/plugin-vue@6.0.10(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.108.1)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.45(typescript@6.0.3)))(axios@1.21.1(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.108.1)(terser@5.48.0)(yaml@2.9.0))':
     dependencies:
-      '@halo-dev/api-client': 2.27.0(axios@1.21.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))
+      '@halo-dev/api-client': 2.27.0(axios@1.21.1(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))
       es-module-lexer: 2.3.2
       exsolve: 1.1.1
       js-yaml: 4.2.0
@@ -3666,9 +3666,9 @@ snapshots:
     transitivePeerDependencies:
       - axios
 
-  '@halo-dev/ui-shared@2.27.0(@tiptap/pm@3.32.0)(axios@1.21.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(vue-router@5.4.0(@rsbuild/core@2.1.10)(@rspack/core@2.1.8(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.44)(rolldown@1.2.16)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.108.1)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.45(typescript@6.0.3))(webpack@5.105.4(lightningcss@1.33.0)(postcss@8.5.31)))(vue@3.5.45(typescript@6.0.3))':
+  '@halo-dev/ui-shared@2.27.0(@tiptap/pm@3.32.0)(axios@1.21.1(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(vue-router@5.4.0(@rsbuild/core@2.1.10)(@rspack/core@2.1.8(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.44)(rolldown@1.2.16)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.108.1)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.45(typescript@6.0.3))(webpack@5.105.4(lightningcss@1.33.0)(postcss@8.5.31)))(vue@3.5.45(typescript@6.0.3))':
     dependencies:
-      '@halo-dev/api-client': 2.27.0(axios@1.21.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))
+      '@halo-dev/api-client': 2.27.0(axios@1.21.1(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))
       '@tiptap/core': 3.32.0(@tiptap/pm@3.32.0)
       mitt: 3.0.1
       vue: 3.5.45(typescript@6.0.3)
@@ -4910,9 +4910,9 @@ snapshots:
 
   asynckit@0.4.0: {}
 
-  axios@1.21.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1):
+  axios@1.21.1(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1):
     dependencies:
-      follow-redirects: 1.16.0(debug@4.4.3(supports-color@8.1.1))
+      follow-redirects: 1.16.3(debug@4.4.3(supports-color@8.1.1))
       form-data: 4.0.6
       https-proxy-agent: 5.0.1(supports-color@8.1.1)
       proxy-from-env: 2.1.0
@@ -5308,7 +5308,7 @@ snapshots:
       vue: 3.5.45(typescript@6.0.3)
       vue-resize: 2.0.0-alpha.1(vue@3.5.45(typescript@6.0.3))
 
-  follow-redirects@1.16.0(debug@4.4.3(supports-color@8.1.1)):
+  follow-redirects@1.16.3(debug@4.4.3(supports-color@8.1.1)):
     optionalDependencies:
       debug: 4.4.3(supports-color@8.1.1)
 
